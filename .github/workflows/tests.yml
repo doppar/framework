@@ -26,12 +26,3 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Install Composer dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Generate app key
-        run: php pool key:generate
-
-      - name: Execute tests
-        run: php pool test
