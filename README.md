@@ -1,11 +1,11 @@
 <p align="center">
     <a href="https://laravel.com" target="_blank">
-        <img src="https://raw.githubusercontent.com/doppar/doppar/6584e27962e9552c0b08e73508dcebbc7349eaf5/public/logo.png" width="400">
+        <img src="https://raw.githubusercontent.com/doppar/doppar/7138fb0e72cd55256769be6947df3ac48c300700/public/logo.png" width="400">
     </a>
 </p>
 
 <p align="center">
-<a href="https://github.com/doppar/framework/actions"><img src="https://github.com/doppar/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+[![Build Status](https://github.com/doppar/framework/actions/workflows/tests.yml/badge.svg)](https://github.com/doppar/framework/actions)
 <a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/dt/doppar/framework" alt="Total Downloads"></a>
 <a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/v/doppar/framework" alt="Latest Stable Version"></a>
 <a href="https://github.com/doppar/framework/blob/main/LICENSE"><img src="https://img.shields.io/github/license/doppar/framework" alt="License"></a>
