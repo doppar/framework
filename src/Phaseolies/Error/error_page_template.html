@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Error Log</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #1e1e2f;
+        color: #ecf0f1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .error-container {
+        background-color: #2a2a40;
+        border-radius: 12px;
+        padding: 40px;
+        width: 95%;
+        max-width: 1200px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        display: flex;
+      }
+
+      .error-message-section {
+        flex: 1;
+        padding-right: 20px;
+        text-align: left;
+      }
+
+      .code-editor-section {
+        flex: 1;
+        background-color: #1e1e2f;
+        color: #ecf0f1;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #3a3a4f;
+      }
+
+      .error-title {
+        font-size: 42px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #e74c3c;
+      }
+
+      .error-message {
+        font-size: 20px;
+        margin-bottom: 25px;
+        color: #ecf0f1;
+      }
+
+      .error-info {
+        font-size: 16px;
+        margin-bottom: 15px;
+        color: #bdc3c7;
+        line-height: 1.6;
+      }
+
+      .error-info strong {
+        color: #e74c3c;
+      }
+
+      .error-stack {
+        background-color: #1e1e2f;
+        color: #ecf0f1;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 14px;
+        word-wrap: break-word;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 20px;
+        border: 1px solid #3a3a4f;
+      }
+
+      .btn {
+        display: inline-block;
+        background-color: #e74c3c;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 16px;
+        margin-top: 25px;
+        transition: background-color 0.3s ease;
+      }
+
+      .btn:hover {
+        background-color: #c0392b;
+      }
+
+      .code-editor-section::-webkit-scrollbar,
+      .error-stack::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .code-editor-section::-webkit-scrollbar-track,
+      .error-stack::-webkit-scrollbar-track {
+        background: #2a2a40;
+      }
+
+      .code-editor-section::-webkit-scrollbar-thumb,
+      .error-stack::-webkit-scrollbar-thumb {
+        background: #e74c3c;
+        border-radius: 4px;
+      }
+
+      .code-editor-section::-webkit-scrollbar-thumb:hover,
+      .error-stack::-webkit-scrollbar-thumb:hover {
+        background: #c0392b;
+      }
+
+      .code-block {
+        margin: 0;
+        padding: 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .line-number {
+        display: inline-block;
+        width: 40px;
+        text-align: right;
+        margin-right: 10px;
+        color: #bdc3c7;
+      }
+
+      .highlight {
+        background-color: #c0392b;
+        color: white;
+        padding: 2px 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="error-container">
+      <div class="error-message-section">
+        <div class="error-message">{{ error_message }}</div>
+        <div class="error-info">
+          <strong>Error:</strong> {{ error_message }}<br />
+          <strong>File:</strong> {{ error_file }}<br />
+          <strong>Line:</strong> {{ error_line }}<br />
+        </div>
+        <div class="error-stack">
+          <strong>Stack Trace:</strong><br />
+          {{ error_trace }}
+        </div>
+        <a href="/" class="btn">Go Back to Home</a>
+      </div>
+      <div class="code-editor-section">{{ file_content }}</div>
+    </div>
+  </body>
+</html>

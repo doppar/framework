@@ -1,0 +1,28 @@
+<?php
+
+use Phaseolies\Support\Facades\Schema;
+use Phaseolies\Database\Migration\Blueprint;
+use Phaseolies\Database\Migration\Migration;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations
+     *
+     * @return void
+     */
+    public function up(): void
+    {
+        //
+    }
+
+    /**
+     * Reverse the migrations
+     *
+     * @return void
+     */
+    public function down(): void
+    {
+        //
+    }
+};

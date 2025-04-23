@@ -1,0 +1,54 @@
+{
+    "name": "doppar/framework",
+    "type": "package",
+    "description": "The Doppar Framework",
+    "license": "MIT",
+    "keywords": [
+        "framework",
+        "doppar"
+    ],
+    "homepage": "https://doppar.com",
+    "support": {
+        "issues": "https://github.com/doppar/doppar/issues",
+        "source": "https://github.com/doppar/doppar"
+    },
+    "require": {
+        "php": "^8.3",
+        "monolog/monolog": "^3.0",
+        "phpmailer/phpmailer": "^6.9",
+        "ramsey/collection": "^2.1",
+        "symfony/console": "^7.2",
+        "symfony/process": "^7.2",
+        "symfony/var-dumper": "^7.1",
+        "vlucas/phpdotenv": "^5.5",
+        "nesbot/carbon": "^3.8"
+    },
+    "require-dev": {
+      "mockery/mockery": "^1.6",
+      "phpunit/phpunit": "^11.5.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "Phaseolies\\": "src/Phaseolies/"
+        },
+        "files": [
+            "src/Phaseolies/Helpers/helpers.php"
+        ]
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "7.x-dev"
+        }
+    },
+    "suggest": {
+        "ext-pdo": "Required to use all database features."
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,57 @@
+# Security Policy
+
+**PLEASE DON'T DISCLOSE SECURITY-RELATED ISSUES PUBLICLY, [SEE BELOW](#reporting-a-vulnerability).**
+
+## Supported Versions
+
+Please see [our support policy](https://doppar.com/docs/releases#support-policy) for information on supported versions for security releases.
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability within Doppar, please send an email to Mahedi Hasan at mahedi@doppar.com. All security vulnerabilities will be promptly addressed.
+
+### Public PGP Key
+
+```
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQGNBGgIqDEBDACpSU9AEF4zSg8tVplo6hYRUqWFA6gS38MH8qGTvttjwv474IMW
+lk6zjJK07Tw/RM2yrHF87+E0juqnbI7BjBXUusETif7BU+93TiWf9Wy8IHHPFp7x
+Jc8Pt3ZwJoyTF+I0LIJPmgXn/jCKGjQUHS3y0CsfuKw3y1P4tM6mu/XXAsPyBk/X
+u9TtdZAb4eqHqOG4v9FZwOe8/J66d6/M3nDGI5pjVcz99tUw/ix7pAnxo1ruXJvI
+7c7Mh3HI1OT2SvuiPtc0oZPVq5zfj8j6pmsHTVotFU3aBwrqbmM2DtVujwFZh3e5
+2LmUYWN5x0emvIPfIQ4nJY6mOad230Rrd3i0aZB+M3XkU3TT733Hhhjdq6gGKrln
+cX+fssck3kR4X4z6fpL3yD5f6z6Su86cxhg70+8WQ8FF4cGHZP6WJu99S0h4uGpy
+8TkE9pGhgeylFB3BYO7gI9wtJPfSnO24AEaK9hVFsjg+9Q2x8iKv3tXt2GuvVnLf
+b9ripA5HJKh4yJUAEQEAAbQaZG9wcGFyIDxtYWhlZGlAZG9wcGFyLmNvbT6JAc4E
+EwEKADgWIQS2ybEEW+cnpSpYqtjhXDQR9EbyiAUCaAioMQIbAwULCQgHAgYVCgkI
+CwIEFgIDAQIeAQIXgAAKCRDhXDQR9EbyiOtLC/9UhlyJDIOal7niTiSAn//fVlyx
+FKb1I6YhNWF1zNvftcnGx3QiJ93BIhZ6yV+bA0gd5vUiTlh65ki4xu+qpeFaljY5
+iZdorAMy9+GXWRaUG7YlyiFN657OASj6nuWCrxhU5FtEOIKcAC7VXtO7S8km0WY7
+gu/+zpzrP/9+6lWLLZLvQPcVvkhA0XCfYWLqIrWId/nrx5YdcQTzvdH5IkBU5MfJ
+b8ddZ5ogLMvR9Bid8TJfNWKOIwHakJV+4+CjNrneMrHQXJYc8HvR6W43q90290SZ
+HbGIzjxjL1+wcUEw5I1OWZazXUijRqJNG8A0sTIpC8nT8AzUo8rtnvJ10cgXQWv3
+Ld+c2LifIYju3YQQ9op/UFWazfH41wsuCpzKzQtUds7K/02ZkOXpS/litLhcE0Jr
+UdSYeAvdPalEhYOONXTUlko3U9Nn0c2d0N7BbnJKMCRYHvOIFXpCC0PxTQcsP8sb
+kgr/870PAG2edMgV+Ca5+ER5w62UEt84gQ2pgC25AY0EaAioMQEMALSTDlYuZ0/B
+bL+iKhuHq3tyyykzR3nW8yqioO8CHiEVR61LWRC2k0u4A0+GVEnwIbQnvGzeM18/
+zRT7XvinyBrC/JxZF9Q7L7p9QIgG/dglzShrfIIL66MxORSyu3SrbBmzqhrzozLX
+996WHoMctXNkGJyBb552XBXQnJQ2hzR/jHq0loOHf0y+wzwrse5cbvU/mIsr1umf
+wZqQ+r8Clf3WhoPrLrnt6P5aOg3kLEwfUr1OlYyUTepK7x0DSoaZXU8fXtRo37kr
+mIuDbPJ9dCzU6msSw/3z0Szh6gMg3jXyn8jETD9RkfGspahGLULBgtYGJl/2iXzm
+fwG8Z8vmAiUSkwkFz8VzU6ZIWSFmSrQpxwMSVhnyQrbEiTPFe2PYYEiA2DpjvyAx
+A1vD60I4kiOok5O8nrNKiySnu6j/ptGMqcDYt4HgylKvLngBf3S6XpDce2JaTkDh
+2qot+WDAJPZr+baMLa2/6Cn9rCgj/+zlGqpfdmnPV1a+hD5bwOdC9wARAQABiQG2
+BBgBCgAgFiEEtsmxBFvnJ6UqWKrY4Vw0EfRG8ogFAmgIqDECGwwACgkQ4Vw0EfRG
+8ojAiwv/dwf2eYXIyE1GSa8k7FppdJCUiV3BST5r4d9ddUCUfW/dlYnA8WKbQgXu
+VeTJ0LXVHMg3hQausnBdccAQBLITQwjBI5vZ+HClxwmQ7td71qM19glm+G3hQZRY
+1/eswsKv4I+S2BQuVFS3ZqfwTZYqbBIhDccHNpTVnZtbexn2aatlYc5a13LhVMqQ
+jxuT3LBpjyHueMSyMuly3un000e+3kSVR59sLiWJ3YFXLmmI9srVdg4v3bIBQTTg
+oi88aAMupKNqIRsB686KbdL26zB6GG8XVJJRjBhImtxra122e8rhw9p562k1QWn/
+Wb++P0kzIkI/Bz9g4IbNYlcQW4lYsw5Zuk1n7iEt2+MfWSB+UulDFhnZkQl8gHd7
+mlSzKPk9RJ+HnELYqt/gKpLKnu0agCuKeKdPyeLdihrH5m3BnFag/q8GPUE02eGB
+nmWjoJqeO0JmdGdA5/5Kiia+Wb9NSbVI/ziwVu3gNsT6/SUkzzuzPrDpX3Mtchza
+R2daN9UG
+=J7FN
+-----END PGP PUBLIC KEY BLOCK-----
+```
