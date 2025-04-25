@@ -39,7 +39,7 @@ trait Rule
         }
 
         if (!empty($errors)) {
-            if (request()->isAjax()) {
+            if (request()->isAjax() || request()->isApiRequest()) {
                 throw new HttpResponseException(
                     $errors,
                     Response::HTTP_UNPROCESSABLE_ENTITY

@@ -5,20 +5,22 @@ namespace Phaseolies\Http;
 use Phaseolies\Utilities\IpUtils;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\File;
+use Phaseolies\Support\Facades\Str;
 use Phaseolies\Support\Facades\App;
 use Phaseolies\Http\Validation\Rule;
 use Phaseolies\Http\Support\RequestParser;
 use Phaseolies\Http\Support\RequestHelper;
+use Phaseolies\Http\Support\InteractsWithContentTypes;
 use Phaseolies\Http\ServerBag;
 use Phaseolies\Http\Response\HeaderUtils;
+use Phaseolies\Http\Response\AcceptHeader;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
-use Phaseolies\Support\Facades\Str;
 
 class Request
 {
-    use RequestParser, RequestHelper, Rule;
+    use RequestParser, RequestHelper, Rule, InteractsWithContentTypes;
 
     // The following methods are derived from code of the PHP Symphony Framework
     public const HEADER_FORWARDED = 0b000001;
@@ -59,6 +61,11 @@ class Request
     private bool $isSafeContentPreferred;
     private array $trustedValuesCache = [];
     private static int $trustedHeaderSet = -1;
+
+    /**
+     * @var string[]|null
+     */
+    protected ?array $acceptableContentTypes = null;
 
     /**
      * @var string[]
@@ -1186,6 +1193,16 @@ class Request
     }
 
     /**
+     * Gets a list of content types acceptable by the client browser in preferable order.
+     *
+     * @return string[]
+     */
+    public function getAcceptableContentTypes(): array
+    {
+        return $this->acceptableContentTypes ??= array_map('strval', array_keys(AcceptHeader::fromString($this->headers->get('Accept'))->all()));
+    }
+
+    /**
      * The following methods are derived from code of the PHP Symphony Framework
      * Returns the root URL from which this request is executed.
      *
@@ -1556,5 +1573,55 @@ class Request
         }
 
         return null;
+    }
+
+    /**
+     * Determine if a cookie is set on the request.
+     *
+     * @param  string  $key
+     * @return bool
+     */
+    public function hasCookie($key)
+    {
+        return ! is_null($this->cookies->get($key));
+    }
+
+    /**
+     * Determine if the current request URI matches a pattern.
+     *
+     * @param string|array $patterns
+     * @return bool
+     */
+    public function is($patterns): bool
+    {
+        $path = $this->uri();
+
+        if (empty($patterns)) {
+            return true;
+        }
+
+        $patterns = is_array($patterns) ? $patterns : [$patterns];
+
+        foreach ($patterns as $pattern) {
+            // Remove query string for matching
+            $pattern = strtok($pattern, '?');
+
+            // Exact match
+            if ($path === $pattern) {
+                return true;
+            }
+
+            // Check if pattern contains wildcards
+            if (str_contains($pattern, '*')) {
+                $pattern = preg_quote($pattern, '#');
+                $pattern = str_replace('\*', '.*', $pattern);
+
+                if (preg_match('#^' . $pattern . '\z#u', $path)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

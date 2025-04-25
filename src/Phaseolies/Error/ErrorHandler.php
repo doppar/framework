@@ -17,7 +17,7 @@ class ErrorHandler
             $errorTrace = $exception->getTraceAsString();
             $errorCode = $exception->getCode();
 
-            if (request()->isAjax()) {
+            if (request()->isAjax() || request()->isApiRequest()) {
                 if ($exception instanceof HttpResponseException) {
                     $responseErrors = $exception->getValidationErrors();
                     $statusCode = $exception->getStatusCode();

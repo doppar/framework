@@ -200,7 +200,7 @@ function redirect($to = null, $status = 302, $headers = [], $secure = null)
  * @param  int  $status
  * @param  array  $headers
  * @param  mixed  $fallback
- * @return \Phaseolies\Http\RedirectResponse
+ * @return \Phaseolies\Http\Response\RedirectResponse
  */
 function back($status = 302, $headers = [], $fallback = false)
 {
@@ -242,7 +242,13 @@ function csrf_token(): ?string
  */
 function bcrypt(string $plainText): string
 {
-    return app('hash')->make($plainText);
+    $options = [
+        'cost' => 12,
+    ];
+
+    $hash = password_hash($plainText, PASSWORD_BCRYPT, $options);
+
+    return $hash;
 }
 
 /**

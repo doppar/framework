@@ -58,18 +58,31 @@ class MailService
      * This method initializes the Mail instance with the default driver and sets the "to" address
      * and "from" address based on the provided user and configuration.
      *
-     * @param User $user The user to send the email to.
+     * @param User|string $recipient The user to send the email to.
+     * @param string|null $name
      * @return self A new instance of the Mail class.
      */
-    public function to(User $user)
+    public function to(User|string $recipient, ?string $name = null)
     {
-        // Create a new Mail instance with the resolved driver
         $mail = new self(self::resolveDriver());
 
-        // Set the "to" address and name
-        $mail->message->to = ['address' => $user->email, 'name' => $user?->name];
+        if ($recipient instanceof User) {
+            $mail->message->to = [
+                'address' => $recipient->email,
+                'name' => $recipient->name ?? null
+            ];
+        } else {
 
-        // Set the "from" address and name from the configuration
+            if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                throw new \InvalidArgumentException('Invalid email address provided');
+            }
+
+            $mail->message->to = [
+                'address' => $recipient,
+                'name' => $name
+            ];
+        }
+
         $mail->message->from = [
             'address' => config('mail.from.address'),
             'name' => config('mail.from.name'),

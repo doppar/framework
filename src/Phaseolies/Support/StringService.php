@@ -173,11 +173,27 @@ class StringService
      * @return bool True if found, false otherwise.
      *
      * @example
-     * Str::contains("Hello World", "world"); // Returns true
+     * Str::contains('Hello World', 'world'); // true
+     * Str::contains('Hello World', ['foo', 'World']); // true
+     * Str::contains('Hello World', 'world', false); // false (case sensitive)
      */
-    public function contains(string $haystack, string $needle): bool
+    public function contains(string $haystack, string|array $needles, bool $ignoreCase = true): bool
     {
-        return mb_stripos($haystack, $needle, 0, 'UTF-8') !== false;
+        if (is_array($needles)) {
+            foreach ($needles as $needle) {
+                if ($this->contains($haystack, $needle, $ignoreCase)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($ignoreCase) {
+            return mb_stripos($haystack, $needles, 0, 'UTF-8') !== false;
+        }
+
+        return mb_strpos($haystack, $needles, 0, 'UTF-8') !== false;
     }
 
     /**
@@ -198,6 +214,25 @@ class StringService
             return $string;
         }
         return implode(' ', array_slice($wordArray, 0, $words)) . $end;
+    }
+
+    /**
+     * Determine if a string matches a given pattern.
+     *
+     * @param string $pattern
+     * @param string $value
+     * @return bool
+     */
+    public function is(string $pattern, string $value): bool
+    {
+        if ($pattern === $value) {
+            return true;
+        }
+
+        $pattern = preg_quote($pattern, '#');
+        $pattern = str_replace('\*', '.*', $pattern);
+
+        return (bool) preg_match('#^' . $pattern . '\z#u', $value);
     }
 
     /**
@@ -247,9 +282,15 @@ class StringService
      * @example
      * Str::startsWith("Hello World", "Hello"); // Returns true
      */
-    public function startsWith(string $haystack, string $needle): bool
+    public function startsWith(string $haystack, string|array $needles): bool
     {
-        return strncmp($haystack, $needle, strlen($needle)) === 0;
+        foreach ((array) $needles as $needle) {
+            if ((string) $needle !== '' && mb_strpos($haystack, $needle, 0, 'UTF-8') === 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -262,12 +303,15 @@ class StringService
      * @example
      * Str::endsWith("Hello World", "World"); // Returns true
      */
-    public function endsWith(string $haystack, string $needle): bool
+    public function endsWith(string $haystack, string|array $needles): bool
     {
-        if (strlen($needle) === 0) {
-            return true;
+        foreach ((array) $needles as $needle) {
+            if ((string) $needle !== '' && mb_substr($haystack, -mb_strlen($needle, 'UTF-8'), null, 'UTF-8') === (string) $needle) {
+                return true;
+            }
         }
-        return substr($haystack, -strlen($needle)) === $needle;
+
+        return false;
     }
 
     /**

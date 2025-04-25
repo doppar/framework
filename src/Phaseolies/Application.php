@@ -83,7 +83,7 @@ class Application extends Container
     /**
      * Indicates if the application is running in the console.
      */
-    protected $isRunningInConsole;
+    protected $isRunningInConsole = null;
 
     /**
      * The registered service providers.
@@ -444,15 +444,20 @@ class Application extends Container
     public function runningInConsole(): bool
     {
         if ($this->isRunningInConsole === null) {
-            $this->isRunningInConsole = env('APP_RUNNING_IN_CONSOLE') ??
-                (
-                    \PHP_SAPI === 'cli' ||
-                    \PHP_SAPI === 'phpdbg' ||
-                    strpos($_SERVER['argv'][0] ?? '', 'phpunit') !== false
-                );
+            $this->isRunningInConsole = \PHP_SAPI === 'cli' || \PHP_SAPI === 'phpdbg';
         }
 
         return $this->isRunningInConsole;
+    }
+
+    /**
+     * Determines if the application is running UNIT TEST
+     *
+     * @return bool
+     */
+    public function isRunningUnitTests(): bool
+    {
+        return strpos($_SERVER['argv'][0] ?? '', 'phpunit') !== false;
     }
 
     /**

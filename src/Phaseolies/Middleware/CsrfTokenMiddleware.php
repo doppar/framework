@@ -3,6 +3,7 @@
 namespace Phaseolies\Middleware;
 
 use Phaseolies\Support\Facades\Str;
+use Phaseolies\Http\Response\Cookie;
 use Phaseolies\Middleware\Contracts\Middleware;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
@@ -22,25 +23,24 @@ class CsrfTokenMiddleware implements Middleware
      *
      * @param Request $request The incoming request instance.
      * @param Closure $next The next middleware or request handler.
-     * @return Phaseolies\Http\Response
+     * @return \Phaseolies\Http\Response
      * @throws HttpException
      */
     public function __invoke(Request $request, Closure $next): Response
     {
-        $token = $request->headers->get('X-CSRF-TOKEN') ?? $request->_token;
-
-        if ($this->isReading($request) && !$request->has('_token')) {
-            throw new TokenMismatchException(422, "CSRF Token not found");
-        }
-
         if (
-            $this->isReading($request) &&
-            (!hash_equals($request->session()->token(), $token))
+            $this->isReading($request) ||
+            $this->runningUnitTests() ||
+            $this->isTokenMatch($request)
         ) {
-            throw new TokenMismatchException(422, "Unauthorized, CSRF Token mismatched");
+            $response = $next($request);
+            if ($this->shouldAddXsrfTokenCookie($request)) {
+                return $this->addCookieToResponse($request, $response);
+            }
+            return $response;
         }
 
-        return $next($request);
+        return $this->handleError($request, "CSRF Token mismatched");
     }
 
     /**
@@ -51,7 +51,102 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function isReading(Request $request): bool
     {
-        return !in_array(Str::toUpper($request->method()), ['HEAD', 'GET', 'OPTIONS']);
+        return in_array(Str::toUpper($request->method()), ['HEAD', 'GET', 'OPTIONS']);
+    }
+
+    /**
+     * Determines if the application is running UNIT TEST
+     *
+     * @return bool
+     */
+    protected function runningUnitTests(): bool
+    {
+        return app()->runningInConsole() && app()->isRunningUnitTests();
+    }
+
+    /**
+     * Check the request token is matched or not
+     * @param Request $request
+     *
+     * @return bool
+     */
+    public function isTokenMatch($request): bool
+    {
+        $token = $this->getTokenFromRequest($request);
+
+        return is_string($request->session()->token()) &&
+            is_string($token) &&
+            hash_equals($request->session()->token(), $token);
+    }
+
+    /**
+     * Add the CSRF token to the response cookies.
+     *
+     * @param \Phaseolies\Http\Request $request
+     * @param \Phaseolies\Http\Response $response
+     * @return \Phaseolies\Http\Response
+     */
+    protected function addCookieToResponse($request, $response)
+    {
+        $config = config('session');
+
+        $response->headers->setCookie($this->addCookie($request, $config));
+
+        return $response;
+    }
+
+    /**
+     * Create a new "XSRF-TOKEN" cookie that contains the CSRF token.
+     *
+     * @param \Phaseolies\Http\Request $request
+     * @param array $config
+     * @return \Phaseolies\Http\Response\Cookie
+     */
+    protected function addCookie($request, $config)
+    {
+        return new Cookie(
+            'XSRF-TOKEN',
+            $request->session()->token(),
+            60 * $config['lifetime'],
+            $config['path'],
+            $config['domain'],
+            $config['secure'],
+            false,
+            false,
+            $config['same_site'] ?? null,
+            $config['partitioned'] ?? false
+        );
+    }
+
+    /**
+     * Get the CSRF token from the request.
+     *
+     * @param \Phaseolies\Http\Request $request
+     * @return string|null
+     */
+    protected function getTokenFromRequest($request)
+    {
+        $token = $request->input('_token') ?: $request->headers->get('X-CSRF-TOKEN');
+
+        if (! $token && $header = $request->headers->get('X-CSRF-TOKEN')) {
+            try {
+                $token = $header;
+            } catch (\Exception) {
+                $token = '';
+            }
+        }
+
+        return $token;
+    }
+
+    /**
+     * Determine if the cookie should be added to the response.
+     *
+     * @return bool
+     */
+    public function shouldAddXsrfTokenCookie($request): bool
+    {
+        return $request->isApiRequest();
     }
 
     /**

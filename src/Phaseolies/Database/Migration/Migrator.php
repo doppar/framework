@@ -61,6 +61,8 @@ class Migrator
         $ran = $this->repository->getRan();
 
         $migrations = array_diff($files, $ran);
+        $migrations = array_unique($migrations);
+
         if (empty($migrations)) {
             return [];
         }

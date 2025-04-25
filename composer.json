@@ -43,6 +43,11 @@
     "suggest": {
         "ext-pdo": "Required to use all database features."
     },
+    "scripts": {
+        "post-install-cmd": [
+            "rm -f .editorconfig .gitattributes .gitignore phpunit.xml.dist UPGRADE.md"
+        ]
+    },
     "config": {
         "sort-packages": true,
         "allow-plugins": {
