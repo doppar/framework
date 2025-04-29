@@ -3,7 +3,7 @@
 namespace Phaseolies\Cache;
 
 use Psr\SimpleCache\CacheInterface;
-use Phaseolies\Cache\RateLimiting\RateLimit;
+use Phaseolies\Cache\RateLimit;
 use Psr\SimpleCache\InvalidArgumentException;
 
 class RateLimiter
@@ -32,7 +32,7 @@ class RateLimiter
      * @param  string  $key
      * @param  int  $maxAttempts
      * @param  int  $decaySeconds
-     * @return \Phaseolies\Cache\RateLimiting\RateLimit
+     * @return \Phaseolies\Cache\RateLimit
      * @throws InvalidArgumentException
      */
     public function attempt(string $key, int $maxAttempts, int $decaySeconds): RateLimit

@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Cache\RateLimiting;
+namespace Phaseolies\Cache;
 
 class RateLimit
 {
