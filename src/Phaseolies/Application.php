@@ -81,6 +81,13 @@ class Application extends Container
     protected $environmentFile = '.env';
 
     /**
+     * The environment name.
+     *
+     * @var string|null
+     */
+    protected $environment;
+
+    /**
      * Indicates if the application is running in the console.
      */
     protected $isRunningInConsole = null;
@@ -451,16 +458,6 @@ class Application extends Container
     }
 
     /**
-     * Determines if the application is running UNIT TEST
-     *
-     * @return bool
-     */
-    public function isRunningUnitTests(): bool
-    {
-        return strpos($_SERVER['argv'][0] ?? '', 'phpunit') !== false;
-    }
-
-    /**
      * Checks if the application has been bootstrapped.
      *
      * @return bool
@@ -635,6 +632,97 @@ class Application extends Container
             }
         }
         return null;
+    }
+
+    /**
+     * Determine if the application is in the given environment.
+     *
+     * @param  string|array  $environments
+     * @return bool
+     */
+    public function environment(...$environments): bool
+    {
+        if (count($environments) === 1 && is_array($environments[0])) {
+            $environments = $environments[0];
+        }
+
+        $current = $this['config']->get('app.env', 'production');
+
+        foreach ($environments as $environment) {
+            if ($environment === $current || strtolower($environment) === strtolower($current)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get or check the current application environment.
+     *
+     * @param  string|null  $environment
+     * @return string|bool
+     */
+    public function environmentIs($environment = null)
+    {
+        if (is_null($environment)) {
+            return $this['config']->get('app.env', 'production');
+        }
+
+        return $this->environment($environment);
+    }
+
+    /**
+     * Determine if the application is running in production.
+     *
+     * @return bool
+     */
+    public function isProduction(): bool
+    {
+        return $this->environment('production');
+    }
+
+    /**
+     * Determine if the application is running in development.
+     *
+     * @return bool
+     */
+    public function isDevelopment(): bool
+    {
+        return $this->environment('development', 'local');
+    }
+
+    /**
+     * Determines if the application is running UNIT TEST
+     *
+     * @return bool
+     */
+    public function isRunningUnitTests(): bool
+    {
+        return strpos($_SERVER['argv'][0] ?? '', 'phpunit') !== false;
+    }
+
+    /**
+     * Get the environment file the application is using.
+     *
+     * @return string
+     */
+    public function environmentFile(): string
+    {
+        return $this->environmentFile;
+    }
+
+    /**
+     * Set the environment file to be loaded during bootstrapping.
+     *
+     * @param  string  $file
+     * @return $this
+     */
+    public function loadEnvironmentFrom($file)
+    {
+        $this->environmentFile = $file;
+
+        return $this;
     }
 
     /**

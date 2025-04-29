@@ -42,9 +42,6 @@ class RouteServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      *
-     * This method is called after all service providers have been registered.
-     * It is used to load the application's route definitions from the `routes/web.php` file.
-     *
      * @return void
      */
     public function boot()

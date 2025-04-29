@@ -166,17 +166,4 @@ trait RequestHelper
     {
         return app('auth')->user() ?? null;
     }
-
-    /**
-     * Checking a Request is API Request or not
-     * @return bool
-     */
-    public function isApiRequest(): bool
-    {
-        if ($this->is(['api/*', '*/api/*'])) {
-            return true;
-        }
-
-        return false;
-    }
 }

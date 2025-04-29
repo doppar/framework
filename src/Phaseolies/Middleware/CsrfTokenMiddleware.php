@@ -159,7 +159,7 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function handleError(Request $request, string $message): Response
     {
-        if ($request->isAjax()) {
+        if ($request->isAjax() || $request->is('/api/*')) {
             throw new HttpResponseException(
                 $message,
                 Response::HTTP_UNAUTHORIZED

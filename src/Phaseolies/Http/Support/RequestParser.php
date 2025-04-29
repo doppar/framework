@@ -198,13 +198,15 @@ trait RequestParser
     }
 
     /**
-     * Determine if the request is the result of a PJAX call.
+     * Checks if the request is a JSON request.
      *
-     * @return bool
+     * @return bool True if the request is JSON, false otherwise.
      */
-    public function isPjax()
+    public function isJson(): bool
     {
-        return $this->headers->get('X-PJAX') == true;
+        $accept = $this->headers->get('ACCEPT');
+
+        return $accept && strpos($accept, 'application/json') !== false;
     }
 
     /**
@@ -227,5 +229,33 @@ trait RequestParser
         $length = $this->headers->get('CONTENT_LENGTH');
 
         return $length !== null ? (int)$length : null;
+    }
+
+    /**
+     * Checks if the current request path matches a given pattern.
+     *
+     * @param string $pattern The pattern to match against (e.g., 'api/*', 'admin/*')
+     * @return bool True if the path matches the pattern, false otherwise
+     */
+    public function is(string $pattern): bool
+    {
+        $path = $this->uri();
+
+        $pattern = str_replace('\*', '.*', preg_quote($pattern, '#'));
+
+        return (bool) preg_match('#^' . $pattern . '$#i', $path);
+    }
+
+    /**
+     * Checking a Request is API Request or not
+     * @return bool
+     */
+    public function isApiRequest(): bool
+    {
+        if ($this->is('/api/*')) {
+            return true;
+        }
+
+        return false;
     }
 }

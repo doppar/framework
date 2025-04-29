@@ -200,7 +200,7 @@ function redirect($to = null, $status = 302, $headers = [], $secure = null)
  * @param  int  $status
  * @param  array  $headers
  * @param  mixed  $fallback
- * @return \Phaseolies\Http\Response\RedirectResponse
+ * @return \Phaseolies\Http\RedirectResponse
  */
 function back($status = 302, $headers = [], $fallback = false)
 {
@@ -242,13 +242,7 @@ function csrf_token(): ?string
  */
 function bcrypt(string $plainText): string
 {
-    $options = [
-        'cost' => 12,
-    ];
-
-    $hash = password_hash($plainText, PASSWORD_BCRYPT, $options);
-
-    return $hash;
+    return app('hash')->make($plainText);
 }
 
 /**
@@ -629,4 +623,33 @@ if (!function_exists('class_basename')) {
         $class = is_object($class) ? get_class($class) : $class;
         return basename(str_replace('\\', '/', $class));
     }
+}
+
+/**
+ * Resolve a service from the container.
+ *
+ * @param string $name
+ * @param array $parameters
+ * @return mixed
+ */
+function resolve($name, array $parameters = [])
+{
+    return app($name, $parameters);
+}
+
+/**
+ * Translate the given message.
+ *
+ * @param string|null $key
+ * @param array $replace
+ * @param string|null $locale
+ * @return string|array|null
+ */
+function __($key = null, $replace = [], $locale = null)
+{
+    if (is_null($key)) {
+        return $key;
+    }
+
+    return trans($key, $replace, $locale);
 }

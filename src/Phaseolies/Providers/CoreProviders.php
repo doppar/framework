@@ -7,12 +7,7 @@ trait CoreProviders
     /**
      * Loads the core service providers for the application.
      *
-     * This method returns an array of core service provider classes that are essential
-     * for the framework to function properly. These providers handle tasks such as
-     * environment configuration, session management, facades, and routing.
-     *
      * @return array
-     *   An array of fully-qualified class names of core service providers.
      */
     protected function loadCoreProviders()
     {
@@ -22,6 +17,8 @@ trait CoreProviders
             \Phaseolies\Providers\EnvServiceProvider::class,
             \Phaseolies\Providers\SessionServiceProvider::class,
             \Phaseolies\Providers\RouteServiceProvider::class,
+            \Phaseolies\Providers\CacheServiceProvider::class,
+            \Phaseolies\Providers\RateLimiterServiceProvider::class,
         ];
     }
 }

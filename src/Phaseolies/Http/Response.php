@@ -222,7 +222,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Prepares the Response before it is sent to the client.
      *
      * This method tweaks the Response to ensure that it is
@@ -297,7 +297,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sends HTTP headers.
      *
      * @param positive-int|null $statusCode The status code to use, override the statusCode property if set and not null
@@ -364,7 +364,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Checks if we need to remove Cache-Control for SSL encrypted downloads when using IE < 9.
      *
      * @see http://support.microsoft.com/kb/323308
@@ -381,7 +381,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * @param int $statusCode
      *
      * @return void
@@ -483,7 +483,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sends content for the current web response.
      *
      * @return $this
@@ -496,7 +496,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Send the HTTP response to the client.
      *
      * This method sets the HTTP status code, sends the headers, and outputs the response body.
@@ -526,7 +526,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Cleans or flushes output buffers up to target level.
      *
      * Resulting level can be greater than target level if a non-removable buffer has been encountered.
@@ -689,7 +689,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response may safely be kept in a shared (surrogate) cache.
      *
      * Responses marked "private" with an explicit Cache-Control directive are
@@ -720,7 +720,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response is "fresh".
      *
      * Fresh responses may be served from cache without any interaction with the
@@ -735,7 +735,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response includes headers that can be used to validate
      * the response with the origin server using a conditional GET request.
      *
@@ -747,7 +747,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Marks the response as "private".
      *
      * It makes the response ineligible for serving other clients.
@@ -765,7 +765,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Marks the response as "public".
      *
      * It makes the response eligible for serving other clients.
@@ -783,7 +783,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Marks the response as "immutable".
      *
      * @return $this
@@ -802,7 +802,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response is marked as "immutable".
      *
      * @final
@@ -813,7 +813,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response must be revalidated by shared caches once it has become stale.
      *
      * This method indicates that the response must not be served stale by a
@@ -829,7 +829,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the Date header as a DateTime instance.
      *
      * @throws \RuntimeException When the header is not parseable
@@ -842,7 +842,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the Date header.
      *
      * @return $this
@@ -859,7 +859,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the age of the response in seconds.
      *
      * @final
@@ -874,7 +874,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Marks the response stale by setting the Age header to be equal to the maximum age of the response.
      *
      * @return $this
@@ -890,7 +890,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the value of the Expires header as a DateTime instance.
      *
      * @final
@@ -906,7 +906,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the Expires HTTP header with a DateTime instance.
      *
      * Passing null as value will remove the header.
@@ -931,7 +931,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the number of seconds after the time specified in the response's Date
      * header when the response should no longer be considered fresh.
      *
@@ -960,7 +960,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the number of seconds after which the response should no longer be considered fresh.
      *
      * This method sets the Cache-Control max-age directive.
@@ -977,7 +977,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the number of seconds after which the response should no longer be returned by shared caches when backend is down.
      *
      * This method sets the Cache-Control stale-if-error directive.
@@ -994,7 +994,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the number of seconds after which the response should no longer return stale content by shared caches.
      *
      * This method sets the Cache-Control stale-while-revalidate directive.
@@ -1011,7 +1011,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the number of seconds after which the response should no longer be considered fresh by shared caches.
      *
      * This method sets the Cache-Control s-maxage directive.
@@ -1029,7 +1029,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the response's time-to-live in seconds.
      *
      * It returns null when no freshness information is present in the response.
@@ -1047,7 +1047,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the response's time-to-live for shared caches in seconds.
      *
      * This method adjusts the Cache-Control/s-maxage directive.
@@ -1064,7 +1064,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the response's time-to-live for private/client caches in seconds.
      *
      * This method adjusts the Cache-Control/max-age directive.
@@ -1081,7 +1081,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the Last-Modified HTTP header as a DateTime instance.
      *
      * @throws \RuntimeException When the HTTP header is not parseable
@@ -1094,7 +1094,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the Last-Modified HTTP header with a DateTime instance.
      *
      * Passing null as value will remove the header.
@@ -1119,7 +1119,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the literal value of the ETag HTTP header.
      *
      * @final
@@ -1130,7 +1130,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the ETag value.
      *
      * @param string|null $etag The ETag unique identifier or null to remove the header
@@ -1156,7 +1156,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the response's cache headers (validation and/or expiration).
      *
      * Available options are: must_revalidate, no_cache, no_store, no_transform, public, private, proxy_revalidate, max_age, s_maxage, immutable, last_modified and etag.
@@ -1227,7 +1227,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Modifies the response so that it conforms to the rules defined for a 304 status code.
      *
      * This sets the status, removes the body, and discards any headers
@@ -1253,7 +1253,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns true if the response includes a Vary header.
      *
      * @final
@@ -1264,7 +1264,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns an array of header names given in the Vary header.
      *
      * @final
@@ -1284,7 +1284,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the Vary header.
      *
      * @param bool $replace Whether to replace the actual value or not (true by default)
@@ -1301,7 +1301,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Determines if the Response validators (ETag, Last-Modified) match
      * a conditional value specified in the Request.
      *
@@ -1350,7 +1350,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is response invalid?
      *
      * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -1363,7 +1363,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is response successful?
      *
      * @final
@@ -1374,7 +1374,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is the response a redirect?
      *
      * @final
@@ -1385,7 +1385,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is there a client error?
      *
      * @final
@@ -1396,7 +1396,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Was there a server side error?
      *
      * @final
@@ -1407,7 +1407,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is the response OK?
      *
      * @final
@@ -1418,7 +1418,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is the response forbidden?
      *
      * @final
@@ -1429,7 +1429,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is the response a not found error?
      *
      * @final
@@ -1440,7 +1440,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is the response a redirect of some form?
      *
      * @final
@@ -1456,7 +1456,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Marks a response as safe according to RFC8674.
      *
      * @see https://tools.ietf.org/html/rfc8674

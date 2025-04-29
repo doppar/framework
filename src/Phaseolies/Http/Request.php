@@ -22,7 +22,7 @@ class Request
 {
     use RequestParser, RequestHelper, Rule, InteractsWithContentTypes;
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     public const HEADER_FORWARDED = 0b000001;
     public const HEADER_X_FORWARDED_FOR = 0b000010;
     public const HEADER_X_FORWARDED_HOST = 0b000100;
@@ -30,11 +30,11 @@ class Request
     public const HEADER_X_FORWARDED_PORT = 0b010000;
     public const HEADER_X_FORWARDED_PREFIX = 0b100000;
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     public const HEADER_X_FORWARDED_AWS_ELB = 0b0011010;
     public const HEADER_X_FORWARDED_TRAEFIK = 0b0111110;
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     public const METHOD_HEAD = "HEAD";
     public const METHOD_GET = "GET";
     public const METHOD_POST = "POST";
@@ -47,7 +47,7 @@ class Request
     public const METHOD_CONNECT = "CONNECT";
     public const METHOD_ANY = "ANY";
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     private const FORWARDED_PARAMS = [
         self::HEADER_X_FORWARDED_FOR => "for",
         self::HEADER_X_FORWARDED_HOST => "host",
@@ -55,7 +55,7 @@ class Request
         self::HEADER_X_FORWARDED_PORT => "port",
     ];
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     private bool $isHostValid = true;
     private bool $isForwardedValid = true;
     private bool $isSafeContentPreferred;
@@ -72,7 +72,7 @@ class Request
      */
     protected static array $trustedProxies = [];
 
-    // The following methods are derived from code of the PHP Symphony Framework
+    // The following methods are derived from code of the PHP Symfony Framework
     private const TRUSTED_HEADERS = [
         self::HEADER_FORWARDED => "FORWARDED",
         self::HEADER_X_FORWARDED_FOR => "X_FORWARDED_FOR",
@@ -224,7 +224,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Retrieves the request body content.
      *
      * @param bool $asResource Whether to return a resource instead of a string.
@@ -289,7 +289,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Validates the request based on trusted proxies and headers.
      *
      * @return bool True if the request is valid, false otherwise.
@@ -348,7 +348,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets a list of trusted host patterns.
      *
      * You should only list the hosts you manage using regexs.
@@ -363,7 +363,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the list of trusted host patterns.
      *
      * @return string[]
@@ -374,7 +374,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Indicates whether this request originated from a trusted proxy.
      *
      * This can be useful to determine whether or not to trust the
@@ -386,7 +386,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Enables support for the _method request parameter to determine the intended HTTP method.
      *
      * Be warned that enabling this feature might lead to CSRF issues in your code.
@@ -403,7 +403,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Checks whether support for the _method request parameter is enabled.
      */
     public static function getHttpMethodParameterOverride(): bool
@@ -412,7 +412,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Retrieves the value of a trusted header from the request.
      *
      * This method checks if a given header (identified by its constant)
@@ -430,7 +430,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Normalizes a query string.
      *
      * It builds a normalized query string, where keys/value pairs are alphabetized,
@@ -521,7 +521,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the "real" request method.
      *
      * @see getMethod()
@@ -532,7 +532,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Associates a format with mime types.
      *
      * @param string|string[] $mimeTypes The associated mime types (the preferred one must be the first as it will be used as the content type)
@@ -547,7 +547,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the format associated with the mime type.
      */
     public function getFormat(?string $mimeType): ?string
@@ -574,7 +574,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets the request format.
      */
     public function setRequestFormat(?string $format): void
@@ -583,7 +583,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the usual name of the format associated with the request's media type (provided in the Content-Type header).
      */
     public function getContentTypeFormat(): ?string
@@ -608,7 +608,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the path as relative reference from the current Request path.
      *
      * Only the URIs path component (no schema, host etc.) is relevant and must be given.
@@ -660,7 +660,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Generates the normalized query string for the Request.
      *
      * It builds a normalized query string, where keys/value pairs are alphabetized
@@ -744,7 +744,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets a "parameter" value from any bag.
      *
      * This method is mainly useful for libraries that want to provide some flexibility. If you don't need the
@@ -773,7 +773,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the client IP addresses.
      *
      * In the returned array the most trusted IP address is first, and the
@@ -796,7 +796,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the client IP address.
      *
      * This method can read the client IP address from the "X-Forwarded-For" header
@@ -818,7 +818,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns current script name.
      */
     public function getScriptName(): string
@@ -827,7 +827,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the request's scheme.
      */
     public function getScheme(): string
@@ -836,7 +836,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the protocol version.
      *
      * If the application is behind a proxy, the protocol version used in the
@@ -859,7 +859,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the HTTP host being requested.
      *
      * The port name will be appended to the host if it's non-standard.
@@ -877,7 +877,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the host name.
      *
      * This method can read the client host name from the "X-Forwarded-Host" header
@@ -940,7 +940,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the port on which the request is made.
      *
      * This method can read the client port from the "X-Forwarded-Port" header
@@ -974,7 +974,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Checks whether or not the method is safe.
      *
      * @see https://tools.ietf.org/html/rfc7231#section-4.2.1
@@ -985,7 +985,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Checks whether or not the method is idempotent.
      */
     public function isMethodIdempotent(): bool
@@ -994,7 +994,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * The following methods are derived from code of the Zend Framework (1.10dev - 2010-01-24)
      *
      * Code subject to the new BSD license (https://framework.zend.com/license).
@@ -1046,7 +1046,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Is this IIS with UrlRewriteModule?
      *
      * This method consumes, caches and removed the IIS_WasUrlRewritten env var,
@@ -1063,7 +1063,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the requested URI (path and query string).
      *
      * @return string The raw URI (i.e. not URI decoded)
@@ -1074,7 +1074,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Prepares the base URL.
      */
     protected function prepareBaseUrl(): string
@@ -1142,7 +1142,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the path being requested relative to the executed script.
      *
      * The path info always starts with a /.
@@ -1162,7 +1162,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Prepares the path info.
      */
     protected function preparePathInfo(): string
@@ -1193,17 +1193,7 @@ class Request
     }
 
     /**
-     * Gets a list of content types acceptable by the client browser in preferable order.
-     *
-     * @return string[]
-     */
-    public function getAcceptableContentTypes(): array
-    {
-        return $this->acceptableContentTypes ??= array_map('strval', array_keys(AcceptHeader::fromString($this->headers->get('Accept'))->all()));
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the root URL from which this request is executed.
      *
      * The base URL never ends with a /.
@@ -1226,7 +1216,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * This method is rather heavy because it splits and merges headers, and it's called by many other methods such as
      * getPort(), isSecure(), getHost(), getClientIps(), getBaseUrl() etc. Thus, we try to cache the results for
      * best performance.
@@ -1289,7 +1279,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * @param array $clientIps
      * @param string $ip
      *
@@ -1336,7 +1326,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Sets a list of trusted proxies.
      *
      * You should only list the reverse proxies that you manage directly.
@@ -1365,7 +1355,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the list of trusted proxies.
      *
      * @return string[]
@@ -1376,7 +1366,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the real base URL received by the webserver from which this request is executed.
      * The URL does not include trusted reverse proxy prefix.
      *
@@ -1388,7 +1378,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Returns the prefix as encoded in the string when the string starts with
      * the given prefix, null otherwise.
      */
@@ -1483,7 +1473,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the request format.
      *
      * Here is the process to determine the format:
@@ -1502,7 +1492,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the mime type associated with the format.
      */
     public function getMimeType(string $format): ?string
@@ -1515,7 +1505,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Initializes HTTP request formats.
      */
     protected static function initializeFormats(): void
@@ -1536,7 +1526,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Checks whether the method is cacheable or not.
      *
      * @see https://tools.ietf.org/html/rfc7231#section-4.2.3
@@ -1547,7 +1537,7 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symphony Framework
+     * The following methods are derived from code of the PHP Symfony Framework
      * Gets the Etags.
      */
     public function getETags(): array
@@ -1576,6 +1566,16 @@ class Request
     }
 
     /**
+     * Gets a list of content types acceptable by the client browser in preferable order.
+     *
+     * @return string[]
+     */
+    public function getAcceptableContentTypes(): array
+    {
+        return $this->acceptableContentTypes ??= array_map('strval', array_keys(AcceptHeader::fromString($this->headers->get('Accept'))->all()));
+    }
+
+    /**
      * Determine if a cookie is set on the request.
      *
      * @param  string  $key
@@ -1584,44 +1584,5 @@ class Request
     public function hasCookie($key)
     {
         return ! is_null($this->cookies->get($key));
-    }
-
-    /**
-     * Determine if the current request URI matches a pattern.
-     *
-     * @param string|array $patterns
-     * @return bool
-     */
-    public function is($patterns): bool
-    {
-        $path = $this->uri();
-
-        if (empty($patterns)) {
-            return true;
-        }
-
-        $patterns = is_array($patterns) ? $patterns : [$patterns];
-
-        foreach ($patterns as $pattern) {
-            // Remove query string for matching
-            $pattern = strtok($pattern, '?');
-
-            // Exact match
-            if ($path === $pattern) {
-                return true;
-            }
-
-            // Check if pattern contains wildcards
-            if (str_contains($pattern, '*')) {
-                $pattern = preg_quote($pattern, '#');
-                $pattern = str_replace('\*', '.*', $pattern);
-
-                if (preg_match('#^' . $pattern . '\z#u', $path)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }
