@@ -198,15 +198,13 @@ trait RequestParser
     }
 
     /**
-     * Checks if the request is a JSON request.
+     * Determine if the request is the result of a PJAX call.
      *
-     * @return bool True if the request is JSON, false otherwise.
+     * @return bool
      */
-    public function isJson(): bool
+    public function isPjax()
     {
-        $accept = $this->headers->get('ACCEPT');
-
-        return $accept && strpos($accept, 'application/json') !== false;
+        return $this->headers->get('X-PJAX') == true;
     }
 
     /**
