@@ -209,14 +209,14 @@ class Router extends Kernel
      * Create a route group with shared attributes.
      *
      * @param array $attributes
-     * @param \Closure $routes
+     * @param \Closure $callback
      * @return void
      */
-    public function group(array $attributes, \Closure $routes): void
+    public function group(array $attributes, \Closure $callback): void
     {
         static::$groupStack[] = $attributes;
 
-        $routes($this);
+        $callback($this);
 
         array_pop(static::$groupStack);
     }
@@ -246,11 +246,17 @@ class Router extends Kernel
      */
     protected function getGroupMiddleware(): array
     {
-        $middleware = [];
+        if (empty(static::$groupStack)) {
+            return [];
+        }
 
-        foreach (static::$groupStack as $group) {
+        $middleware = [];
+        foreach (static::$groupStack ?? [] as $group) {
             if (isset($group['middleware'])) {
-                $middleware = array_merge($middleware, (array) $group['middleware']);
+                $middleware = array_merge(
+                    $middleware,
+                    (array) $group['middleware']
+                );
             }
         }
 
@@ -393,6 +399,7 @@ class Router extends Kernel
         $this->currentRequestMethod = $method;
 
         $groupMiddleware = $this->getGroupMiddleware();
+
         if (!empty($groupMiddleware)) {
             $this->middleware($groupMiddleware);
         }

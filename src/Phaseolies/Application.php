@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Phaseolies framework.
      */
-    const VERSION = '2.0.1';
+    const VERSION = '2.0.2';
 
     /**
      * The base path of the application installation.
