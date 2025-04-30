@@ -128,8 +128,9 @@ EOT;
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
-                                    <form action="{{ route('logout') }}" method="POST">@csrf
-                                        <button type="submit" class="dropdown-item">Logout</button>
+                                    <form action="{{ route('logout') }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item">{{ __('Logout') }}</button>
                                     </form>
                                 </li>
                             </ul>
@@ -190,7 +191,7 @@ EOT;
 @section('content')
     <div class="card shadow-lg mb-4">
         <div class="card-header bg-white text-black fw-bold">
-            <h5 class="fw-bold fs-5">Dashboard</h5>
+            <h5 class="fw-bold fs-5">{{ __('Dashboard') }}</h5>
         </div>
         <div class="card-body">
             <p class="fw-bold fs-5">
@@ -333,20 +334,20 @@ EOT;
                 @csrf
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" value="{{ old('email') }}">
+                    <input type="email" class="form-control" name="email">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" name="password" value="">
+                    <input type="password" class="form-control" name="password">
                 </div>
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="remember" name="remember">
                     <label class="form-check-label" for="remember">Remember Me</label>
                 </div>
-                <button type="submit" class="btn btn-secondary w-100">Sign in</button>
+                <button type="submit" class="btn btn-secondary w-100">{{ __('Sign in') }}</button>
             </form>
             <div class="text-center mt-3">
-                Don't have an account? <a href="{{ route('register') }}" class="text-decoration-none">Register.</a>
+                Don't have an account? <a href="{{ route('register') }}" class="text-decoration-none">{{ __('Register') }}</a>
             </div>
         </div>
     </div>
@@ -369,11 +370,11 @@ EOT;
                 @csrf
                 <div class="mb-3">
                     <label for="name" class="form-label">Name</label>
-                    <input type="text" class="form-control" name="name" value="{{ old('name') }}">
+                    <input type="text" class="form-control" name="name">
                 </div>
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" name="email" value="{{ old('email') }}">
+                    <input type="email" class="form-control" name="email">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password</label>
@@ -383,10 +384,10 @@ EOT;
                     <label for="password" class="form-label">Confirm Password</label>
                     <input type="password" class="form-control" name="confirm_password">
                 </div>
-                <button type="submit" class="btn btn-secondary w-100">Register</button>
+                <button type="submit" class="btn btn-secondary w-100">{{ __('Register') }}</button>
             </form>
             <div class="text-center mt-3">
-                Already have an account? <a href="{{ route('login') }}" class="text-decoration-none">Login.</a>
+                Already have an account? <a href="{{ route('login') }}" class="text-decoration-none">{{ __('Sign in') }}</a>
             </div>
         </div>
     </div>

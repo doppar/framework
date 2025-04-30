@@ -25,25 +25,66 @@ class Database
     protected static $transactions = 0;
 
     /**
-     * Get the PDO instance
+     * Get the PDO instance for the configured database
      * @return PDO
+     * @throws \RuntimeException When database configuration is invalid
+     * @throws \PDOException When connection fails
      */
     public static function getPdoInstance(): PDO
     {
         if (!isset(static::$pdo)) {
-            $host = env('DB_HOST', config('database.connections.mysql.host'));
-            $dbName = env('DB_DATABASE', config('database.connections.mysql.database'));
-            $dsn = "mysql:host=$host;dbname=$dbName;charset=utf8";
-            $username = env('DB_USERNAME', config('database.connections.mysql.username'));
-            $password = env('DB_PASSWORD', config('database.connections.mysql.password'));
+            $driver = env('DB_CONNECTION', config('database.default', 'mysql'));
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_STRINGIFY_FETCHES => false,
+            ];
 
             try {
-                static::$pdo = new PDO($dsn, $username, $password, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                ]);
-            } catch (PDOException $e) {
-                throw new \PDOException("Failed to connect to database: " . $e->getMessage());
+                switch (strtolower($driver)) {
+                    case 'pgsql':
+                        $host = env('DB_HOST', config('database.connections.pgsql.host', '127.0.0.1'));
+                        $port = env('DB_PORT', config('database.connections.pgsql.port', '5432'));
+                        $dbName = env('DB_DATABASE', config('database.connections.pgsql.database'));
+                        $dsn = "pgsql:host=$host;port=$port;dbname=$dbName";
+
+                        if ($charset = env('DB_CHARSET', config('database.connections.pgsql.charset'))) {
+                            $dsn .= ";options='--client_encoding=$charset'";
+                        }
+
+                        $username = env('DB_USERNAME', config('database.connections.pgsql.username'));
+                        $password = env('DB_PASSWORD', config('database.connections.pgsql.password'));
+                        static::$pdo = new PDO($dsn, $username, $password, $options);
+                        break;
+
+                    case 'mysql':
+                    default:
+                        $host = env('DB_HOST', config('database.connections.mysql.host', '127.0.0.1'));
+                        $port = env('DB_PORT', config('database.connections.mysql.port', '3306'));
+                        $dbName = env('DB_DATABASE', config('database.connections.mysql.database'));
+                        $charset = env('DB_CHARSET', config('database.connections.mysql.charset', 'utf8mb4'));
+                        $dsn = "mysql:host=$host;port=$port;dbname=$dbName;charset=$charset";
+
+                        $username = env('DB_USERNAME', config('database.connections.mysql.username'));
+                        $password = env('DB_PASSWORD', config('database.connections.mysql.password'));
+
+                        $mysqlOptions = $options + [
+                            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES $charset",
+                            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+                        ];
+
+                        static::$pdo = new PDO($dsn, $username, $password, $mysqlOptions);
+                        break;
+                }
+
+                if ($timezone = env('DB_TIMEZONE', config('database.timezone'))) {
+                    static::$pdo->exec("SET time_zone = '$timezone'");
+                }
+            } catch (\PDOException $e) {
+                throw new \PDOException("Failed to connect to {$driver} database: " . $e->getMessage(), (int)$e->getCode());
+            } catch (\RuntimeException $e) {
+                throw $e;
             }
         }
 

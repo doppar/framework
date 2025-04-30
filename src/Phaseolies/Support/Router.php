@@ -563,7 +563,7 @@ class Router extends Kernel
      * Applies middleware to the route
      * @return Route
      */
-    private function applyRouteMiddleware($currentMiddleware): void
+    private function applyRouteMiddleware($app, $currentMiddleware): void
     {
         foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
@@ -573,7 +573,7 @@ class Router extends Kernel
             }
 
             $middlewareClass = $this->routeMiddleware[$name];
-            $middlewareInstance = new $middlewareClass();
+            $middlewareInstance = $app->make($middlewareClass);
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new \Exception("Unresolved dependency $middlewareClass", 1);
             }
@@ -592,7 +592,7 @@ class Router extends Kernel
     public function resolve(Application $app, Request $request): Response
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-        if ($currentMiddleware) $this->applyRouteMiddleware($currentMiddleware);
+        if ($currentMiddleware) $this->applyRouteMiddleware($app, $currentMiddleware);
 
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);

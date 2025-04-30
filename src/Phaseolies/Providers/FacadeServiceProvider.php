@@ -2,10 +2,6 @@
 
 namespace Phaseolies\Providers;
 
-use Symfony\Component\Cache\Adapter\RedisAdapter;
-use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\StringService;
@@ -21,7 +17,6 @@ use Phaseolies\Http\Response;
 use Phaseolies\Database\Migration\Schema;
 use Phaseolies\Database\Database;
 use Phaseolies\Config\Config;
-use Phaseolies\Cache\CacheStore;
 use Phaseolies\Auth\Security\PasswordHashing;
 use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Application;
@@ -36,11 +31,6 @@ use Phaseolies\Application;
  */
 class FacadeServiceProvider extends ServiceProvider
 {
-    /**
-     * @var \Closure[] Custom adapter factories
-     */
-    protected array $customAdapters = [];
-
     /**
      * Register any application services.
      *
@@ -124,13 +114,6 @@ class FacadeServiceProvider extends ServiceProvider
         // Bind the 'schema' service to a singleton instance of the Schema class.
         // This handles database schema related jobs
         $this->app->singleton('schema', Schema::class);
-
-        // Bind the 'cache' service to a singleton instance of the CacheStore class.
-        // This handles cache related jobs
-        $this->app->singleton('cache', function () {
-            $adapter = $this->createAdapter(config('cache.default', 'file'));
-            return new CacheStore($adapter, config('cache.prefix'));
-        });
     }
 
     /**
@@ -141,122 +124,5 @@ class FacadeServiceProvider extends ServiceProvider
     public function boot()
     {
         //
-    }
-
-
-    /**
-     * Create the cache adapter
-     *
-     * @param string $store
-     * @return mixed
-     */
-    public function createAdapter(string $store): mixed
-    {
-        $storeConfig = config("cache.stores.{$store}", '');
-
-        return match ($storeConfig['driver'] ?? null) {
-            'file' => new FilesystemAdapter(
-                config('cache.prefix'),
-                0,
-                $storeConfig['path'] ?? storage_path('framework/cache/data')
-            ),
-            'array' => new ArrayAdapter(
-                0,
-                $storeConfig['serialize'] ?? false
-            ),
-            'redis' => $this->createRedisAdapter($storeConfig),
-            'apc' => new ApcuAdapter(config('cache.prefix')),
-            default => $this->createCustomAdapter($store, $storeConfig)
-        };
-    }
-
-    /**
-     * Create Redis adapter
-     *
-     * @param array $config
-     * @return RedisAdapter
-     */
-    protected function createRedisAdapter(array $config): RedisAdapter
-    {
-        $redis = new \Redis();
-
-        $dsn = $config['connection'] ?? 'redis://127.0.0.1:6379';
-        $parsed = parse_url($dsn);
-
-        $host = $parsed['host'] ?? '127.0.0.1';
-        $port = $parsed['port'] ?? 6379;
-        $password = $parsed['pass'] ?? null;
-        $database = isset($parsed['path']) ? (int) substr($parsed['path'], 1) : 0;
-
-        if (!$redis->connect($host, $port, 2.5)) {
-            throw new \RuntimeException("Could not connect to Redis at {$host}:{$port}");
-        }
-
-        if ($password !== null) {
-            $redis->auth($password);
-        }
-
-        if ($database > 0) {
-            $redis->select($database);
-        }
-
-        foreach ($config['options'] ?? [] as $name => $value) {
-            $optionConstant = $this->getRedisOptionConstant($name);
-            if ($optionConstant !== null) {
-                $redis->setOption($optionConstant, $value);
-            }
-        }
-
-        return new RedisAdapter(
-            $redis,
-            config('cache.prefix', ''),
-            $config['ttl'] ?? 0
-        );
-    }
-
-    /**
-     * Map string option names to Redis constants
-     *
-     * @param string $name
-     * @return int|null
-     */
-    protected function getRedisOptionConstant(string $name): ?int
-    {
-        $constants = [
-            'serializer' => \Redis::OPT_SERIALIZER,
-            'prefix' => \Redis::OPT_PREFIX,
-            'read_timeout' => \Redis::OPT_READ_TIMEOUT,
-            'scan' => \Redis::OPT_SCAN,
-            'compression' => \Redis::OPT_COMPRESSION,
-        ];
-
-        return $constants[strtolower($name)] ?? null;
-    }
-
-    /**
-     * Create custom adapter
-     *
-     * @param string $store
-     * @param array $config
-     * @return mixed
-     */
-    protected function createCustomAdapter(string $store, array $config): mixed
-    {
-        if (isset($this->customAdapters[$store])) {
-            return $this->customAdapters[$store]($config);
-        }
-
-        throw new \RuntimeException("Cache store [{$store}] is not defined.");
-    }
-
-    /**
-     * Generate custom adapter
-     * @param string $store
-     * @param \Closure $factory
-     * @return void
-     */
-    public function extend(string $store, \Closure $factory): void
-    {
-        $this->customAdapters[$store] = $factory;
     }
 }

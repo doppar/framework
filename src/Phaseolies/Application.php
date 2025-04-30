@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Phaseolies framework.
      */
-    const VERSION = '7.1';
+    const VERSION = '2.0.1';
 
     /**
      * The base path of the application installation.
@@ -508,7 +508,7 @@ class Application extends Container
      */
     public function make($abstract, array $parameters = [])
     {
-        $object = parent::get($abstract, $parameters);
+        $object = parent::make($abstract, $parameters);
 
         $this->fireResolvingCallbacks($abstract, $object);
 

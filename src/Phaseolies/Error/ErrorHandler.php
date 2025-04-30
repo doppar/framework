@@ -4,6 +4,7 @@ namespace Phaseolies\Error;
 
 use Phaseolies\Support\Facades\Log;
 use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Http\Response;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 class ErrorHandler
@@ -115,15 +116,26 @@ class ErrorHandler
         int $statusCode,
         mixed $errorMessage = null
     ): void {
-        $response = [
-            'success' => false,
-            'message' => $errorMessage,
-            'error' => [
-                'file' => $errorFile,
-                'line' => $errorLine,
-                'trace' => $errorTrace,
-            ],
-        ];
+
+        if (
+            $statusCode === Response::HTTP_TOO_MANY_REQUESTS ||
+            $statusCode === Response::HTTP_UNPROCESSABLE_ENTITY
+        ) {
+            $response = [
+                'success' => false,
+                'message' => $errorMessage
+            ];
+        } else {
+            $response = [
+                'success' => false,
+                'message' => $errorMessage,
+                'error' => [
+                    'file' => $errorFile,
+                    'line' => $errorLine,
+                    'trace' => $errorTrace,
+                ],
+            ];
+        }
 
         header('Content-Type: application/json');
         http_response_code($statusCode);

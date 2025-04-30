@@ -76,7 +76,7 @@ class ApplicationBuilder
         $response = fn() => app('response');
 
         foreach ($middlewareStack as $middlewareClass) {
-            $middlewareInstance = new $middlewareClass();
+            $middlewareInstance = $this->app->make($middlewareClass);
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new Exception(
                     "Middleware {$middlewareClass} must implement " . ContractsMiddleware::class

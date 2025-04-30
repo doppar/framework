@@ -32,7 +32,7 @@ class CacheStore implements CacheInterface
     public function __construct(AdapterInterface $adapter, ?string $prefix = null)
     {
         $this->adapter = $adapter;
-        $this->prefix = $prefix ?? config('cache.prefix');
+        $this->prefix = $prefix ?? config('caching.prefix');
     }
 
     /**

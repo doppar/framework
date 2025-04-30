@@ -579,8 +579,9 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $statusCode, string $message): void
     {
-        $customPath = base_path() . "/resources/views/errors/{$statusCode}.blade.php";
-        $errorPage = base_path() . "/vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.blade.php";
+        $customPath = base_path("resources/views/errors/{$statusCode}.blade.php");
+        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.blade.php");
+
         if (file_exists($customPath)) {
             include $customPath;
         } elseif (file_exists($errorPage)) {

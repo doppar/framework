@@ -69,6 +69,10 @@ class Translator
 
         $locale = $locale ?: $this->locale;
 
+        if ($group === '*') {
+            return $key;
+        }
+
         $this->load($namespace, $group, $locale);
 
         $line = $this->getLine(
@@ -148,7 +152,15 @@ class Translator
     {
         $this->load($namespace, $group, $locale);
 
-        $line = $this->loaded[$namespace][$group][$locale][$item] ?? null;
+        $keys = explode('.', $item);
+        $line = $this->loaded[$namespace][$group][$locale] ?? null;
+
+        foreach ($keys as $key) {
+            if (!is_array($line)) {
+                return null;
+            }
+            $line = $line[$key] ?? null;
+        }
 
         if (is_string($line)) {
             return $this->makeReplacements($line, $replace);

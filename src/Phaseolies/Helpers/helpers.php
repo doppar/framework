@@ -444,26 +444,28 @@ function enqueue(string $path = '', $secure = null): string
 /**
  * Abort the request with a specific HTTP status code and optional message.
  *
- * @param int $code The HTTP status code.
- * @param string $message The optional error message.
+ * @param int
+ * @param string $message
+ * @param array $headers
  * @throws HttpException
  */
-function abort(int $code, string $message = ''): void
+function abort($code, $message = '', array $headers = []): void
 {
-    app('abort')->abort($code, $message);
+    app('abort')->abort($code, $message, $headers);
 }
 
 /**
  * Abort the request if a condition is true.
  *
- * @param bool $condition The condition to check.
- * @param int $code The HTTP status code.
- * @param string $message The optional error message.
+ * @param bool
+ * @param int $code
+ * @param string $message
+ * @param array $headers
  * @throws HttpException
  */
-function abort_if(bool $condition, int $code, string $message = ''): void
+function abort_if($condition, $code, $message = '', array $headers = []): void
 {
-    app('abort')->abortIf($condition, $code, $message);
+    app('abort')->abortIf($condition, $code, $message, $headers);
 }
 
 /**
@@ -634,7 +636,7 @@ if (!function_exists('class_basename')) {
  */
 function resolve($name, array $parameters = [])
 {
-    return app($name, $parameters);
+    return app()->make($name, $parameters);
 }
 
 /**

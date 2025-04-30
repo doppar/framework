@@ -12,9 +12,9 @@ trait CoreProviders
     protected function loadCoreProviders()
     {
         return [
+            \Phaseolies\Providers\EnvServiceProvider::class,
             \Phaseolies\Providers\FacadeServiceProvider::class,
             \Phaseolies\Providers\LanguageServiceProvider::class,
-            \Phaseolies\Providers\EnvServiceProvider::class,
             \Phaseolies\Providers\SessionServiceProvider::class,
             \Phaseolies\Providers\RouteServiceProvider::class,
             \Phaseolies\Providers\CacheServiceProvider::class,

@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Providers;
 
-use Phaseolies\Support\Router;
 use Dotenv\Dotenv;
 
 /**

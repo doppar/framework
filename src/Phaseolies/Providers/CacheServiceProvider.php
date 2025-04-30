@@ -24,11 +24,15 @@ class CacheServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $adapter = $this->createAdapter(config('cache.default', 'file'));
-
-        $cacheStore = new CacheStore($adapter, config('cache.prefix'));
-
+        $adapter = $this->createAdapter(config('caching.default', 'file'));
+        $cacheStore = new CacheStore($adapter, config('caching.prefix'));
         $this->app->singleton(CacheInterface::class, fn() => $cacheStore);
+
+        // Bind the 'cache' service to a singleton instance of the CacheStore class.
+        // This handles cache facades jobs
+        $this->app->singleton('cache', function () use ($adapter) {
+            return new CacheStore($adapter, config('caching.prefix'));
+        });
     }
 
     /**
@@ -39,11 +43,12 @@ class CacheServiceProvider extends ServiceProvider
      */
     public function createAdapter(string $store): mixed
     {
-        $storeConfig = config("cache.stores.{$store}");
+        $storeConfig = config("caching.stores.{$store}");
 
         return match ($storeConfig['driver'] ?? null) {
+            'apc' => new ApcuAdapter(config('caching.prefix')),
             'file' => new FilesystemAdapter(
-                config('cache.prefix'),
+                config('caching.prefix'),
                 0,
                 $storeConfig['path'] ?? storage_path('framework/cache/data')
             ),
@@ -52,7 +57,6 @@ class CacheServiceProvider extends ServiceProvider
                 $storeConfig['serialize'] ?? false
             ),
             'redis' => $this->createRedisAdapter($storeConfig),
-            'apc' => new ApcuAdapter(config('cache.prefix')),
             default => $this->createCustomAdapter($store, $storeConfig)
         };
     }
@@ -96,7 +100,7 @@ class CacheServiceProvider extends ServiceProvider
 
         return new RedisAdapter(
             $redis,
-            config('cache.prefix', ''),
+            config('caching.prefix'),
             $config['ttl'] ?? 0
         );
     }

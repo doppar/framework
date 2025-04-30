@@ -5,8 +5,10 @@ namespace Phaseolies\Middleware;
 use Phaseolies\Middleware\Contracts\Middleware;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Exceptions\TooManyRequestsHttpException;
 use Phaseolies\Cache\RateLimiter;
 use Closure;
+use Phaseolies\Http\Exceptions\HttpResponseException;
 
 class ThrottleRequests implements Middleware
 {
@@ -22,9 +24,9 @@ class ThrottleRequests implements Middleware
      *
      * @return void
      */
-    public function __construct()
+    public function __construct(RateLimiter $rateLimiter)
     {
-        $this->limiter = app(RateLimiter::class);
+        $this->limiter = $rateLimiter;
     }
 
     /**
@@ -146,30 +148,22 @@ class ThrottleRequests implements Middleware
             return $next($request);
         }
 
+        $message = trans('validation.rate_limit.error', ['attribute' => $retryAfter]);
+
         if ($request->isAjax() || $request->is('/api/*')) {
-            $response = new Response(
-                json_encode([
-                    'message' => 'Too Many Attempts.',
-                    'retry_after' => $retryAfter,
-                    'errors' => [
-                        'rate_limit' => ['You have exceeded your rate limit. Please try again later.']
-                    ]
-                ]),
-                Response::HTTP_TOO_MANY_REQUESTS,
-                ['Content-Type' => 'application/json']
-            );
-        } else {
-            $response = new Response(
-                'Too Many Attempts. Please try again in ' . $retryAfter . ' seconds.',
+            throw new HttpResponseException(
+                [
+                    'errors' => $message
+                ],
                 Response::HTTP_TOO_MANY_REQUESTS
             );
         }
 
-        return $this->addHeaders(
-            $response,
-            $maxAttempts,
-            0,
-            time() + $retryAfter
+        throw new TooManyRequestsHttpException(
+            $retryAfter,
+            $message,
+            null,
+            Response::HTTP_TOO_MANY_REQUESTS
         );
     }
 }

@@ -1,38 +1,62 @@
 <?php
 
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
 namespace Phaseolies\Http\Exceptions;
 
-use Exception;
-
-class HttpException extends Exception
+/**
+ * HttpException.
+ *
+ * @author Kris Wallsmith <kris@symfony.com>
+ */
+class HttpException extends \RuntimeException implements HttpExceptionInterface
 {
-    /**
-     * The HTTP status code.
-     *
-     * @var int
-     */
-    protected $statusCode;
-
-    /**
-     * Create a new HTTP exception instance.
-     *
-     * @param int $statusCode The HTTP status code.
-     * @param string $message The error message.
-     */
-    public function __construct(int $statusCode, string $message = '')
-    {
-        $this->statusCode = $statusCode;
-
-        parent::__construct($message, $statusCode);
+    public function __construct(
+        private int $statusCode,
+        string $message = '',
+        ?\Throwable $previous = null,
+        private array $headers = [],
+        int $code = 0,
+    ) {
+        parent::__construct($message, $code, $previous);
     }
 
-    /**
-     * Get the HTTP status code.
-     *
-     * @return int
-     */
+    public static function fromStatusCode(int $statusCode, string $message = '', ?\Throwable $previous = null, array $headers = [], int $code = 0): self
+    {
+        return match ($statusCode) {
+            400 => new BadRequestHttpException($message, $previous, $code, $headers),
+            403 => new AccessDeniedHttpException($message, $previous, $code, $headers),
+            404 => new NotFoundHttpException($message, $previous, $code, $headers),
+            406 => new NotAcceptableHttpException($message, $previous, $code, $headers),
+            409 => new ConflictHttpException($message, $previous, $code, $headers),
+            423 => new LockedHttpException($message, $previous, $code, $headers),
+            415 => new UnsupportedMediaTypeHttpException($message, $previous, $code, $headers),
+            422 => new UnprocessableEntityHttpException($message, $previous, $code, $headers),
+            429 => new TooManyRequestsHttpException(null, $message, $previous, $code, $headers),
+            503 => new ServiceUnavailableHttpException(null, $message, $previous, $code, $headers),
+            default => new static($statusCode, $message, $previous, $headers, $code),
+        };
+    }
+
     public function getStatusCode(): int
     {
         return $this->statusCode;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    public function setHeaders(array $headers): void
+    {
+        $this->headers = $headers;
     }
 }

@@ -168,6 +168,96 @@ class Container implements ArrayAccess
         throw new \RuntimeException("Target [$abstract] is not bound in container");
     }
 
+    /**
+     * Resolve a class with its dependencies
+     *
+     * @param string $abstract
+     * @param array $parameters
+     * @return mixed
+     */
+    public function make(string $abstract, array $parameters = [])
+    {
+        return $this->resolve($abstract, $parameters);
+    }
+
+    /**
+     * Resolve a class and its dependencies recursively
+     *
+     * @param string $abstract
+     * @param array $parameters
+     * @return mixed
+     */
+    protected function resolve(string $abstract, array $parameters = [])
+    {
+        if ($this->has($abstract)) {
+            return $this->get($abstract, $parameters);
+        }
+
+        if (class_exists($abstract)) {
+            return $this->build($abstract, $parameters);
+        }
+
+        throw new \RuntimeException("Target [$abstract] is not bound in container and not a class");
+    }
+
+    /**
+     * Build a concrete instance with dependency injection
+     *
+     * @param string $concrete
+     * @param array $parameters
+     * @return mixed
+     */
+    protected function build(string $concrete, array $parameters = [])
+    {
+        $reflector = new \ReflectionClass($concrete);
+
+        if (!$reflector->isInstantiable()) {
+            throw new \RuntimeException("Target [$concrete] is not instantiable");
+        }
+
+        $constructor = $reflector->getConstructor();
+
+        if (is_null($constructor)) {
+            return new $concrete;
+        }
+
+        $dependencies = $this->resolveDependencies(
+            $constructor->getParameters(),
+            $parameters
+        );
+
+        return $reflector->newInstanceArgs($dependencies);
+    }
+
+    /**
+     * Resolve constructor dependencies
+     *
+     * @param array $parameters
+     * @param array $primitives
+     * @return mixed
+     */
+    protected function resolveDependencies(array $parameters, array $primitives = [])
+    {
+        $dependencies = [];
+
+        foreach ($parameters as $parameter) {
+            $dependency = $parameter->getType();
+
+            if ($dependency && !$dependency->isBuiltin()) {
+                $dependencies[] = $this->resolve($dependency->getName());
+            } elseif ($parameter->isDefaultValueAvailable()) {
+                $dependencies[] = $parameter->getDefaultValue();
+            } elseif (!empty($primitives)) {
+                $dependencies[] = array_shift($primitives);
+            } else {
+                throw new \RuntimeException(
+                    "Unresolvable dependency resolving [$parameter]"
+                );
+            }
+        }
+
+        return $dependencies;
+    }
 
     /**
      * Check if the container has a binding for the given service.
