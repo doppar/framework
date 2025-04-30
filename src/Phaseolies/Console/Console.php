@@ -21,7 +21,7 @@ class Console extends Application
      * @param mixed string
      * @param string $version
      */
-    public function __construct(\Phaseolies\Application $app, string $name = 'Phaseolies Framework', string $version = '1.0.0')
+    public function __construct(\Phaseolies\Application $app, string $name = 'Doppar Framework', string $version = '1.0.0')
     {
         parent::__construct($name, $version);
         $this->app = $app;
