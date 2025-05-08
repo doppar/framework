@@ -21,9 +21,9 @@ class Application extends Container
     use CoreProviders;
 
     /**
-     * The current version of the Phaseolies framework.
+     * The current version of the Doppar framework.
      */
-    const VERSION = '2.0.2';
+    const VERSION = '2.0.3';
 
     /**
      * The base path of the application installation.
@@ -598,7 +598,7 @@ class Application extends Container
         $this->singleton('router', Router::class);
         $this->router = app('router');
         $this->singleton('response', Response::class);
-        $this->singleton('console', fn($app) => new \Phaseolies\Console\Console($app, 'Phaseolies Framework', Application::VERSION));
+        $this->singleton('console', fn($app) => new \Phaseolies\Console\Console($app, 'Doppar Framework', Application::VERSION));
         $this->singleton('view', \Phaseolies\Support\View\Factory::class);
         $this->singleton('migrator', function () {
             return new Migrator(

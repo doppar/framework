@@ -190,7 +190,7 @@ EOT;
 @section('title') Dashboard
 @section('content')
     <div class="card shadow-lg mb-4">
-        <div class="card-header bg-white text-black fw-bold">
+        <div class="card-header text-black fw-bold">
             <h5 class="fw-bold fs-5">{{ __('Dashboard') }}</h5>
         </div>
         <div class="card-body">
@@ -325,7 +325,7 @@ EOT;
 @extends('layouts.app')
 @section('title') Login
 @section('content')
-    <div class="card-header bg-white border-bottom-0 text-center mt-5">
+    <div class="card-header border-bottom-0 text-center mt-5">
         <h5 class="fw-bold fs-5">Login</h5>
     </div>
     <div class="card mx-auto mt-5" style="max-width: 400px;">
@@ -361,7 +361,7 @@ EOT;
 @extends('layouts.app')
 @section('title') Register
 @section('content')
-    <div class="card-header bg-white border-bottom-0 text-center mt-5">
+    <div class="card-header border-bottom-0 text-center mt-5">
         <h5 class="fw-bold fs-5">Register</h5>
     </div>
     <div class="card mx-auto mt-5" style="max-width: 400px;">

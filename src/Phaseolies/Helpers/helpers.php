@@ -10,7 +10,6 @@ use Phaseolies\Session\MessageBag;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\ResponseFactory;
 use Phaseolies\Http\Response;
-use Phaseolies\Http\Request;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
@@ -316,9 +315,9 @@ function str(): StringService
  *
  * @return Paginator
  */
-function paginator($data): Paginator
+function paginator(?array $data = null): Paginator
 {
-    return new Paginator($data);
+    return app(Paginator::class, [$data]);
 }
 
 /**

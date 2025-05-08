@@ -116,6 +116,18 @@ trait RequestParser
     }
 
     /**
+     * Retrieves the full request URL including query string.
+     *
+     * @return string The full URL with query string
+     */
+    public function fullUrl(): string
+    {
+        $queryString = $this->getQueryString();
+
+        return $this->url() . ($queryString ? '?' . $queryString : '');
+    }
+
+    /**
      * Retrieves the raw body content of the request.
      *
      * @return string|resource|false|null The raw body content.

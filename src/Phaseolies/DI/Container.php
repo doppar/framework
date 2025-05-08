@@ -136,7 +136,6 @@ class Container implements ArrayAccess
      */
     public function get(string $abstract, array $parameters = [])
     {
-        // If it's a class, check if any instances are registered with class name
         if (class_exists($abstract)) {
             foreach (self::$instances as $key => $instance) {
                 if ($instance instanceof $abstract) {
@@ -153,6 +152,7 @@ class Container implements ArrayAccess
             $concrete = self::$bindings[$abstract];
             if (is_callable($concrete)) {
                 $resolved = $concrete($this, ...$parameters);
+                self::$instances[$abstract] = $resolved;
                 if (array_key_exists($abstract, self::$instances)) {
                     self::$instances[$abstract] = $resolved;
                 }
@@ -197,7 +197,7 @@ class Container implements ArrayAccess
             return $this->build($abstract, $parameters);
         }
 
-        throw new \RuntimeException("Target [$abstract] is not bound in container and not a class");
+        throw new \RuntimeException("Target [$abstract] is not bound in the container and not a class");
     }
 
     /**
@@ -218,15 +218,20 @@ class Container implements ArrayAccess
         $constructor = $reflector->getConstructor();
 
         if (is_null($constructor)) {
-            return new $concrete;
+            $instance = $this->get($concrete);
+        } else {
+            $dependencies = $this->resolveDependencies(
+                $constructor->getParameters(),
+                $parameters
+            );
+            $instance = $reflector->newInstanceArgs($dependencies);
         }
 
-        $dependencies = $this->resolveDependencies(
-            $constructor->getParameters(),
-            $parameters
-        );
+        if (array_key_exists($concrete, self::$instances)) {
+            self::$instances[$concrete] = $instance;
+        }
 
-        return $reflector->newInstanceArgs($dependencies);
+        return $instance;
     }
 
     /**
@@ -239,7 +244,6 @@ class Container implements ArrayAccess
     protected function resolveDependencies(array $parameters, array $primitives = [])
     {
         $dependencies = [];
-
         foreach ($parameters as $parameter) {
             $dependency = $parameter->getType();
 

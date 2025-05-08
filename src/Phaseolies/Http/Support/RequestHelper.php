@@ -33,11 +33,11 @@ trait RequestHelper
      * @param array|string $keys The keys to exclude.
      * @return array<string, mixed> The filtered input data.
      */
-    public function except(array|string $keys): array
+    public function except(array|string ...$keys): array
     {
-        if (is_string($keys)) {
-            $keys = [$keys];
-        }
+        $keys = count($keys) === 1 && is_array($keys[0])
+            ? $keys[0]
+            : $keys;
 
         return array_diff_key($this->all(), array_flip($keys));
     }
@@ -48,11 +48,11 @@ trait RequestHelper
      * @param array|string $keys The keys to include.
      * @return array<string, mixed> The filtered input data.
      */
-    public function only(array|string $keys): array
+    public function only(array|string ...$keys): array
     {
-        if (is_string($keys)) {
-            $keys = [$keys];
-        }
+        $keys = count($keys) === 1 && is_array($keys[0])
+            ? $keys[0]
+            : $keys;
 
         return array_intersect_key($this->all(), array_flip($keys));
     }
@@ -144,7 +144,7 @@ trait RequestHelper
             $this->input = $this->all();
         }
 
-        return array_key_exists($param, $this->input);
+        return array_key_exists($param, $this->input) && $this->input[$param] !== '';
     }
 
     /**

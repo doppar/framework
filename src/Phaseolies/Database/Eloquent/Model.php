@@ -492,7 +492,6 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
                             $this->setRelation($name, $results);
                             return $results;
 
-
                         case 'manyToMany':
                             $relatedModel = app($this->getLastRelatedModel());
                             $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
@@ -522,7 +521,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
                                     $pivot[$column] = $result["pivot_{$column}"];
                                     unset($result["pivot_{$column}"]);
                                 }
-                                $pivotObj = (object)$pivot;
+                                $pivotObj = (object) $pivot;
                                 $result->pivot = $pivotObj;
                                 $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
                             }
@@ -540,7 +539,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
             return $this->attributes[$name];
         } catch (\Throwable $th) {
-            throw new \Exception("Undefined relation '$name'");
+            return;
         }
     }
 

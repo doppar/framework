@@ -19,7 +19,7 @@ class PaginationPublishCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $paginationPath = resource_path('vendor/views/pagination');
+        $paginationPath = resource_path('views/vendor/pagination');
 
         if (!is_dir($paginationPath)) {
             mkdir($paginationPath, 0755, true);

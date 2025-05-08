@@ -174,11 +174,11 @@ class File extends \SplFileInfo
         $fileName = $fileName ?? $this->getClientOriginalName();
         $destinationPath = rtrim($destination, '/') . '/' . $fileName;
 
-        if (move_uploaded_file($this->getClientOriginalPath(), $destinationPath)) {
-            return true;
+        if (!is_dir(dirname($destinationPath))) {
+            mkdir(dirname($destinationPath), 0777, true);
         }
 
-        return false;
+        return move_uploaded_file($this->getClientOriginalPath(), $destinationPath);
     }
 
     /**
@@ -244,7 +244,7 @@ class File extends \SplFileInfo
      * @param string $fileName
      * @return boolean
      */
-    public function storeAs(callable $callback, string $path, string $fileName = ''): bool
+    public function storeAs(?callable $callback = null, string $path, string $fileName = ''): bool
     {
         if (! is_callable($callback)) {
             return false;

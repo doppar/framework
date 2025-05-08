@@ -30,6 +30,10 @@ class MigrationRepository
      */
     public function create(): void
     {
+        if ($this->exists()) {
+            return;
+        }
+
         Schema::create($this->table, function ($table) {
             $table->string('migration');
             $table->integer('batch');

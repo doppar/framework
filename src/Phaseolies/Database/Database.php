@@ -69,17 +69,8 @@ class Database
                         $username = env('DB_USERNAME', config('database.connections.mysql.username'));
                         $password = env('DB_PASSWORD', config('database.connections.mysql.password'));
 
-                        $mysqlOptions = $options + [
-                            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES $charset",
-                            PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
-                        ];
-
-                        static::$pdo = new PDO($dsn, $username, $password, $mysqlOptions);
+                        static::$pdo = new PDO($dsn, $username, $password);
                         break;
-                }
-
-                if ($timezone = env('DB_TIMEZONE', config('database.timezone'))) {
-                    static::$pdo->exec("SET time_zone = '$timezone'");
                 }
             } catch (\PDOException $e) {
                 throw new \PDOException("Failed to connect to {$driver} database: " . $e->getMessage(), (int)$e->getCode());

@@ -91,8 +91,8 @@ class ThrottleRequests implements Middleware
      */
     protected function resolveRequestSignature(Request $request): string
     {
-        if ($user = $request->user()) {
-            return sha1($user->getAuthIdentifier());
+        if ($request->user()) {
+            return sha1(auth()->id());
         }
 
         return sha1($request->ip());

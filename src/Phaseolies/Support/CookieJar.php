@@ -173,11 +173,22 @@ class CookieJar
     }
 
     /**
-     * Update existing cookie
-     * @return array|null
+     * Get all cookies that were sent with the current request
+     *
+     * @param bool $decodeValues Whether to URL-decode cookie values (default: true)
+     * @return array
      */
-    public function all(): ?array
+    public function all(bool $decodeValues = true): array
     {
-        return request()->cookies->all();
+        if (!$decodeValues) {
+            return $_COOKIE;
+        }
+
+        $cookies = [];
+        foreach ($_COOKIE as $name => $value) {
+            $cookies[$name] = is_string($value) ? rawurldecode($value) : $value;
+        }
+
+        return $cookies ?? [];
     }
 }

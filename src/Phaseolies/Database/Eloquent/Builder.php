@@ -113,17 +113,22 @@ class Builder
     /**
      * Set the fields to select.
      *
-     * @param array $fields
+     * @param array|string ...$fields Field(s) to select (can be array or multiple strings)
      * @return self
      */
-    public function select(array $fields): self
+    public function select(array|string ...$fields): self
     {
+        $fields = count($fields) === 1 && is_array($fields[0])
+            ? $fields[0]
+            : $fields;
+
         $this->fields = array_map(function ($field) {
             if (is_string($field) && strpos($field, '(') !== false) {
                 return $field;
             }
             return $field;
         }, $fields);
+
         return $this;
     }
 
@@ -137,6 +142,14 @@ class Builder
      */
     public function where(string $field, string $operator, $value): self
     {
+        if ($value === null) {
+            if ($operator === '=') {
+                return $this->whereNull($field);
+            } elseif ($operator === '!=') {
+                return $this->whereNotNull($field);
+            }
+        }
+
         $this->conditions[] = ['AND', $field, $operator, $value];
         return $this;
     }
@@ -213,29 +226,23 @@ class Builder
     {
         $sql = 'SELECT ';
 
-        // Handle SELECT clause
         if (!empty($this->groupBy)) {
-            // If GROUP BY is used, ensure all selected fields are either aggregated or in the GROUP BY clause
             $groupedFields = $this->groupBy;
             $nonGroupedFields = array_diff($this->fields, $groupedFields);
 
             if (in_array('*', $this->fields)) {
-                // If '*' is used, replace it with all table columns
                 $this->fields = $this->getTableColumns();
                 $nonGroupedFields = array_diff($this->fields, $groupedFields);
             }
 
             if (!empty($nonGroupedFields)) {
-                // Check if any non-grouped fields are raw expressions
                 $processedFields = [];
                 foreach ($this->fields as $field) {
                     if (in_array($field, $groupedFields)) {
                         $processedFields[] = $field;
                     } elseif (strpos($field, '(') !== false) {
-                        // This is a raw expression like "SUM(user_id * post_id) as total_sales"
                         $processedFields[] = $field;
                     } else {
-                        // Aggregate non-grouped fields
                         $processedFields[] = "MAX($field) AS $field";
                     }
                 }
@@ -244,19 +251,16 @@ class Builder
                 $sql .= implode(', ', $this->fields);
             }
         } else {
-            // If no GROUP BY, use the original SELECT fields
             $sql .= implode(', ', $this->fields);
         }
 
         $sql .= ' FROM ' . $this->table;
 
-        // Add JOIN clauses
         foreach ($this->joins as $join) {
             $sql .= ' ' . strtoupper($join['type']) . ' JOIN ' . $join['table'] .
                 ' ON ' . $join['first'] . ' ' . $join['operator'] . ' ' . $join['second'];
         }
 
-        // Handle WHERE clause
         if (!empty($this->conditions)) {
             $conditionStrings = [];
             foreach ($this->conditions as $condition) {
@@ -275,23 +279,19 @@ class Builder
             $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
         }
 
-        // Handle GROUP BY clause
         if (!empty($this->groupBy)) {
             $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
-        // Handle ORDER BY clause
         if (!empty($this->orderBy)) {
             $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
         }
 
-        // Handle LIMIT clause
         if ($this->limit !== null) {
             $sql .= ' LIMIT ' . $this->limit;
         }
 
-        // Handle OFFSET clause
         if ($this->offset !== null) {
             $sql .= ' OFFSET ' . $this->offset;
         }
@@ -316,12 +316,6 @@ class Builder
      * Filter records that have at least one related record in the given relationship
      * 
      * @param string $relation
-     * @return self
-     */
-    /**
-     * Filter records that have at least one related record in the given relationship
-     * 
-     * @param string $relation
      * @param callable|null $callback
      * @return self
      */
@@ -338,7 +332,6 @@ class Builder
         $relationType = $model->getLastRelationType();
         $relatedModel = $model->getLastRelatedModel();
 
-        // Handle different relationship types
         if ($relationType === 'manyToMany') {
             $pivotTable = $model->getLastPivotTable();
             $foreignKey = $model->getLastForeignKey();
@@ -363,10 +356,10 @@ class Builder
 
                     // Handle different operator types
                     if ($value === null) {
-                        if ($operator === '=') {
-                            $subquery .= " AND {$relatedTable}.{$column} IS NULL";
-                        } elseif ($operator === '!=') {
-                            $subquery .= " AND {$relatedTable}.{$column} IS NOT NULL";
+                        if ($operator === 'IS NULL') {
+                            $subquery .= " AND {$column} IS NULL";
+                        } elseif ($operator === 'IS NOT NULL') {
+                            $subquery .= " AND {$column} IS NOT NULL";
                         }
                     } elseif ($operator === 'IN') {
                         $escapedValues = array_map([$this->pdo, 'quote'], $value);
@@ -391,6 +384,7 @@ class Builder
                 $callback($subQueryBuilder);
 
                 foreach ($subQueryBuilder->conditions as $condition) {
+
                     if (isset($condition['type'])) continue;
 
                     $column = $condition[1];
@@ -398,9 +392,9 @@ class Builder
                     $value = $condition[3];
 
                     if ($value === null) {
-                        if ($operator === '=') {
+                        if ($operator === 'IS NULL') {
                             $subquery .= " AND {$column} IS NULL";
-                        } elseif ($operator === '!=') {
+                        } elseif ($operator === 'IS NOT NULL') {
                             $subquery .= " AND {$column} IS NOT NULL";
                         }
                     } elseif ($operator === 'IN') {
@@ -652,7 +646,6 @@ class Builder
 
             $collection = new Collection($this->modelClass, $models);
 
-            // Eager load relationships if any
             if (!empty($this->eagerLoad)) {
                 $this->eagerLoadRelations($collection);
             }
@@ -1428,36 +1421,113 @@ class Builder
     /**
      * Get the count of rows matching the current query.
      *
+     * @param string $column The column to count (defaults to '*')
      * @return int
      * @throws PDOException
      */
     public function count(string $column = '*'): int
     {
-        try {
-            if (!empty($this->groupBy)) {
-                $sql = 'SELECT COUNT(DISTINCT ' . implode(', ', $this->groupBy) . ') as count FROM ' . $this->table;
-            } else {
-                $column = $column === '*' ? '*' : "`{$column}`";
-                $sql = "SELECT COUNT({$column}) as count FROM {$this->table}";
+        $query = clone $this;
+
+        $query->orderBy = [];
+        $query->limit = null;
+        $query->offset = null;
+
+        if (!empty($query->groupBy)) {
+            $groupColumns = implode(', ', $query->groupBy);
+
+            $subQuery = clone $query;
+            $subQuery->fields = $query->groupBy;
+
+            $subSql = $subQuery->toSql();
+
+            $countSql = "SELECT COUNT(*) as aggregate FROM ($subSql) as count_subquery";
+
+            try {
+                $stmt = $this->pdo->prepare($countSql);
+                $subQuery->bindValues($stmt);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                return (int) ($result['aggregate'] ?? 0);
+            } catch (PDOException $e) {
+                throw new PDOException("Database error: " . $e->getMessage());
             }
+        } else {
+            $column = $column === '*' ? '*' : $this->quoteIdentifier($column);
+            $query->select(["COUNT($column) as aggregate"]);
 
-            if (!empty($this->conditions)) {
-                $conditionStrings = [];
-                foreach ($this->conditions as $condition) {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                }
-                $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
-            }
-
-            $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
-            $stmt->execute();
-
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return (int) $result['count'];
-        } catch (PDOException $e) {
-            throw new PDOException("Database error: " . $e->getMessage());
+            $result = $query->first();
+            return (int) ($result->aggregate ?? 0);
         }
+    }
+
+    /**
+     * Add a raw select expression to the query.
+     *
+     * @param string $expression The raw SQL expression
+     * @param array $bindings Optional bindings for the expression
+     * @return self
+     */
+    public function selectRaw(string $expression, array $bindings = []): self
+    {
+        if ($this->fields === ['*']) {
+            $this->fields = [];
+        }
+
+        $processedExpression = $expression;
+        if (!empty($bindings)) {
+            foreach ($bindings as $value) {
+                $processedExpression = preg_replace(
+                    '/\?/',
+                    is_numeric($value) ? $value : "'" . $this->pdo->quote($value) . "'",
+                    $processedExpression,
+                    1
+                );
+            }
+        }
+
+        $this->fields[] = $processedExpression;
+
+        return $this;
+    }
+
+    /**
+     * Add a raw GROUP BY clause to the query.
+     *
+     * @param string $sql The raw GROUP BY expression
+     * @param array $bindings Optional bindings for parameters
+     * @return self
+     */
+    public function groupByRaw(string $sql, array $bindings = []): self
+    {
+        $this->groupBy[] = $sql;
+
+        if (!empty($bindings)) {
+            $this->conditions[] = [
+                'type' => 'RAW_GROUP_BY',
+                'expression' => $sql,
+                'bindings' => $bindings
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
+     * Properly quote an identifier for SQL.
+     *
+     * @param string $identifier
+     * @return string
+     */
+    protected function quoteIdentifier(string $identifier): string
+    {
+        if (strpos($identifier, '.') !== false) {
+            return implode('.', array_map(
+                fn($part) => "`{$part}`",
+                explode('.', $identifier)
+            ));
+        }
+        return "`{$identifier}`";
     }
 
     /**
@@ -1556,21 +1626,47 @@ class Builder
     protected function bindValues(PDOStatement $stmt): void
     {
         $index = 1;
+
         foreach ($this->conditions as $condition) {
             if (isset($condition['type'])) {
+                // Bind all RAW_* bindings
+                if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY'])) {
+                    if (!empty($condition['bindings']) && is_array($condition['bindings'])) {
+                        foreach ($condition['bindings'] as $value) {
+                            $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                        }
+                    }
+                    continue;
+                }
+
+                // Skip EXISTS/NOT EXISTS
                 if (in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
                     continue;
                 }
-            } elseif ($condition[2] === 'IS NULL' || $condition[2] === 'IS NOT NULL') {
+            }
+
+            // Handle IS NULL / IS NOT NULL (no binding needed)
+            if (isset($condition[2]) && in_array($condition[2], ['IS NULL', 'IS NOT NULL'])) {
                 continue;
-            } elseif ($condition[2] === 'BETWEEN' || $condition[2] === 'NOT BETWEEN') {
+            }
+
+            // BETWEEN / NOT BETWEEN
+            if (isset($condition[2]) && in_array($condition[2], ['BETWEEN', 'NOT BETWEEN'])) {
                 $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
                 $stmt->bindValue($index++, $condition[4], $this->getPdoParamType($condition[4]));
-            } elseif ($condition[2] === 'IN') {
+                continue;
+            }
+
+            // IN clause
+            if (isset($condition[2]) && $condition[2] === 'IN') {
                 foreach ($condition[3] as $value) {
                     $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
                 }
-            } else {
+                continue;
+            }
+
+            // Standard case: column, operator, value
+            if (isset($condition[3])) {
                 $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
             }
         }
@@ -2049,16 +2145,13 @@ class Builder
      */
     protected function updateColumn(string $column, int $amount, string $operator, array $extra = []): int
     {
-        // Validate amount
         if ($amount <= 0) {
             throw new \InvalidArgumentException("Amount must be positive");
         }
 
-        // Start building the SQL
         $sql = "UPDATE {$this->table} SET {$column} = {$column} {$operator} ?";
         $bindings = [$amount];
 
-        // Add extra columns if provided
         if (!empty($extra)) {
             $extraUpdates = [];
             foreach ($extra as $key => $value) {
@@ -2068,7 +2161,6 @@ class Builder
             $sql .= ', ' . implode(', ', $extraUpdates);
         }
 
-        // Add WHERE conditions if any
         if (!empty($this->conditions)) {
             $conditionStrings = [];
             foreach ($this->conditions as $condition) {
@@ -2081,7 +2173,6 @@ class Builder
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            // Bind all values
             foreach ($bindings as $index => $value) {
                 $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
             }

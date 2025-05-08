@@ -11,8 +11,13 @@ use Phaseolies\Http\Exceptions\StreamedResponseException;
 use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 
-class ResponseFactory
+class ResponseFactory extends Response
 {
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
     /**
      * Create a new response instance.
      *
@@ -148,13 +153,10 @@ class ResponseFactory
      */
     protected function fallbackName($name)
     {
-        // Remove any non-ASCII characters and replace them with their closest ASCII equivalents
         $name = iconv('UTF-8', 'ASCII//TRANSLIT', $name);
 
-        // Remove any remaining non-ASCII characters that couldn't be transliterated
         $name = preg_replace('/[^\x20-\x7E]/', '', $name);
 
-        // Remove any '%' characters
         $name = str_replace('%', '', $name);
 
         return $name;

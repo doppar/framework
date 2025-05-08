@@ -87,7 +87,7 @@ class UrlGenerator
      */
     public function full()
     {
-        return $this->to(request()->uri())->make();
+        return request()->fullUrl();
     }
 
     /**
@@ -97,9 +97,7 @@ class UrlGenerator
      */
     public function current()
     {
-        $path = parse_url(request()->uri(), PHP_URL_PATH) ?: '/';
-
-        return $this->to($path)->make();
+        return $this->to(request()->uri())->make();
     }
 
     /**
@@ -113,6 +111,7 @@ class UrlGenerator
     public function route($name, $parameters = [], $secure = null)
     {
         $path = app('route')->route($name, $parameters);
+
         return $this->enqueue($path, $secure);
     }
 
@@ -245,16 +244,23 @@ class UrlGenerator
         return hash_hmac('sha256', http_build_query($parameters), $secret);
     }
 
+
     /**
-     * Validate a URL.
+     * This method is taken from PHP Laravel framework
+     * Determine if the given path is a valid URL.
      *
-     * @param string $url
+     * @param  string  $path
      * @return bool
      */
-    public function isValid(string $url): bool
+    public function isValid($path)
     {
-        return filter_var($url, FILTER_VALIDATE_URL) !== false;
+        if (! preg_match('~^(#|//|https?://|(mailto|tel|sms):)~', $path)) {
+            return filter_var($path, FILTER_VALIDATE_URL) !== false;
+        }
+
+        return true;
     }
+
 
     /**
      * Get the base URL.

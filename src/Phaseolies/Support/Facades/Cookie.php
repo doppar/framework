@@ -9,7 +9,7 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\CookieJar store($name, $value = null, array $options = []): bool
  * @method static \Phaseolies\Support\CookieJar remove(string $name, array $options = []): void
  * @method static \Phaseolies\Support\CookieJar forever(string $name, string $value, array $options = []): void
- * @method static \Phaseolies\Support\CookieJar all(): ?array
+ * @method static \Phaseolies\Support\CookieJar all(bool $decodeValues = true): array
  * @see \Phaseolies\Support\CookieJar
  */
 

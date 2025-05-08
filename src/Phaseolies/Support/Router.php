@@ -309,6 +309,7 @@ class Router extends Kernel
     public function any($path, $callback): self
     {
         $method = request()->_method ?? request()->getMethod();
+
         return $this->addRoute($method, $path, $callback);
     }
 
@@ -370,27 +371,36 @@ class Router extends Kernel
      */
     protected function addRoute(string $method, string $path, $callback): self
     {
-        if (!is_callable($callback) && !is_array($callback)) {
-            throw new \InvalidArgumentException('Route callback must be callable or controller array');
+        if (
+            !is_callable($callback) &&
+            !is_array($callback) &&
+            !is_string($callback) &&
+            class_exists($callback)
+        ) {
+            throw new \InvalidArgumentException('Invalid route defination found');
         }
 
-        $prefix = $this->getGroupPrefix();
+        // Handle wildcard routes
+        if ($path === '*') {
+            $fullPath = '(.*)'; // Special pattern for catch-all
+        } else {
+            $prefix = $this->getGroupPrefix();
+            $path = ltrim($path, '/');
+            $prefix = $prefix ? rtrim($prefix, '/') : '';
 
-        $path = ltrim($path, '/');
-        $prefix = $prefix ? rtrim($prefix, '/') : '';
+            $fullPath = $prefix ? $prefix . '/' . $path : $path;
+            $fullPath = '/' . ltrim($fullPath, '/');
 
-        $fullPath = $prefix ? $prefix . '/' . $path : $path;
-        $fullPath = '/' . ltrim($fullPath, '/');
+            // Normalize trailing slashes except for root
+            $fullPath = ($fullPath !== '/' && substr($fullPath, -1) === '/')
+                ? rtrim($fullPath, '/')
+                : $fullPath;
+        }
 
-        $fullPath = ($fullPath !== '/' && substr($fullPath, -1) === '/') ? rtrim($fullPath, '/') : $fullPath;
-
-        // Special handling for root within a group (if prefix is set)
+        // Special handling for root within a group
         if ($path === '' && $prefix !== '') {
             self::$routes[$method][$fullPath] = $callback;
             $this->currentRoutePath = $fullPath;
-        } elseif ($fullPath === '/') {
-            self::$routes[$method]['/'] = $callback;
-            $this->currentRoutePath = '/';
         } else {
             self::$routes[$method][$fullPath] = $callback;
             $this->currentRoutePath = $fullPath;
@@ -398,8 +408,8 @@ class Router extends Kernel
 
         $this->currentRequestMethod = $method;
 
+        // Apply group middleware if any
         $groupMiddleware = $this->getGroupMiddleware();
-
         if (!empty($groupMiddleware)) {
             $this->middleware($groupMiddleware);
         }
@@ -459,8 +469,12 @@ class Router extends Kernel
      * @return Route
      * @throws \Exception If the middleware is not defined.
      */
-    public function middleware(string|array $keys): self
+    public function middleware(string|array ...$keys): self
     {
+        $keys = count($keys) === 1 && is_array($keys[0])
+            ? $keys[0]
+            : $keys;
+
         if ($this->currentRoutePath) {
             $method = $this->getCurrentRequestMethod();
             foreach ((array) $keys as $key) {
@@ -498,41 +512,69 @@ class Router extends Kernel
             return $routes[$url];
         }
 
-        if ($url === '/' && isset($routes['/'])) {
-            return $routes['/'];
-        }
-
         foreach ($routes as $route => $callback) {
-            if ($route === $url) continue;
-
-            $routeNames = [];
+            if ($route === $url) {
+                continue;
+            }
 
             if ($route === '(.*)') {
                 return $callback;
             }
 
-            if (preg_match_all('/\{(\w+)(:[^}]+)?}/', $route, $matches)) {
-                $routeNames = $matches[1];
-            }
+            $routeRegex = $this->convertRouteToRegex($route);
 
-            $routeRegex = "@^" . preg_replace_callback(
-                '/\{\w+(:([^}]+))?}/',
-                fn($m) => isset($m[2]) ? "({$m[2]})" : '(\w+)',
-                $route
-            ) . "$@";
-
-            if (preg_match_all($routeRegex, $url, $valueMatches)) {
-                $values = [];
-                for ($i = 1; $i < count($valueMatches); $i++) {
-                    $values[] = $valueMatches[$i][0];
+            if (preg_match($routeRegex, $url, $matches)) {
+                $params = $this->extractRouteParameters($route, $matches);
+                if ($params !== false) {
+                    $request->setRouteParams($params);
+                    return $callback;
                 }
-                $routeParams = array_combine($routeNames, $values);
-                $request->setRouteParams($routeParams);
-                return $callback;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Convert route to regex
+     *
+     * @param string $route
+     * @return string
+     */
+    protected function convertRouteToRegex(string $route): string
+    {
+        $regex = str_replace('/', '\/', $route);
+
+        // Replace {param} with named capture groups
+        $regex = preg_replace('/\{(\w+)(:[^}]+)?}/', '(?P<$1>[^\/]+)', $regex);
+
+        // Replace * with .* for wildcard matching
+        $regex = str_replace('*', '.*', $regex);
+
+        return '@^' . $regex . '$@D';
+    }
+
+    /**
+     * Extract route params
+     *
+     * @param string $route
+     * @param array $matches
+     * @return array
+     */
+    protected function extractRouteParameters(string $route, array $matches): array|false
+    {
+        // Get all named parameters from the route pattern
+        preg_match_all('/\{(\w+)(:[^}]+)?}/', $route, $paramNames);
+        $params = [];
+
+        foreach ($paramNames[1] as $name) {
+            if (!isset($matches[$name])) {
+                return false;
+            }
+            $params[$name] = $matches[$name];
+        }
+
+        return $params;
     }
 
     /**
@@ -568,22 +610,37 @@ class Router extends Kernel
 
     /**
      * Applies middleware to the route
-     * @return Route
+     *
+     * @param Request $request
+     * @param Application $app
+     * @param array $currentMiddleware
+     * @return void
+     * @throws \Exception
      */
-    private function applyRouteMiddleware($app, $currentMiddleware): void
+    private function applyRouteMiddleware($request, $app, $currentMiddleware): void
     {
         foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
-            if (!isset($this->routeMiddleware[$name])) {
-                throw new \Exception("Undefined middleware [$name]");
+            if (!$request->isApiRequest()) {
+                if (!isset($this->routeMiddleware['web'][$name])) {
+                    throw new \Exception("Undefined middleware [$name]");
+                }
+
+                $middlewareClass = $this->routeMiddleware['web'][$name];
+            } else {
+                if (!isset($this->routeMiddleware['api'][$name])) {
+                    throw new \Exception("Undefined middleware [$name]");
+                }
+
+                $middlewareClass = $this->routeMiddleware['api'][$name];
             }
 
-            $middlewareClass = $this->routeMiddleware[$name];
             $middlewareInstance = $app->make($middlewareClass);
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new \Exception("Unresolved dependency $middlewareClass", 1);
             }
+
             $this->applyMiddleware($middlewareInstance, $params);
         }
     }
@@ -599,18 +656,17 @@ class Router extends Kernel
     public function resolve(Application $app, Request $request): Response
     {
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-        if ($currentMiddleware) $this->applyRouteMiddleware($app, $currentMiddleware);
+        if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
 
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);
 
         $routeParams = $request->getRouteParams();
-        $finalHandler = function ($request) use ($callback, $app, $routeParams) {
+        $handler = function ($request) use ($callback, $app, $routeParams) {
             if (is_array($callback)) {
                 $result = $this->resolveControllerAction($callback, $app, $routeParams);
             } elseif (is_string($callback) && class_exists($callback)) {
-                $controller = $app->get($callback);
-                $result = $this->handleInvokableAction($app, $controller, $routeParams);
+                $result = $this->resolveControllerAction($callback, $app, $routeParams);
             } elseif ($callback instanceof \Closure) {
                 $result = $this->resolveClosure($callback, $app, $routeParams, $request);
             } else {
@@ -624,7 +680,8 @@ class Router extends Kernel
 
             return $result;
         };
-        $response = $this->handle($request, $finalHandler);
+
+        $response = $this->handle($request, $handler);
 
         return $response;
     }
@@ -701,45 +758,6 @@ class Router extends Kernel
     }
 
     /**
-     * Handling __invokable controller actions
-     * @param mixed $app
-     * @param mixed $controller
-     * @param mixed $routeParams
-     * @return mixed
-     * @throws \ReflectionException If there is an issue with reflection.
-     * @throws \Exception If dependency resolution fails.
-     */
-    public function handleInvokableAction($app, $controller, $routeParams): mixed
-    {
-        $reflectionMethod = new \ReflectionMethod($controller, '__invoke');
-        $parameters = $reflectionMethod->getParameters();
-
-        $resolvedParameters = [];
-        foreach ($parameters as $parameter) {
-            $paramName = $parameter->getName();
-            $paramType = $parameter->getType();
-
-            if ($paramType) {
-                if (class_exists($paramType->getName())) {
-                    $resolvedParameters[] = $app->get($paramType->getName());
-                } elseif (array_key_exists($paramName, $routeParams)) {
-                    $resolvedParameters[] = $routeParams[$paramName];
-                }
-            } else {
-                if (array_key_exists($paramName, $routeParams)) {
-                    $resolvedParameters[] = $routeParams[$paramName];
-                } else {
-                    throw new \Exception("Unable to resolve parameter: {$paramName}");
-                }
-            }
-        }
-
-        $result = $controller->__invoke(...$resolvedParameters);
-
-        return $result;
-    }
-
-    /**
      * Resolves and executes a controller action with dependencies.
      *
      * @param array $callback The controller callback (e.g., [Controller::class, 'action']).
@@ -749,9 +767,15 @@ class Router extends Kernel
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveControllerAction(array $callback, $app, array $routeParams): mixed
+    private function resolveControllerAction(array|string $callback, $app, array $routeParams): mixed
     {
-        [$controllerClass, $actionMethod] = $callback;
+        if (is_string($callback)) {
+            $controllerClass = $callback;
+            $actionMethod = "__invoke";
+        } else {
+            [$controllerClass, $actionMethod] = $callback;
+        }
+
         $reflector = new \ReflectionClass($controllerClass);
 
         $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
@@ -845,7 +869,7 @@ class Router extends Kernel
             } elseif ($parameter->isOptional()) {
                 $dependencies[] = $parameter->getDefaultValue();
             } else {
-                throw new \Exception("Cannot resolve parameter '$paramName' in route callback");
+                throw new \Exception("Cannot resolve parameter '$paramName'");
             }
         }
 

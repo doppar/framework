@@ -5,21 +5,10 @@ namespace Phaseolies\Providers;
 use Phaseolies\Support\Router;
 use Phaseolies\Support\Facades\Route;
 
-/**
- * RouteServiceProvider is responsible for registering and bootstrapping
- * the application's routing functionality.
- *
- * This class binds the Router instance into the service container and
- * loads the application's route definitions.
- */
 class RouteServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
-     *
-     * This method is called when the service provider is registered.
-     * It binds the Router instance as a singleton into the service container,
-     * ensuring that the same Router instance is reused throughout the application.
      *
      * @return void
      */

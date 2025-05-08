@@ -40,6 +40,16 @@ class Collection extends RamseyCollection implements IteratorAggregate
     }
 
     /**
+     * Count the number of items in the collection.
+     *
+     * @return int
+     */
+    public function count(): int
+    {
+        return count($this->items);
+    }
+
+    /**
      * Get all items in the collection
      *
      * @return array

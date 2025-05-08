@@ -6,7 +6,7 @@ class Paginator
 {
     protected $data;
 
-    public function __construct(array $data)
+    public function __construct($data)
     {
         $this->data = $data;
     }
@@ -163,8 +163,8 @@ class Paginator
      */
     public function linkWithJumps(): ?string
     {
-        if (file_exists(resource_path('views/pagination/jump.blade.php'))) {
-            return view('pagination.jump', ['paginator' => $this])->render();
+        if (file_exists(resource_path('views/vendor/pagination/jump.blade.php'))) {
+            return view('vendor.pagination.jump', ['paginator' => $this])->render();
         }
 
         if ($this->hasPages()) {
@@ -211,8 +211,8 @@ class Paginator
      */
     public function links(): ?string
     {
-        if (file_exists(resource_path('views/pagination/number.blade.php'))) {
-            return view('pagination.number', ['paginator' => $this])->render();
+        if (file_exists(resource_path('views/vendor/pagination/number.blade.php'))) {
+            return view('vendor.pagination.number', ['paginator' => $this])->render();
         }
         if ($this->hasPages()) {
             $html = '<div class="d-flex justify-content-between align-items-center">';

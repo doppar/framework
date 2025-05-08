@@ -34,17 +34,19 @@ trait ValidationRules
     {
         $attribute = $this->getAttributeName($fieldName);
 
-        $replace[':attribute'] = $attribute;
-        $replace['attribute'] = $attribute;
+        // Default replacements
+        $replace = array_merge([
+            ':attribute' => $attribute,
+            'attribute' => $attribute,
+        ], $replace);
 
         $message = $this->translator->get("validation.$rule", $replace);
 
         if ($message === "validation.$rule") {
-            $message = str_replace(
-                [':attribute', 'attribute'],
-                $attribute,
-                $this->getDefaultErrorMessage($rule)
-            );
+            $message = $this->getDefaultErrorMessage($rule);
+            foreach ($replace as $key => $value) {
+                $message = str_replace(":$key", $value, $message);
+            }
         }
 
         return $message;
@@ -130,13 +132,19 @@ trait ValidationRules
 
                 case 'min':
                     if ($this->isLessThanMin($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('min.string', $fieldName, [':min' => $ruleValue]);
+                        return $this->getErrorMessage('min.string', $fieldName, [
+                            ':min' => $ruleValue,
+                            'min' => $ruleValue
+                        ]);
                     }
                     break;
 
                 case 'max':
                     if ($this->isMoreThanMax($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('max.string', $fieldName, [':max' => $ruleValue]);
+                        return $this->getErrorMessage('max.string', $fieldName, [
+                            ':max' => $ruleValue,
+                            'max' => $ruleValue
+                        ]);
                     }
                     break;
 
@@ -153,25 +161,37 @@ trait ValidationRules
 
                 case 'gte':
                     if (!$this->isDateGreaterThanOrEqual($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('gte', $fieldName);
+                        return $this->getErrorMessage('gte', $fieldName, [
+                            ':date' => $ruleValue,
+                            'date' => $ruleValue
+                        ]);
                     }
                     break;
 
                 case 'lte':
                     if (!$this->isDateLessThanOrEqual($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('lte', $fieldName);
+                        return $this->getErrorMessage('lte', $fieldName, [
+                            ':date' => $ruleValue,
+                            'date' => $ruleValue
+                        ]);
                     }
                     break;
 
                 case 'gt':
                     if (!$this->isDateGreaterThan($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('gt', $fieldName);
+                        return $this->getErrorMessage('gt', $fieldName, [
+                            ':date' => $ruleValue,
+                            'date' => $ruleValue
+                        ]);
                     }
                     break;
 
                 case 'lt':
                     if (!$this->isDateLessThan($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('lt', $fieldName);
+                        return $this->getErrorMessage('lt', $fieldName, [
+                            ':date' => $ruleValue,
+                            'date' => $ruleValue
+                        ]);
                     }
                     break;
                 case 'int':
@@ -182,21 +202,31 @@ trait ValidationRules
 
                 case 'float':
                     if (!$this->isFloat($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('float', $fieldName);
+                        return $this->getErrorMessage('float', $fieldName, [
+                            ':decimal' => $ruleValue,
+                            'decimal' => $ruleValue
+                        ]);
                     }
                     break;
 
                 case 'between':
                     if (!$this->isBetween($input, $fieldName, $ruleValue)) {
                         $range = explode(',', $ruleValue);
-                        return $this->getErrorMessage('between.numeric', $fieldName, [
+                        return $this->getErrorMessage('between', $fieldName, [
                             ':min' => $range[0],
-                            ':max' => $range[1]
+                            'min' => $range[0],
+                            ':max' => $range[1],
+                            'max' => $range[1],
                         ]);
                     }
+                    break;
+
                 case 'same_as':
                     if (!$this->isSameAs($input, $fieldName, $ruleValue)) {
-                        return $this->getErrorMessage('same_as', $fieldName, [':other' => $this->getAttributeName($ruleValue)]);
+                        return $this->getErrorMessage('same_as', $fieldName, [
+                            ':other' => $this->getAttributeName($ruleValue),
+                            'other' => $this->getAttributeName($ruleValue)
+                        ]);
                     }
                     break;
             }
@@ -401,9 +431,11 @@ trait ValidationRules
             case 'mimes':
                 $allowedTypes = explode(',', $ruleValue);
                 $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-
                 if (!in_array($fileExtension, $allowedTypes)) {
-                    return $this->getErrorMessage('file.mimes', $fieldName, [':values' => implode(', ', $allowedTypes)]);
+                    return $this->getErrorMessage('file.mimes', $fieldName, [
+                        ':values' => $ruleValue,
+                        'values' => $ruleValue
+                    ]);
                 }
                 break;
 
@@ -413,19 +445,31 @@ trait ValidationRules
                     [$width, $height] = getimagesize($file['tmp_name']);
 
                     if (isset($dimensions['min_width']) && $width < $dimensions['min_width']) {
-                        return $this->getErrorMessage('file.dimensions.min_width', $fieldName, [':min_width' => $dimensions['min_width']]);
+                        return $this->getErrorMessage('file.dimensions.min_width', $fieldName, [
+                            ':min_width' => $dimensions['min_width'],
+                            'min_width' => $dimensions['min_width']
+                        ]);
                     }
 
                     if (isset($dimensions['min_height']) && $height < $dimensions['min_height']) {
-                        return $this->getErrorMessage('file.dimensions.min_height', $fieldName, [':min_width' => $dimensions['min_height']]);
+                        return $this->getErrorMessage('file.dimensions.min_height', $fieldName, [
+                            ':min_height' => $dimensions['min_height'],
+                            'min_height' => $dimensions['min_height'],
+                        ]);
                     }
 
                     if (isset($dimensions['max_width']) && $width > $dimensions['max_width']) {
-                        return $this->getErrorMessage('file.dimensions.max_width', $fieldName, [':min_width' => $dimensions['max_width']]);
+                        return $this->getErrorMessage('file.dimensions.max_width', $fieldName, [
+                            ':max_width' => $dimensions['max_width'],
+                            'max_width' => $dimensions['max_width']
+                        ]);
                     }
 
                     if (isset($dimensions['max_height']) && $height > $dimensions['max_height']) {
-                        return $this->getErrorMessage('file.dimensions.max_height', $fieldName, [':min_width' => $dimensions['max_height']]);
+                        return $this->getErrorMessage('file.dimensions.max_height', $fieldName, [
+                            ':max_height' => $dimensions['max_height'],
+                            'max_height' => $dimensions['max_height']
+                        ]);
                     }
                 }
                 break;
@@ -433,7 +477,10 @@ trait ValidationRules
             case 'max':
                 $maxSize = $this->parseSizeRule($ruleValue);
                 if ($file['size'] > $maxSize) {
-                    return $this->getErrorMessage('file.max', $fieldName, [':max' => $this->formatBytes($maxSize)]);
+                    return $this->getErrorMessage('file.max', $fieldName, [
+                        ':max' => $this->formatBytes($maxSize),
+                        'max' => $this->formatBytes($maxSize)
+                    ]);
                 }
                 break;
         }
