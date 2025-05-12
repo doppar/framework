@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Http\Support;
 
+use Phaseolies\Utilities\IpUtils;
+
 trait RequestParser
 {
     /**
@@ -33,6 +35,56 @@ trait RequestParser
         }
 
         return $this->server->get('REMOTE_ADDR');
+    }
+
+    /**
+     * Get all client IP addresses, including those forwarded by proxies.
+     * The original client IP will be at the end of the array.
+     *
+     * @return array
+     */
+    public function ips(): array
+    {
+        $ips = [];
+
+        $remoteAddr = $this->server->get('REMOTE_ADDR');
+
+        if ($this->isFromTrustedProxy()) {
+            if ($this->trustedHeaderSet & self::HEADER_X_FORWARDED_FOR) {
+                $xForwardedFor = $this->headers->get('X_FORWARDED_FOR');
+                if ($xForwardedFor) {
+                    $forwardedIps = array_map('trim', explode(',', $xForwardedFor));
+                    $ips = array_merge($ips, $forwardedIps);
+                }
+            }
+
+            if ($this->trustedHeaderSet & self::HEADER_FORWARDED) {
+                $forwarded = $this->headers->get('FORWARDED');
+                if ($forwarded) {
+                    $parts = explode(';', $forwarded);
+                    foreach ($parts as $part) {
+                        $keyValue = explode('=', trim($part), 2);
+                        if (count($keyValue) === 2 && $keyValue[0] === 'for') {
+                            $ips[] = trim($keyValue[1], '"\'');
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($remoteAddr) {
+            $ips[] = $remoteAddr;
+        }
+
+        $ips = array_filter($ips, function ($ip) {
+            return filter_var($ip, FILTER_VALIDATE_IP);
+        });
+
+        $ips = array_filter($ips, function ($ip) {
+            return !IpUtils::checkIp($ip, self::$trustedProxies);
+        });
+
+        return array_values($ips);
     }
 
     /**

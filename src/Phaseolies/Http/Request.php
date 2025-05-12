@@ -138,14 +138,14 @@ class Request
         $this->headers = new HeaderBag($this->server->getHeaders());
         $this->request = new InputBag($this->createFromGlobals());
         $this->query = new InputBag($_GET);
-        $this->attributes = new ParameterBag();
+        $this->attributes = new ParameterBag($_SERVER);
         $this->cookies = new InputBag($_COOKIE);
+        $this->session = new Session($_SESSION);
         $this->files = $_FILES;
         $this->content = $this->content();
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
         $this->method = $this->method();
-        $this->session = new Session($_SESSION);
         $this->format = null;
         $this->languages = null;
         $this->charsets = null;
@@ -1469,6 +1469,8 @@ class Request
      */
     public static function capture()
     {
+        static::enableHttpMethodParameterOverride();
+
         return app(Request::class);
     }
 
@@ -1543,6 +1545,17 @@ class Request
     public function getETags(): array
     {
         return preg_split('/\s*,\s*/', $this->headers->get('If-None-Match', ''), -1, \PREG_SPLIT_NO_EMPTY);
+    }
+
+    /**
+     * Checks if a header exists in the request.
+     *
+     * @param string $header The header name to check
+     * @return bool True if the header exists, false otherwise
+     */
+    public function hasHeader(string $header): bool
+    {
+        return $this->headers->has($header);
     }
 
     /**

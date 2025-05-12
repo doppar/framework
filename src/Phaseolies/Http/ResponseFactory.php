@@ -58,14 +58,14 @@ class ResponseFactory extends Response
      * This method sets the appropriate headers for a JSON response and returns the JSON-encoded data.
      *
      * @param mixed $data The data to encode as JSON.
-     * @param int $statusCode The HTTP status code (default: 200).
+     * @param int $status The HTTP status code (default: 200).
      * @param array<string, string> $headers Additional headers to include in the response.
      * @param array $headers
      * @return JsonResponse
      */
-    public function json(mixed $data, int $statusCode = 200, array $headers = []): JsonResponse
+    public function json(mixed $data, int $status = 200, array $headers = []): JsonResponse
     {
-        return new JsonResponse($data, $statusCode, $headers);
+        return new JsonResponse($data, $status, $headers);
     }
 
     /**

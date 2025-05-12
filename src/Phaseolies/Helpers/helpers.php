@@ -1,8 +1,9 @@
 <?php
 
-use Carbon\Carbon;
-use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Utilities\Paginator;
+use Phaseolies\Translation\Translator;
+use Phaseolies\Support\UrlGenerator;
+use Phaseolies\Support\StringService;
 use Phaseolies\Support\Facades\Log;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Support\Collection;
@@ -13,9 +14,8 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
-use Phaseolies\Support\StringService;
-use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Translation\Translator;
+use Phaseolies\Auth\Security\Authenticate;
+use Carbon\Carbon;
 
 /**
  * Gets an environment variable from available sources, and provides emulation
@@ -88,16 +88,6 @@ function request($key = null, $default = null): mixed
 function auth(): Authenticate
 {
     return app('auth');
-}
-
-/**
- * Creates a new cookie instance to handle cookie.
- *
- * @return CookieJar
- */
-function cookie(): CookieJar
-{
-    return app('cookie');
 }
 
 /**
@@ -285,8 +275,15 @@ function route(string $name, mixed $params = []): ?string
  * @param string $default The default configuration key to retrieve.
  * @return string|array|null The configuration value associated with the key, or null if not found.
  */
-function config(string $key, ?string $default = null): null|string|array
+function config(string|array $key, ?string $default = null): null|string|array
 {
+    if (is_array($key)) {
+        foreach ($key as $k => $v) {
+            Config::set($k, $v);
+        }
+        return null;
+    }
+
     return Config::get($key, $default);
 }
 
@@ -441,9 +438,20 @@ function enqueue(string $path = '', $secure = null): string
 }
 
 /**
+ * Creates a new cookie instance to handle cookie.
+ *
+ * @return CookieJar
+ */
+function cookie(): CookieJar
+{
+    return app('cookie');
+}
+
+/**
  * Abort the request with a specific HTTP status code and optional message.
  *
  * @param int
+ * @param int $code
  * @param string $message
  * @param array $headers
  * @throws HttpException

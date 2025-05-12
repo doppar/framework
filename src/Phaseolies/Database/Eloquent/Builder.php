@@ -332,7 +332,7 @@ class Builder
         $relationType = $model->getLastRelationType();
         $relatedModel = $model->getLastRelatedModel();
 
-        if ($relationType === 'manyToMany') {
+        if ($relationType === 'bindToMany') {
             $pivotTable = $model->getLastPivotTable();
             $foreignKey = $model->getLastForeignKey();
             $relatedKey = $model->getLastRelatedKey();
@@ -487,7 +487,7 @@ class Builder
         $relatedModel = $model->getLastRelatedModel();
 
         // Handle different relationship types
-        if ($relationType === 'manyToMany') {
+        if ($relationType === 'bindToMany') {
             $pivotTable = $model->getLastPivotTable();
             $foreignKey = $model->getLastForeignKey();
             $relatedKey = $model->getLastRelatedKey();
@@ -951,10 +951,10 @@ class Builder
                 $related = $model->getRelation($primaryRelation);
 
                 if ($related instanceof Collection) {
-                    // If the relation is a collection (oneToMany, manyToMany, etc.)
+                    // If the relation is a collection (linkMany, bindToMany, etc.)
                     $this->loadNestedRelationsForCollection($related, $nestedPath, $constraint);
                 } elseif ($related !== null) {
-                    // If the relation is a single model (oneToOne)
+                    // If the relation is a single model (linkOne or bindTo)
                     $this->loadNestedRelationsForModel($related, $nestedPath, $constraint);
                 }
             }
@@ -1084,6 +1084,41 @@ class Builder
     }
 
     /**
+     * Delete records by their primary keys.
+     *
+     * @param mixed ...$ids Single ID or array of IDs to delete
+     * @return int Number of deleted records
+     * @throws PDOException
+     */
+    public function purge(...$ids): int
+    {
+        $ids = is_array($ids[0]) ? $ids[0] : $ids;
+
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $model = $this->getModel();
+        $primaryKey = $model->getKeyName();
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = "DELETE FROM {$this->table} WHERE {$primaryKey} IN ({$placeholders})";
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            foreach ($ids as $index => $id) {
+                $stmt->bindValue($index + 1, $id, $this->getPdoParamType($id));
+            }
+
+            $stmt->execute();
+            return $stmt->rowCount();
+        } catch (PDOException $e) {
+            throw new PDOException("Database error: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Add a join clause to the query.
      *
      * @param string $table
@@ -1128,7 +1163,7 @@ class Builder
         $foreignKey = $firstModel->getLastForeignKey();
         $localKey = $firstModel->getLastLocalKey();
 
-        if ($relationType === 'manyToMany') {
+        if ($relationType === 'bindToMany') {
             $this->loadManyToManyRelation($collection, $relation, $constraint);
             return;
         }
@@ -1154,7 +1189,7 @@ class Builder
 
             $model->setRelation(
                 $relation,
-                $relationType === 'oneToOne'
+                $relationType === 'linkOne' || $relationType === 'bindTo'
                     ? ($relatedItems[0] ?? null)
                     : new Collection($relatedModel, $relatedItems)
             );

@@ -2,156 +2,93 @@
 
 namespace Phaseolies\Http;
 
-/**
- * Class ServerBag
+/*
+ * This file is part of the Symfony package.
  *
- * A container for managing server-related data (e.g., $_SERVER superglobal).
- * Provides methods to retrieve server variables, check their existence, and extract HTTP headers.
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ * ServerBag is a container for HTTP headers from the $_SERVER variable.
+ *
+ * @author Fabien Potencier <fabien@symfony.com>
+ * @author Bulat Shakirzyanov <mallluhuct@gmail.com>
+ * @author Robert Kiss <kepten@gmail.com>
  */
-class ServerBag
+class ServerBag extends ParameterBag
 {
     /**
-     * @var array The internal storage for server data.
-     */
-    private array $server;
-
-    /**
-     * ServerBag constructor.
-     *
-     * @param array $server Initial server data (typically the $_SERVER superglobal).
-     */
-    public function __construct(array $server = [])
-    {
-        $this->server = $server;
-    }
-
-
-    /**
-     * Sets a value for a given key in the server data.
-     *
-     * @param string $key The key to set.
-     * @param mixed $value The value to assign.
-     * @return void
-     */
-    public function set(string $key, mixed $value): void
-    {
-        $this->server[$key] = $value;
-    }
-
-    /**
-     * Removes a key from the server data.
-     *
-     * @param string $key The key to remove.
-     * @return void
-     */
-    public function remove(string $key): void
-    {
-        unset($this->server[$key]);
-    }
-
-    /**
-     * Returns the parameter value converted to integer.
-     */
-    public function getInt(string $key, int $default = 0): int
-    {
-        return $this->filter($key, $default, \FILTER_VALIDATE_INT, ['flags' => \FILTER_REQUIRE_SCALAR]);
-    }
-
-    /**
-     * Retrieves the value for a given key from the server data.
-     *
-     * @param string $key The key to retrieve (e.g., 'REQUEST_METHOD', 'HTTP_HOST').
-     * @param mixed $default The default value to return if the key does not exist.
-     * @return mixed The value associated with the key, or the default value if the key is not found.
-     */
-    public function get(string $key, mixed $default = null): mixed
-    {
-        return $this->server[$key] ?? $default;
-    }
-
-    /**
-     * Checks if a key exists in the server data.
-     *
-     * @param string $key The key to check.
-     * @return bool True if the key exists, false otherwise.
-     */
-    public function has(string $key): bool
-    {
-        return isset($this->server[$key]);
-    }
-
-    /**
-     * Retrieves all server data as an associative array.
-     *
-     * @return array The entire server data.
-     */
-    public function all(): array
-    {
-        return $this->server;
-    }
-
-    /**
-     * Extracts and returns HTTP headers from the server data.
-     *
-     * HTTP headers in the $_SERVER superglobal are prefixed with 'HTTP_'.
-     * This method converts keys like 'HTTP_CONTENT_TYPE' to 'Content-Type'.
-     *
-     * @return array An associative array of HTTP headers.
+     * Gets the HTTP headers.
      */
     public function getHeaders(): array
     {
         $headers = [];
-        foreach ($this->server as $key => $value) {
+        foreach ($this->parameters as $key => $value) {
             if (str_starts_with($key, 'HTTP_')) {
-                // Convert 'HTTP_HEADER_NAME' to 'Header-Name'
-                $headerName = str_replace('_', '-', substr($key, 5));
-                $headers[$headerName] = $value;
+                $headers[substr($key, 5)] = $value;
+            } elseif (\in_array($key, ['CONTENT_TYPE', 'CONTENT_LENGTH', 'CONTENT_MD5'], true) && '' !== $value) {
+                $headers[$key] = $value;
             }
         }
 
+        if (isset($this->parameters['PHP_AUTH_USER'])) {
+            $headers['PHP_AUTH_USER'] = $this->parameters['PHP_AUTH_USER'];
+            $headers['PHP_AUTH_PW'] = $this->parameters['PHP_AUTH_PW'] ?? '';
+        } else {
+            /*
+             * php-cgi under Apache does not pass HTTP Basic user/pass to PHP by default
+             * For this workaround to work, add these lines to your .htaccess file:
+             * RewriteCond %{HTTP:Authorization} .+
+             * RewriteRule ^ - [E=HTTP_AUTHORIZATION:%0]
+             *
+             * A sample .htaccess file:
+             * RewriteEngine On
+             * RewriteCond %{HTTP:Authorization} .+
+             * RewriteRule ^ - [E=HTTP_AUTHORIZATION:%0]
+             * RewriteCond %{REQUEST_FILENAME} !-f
+             * RewriteRule ^(.*)$ index.php [QSA,L]
+             */
+
+            $authorizationHeader = null;
+            if (isset($this->parameters['HTTP_AUTHORIZATION'])) {
+                $authorizationHeader = $this->parameters['HTTP_AUTHORIZATION'];
+            } elseif (isset($this->parameters['REDIRECT_HTTP_AUTHORIZATION'])) {
+                $authorizationHeader = $this->parameters['REDIRECT_HTTP_AUTHORIZATION'];
+            }
+
+            if (null !== $authorizationHeader) {
+                if (0 === stripos($authorizationHeader, 'basic ')) {
+                    // Decode AUTHORIZATION header into PHP_AUTH_USER and PHP_AUTH_PW when authorization header is basic
+                    $exploded = explode(':', base64_decode(substr($authorizationHeader, 6)), 2);
+                    if (2 == \count($exploded)) {
+                        [$headers['PHP_AUTH_USER'], $headers['PHP_AUTH_PW']] = $exploded;
+                    }
+                } elseif (empty($this->parameters['PHP_AUTH_DIGEST']) && (0 === stripos($authorizationHeader, 'digest '))) {
+                    // In some circumstances PHP_AUTH_DIGEST needs to be set
+                    $headers['PHP_AUTH_DIGEST'] = $authorizationHeader;
+                    $this->parameters['PHP_AUTH_DIGEST'] = $authorizationHeader;
+                } elseif (0 === stripos($authorizationHeader, 'bearer ')) {
+                    /*
+                     * XXX: Since there is no PHP_AUTH_BEARER in PHP predefined variables,
+                     *      I'll just set $headers['AUTHORIZATION'] here.
+                     *      https://php.net/reserved.variables.server
+                     */
+                    $headers['AUTHORIZATION'] = $authorizationHeader;
+                }
+            }
+        }
+
+        if (isset($headers['AUTHORIZATION'])) {
+            return $headers;
+        }
+
+        // PHP_AUTH_USER/PHP_AUTH_PW
+        if (isset($headers['PHP_AUTH_USER'])) {
+            $headers['AUTHORIZATION'] = 'Basic ' . base64_encode($headers['PHP_AUTH_USER'] . ':' . ($headers['PHP_AUTH_PW'] ?? ''));
+        } elseif (isset($headers['PHP_AUTH_DIGEST'])) {
+            $headers['AUTHORIZATION'] = $headers['PHP_AUTH_DIGEST'];
+        }
+
         return $headers;
-    }
-
-    /**
-     * Filter key.
-     *
-     * @param int                                     $filter  FILTER_* constant
-     * @param int|array{flags?: int, options?: array} $options Flags from FILTER_* constants
-     *
-     * @see https://php.net/filter-var
-     */
-    public function filter(string $key, mixed $default = null, int $filter = \FILTER_DEFAULT, mixed $options = []): mixed
-    {
-        $value = $this->get($key, $default);
-
-        // Always turn $options into an array - this allows filter_var option shortcuts.
-        if (!\is_array($options) && $options) {
-            $options = ['flags' => $options];
-        }
-
-        // Add a convenience check for arrays.
-        if (\is_array($value) && !isset($options['flags'])) {
-            $options['flags'] = \FILTER_REQUIRE_ARRAY;
-        }
-
-        if (\is_object($value) && !$value instanceof \Stringable) {
-            throw new \Exception(\sprintf('Parameter value "%s" cannot be filtered.', $key));
-        }
-
-        if ((\FILTER_CALLBACK & $filter) && !(($options['options'] ?? null) instanceof \Closure)) {
-            throw new \InvalidArgumentException(\sprintf('A Closure must be passed to "%s()" when FILTER_CALLBACK is used, "%s" given.', __METHOD__, get_debug_type($options['options'] ?? null)));
-        }
-
-        $options['flags'] ??= 0;
-        $nullOnFailure = $options['flags'] & \FILTER_NULL_ON_FAILURE;
-        $options['flags'] |= \FILTER_NULL_ON_FAILURE;
-
-        $value = filter_var($value, $filter, $options);
-
-        if (null !== $value || $nullOnFailure) {
-            return $value;
-        }
-
-        throw new \UnexpectedValueException(\sprintf('Parameter value "%s" is invalid and flag "FILTER_NULL_ON_FAILURE" was not set.', $key));
     }
 }

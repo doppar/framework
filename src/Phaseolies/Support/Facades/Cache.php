@@ -15,6 +15,9 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Cache\CacheStore decrement($key, $value = 1): int|bool
  * @method static \Phaseolies\Cache\CacheStore forever($key, $value): bool
  * @method static \Phaseolies\Cache\CacheStore forget($key)
+ * @method static \Phaseolies\Cache\CacheStore stash(string $key, $ttl, Closure $callback): mixed
+ * @method static \Phaseolies\Cache\CacheStore stashForever(string $key, Closure $callback): mixed
+ * @method static \Phaseolies\Cache\CacheStore stashWhen(string $key, Closure $callback, bool $condition, $ttl = null): mixed
  * @see \Phaseolies\Cache\CacheStore
  */
 

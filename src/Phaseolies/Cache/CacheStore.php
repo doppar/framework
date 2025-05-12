@@ -2,9 +2,10 @@
 
 namespace Phaseolies\Cache;
 
-use Psr\SimpleCache\CacheInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Psr\SimpleCache\CacheInterface;
 use DateInterval;
+use Closure;
 
 class CacheStore implements CacheInterface
 {
@@ -326,5 +327,70 @@ class CacheStore implements CacheInterface
     public function getAdapter(): AdapterInterface
     {
         return $this->adapter;
+    }
+
+    /**
+     * Get an item from the cache, or execute the callback and store the result.
+     *
+     * @param string $key
+     * @param int|DateInterval $ttl
+     * @param Closure $callback
+     * @return mixed
+     */
+    public function stash(string $key, $ttl, Closure $callback): mixed
+    {
+        $value = $this->get($key);
+
+        if (!is_null($value)) {
+            return $value;
+        }
+
+        $value = $callback();
+
+        $this->set($key, $value, $ttl);
+
+        return $value;
+    }
+
+    /**
+     * Get an item from the cache, or execute the callback and store the result forever.
+     *
+     * @param string $key
+     * @param Closure $callback
+     * @return mixed
+     */
+    public function stashForever(string $key, Closure $callback): mixed
+    {
+        $value = $this->get($key);
+
+        if (!is_null($value)) {
+            return $value;
+        }
+
+        $value = $callback();
+
+        $this->forever($key, $value);
+
+        return $value;
+    }
+
+    /**
+     * Get an item from the cache, or execute the callback and store the result conditionally.
+     *
+     * @param string $key
+     * @param Closure $callback
+     * @param bool $condition Whether to cache the result
+     * @param int|DateInterval|null $ttl Time to live (optional)
+     * @return mixed
+     */
+    public function stashWhen(string $key, Closure $callback, bool $condition, $ttl = null): mixed
+    {
+        if (!$condition) {
+            return $callback();
+        }
+
+        return $ttl === null
+            ? $this->stashForever($key, $callback)
+            : $this->stash($key, $ttl, $callback);
     }
 }

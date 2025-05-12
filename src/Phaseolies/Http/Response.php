@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Http;
 
+use Throwable;
 use Phaseolies\Http\Response\ResponseHeaderBag;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
@@ -20,6 +21,20 @@ class Response implements HttpStatus
      * @var string|null
      */
     public ?string $body;
+
+    /**
+     * The exception that triggered the error response (if applicable).
+     *
+     * @var \Throwable|null
+     */
+    public $exception;
+
+    /**
+     * The original content of the response.
+     *
+     * @var mixed
+     */
+    public $original;
 
     /**
      * The HTTP status code for the response.
@@ -104,6 +119,8 @@ class Response implements HttpStatus
      */
     public function setBody(?string $body): static
     {
+        $this->original = $body;
+
         $this->body = $body ?? '';
 
         return $this;
@@ -155,11 +172,13 @@ class Response implements HttpStatus
      *
      * @param string $name The header name.
      * @param string $value The header value.
+     * @param bool $replace
      * @return Response Returns the current Response instance.
      */
-    public function setHeader(string $name, string $value): Response
+    public function setHeader(string $name, string $value, $replace = true): Response
     {
-        $this->headers->set($name, $value);
+        $this->headers->set($name, $value, $replace);
+
         return $this;
     }
 
@@ -171,9 +190,26 @@ class Response implements HttpStatus
      */
     public function withHeaders(array $headers): Response
     {
+        if ($headers instanceof HeaderBag) {
+            $headers = $headers->all();
+        }
+
         foreach ($headers as $name => $value) {
             $this->headers->set($name, $value);
         }
+        return $this;
+    }
+
+    /**
+     * Set the exception to attach to the response.
+     *
+     * @param \Throwable $e
+     * @return $this
+     */
+    public function withException(Throwable $e)
+    {
+        $this->exception = $e;
+
         return $this;
     }
 
@@ -388,19 +424,17 @@ class Response implements HttpStatus
      */
     function headers_send(int $statusCode): void
     {
-        // Check if headers have already been sent
         if (headers_sent()) {
             return;
         }
 
-        // Send the status code header
-        header(sprintf('HTTP/1.1 %d %s', $statusCode, $this->getStatusCodeText($statusCode)), true, $statusCode);
-
-        // Flush the output buffer to send headers to the client
-        if (ob_get_level() > 0) {
-            ob_flush();
-        }
-        flush();
+        // Use the response's protocol version, not hardcoded 1.1
+        header(sprintf(
+            'HTTP/%s %d %s',
+            $this->getProtocolVersion(),
+            $statusCode,
+            $this->getStatusCodeText($statusCode)
+        ), true, $statusCode);
     }
 
     public function getStatusCodeText(int $statusCode): string

@@ -6,7 +6,6 @@ use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Database\Database;
-use Phaseolies\Database\Contracts\Support\Jsonable;
 use Carbon\Carbon;
 
 /**

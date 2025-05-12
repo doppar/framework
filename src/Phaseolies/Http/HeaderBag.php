@@ -125,7 +125,7 @@ class HeaderBag implements \IteratorAggregate, \Countable, \Stringable
 
     /**
      * Sets a header by name.
-     *
+     * @param string $key
      * @param string|string[]|null $values  The value or an array of values
      * @param bool                 $replace Whether to replace the actual value or not (true by default)
      */

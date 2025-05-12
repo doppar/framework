@@ -328,14 +328,34 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $localKey The local key on this model
      * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
      */
-    public function oneToOne(string $related, string $foreignKey, string $localKey)
+    public function linkOne(string $related, string $foreignKey, string $localKey)
     {
-        $this->lastRelationType = 'oneToOne';
+        $this->lastRelationType = 'linkOne';
         $this->lastRelatedModel = $related;
         $this->lastForeignKey = $foreignKey;
         $this->lastLocalKey = $localKey;
 
         $relatedInstance = app($related);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+    }
+
+    /**
+     * Define a one-to-one relationship
+     *
+     * @param string $related The related model class name
+     * @param string $foreignKey The foreign key on the related model
+     * @param string $localKey The local key on this model
+     * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
+     */
+    public function bindTo(string $related, string $foreignKey, string $localKey)
+    {
+        $this->lastRelationType = 'bindTo';
+        $this->lastRelatedModel = $related;
+        $this->lastForeignKey = $foreignKey;
+        $this->lastLocalKey = $localKey;
+
+        $relatedInstance = app($related);
+
         return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
@@ -347,9 +367,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $localKey The local key on this model
      * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
      */
-    public function oneToMany(string $related, string $foreignKey, string $localKey)
+    public function linkMany(string $related, string $foreignKey, string $localKey)
     {
-        $this->lastRelationType = 'oneToMany';
+        $this->lastRelationType = 'linkMany';
         $this->lastRelatedModel = $related;
         $this->lastForeignKey = $foreignKey;
         $this->lastLocalKey = $localKey;
@@ -367,9 +387,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $pivotTable The name of the pivot table
      * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
      */
-    public function manyToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
+    public function bindToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
     {
-        $this->lastRelationType = 'manyToMany';
+        $this->lastRelationType = 'bindToMany';
         $this->lastRelatedModel = $related;
         $this->lastForeignKey = $foreignKey;
         $this->lastRelatedKey = $relatedKey;
@@ -379,7 +399,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         $query = $relatedModel->query();
 
         $query->setRelationInfo([
-            'type' => 'manyToMany',
+            'type' => 'bindToMany',
             'foreignKey' => $foreignKey,
             'relatedKey' => $relatedKey,
             'pivotTable' => $pivotTable,
@@ -482,17 +502,22 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
                     $relationType = $this->getLastRelationType();
 
                     switch ($relationType) {
-                        case 'oneToOne':
+                        case 'linkOne':
                             $result = $relation->first();
                             $this->setRelation($name, $result);
                             return $result;
 
-                        case 'oneToMany':
+                        case 'bindTo':
+                            $result = $relation->first();
+                            $this->setRelation($name, $result);
+                            return $result;
+
+                        case 'linkMany':
                             $results = $relation->get();
                             $this->setRelation($name, $results);
                             return $results;
 
-                        case 'manyToMany':
+                        case 'bindToMany':
                             $relatedModel = app($this->getLastRelatedModel());
                             $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
                             $pivotTable = $this->getLastPivotTable();

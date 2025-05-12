@@ -192,7 +192,7 @@ class UrlGenerator
 
         // Ensure we have a base URL
         if (empty($baseUrl)) {
-            $baseUrl = function_exists('request') ? request()->host('host') : 'localhost';
+            $baseUrl = $this->baseUrl;
         }
 
         $url = $scheme . $baseUrl . '/' . ltrim($this->path, '/');
@@ -241,6 +241,7 @@ class UrlGenerator
     protected function createSignature(array $parameters)
     {
         $secret = config('app.key');
+
         return hash_hmac('sha256', http_build_query($parameters), $secret);
     }
 
