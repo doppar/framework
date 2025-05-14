@@ -103,6 +103,23 @@ class Controller extends View
 
             $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
 
+            // First check published views in resources/views/vendor/{namespace}
+            $publishedPath = base_path('resources/views/vendor/' . $namespace);
+            if (is_dir($publishedPath)) {
+                $possiblePaths = [
+                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
+                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+                ];
+
+                foreach ($possiblePaths as $fullPath) {
+                    if (file_exists($fullPath)) {
+                        return $fullPath;
+                    }
+                }
+            }
+
+            // Then check package views
             foreach ($this->factory->namespaces[$namespace] as $basePath) {
                 $possiblePaths = [
                     $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
@@ -113,8 +130,6 @@ class Controller extends View
                 foreach ($possiblePaths as $fullPath) {
                     if (file_exists($fullPath)) {
                         return $fullPath;
-                    }else{
-                        throw new \RuntimeException("View [{$fullPath}] not found in namespace [{$namespace}]");
                     }
                 }
             }
@@ -122,6 +137,7 @@ class Controller extends View
             throw new \RuntimeException("View [{$view}] not found in namespace [{$namespace}]");
         }
 
+        // Handle non-namespaced views
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
         $fullPath = base_path($this->viewFolder) . DIRECTORY_SEPARATOR .
             $viewPath . $this->fileExtension;

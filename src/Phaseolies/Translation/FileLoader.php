@@ -45,16 +45,35 @@ class FileLoader
      */
     public function load($locale, $group, $namespace = null)
     {
-        // Handle namespaced translations (package translations)
-        if ($namespace && isset($this->hints[$namespace])) {
-            $lines = $this->loadPath($this->hints[$namespace], $locale, $group);
+        try {
+            $lines = $this->loadPath($this->path, $locale, $group);
+            return $lines;
+        } catch (\RuntimeException $e) {
+            // If not found in main app, try package locations
+            if ($namespace) {
+                // Try registered package path first
+                if (isset($this->hints[$namespace])) {
+                    try {
+                        return $this->loadPath($this->hints[$namespace], $locale, $group);
+                    } catch (\RuntimeException $e) {
+                        // Continue to try vendor path
+                    }
+                }
 
-            // Check for and apply any namespace overrides
-            return $this->loadNamespaceOverrides($lines, $locale, $group, $namespace);
+                // Try published vendor path
+                $vendorPath = $this->path . '/vendor/' . $namespace;
+                if (file_exists($vendorPath)) {
+                    try {
+                        return $this->loadPath($vendorPath, $locale, $group);
+                    } catch (\RuntimeException $e) {
+                        // Continue to throw original exception
+                    }
+                }
+            }
+
+            // If all fails, rethrow the original exception
+            throw $e;
         }
-
-        // Load regular application translations
-        return $this->loadPath($this->path, $locale, $group);
     }
 
     /**

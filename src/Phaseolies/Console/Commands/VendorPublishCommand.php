@@ -122,8 +122,6 @@ class VendorPublishCommand extends Command
 
     protected function publishDirectory(string $from, string $to, OutputInterface $output, bool $force = false)
     {
-        $output->writeln("<comment>Copying directory:</comment> {$from} <comment>to</comment> {$to}");
-
         if (!is_dir($to)) {
             mkdir($to, 0755, true);
         }
@@ -149,7 +147,7 @@ class VendorPublishCommand extends Command
     protected function publishFile(string $from, string $to, OutputInterface $output, bool $force = false)
     {
         if (file_exists($to) && !$force) {
-            $output->writeln("<fg=yellow>Skipping:</> File already exists");
+            $output->writeln("<error>Skipping: File already exists </error>");
             return;
         }
 

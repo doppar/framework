@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Translation;
 
-class Translator
+use Phaseolies\Translation\FileLoader;
+
+class Translator extends FileLoader
 {
     /**
      * The file loader instance responsible for loading translation files.
@@ -73,7 +75,7 @@ class Translator
             return $key;
         }
 
-        $this->load($namespace, $group, $locale);
+        $this->loadTranslations($namespace, $group, $locale);
 
         $line = $this->getLine(
             $namespace,
@@ -102,15 +104,27 @@ class Translator
      */
     protected function parseKey($key)
     {
+        // Handle package translations (namespace::group.item)
         if (strpos($key, '::') !== false) {
-            return $this->parseNamespacedKey($key);
+            $segments = explode('::', $key, 2);
+            $namespace = $segments[0];
+            $rest = $segments[1];
+
+            if (strpos($rest, '.') !== false) {
+                list($group, $item) = explode('.', $rest, 2);
+                return [$namespace, $group, $item];
+            }
+
+            return [$namespace, '*', $rest];
         }
 
+        // Handle regular translations (group.item)
         if (strpos($key, '.') !== false) {
             list($group, $item) = explode('.', $key, 2);
             return [null, $group, $item];
         }
 
+        // Fallback for simple keys
         return [null, '*', $key];
     }
 
@@ -150,7 +164,7 @@ class Translator
      */
     protected function getLine($namespace, $group, $locale, $item, array $replace)
     {
-        $this->load($namespace, $group, $locale);
+        $this->loadTranslations($namespace, $group, $locale);
 
         $keys = explode('.', $item);
         $line = $this->loaded[$namespace][$group][$locale] ?? null;
@@ -199,7 +213,7 @@ class Translator
      * @param string $locale The locale
      * @return void
      */
-    public function load($namespace, $group, $locale)
+    public function loadTranslations($namespace, $group, $locale)
     {
         if ($this->isLoaded($namespace, $group, $locale)) {
             return;

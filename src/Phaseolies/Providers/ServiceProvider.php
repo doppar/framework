@@ -2,11 +2,8 @@
 
 namespace Phaseolies\Providers;
 
-use Phaseolies\Database\Migration\Migrator;
-use Phaseolies\Database\Migration\MigrationRepository;
 use Phaseolies\Database\Migration\Migration;
 use Phaseolies\Application;
-use Phaseolies\Database\Database;
 
 abstract class ServiceProvider
 {
@@ -112,6 +109,20 @@ abstract class ServiceProvider
     {
         if ($this->app->has('view')) {
             $this->app['view']->addNamespace($namespace, $path);
+        }
+    }
+
+    /**
+     * Register translation files from the given path.
+     *
+     * @param string $path
+     * @param string $namespace
+     * @return void
+     */
+    public function loadTranslations(string $path, string $namespace): void
+    {
+        if ($this->app->has('translator')) {
+            $this->app['translator']->addNamespace($namespace, $path);
         }
     }
 
