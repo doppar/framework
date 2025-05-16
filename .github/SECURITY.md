@@ -4,7 +4,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within Doppar, please send an email to Mahedi Hasan at mahedi@doppar.com. All security vulnerabilities will be promptly addressed. Please see [Reporting a Vulnerability](versions/3.x/contributions.html#security-vulnerabilities)
+If you discover a security vulnerability within Doppar, please send an email to Mahedi Hasan at mahedi@doppar.com. All security vulnerabilities will be promptly addressed. Please see [Reporting a Vulnerability](https://doppar.com/versions/3.x/contributions.html#security-vulnerabilities)
 
 ### Public PGP Key
 
