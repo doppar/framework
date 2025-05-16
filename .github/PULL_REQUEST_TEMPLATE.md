@@ -1,7 +1,5 @@
 <!--
-Please only send a pull request to branches that are currently supported: https://doppar.com/docs/releases#support-policy 
-
-If you are unsure which branch your pull request should be sent to, please read: https://doppar.com/docs/contributions#which-branch
+If you are unsure which branch your pull request should be sent to, please read: https://doppar.com/versions/3.x/contributions.html#which-branch
 
 Pull requests without a descriptive title, thorough description, or tests will be closed.
 

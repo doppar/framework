@@ -2,13 +2,9 @@
 
 **PLEASE DON'T DISCLOSE SECURITY-RELATED ISSUES PUBLICLY, [SEE BELOW](#reporting-a-vulnerability).**
 
-## Supported Versions
-
-Please see [our support policy](https://doppar.com/docs/releases#support-policy) for information on supported versions for security releases.
-
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within Doppar, please send an email to Mahedi Hasan at mahedi@doppar.com. All security vulnerabilities will be promptly addressed.
+If you discover a security vulnerability within Doppar, please send an email to Mahedi Hasan at mahedi@doppar.com. All security vulnerabilities will be promptly addressed. Please see [Reporting a Vulnerability](versions/3.x/contributions.html#security-vulnerabilities)
 
 ### Public PGP Key
 
