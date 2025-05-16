@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.0.3';
+    const VERSION = '2.0.7';
 
     /**
      * The base path of the application installation.
@@ -196,8 +196,18 @@ class Application extends Container
     public function withConfiguration(): self
     {
         Config::initialize();
+        $this->environment = \config('app.env') ?? env('APP_ENV');
 
         return $this;
+    }
+
+    /**
+     * Get the current application running environments
+     * @return string
+     */
+    public function getEnvironment(): string
+    {
+        return $this->environment ?? config('app.env');
     }
 
     /**

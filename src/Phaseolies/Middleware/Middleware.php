@@ -32,9 +32,9 @@ class Middleware
     public function applyMiddleware(ContractsMiddleware $middleware, array|string $params = []): void
     {
         $next = $this->start;
-        $this->start = function (Request $request, Closure $finalHandler) use ($middleware, $next, $params) {
-            return $middleware($request, function (Request $request) use ($next, $finalHandler) {
-                return $next($request, $finalHandler);
+        $this->start = function (Request $request, Closure $handler) use ($middleware, $next, $params) {
+            return $middleware($request, function (Request $request) use ($next, $handler) {
+                return $next($request, $handler);
             }, ...$params);
         };
     }
@@ -42,11 +42,11 @@ class Middleware
     /**
      * Handle the incoming request through the middleware chain
      * @param Request $request
-     * @param Closure $finalHandler
+     * @param Closure $handler
      * @return Response
      */
-    public function handle(Request $request, Closure $finalHandler): Response
+    public function handle(Request $request, Closure $handler): Response
     {
-        return ($this->start)($request, $finalHandler);
+        return ($this->start)($request, $handler);
     }
 }

@@ -2,22 +2,36 @@
 
 namespace Phaseolies;
 
-use Phaseolies\Http\Request;
+use Phaseolies\Support\TimezoneHandler;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Phaseolies\Http\Request;
 use Exception;
 
-/**
- * ApplicationBuilder constructs and configures the application instance with middleware handling.
- *
- * This class is responsible for building the middleware stack and processing it
- * to create a request handling pipeline for the application.
- */
 class ApplicationBuilder
 {
+    protected TimezoneHandler $timezoneHandler;
+
     /**
      * @param Application $app The application instance to be built
      */
-    public function __construct(protected Application $app) {}
+    public function __construct(protected Application $app)
+    {
+        $this->initializeTimezone();
+    }
+
+    /**
+     * Set the application timezone
+     *
+     * @return void
+     */
+    protected function initializeTimezone(): void
+    {
+        $timezone = $this->app['config']->get('app.timezone', 'UTC');
+
+        $this->timezoneHandler = new TimezoneHandler($timezone);
+
+        $this->app->singleton('timezone', TimezoneHandler::class);
+    }
 
     /**
      * Configures the application with middleware stack handling.
@@ -27,16 +41,16 @@ class ApplicationBuilder
      * 2. Processes the stack to create a handler pipeline
      * 3. Delegates request handling to the router with the prepared pipeline
      *
-     * @return self Returns the builder instance for method chaining
-     * @throws Exception If any middleware dependency is invalid
+     * @return self
+     * @throws Exception
      */
     public function withMiddlewareStack(): self
     {
         $middlewareStack = $this->buildMiddlewareStack();
 
-        $finalHandler = $this->processMiddlewareStack($middlewareStack);
+        $handler = $this->processMiddlewareStack($middlewareStack);
 
-        $this->app->router->handle(app('request'), $finalHandler);
+        $this->app->router->handle(app('request'), $handler);
 
         return $this;
     }
@@ -79,7 +93,7 @@ class ApplicationBuilder
             $middlewareInstance = $this->app->make($middlewareClass);
             if (!$middlewareInstance instanceof ContractsMiddleware) {
                 throw new Exception(
-                    "Middleware {$middlewareClass} must implement " . ContractsMiddleware::class
+                    "Failed to register middleware {$middlewareClass}: it must implement " . ContractsMiddleware::class . "."
                 );
             }
 
