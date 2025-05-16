@@ -19,7 +19,7 @@ Doppar is a PHP framework built to revolutionize the way developers create robus
 
 ## Contributing
 
-Thank you for considering contributing to the Doppar framework! The contribution guide can be found in the [Doppar documentation](https://doppar.com/docs/3.x/contributions.html).
+Thank you for considering contributing to the Doppar framework! The contribution guide can be found in the [Doppar documentation](https://doppar.com/versions/3.x/getting-started.html).
 
 ## Code of Conduct
 
