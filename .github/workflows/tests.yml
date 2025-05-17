@@ -32,7 +32,7 @@ jobs:
       fail-fast: true
       matrix:
         php: [8.3, 8.4]
-        phpunit: ['10.5.35', '11.5.3', '12.0.0', '12.1.0']
+        phpunit: ['10.5.35', '11.5.3', '12.0.0', '12.1.5']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
@@ -89,13 +89,13 @@ jobs:
       fail-fast: true
       matrix:
         php: [8.3, 8.4]
-        phpunit: ['10.5.35', '11.5.3', '12.0.0', '12.1.0']
+        phpunit: ['10.5.35', '11.5.3', '12.0.0', '12.1.5']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
-            phpunit: '12.0.0'
+            phpunit: '12.1.5'
           - php: 8.3
-            phpunit: '12.1.0'
+            phpunit: '12.1.5'
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }} - Windows
 
