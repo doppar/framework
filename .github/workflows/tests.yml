@@ -73,6 +73,7 @@ jobs:
           DB_USERNAME: root
 
       - name: Store artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: linux-logs-${{ matrix.php }}-${{ matrix.phpunit }}-${{ matrix.stability }}
@@ -126,6 +127,7 @@ jobs:
         run: vendor/bin/phpunit
 
       - name: Store artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: windows-logs-${{ matrix.php }}-${{ matrix.phpunit }}-${{ matrix.stability }}
