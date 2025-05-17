@@ -1158,7 +1158,7 @@ class Request
      */
     public function getPathInfo(): string
     {
-        return $this->pathInfo ??= $this->preparePathInfo();
+        return $this->pathInfo ??= $this->getPath();
     }
 
     /**
