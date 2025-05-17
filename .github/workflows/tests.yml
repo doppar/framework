@@ -37,8 +37,6 @@ jobs:
         exclude:
           - php: 8.3
             phpunit: '12.0.0'
-          - php: 8.3
-            phpunit: '12.1.5'
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }}
 
@@ -94,8 +92,6 @@ jobs:
         exclude:
           - php: 8.3
             phpunit: '12.0.0'
-          - php: 8.3
-            phpunit: '12.1.5'
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }} - Windows
 
