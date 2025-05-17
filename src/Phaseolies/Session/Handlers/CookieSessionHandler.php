@@ -21,6 +21,11 @@ class CookieSessionHandler extends AbstractSessionHandler
 
     public function start(): void
     {
+        // Disable PHP's default session cache headers
+        // (e.g., "Cache-Control: no-store, no-cache" and "Pragma: no-cache")
+        // This allows custom cache headers (like those set by doppar middleware)
+        // To take effect without being overridden
+        session_cache_limiter('');
         if ($this->shouldRegenerate()) {
             $this->regenerate();
             $_SESSION['last_regenerated'] = time();

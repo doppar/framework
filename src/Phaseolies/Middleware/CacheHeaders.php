@@ -48,11 +48,11 @@ class CacheHeaders implements Middleware
         }
 
         if (! empty($options['pragma'])) {
-            $response->headers->set('Pragma', $options['pragma']);
+            $response->headers->set('Pragma', $options['pragma'], true);
         }
 
         if (! empty($options['expires'])) {
-            $response->headers->set('Expires', $options['expires']);
+            $response->headers->set('Expires', $options['expires'], true);
         }
     }
 
