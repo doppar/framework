@@ -116,12 +116,9 @@ jobs:
 
   update-changelog:
     needs: release
-
     name: Update changelog
-
     uses: doppar/.github/.github/workflows/update-changelog.yml@main
     with:
       branch: ${{ github.ref_name }}
       version: "v${{ needs.release.outputs.version }}"
       notes: ${{ needs.release.outputs.notes }}
-      release-notes: ${{ inputs.notes }}
