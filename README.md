@@ -15,11 +15,11 @@
 
 > **Note:** This repository contains the core code of the Doppar framework. If you want to build an application using Doppar, visit the main [Doppar repository](https://github.com/doppar/doppar).
 
-Doppar is a PHP framework built to revolutionize the way developers create robust, scalable, and efficient web applications, specifically for developing small scale PHP web applications.
+Doppar is a sleek, next-gen PHP framework crafted to transform web development—combining elegant, intuitive syntax with powerful performance to build scalable, efficient applications effortlessly.
 
 ## Contributing
 
-Thank you for considering contributing to the Doppar framework! The contribution guide can be found in the [Doppar documentation](https://doppar.com/versions/3.x/getting-started.html).
+Thank you for considering contributing to the Doppar framework! The contribution guide can be found in the [Doppar documentation](https://doppar.com/versions/3.x/contributions.html).
 
 ## Code of Conduct
 
