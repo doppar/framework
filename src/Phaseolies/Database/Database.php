@@ -43,21 +43,6 @@ class Database
 
             try {
                 switch (strtolower($driver)) {
-                    case 'pgsql':
-                        $host = env('DB_HOST', config('database.connections.pgsql.host', '127.0.0.1'));
-                        $port = env('DB_PORT', config('database.connections.pgsql.port', '5432'));
-                        $dbName = env('DB_DATABASE', config('database.connections.pgsql.database'));
-                        $dsn = "pgsql:host=$host;port=$port;dbname=$dbName";
-
-                        if ($charset = env('DB_CHARSET', config('database.connections.pgsql.charset'))) {
-                            $dsn .= ";options='--client_encoding=$charset'";
-                        }
-
-                        $username = env('DB_USERNAME', config('database.connections.pgsql.username'));
-                        $password = env('DB_PASSWORD', config('database.connections.pgsql.password'));
-                        static::$pdo = new PDO($dsn, $username, $password, $options);
-                        break;
-
                     case 'mysql':
                     default:
                         $host = env('DB_HOST', config('database.connections.mysql.host', '127.0.0.1'));
@@ -73,7 +58,7 @@ class Database
                         break;
                 }
             } catch (\PDOException $e) {
-                throw new \PDOException("Failed to connect to {$driver} database: " . $e->getMessage(), (int)$e->getCode());
+                throw new \PDOException("Failed to connect to {$driver} database: " . $e->getMessage(), (int) $e->getCode());
             } catch (\RuntimeException $e) {
                 throw $e;
             }
@@ -249,7 +234,7 @@ class Database
      * @return ProcedureResult
      * @throws PDOException
      */
-    public static function executeProcedure(
+    public static function procedure(
         string $procedureName,
         array $params = [],
         array $outputParams = []
@@ -287,7 +272,7 @@ class Database
      * @return array
      * @throws PDOException
      */
-    public static function executeView(string $viewName, array $where = [], array $params = []): array
+    public static function view(string $viewName, array $where = [], array $params = []): array
     {
         $sql = "SELECT * FROM {$viewName}";
 
