@@ -121,4 +121,4 @@ jobs:
     with:
       branch: ${{ github.ref_name }}
       version: "v${{ needs.release.outputs.version }}"
-      release-notes: ${{ needs.release.outputs.notes }}
+      notes: ${{ needs.release.outputs.notes }}
