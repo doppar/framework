@@ -114,16 +114,6 @@ jobs:
           target_commitish: ${{ github.ref_name }}
           make_latest: "${{ github.ref_name == github.event.repository.default_branch }}"
 
-      - name: Update Changelog
-        uses: stefanzweifel/changelog-updater-action@v1
-        with:
-          # Pass extracted release date, release notes and version to the Action.
-          release-date: ${{ steps.release_date.outputs.date }}
-          release-notes: ${{ inputs.notes }}
-          latest-version: ${{ inputs.version }}
-          compare-url-target-revision: ${{ inputs.branch }}
-          parse-github-usernames: true
-
   update-changelog:
     needs: release
 
@@ -134,3 +124,4 @@ jobs:
       branch: ${{ github.ref_name }}
       version: "v${{ needs.release.outputs.version }}"
       notes: ${{ needs.release.outputs.notes }}
+      release-notes: ${{ inputs.notes }}
