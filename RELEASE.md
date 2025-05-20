@@ -1,0 +1,2 @@
+## Release Instructions
+Go to the ["manual release" GitHub Action](https://github.com/doppar/framework/actions/workflows/releases.yml). Then, choose "Run workflow", select the correct branch, and enter the version you wish to release. Next, press "Run workflow" to execute the action. The workflow will automatically update the version in Application.php, tag a new release, generate release notes, create a GitHub Release, and update the CHANGELOG.md file.
