@@ -15,6 +15,7 @@ class Builder
 
     /**
      * Truncate the table
+     * @return int
      */
     public function truncate(bool $resetAutoIncrement = true): int
     {
@@ -32,6 +33,7 @@ class Builder
 
     /**
      * Delete all records from the table
+     * @return int
      */
     public function delete(): int
     {
@@ -40,6 +42,7 @@ class Builder
 
     /**
      * Drop table from database
+     * @return int
      */
     public function drop(): int
     {

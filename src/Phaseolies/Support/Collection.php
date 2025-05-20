@@ -2,13 +2,14 @@
 
 namespace Phaseolies\Support;
 
-use Phaseolies\Database\Eloquent\Model;
 use Traversable;
 use Ramsey\Collection\Collection as RamseyCollection;
+use Phaseolies\Database\Eloquent\Model;
 use IteratorAggregate;
 use ArrayIterator;
+use ArrayAccess;
 
-class Collection extends RamseyCollection implements IteratorAggregate
+class Collection extends RamseyCollection implements IteratorAggregate, ArrayAccess
 {
     /**
      * @var array
@@ -18,16 +19,46 @@ class Collection extends RamseyCollection implements IteratorAggregate
     /**
      * @var string
      */
-    protected $modelClass;
+    protected $model;
 
     /**
-     * @param string $modelClass
-     * @param array $items
+     * @param string $model
+     * @param array|null $items
      */
-    public function __construct(string $modelClass, array $items = [])
+    public function __construct(string $model, ?array $items = [])
     {
-        $this->modelClass = $modelClass;
+        $this->model = $model;
         $this->items = $items;
+    }
+
+    public function offsetExists($offset): bool
+    {
+        return isset($this->items[$offset]);
+    }
+
+    public function offsetGet($offset): mixed
+    {
+        return $this->items[$offset] ?? null;
+    }
+
+    public function offsetSet($offset, $value): void
+    {
+        $this->items[$offset] = $value;
+    }
+
+    public function offsetUnset($offset): void
+    {
+        unset($this->items[$offset]);
+    }
+
+    public function __get($name)
+    {
+        return $this->items[$name] ?? null;
+    }
+
+    public function __isset($name)
+    {
+        return isset($this->items[$name]);
     }
 
     /**
@@ -125,7 +156,7 @@ class Collection extends RamseyCollection implements IteratorAggregate
             $mappedItems[] = $callback($item);
         }
 
-        return new static($this->modelClass, $mappedItems);
+        return new static($this->model, $mappedItems);
     }
 
     /**
@@ -144,7 +175,7 @@ class Collection extends RamseyCollection implements IteratorAggregate
             }
         }
 
-        return new static($this->modelClass, $filteredItems);
+        return new static($this->model, $filteredItems);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Database;
 
+use Phaseolies\Support\Collection;
 use Phaseolies\Database\Query\Builder;
 use Phaseolies\Database\Procedure\ProcedureResult;
 use Phaseolies\Database\Eloquent\Model;
@@ -234,11 +235,8 @@ class Database
      * @return ProcedureResult
      * @throws PDOException
      */
-    public static function procedure(
-        string $procedureName,
-        array $params = [],
-        array $outputParams = []
-    ): ProcedureResult {
+    public static function procedure(string $procedureName, array $params = [], array $outputParams = []): ProcedureResult
+    {
         $pdo = static::getPdoInstance();
 
         $placeholders = implode(',', array_fill(0, count($params) + count($outputParams), '?'));
@@ -253,6 +251,7 @@ class Database
             $stmt->bindParam($i++, $param, PDO::PARAM_INPUT_OUTPUT);
         }
 
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
         $stmt->execute();
 
         $results = [];
@@ -286,25 +285,35 @@ class Database
         }
 
         $stmt = static::getPdoInstance()->prepare($sql);
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
         $stmt->execute($params);
 
         return $stmt->fetchAll();
     }
 
     /**
-     * Execute a raw SQL query
+     * Execute a raw SQL query and return results as a Collection
      *
      * @param string $sql
      * @param array $params
-     * @return PDOStatement
+     * @return \Phaseolies\Support\Collection
      * @throws PDOException
      */
-    public static function query(string $sql, array $params = []): \PDOStatement
+    public static function query(string $sql, array $params = []): Collection
     {
-        $stmt = static::getPdoInstance()->prepare($sql);
-        $stmt->execute($params);
+        try {
+            $stmt = static::getPdoInstance()->prepare($sql);
+            $stmt->setFetchMode(PDO::FETCH_ASSOC);
+            $stmt->execute($params);
+            $results = $stmt->fetchAll();
 
-        return $stmt;
+            return new \Phaseolies\Support\Collection(
+                'array',
+                count($results) > 1 ? $results : $results[0]
+            );
+        } catch (PDOException $e) {
+            throw new PDOException("Database error: " . $e->getMessage());
+        }
     }
 
     /**
