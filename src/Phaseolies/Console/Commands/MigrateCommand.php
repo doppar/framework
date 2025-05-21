@@ -6,8 +6,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Phaseolies\Database\Migration\Migrator;
-use Phaseolies\Database\Database;
-use Phaseolies\Database\Migration\MigrationRepository;
 
 class MigrateCommand extends Command
 {
@@ -15,11 +13,11 @@ class MigrateCommand extends Command
 
     protected Migrator $migrator;
 
-    public function __construct(?Migrator $migrator = null)
+    public function __construct()
     {
         parent::__construct();
 
-        $this->migrator = $migrator ?? $this->createDefaultMigrator();
+        $this->migrator = app('migrator');
     }
 
     protected function configure()
@@ -37,14 +35,5 @@ class MigrateCommand extends Command
         }
 
         return Command::SUCCESS;
-    }
-
-    protected function createDefaultMigrator(): Migrator
-    {
-        $db = new Database();
-        $repository = new MigrationRepository($db);
-        $migrationPath = \database_path('migrations');
-
-        return new Migrator($repository, $migrationPath);
     }
 }

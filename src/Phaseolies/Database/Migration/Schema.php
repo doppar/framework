@@ -14,13 +14,10 @@ class Schema
      */
     public function create(string $table, callable $callback): void
     {
-        // Create a new blueprint instance for the table
         $blueprint = new Blueprint($table);
 
-        // Execute the callback to define table columns and properties
         $callback($blueprint);
 
-        // Execute the generated SQL to create the table
         DB::execute($blueprint->toSql());
     }
 
@@ -32,14 +29,9 @@ class Schema
      */
     public function table(string $table, callable $callback): void
     {
-        // Create a new blueprint instance for the table
         $blueprint = new Blueprint($table);
 
-        // Execute the callback to define table alterations
         $callback($blueprint);
-
-        // Note: The method currently doesn't execute any SQL
-        // Typically you would execute the blueprint SQL here
     }
 
     /**
@@ -49,7 +41,6 @@ class Schema
      */
     public function dropIfExists(string $table): void
     {
-        // Execute SQL to drop the table if it exists
         DB::execute("DROP TABLE IF EXISTS {$table}");
     }
 
@@ -61,7 +52,7 @@ class Schema
      */
     public function hasTable(string $table): bool
     {
-        return DB::tableExists($table);
+        return \Phaseolies\Database\Database::tableExists($table);
     }
 
     /**
@@ -70,7 +61,6 @@ class Schema
      */
     public function disableForeignKeyConstraints(): void
     {
-        // MySQL-specific command to disable foreign key checks
         DB::execute('SET FOREIGN_KEY_CHECKS = 0');
     }
 
@@ -80,7 +70,6 @@ class Schema
      */
     public function enableForeignKeyConstraints(): void
     {
-        // MySQL-specific command to enable foreign key checks
         DB::execute('SET FOREIGN_KEY_CHECKS = 1');
     }
 }

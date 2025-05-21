@@ -15,10 +15,10 @@ class CreateMigrationCommand extends Command
 
     protected MigrationCreator $creator;
 
-    public function __construct(?MigrationCreator $creator = null)
+    public function __construct(MigrationCreator $creator)
     {
         parent::__construct();
-        $this->creator = $creator ?? new MigrationCreator();
+        $this->creator = $creator;
     }
 
     protected function configure()

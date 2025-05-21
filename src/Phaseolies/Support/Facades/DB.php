@@ -21,6 +21,7 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Database\Database query(string $sql, array $params = []): \Phaseolies\Support\Collection
  * @method static \Phaseolies\Database\Database execute(string $sql, array $params = []): int
  * @method static \Phaseolies\Database\Database dropAllTables(): void
+ * @method static \Phaseolies\Database\Database statement(string $sql, array $params = []): \PDOStatement
  * @see \Phaseolies\Database\Database
  */
 

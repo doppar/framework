@@ -317,6 +317,23 @@ class Database
     }
 
     /**
+     * Execute a raw SQL query
+     *
+     * @param string $sql
+     * @param array $params
+     * @return PDOStatement
+     * @throws PDOException
+     */
+    public static function statement(string $sql, array $params = []): \PDOStatement
+    {
+        $stmt = static::getPdoInstance()->prepare($sql);
+        $stmt->setFetchMode(PDO::FETCH_ASSOC);
+        $stmt->execute($params);
+
+        return $stmt;
+    }
+
+    /**
      * Execute a raw SQL statement (INSERT, UPDATE, DELETE)
      *
      * @param string $sql

@@ -5,7 +5,6 @@ namespace Phaseolies\Console\Commands;
 use Phaseolies\Support\Facades\Schema;
 use Phaseolies\Support\Facades\DB;
 use Phaseolies\Database\Migration\Migrator;
-use Phaseolies\Database\Migration\MigrationRepository;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Command\Command;
@@ -16,11 +15,11 @@ class MigrateRefreshCommand extends Command
 
     protected Migrator $migrator;
 
-    public function __construct(?Migrator $migrator = null)
+    public function __construct()
     {
         parent::__construct();
 
-        $this->migrator = $migrator ?? $this->createDefaultMigrator();
+        $this->migrator = app('migrator');
     }
 
     protected function configure()
@@ -41,13 +40,5 @@ class MigrateRefreshCommand extends Command
         $output->writeln('<info>Migrations have been refreshed successfully.</info>');
 
         return Command::SUCCESS;
-    }
-
-    protected function createDefaultMigrator(): Migrator
-    {
-        $repository = new MigrationRepository();
-        $migrationPath = \database_path('migrations');
-
-        return new Migrator($repository, $migrationPath);
     }
 }

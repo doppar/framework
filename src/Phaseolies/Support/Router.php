@@ -710,11 +710,7 @@ class Router extends Kernel
                 if ($app->has($typeName)) {
                     $dependencies[] = $app->get($typeName);
                 } elseif (class_exists($typeName)) {
-                    if ($typeName === 'Phaseolies\Http\Request') {
-                        $dependencies[] = $request;
-                    } else {
-                        $dependencies[] = $app->make($typeName);
-                    }
+                    $dependencies[] = $app->make($typeName);
                 } else {
                     throw new \Exception("Cannot resolve dependency {$typeName}");
                 }

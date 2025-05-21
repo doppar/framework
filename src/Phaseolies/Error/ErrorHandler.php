@@ -2,10 +2,10 @@
 
 namespace Phaseolies\Error;
 
-use Phaseolies\Support\Facades\Log;
-use Phaseolies\Http\Exceptions\HttpResponseException;
-use Phaseolies\Http\Response;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Phaseolies\Support\Facades\Log;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Exceptions\HttpResponseException;
 
 class ErrorHandler
 {
@@ -17,6 +17,12 @@ class ErrorHandler
             $errorLine = $exception->getLine();
             $errorTrace = $exception->getTraceAsString();
             $errorCode = $exception->getCode();
+
+            $logMessage = "Error: " . $exception->getMessage();
+            $logMessage .= "\nFile: " . $exception->getFile();
+            $logMessage .= "\nLine: " . $exception->getLine();
+            $logMessage .= "\nTrace: " . $exception->getTraceAsString();
+            Log::channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
 
             if (request()->isAjax() || request()->is('/api/*')) {
                 if ($exception instanceof HttpResponseException) {
@@ -43,22 +49,67 @@ class ErrorHandler
             }
 
             if (PHP_SAPI === 'cli' || defined('STDIN')) {
-                $logMessage = sprintf(
-                    "Error: %s\nFile: %s\nLine: %d\nTrace:\n%s",
-                    $errorMessage,
-                    $errorFile,
-                    $errorLine,
-                    $errorTrace
-                );
-
-                Log::channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
-
                 $output = new ConsoleOutput();
-                $output->writeln('<error>Error: ' . $errorMessage . '</error>');
-                $output->writeln('<comment>File: ' . $errorFile . '</comment>');
-                $output->writeln('<comment>Line: ' . $errorFile . '</comment>');
-                $output->writeln('<info>Trace:</info>');
-                $output->writeln($errorTrace);
+                $section = $output->section();
+
+                $section->writeln([
+                    '',
+                    sprintf('<bg=red;fg=white;options=bold>  🚨  %s  </>', $errorMessage),
+                    '',
+                ]);
+
+                $section->writeln(sprintf(
+                    '  <fg=yellow>📂 File:</> <href=file://%s><fg=white;options=underscore>%s</></>',
+                    $errorFile,
+                    $errorFile
+                ));
+                $section->writeln(sprintf(
+                    '  <fg=yellow>📌 Line:</> <fg=white>%d</>',
+                    $errorLine
+                ));
+
+                $traceLines = explode("\n", $errorTrace);
+                $shortTrace = array_slice($traceLines, 0, 2);
+                $hasMore = count($traceLines) > 2;
+
+                $section->writeln('');
+                $section->writeln('  <fg=blue;options=bold>🔍 Stack Trace:</>');
+                $section->writeln('  <fg=gray>┌──────────────────────────────────────────────────────────┐</>');
+
+                foreach ($shortTrace as $line) {
+                    if (preg_match('/#\d+\s+(.*?)(\((\d+)\))?:/', $line, $matches)) {
+                        $file = $matches[1];
+                        $lineNumber = $matches[3] ?? '';
+                        $formatted = preg_replace(
+                            '/(#\d+\s+)(.*?)(\((\d+)\))?:/',
+                            '$1<href=file://$2><fg=cyan;options=underscore>$2</></>$3:',
+                            $line
+                        );
+                        $section->writeln(sprintf('  <fg=gray>│</> %-56s <fg=gray>│</>', $formatted));
+                    } else {
+                        $section->writeln(sprintf('  <fg=gray>│</> %-56s <fg=gray>│</>', $line));
+                    }
+                }
+
+                if ($hasMore) {
+                    $remaining = count($traceLines) - 2;
+                    $section->writeln(sprintf(
+                        '  <fg=gray>│</> <fg=yellow>... %d more</>%s <fg=gray>│</>',
+                        $remaining,
+                        str_repeat(' ', 56 - 38 - strlen((string)$remaining))
+                    ));
+                }
+
+                $section->writeln('  <fg=gray>└──────────────────────────────────────────────────────────┘</>');
+                if (str_contains($errorMessage, 'undefined variable')) {
+                    $varName = preg_match('/undefined variable (\$\w+)/i', $errorMessage, $matches)
+                        ? $matches[1]
+                        : '$variable';
+
+                    $section->writeln('');
+                    $section->writeln('  <fg=green>💡 Quick Fix:</> Define the variable before using it:');
+                    $section->writeln(sprintf('      <fg=white>%s = "default_value";</>', $varName));
+                }
                 exit(1);
             }
 
@@ -89,14 +140,16 @@ class ErrorHandler
                     [$errorMessage, $errorFile, $errorLine, nl2br(htmlspecialchars($errorTrace)), $formattedCode, $languageClass],
                     file_get_contents(__DIR__ . '/error_page_template.html')
                 );
+            } else {
+                $customPath = base_path("resources/views/errors/500.blade.php");
+                $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/500.blade.php");
+                http_response_code(500);
+                if (file_exists($customPath)) {
+                    include $customPath;
+                } elseif (file_exists($errorPage)) {
+                    include $errorPage;
+                }
             }
-
-            $logMessage = "Error: " . $exception->getMessage();
-            $logMessage .= "\nFile: " . $exception->getFile();
-            $logMessage .= "\nLine: " . $exception->getLine();
-            $logMessage .= "\nTrace: " . $exception->getTraceAsString();
-
-            Log::channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
         });
     }
 

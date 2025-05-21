@@ -4,6 +4,7 @@ namespace Phaseolies\Database\Migration;
 
 use Phaseolies\Support\Facades\Schema;
 use Phaseolies\Support\Facades\DB;
+use Phaseolies\Database\Database;
 
 class MigrationRepository
 {
@@ -19,7 +20,7 @@ class MigrationRepository
      */
     public function exists(): bool
     {
-        return DB::tableExists($this->table);
+        return Database::tableExists($this->table);
     }
 
     /**
@@ -50,7 +51,7 @@ class MigrationRepository
             return [];
         }
 
-        $stmt = DB::query(
+        $stmt = Database::statement(
             "SELECT migration FROM {$this->table} ORDER BY batch ASC, migration ASC"
         );
 
@@ -82,9 +83,9 @@ class MigrationRepository
             return 1;
         }
 
-        $stmt = DB::query("SELECT MAX(batch) FROM {$this->table}");
+        $stmt = Database::statement("SELECT MAX(batch) FROM {$this->table}");
         $maxBatch = $stmt->fetchColumn();
 
-        return $maxBatch ? (int)$maxBatch + 1 : 1;
+        return $maxBatch ? (int) $maxBatch + 1 : 1;
     }
 }

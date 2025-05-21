@@ -2,16 +2,19 @@
 
 namespace Phaseolies\Console;
 
+use Phaseolies\Application;
+
 class Command extends Console
 {
     /**
      * The application instance.
      */
-    protected \Phaseolies\Application $app;
+    protected Application $app;
 
-    public function __construct(\Phaseolies\Application $app)
+    public function __construct(Application $app)
     {
         parent::__construct($app);
+        $this->app = $app;
     }
 
     /**
@@ -25,10 +28,14 @@ class Command extends Console
         $commandsDir = __DIR__ . '/Commands';
         $commandFiles = glob($commandsDir . '/*.php');
 
+        $commandClasses = array_map(
+            fn($file) => 'Phaseolies\\Console\\Commands\\' . basename($file, '.php'),
+            $commandFiles
+        );
+
         $commands = [];
-        foreach ($commandFiles as $commandFile) {
-            $commandClass = 'Phaseolies\Console\Commands\\' . basename($commandFile, '.php');
-            $commands[] = new $commandClass();
+        foreach ($commandClasses as $command) {
+            $commands[] = $this->app->make($command);
         }
 
         $console->addCommands($commands);

@@ -2,17 +2,18 @@
 
 namespace Phaseolies\Console;
 
-use Symfony\Component\Console\Application;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Application as SymfonyApplication;
+use Phaseolies\Application;
 
-class Console extends Application
+class Console extends SymfonyApplication
 {
     /**
      * The application instance.
      */
-    protected \Phaseolies\Application $app;
+    protected Application $app;
 
     /**
      * Create a new Console instance.
@@ -21,7 +22,7 @@ class Console extends Application
      * @param mixed string
      * @param string $version
      */
-    public function __construct(\Phaseolies\Application $app, string $name = 'Doppar Framework', string $version = '1.0.0')
+    public function __construct(Application $app, string $name = 'Doppar Framework', string $version = '1.0.0')
     {
         parent::__construct($name, $version);
         $this->app = $app;
@@ -48,6 +49,7 @@ class Console extends Application
      */
     protected function resolveCommand(string|Command $command): Command
     {
+
         if (is_string($command)) {
             $command = $this->app->make($command);
         }

@@ -193,6 +193,10 @@ class Container implements ArrayAccess
             return $this->get($abstract, $parameters);
         }
 
+        if ($abstract === 'Phaseolies\Http\Request') {
+            return $this->get($abstract, $parameters);
+        }
+
         if (class_exists($abstract)) {
             return $this->build($abstract, $parameters);
         }
