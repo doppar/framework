@@ -619,8 +619,8 @@ class Response implements HttpStatus
         if (file_exists($customPath)) {
             http_response_code($statusCode);
             include $customPath;
-        } elseif (file_exists($statusCode)) {
-            http_response_code(500);
+        } elseif (file_exists($errorPage)) {
+            http_response_code($statusCode);
             include $errorPage;
         } else {
             throw new HttpException($statusCode, $message);

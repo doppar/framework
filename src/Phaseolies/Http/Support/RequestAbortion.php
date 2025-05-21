@@ -13,9 +13,9 @@ class RequestAbortion
      * @param string $message The optional error message.
      * @throws HttpException
      */
-    public function abort(int $code, string $message = ''): void
+    public function abort($code, $message = '', array $headers = []): void
     {
-        throw new HttpException($code, $message);
+        throw new HttpException($code, $message, \null, $headers);
     }
 
     /**
@@ -26,10 +26,10 @@ class RequestAbortion
      * @param string $message The optional error message.
      * @throws HttpException
      */
-    public function abortIf(bool $condition, int $code, string $message = ''): void
+    public function abortIf($condition, $code, $message = '', array $headers = []): void
     {
         if ($condition) {
-            self::abort($code, $message);
+            self::abort($code, $message, $headers);
         }
     }
 }
