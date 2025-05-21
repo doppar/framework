@@ -95,8 +95,11 @@ jobs:
               RELEASE_NOTES=$(echo -n "$RELEASE_NOTES" | sed "${START_FROM}d")
           fi
 
-          ESCAPED_NOTES=$(echo -n "$RELEASE_NOTES" | jq -Rs .)
-          echo "notes=$ESCAPED_NOTES" >> $GITHUB_OUTPUT
+          {
+            echo 'notes<<EOF'
+            echo "$RELEASE_NOTES"
+            echo EOF
+          } >> "$GITHUB_OUTPUT";
         env:
           RELEASE_NOTES: ${{ steps.generated-notes.outputs.release-notes }}
 
