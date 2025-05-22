@@ -97,18 +97,19 @@ class StringService
      *
      * @return string The masked string
      */
-    public function mask(
-        string $string,
-        int $visibleFromStart = 1,
-        int $visibleFromEnd = 1,
-        string $maskCharacter = '*'
-    ): string {
+    public function mask(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
+    {
         $length = strlen($string);
-        $maskedLength = $length - $visibleFromEnd;
+
+        if ($length <= $visibleFromStart + $visibleFromEnd) {
+            return $string;
+        }
+
         $startPart = substr($string, 0, $visibleFromStart);
         $endPart = substr($string, -$visibleFromEnd);
+        $middlePart = str_repeat($maskCharacter, $length - $visibleFromStart - $visibleFromEnd);
 
-        return str_pad($startPart, $maskedLength, $maskCharacter, STR_PAD_RIGHT) . $endPart;
+        return $startPart . $middlePart . $endPart;
     }
 
     /**
@@ -161,7 +162,11 @@ class StringService
      */
     public function slug(string $input, string $separator = '-'): string
     {
-        $slug = preg_replace('/[^a-z0-9]+/i', $separator, strtolower($input));
+        $slug = mb_strtolower($input, 'UTF-8');
+        $slug = preg_replace('/[\s,\.;\'"!\?]+/u', $separator, $slug);
+        $slug = preg_replace('/[^\p{L}\p{Nd}' . preg_quote($separator, '/') . ']+/u', '', $slug);
+        $slug = preg_replace('/' . preg_quote($separator, '/') . '{2,}/u', $separator, $slug);
+
         return trim($slug, $separator);
     }
 
@@ -209,11 +214,22 @@ class StringService
      */
     public function limitWords(string $string, int $words, string $end = '...'): string
     {
-        $wordArray = explode(' ', $string);
+        $pattern = '/(\p{L}[\p{L}\p{Mn}\p{Pd}\']*\p{L}|\p{L})/u';
+        preg_match_all($pattern, $string, $matches);
+
+        $wordArray = $matches[0] ?? [];
+
         if (count($wordArray) <= $words) {
             return $string;
         }
-        return implode(' ', array_slice($wordArray, 0, $words)) . $end;
+
+        $limited = implode(' ', array_slice($wordArray, 0, $words));
+
+        if (!preg_match('/\s/u', $string)) {
+            $limited = implode('', array_slice($wordArray, 0, $words));
+        }
+
+        return $limited . $end;
     }
 
     /**

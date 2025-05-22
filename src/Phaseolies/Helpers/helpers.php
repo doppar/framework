@@ -252,7 +252,7 @@ function old($key): ?string
  */
 function fake(): \Faker\Generator
 {
-    $faker = Faker\Factory::create();
+    $faker = \Faker\Factory::create();
     return $faker;
 }
 
@@ -325,7 +325,23 @@ function paginator(?array $data = null): Paginator
  */
 function base_path(string $path = ''): string
 {
-    return BASE_PATH . ($path ? DIRECTORY_SEPARATOR . $path : '');
+    static $basePath = null;
+
+    if ($basePath === null) {
+        if (app()->runningInConsole()) {
+            $basePath = rtrim(getcwd(), DIRECTORY_SEPARATOR);
+        } elseif (defined('BASE_PATH')) {
+            $basePath = rtrim(BASE_PATH, DIRECTORY_SEPARATOR);
+        } else {
+            $basePath = rtrim(dirname($_SERVER['SCRIPT_FILENAME'] ?? ''), DIRECTORY_SEPARATOR);
+        }
+    }
+
+    if ($path === '') {
+        return $basePath;
+    }
+
+    return $basePath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
 }
 
 /**
