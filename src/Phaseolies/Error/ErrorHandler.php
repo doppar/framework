@@ -191,6 +191,9 @@ class ErrorHandler
     protected static function configureErrorReporting(): void
     {
         set_error_handler(function ($severity, $message, $file, $line) {
+            if (strpos($message, 'fsockopen():') === 0) {
+                return false;
+            }
             throw new \ErrorException($message, 0, $severity, $file, $line);
         });
     }

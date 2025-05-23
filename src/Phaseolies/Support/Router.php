@@ -876,4 +876,14 @@ class Router extends Kernel
 
         return $dependencies;
     }
+
+    /**
+     * Get the current matched route information (path, callback, method, etc.).
+     *
+     * @return array|null Array with route details or null if no route matched
+     */
+    public function getRouteNames(): ?array
+    {
+        return self::$namedRoutes;
+    }
 }

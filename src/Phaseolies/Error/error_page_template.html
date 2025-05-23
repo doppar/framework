@@ -139,7 +139,6 @@
         color: var(--text);
       }
 
-      /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -161,7 +160,7 @@
 
       .btn {
         display: inline-block;
-        background-color: #8486FF;
+        background-color: #DC3545;
         color: white;
         padding: 12px 24px;
         text-decoration: none;
@@ -169,10 +168,6 @@
         font-size: 16px;
         margin-top: 25px;
         transition: background-color 0.3s ease;
-      }
-
-      .btn:hover {
-        background-color: #8486FF;
       }
 
       .code-editor-section::-webkit-scrollbar,
@@ -322,16 +317,17 @@
                 </span>
               </div>
             </div>
-            <div class="code-editor-section">
+            <div
+              class="code-editor-section"
+              style="height: 500px; overflow: auto"
+            >
               <div class="error-container">
                 <div class="code-editor-section">
                   <pre><code class="language-php">{{ file_content }}</code></pre>
                 </div>
               </div>
-              <a href="/" class="btn">
-                <i class="fas fa-home me-2"></i> Home
-              </a>
             </div>
+            <a href="/" class="btn"> <i class="fas fa-home me-2"></i> Home </a>
           </div>
         </div>
       </div>

@@ -19,7 +19,10 @@ class FileSessionHandler extends AbstractSessionHandler
         // (e.g., "Cache-Control: no-store, no-cache" and "Pragma: no-cache")
         // This allows custom cache headers (like those set by doppar middleware)
         // To take effect without being overridden
-        session_cache_limiter('');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_cache_limiter('');
+        }
+
         if (session_status() === PHP_SESSION_NONE && !session_start()) {
             throw new RuntimeException("Failed to start session.");
         }
@@ -43,9 +46,11 @@ class FileSessionHandler extends AbstractSessionHandler
 
     private function configureFileSession(): void
     {
-        @ini_set('session.save_handler', 'files');
-        @ini_set('session.save_path', $this->config['files']);
-        @ini_set('session.gc_maxlifetime', $this->config['lifetime'] * 60);
+        if (session_status() === PHP_SESSION_NONE) {
+            ini_set('session.save_handler', 'files');
+            ini_set('session.save_path', $this->config['files']);
+            ini_set('session.gc_maxlifetime', $this->config['lifetime'] * 60);
+        }
     }
 
     public function validate(): void {}

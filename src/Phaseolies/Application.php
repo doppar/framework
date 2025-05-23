@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.1.9';
+    const VERSION = '2.2.3';
 
     /**
      * The base path of the application installation.
@@ -496,6 +496,11 @@ class Application extends Container
     {
         if (!$this->hasBeenBootstrapped) {
             $this->hasBeenBootstrapped = true;
+            foreach (config('app.aliases') as $alias => $facade) {
+                if (!class_exists($alias)) {
+                    class_alias($facade, $alias);
+                }
+            }
         }
     }
 

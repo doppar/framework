@@ -299,9 +299,9 @@ trait RequestParser
      * @param string $pattern The pattern to match against (e.g., 'api/*', 'admin/*')
      * @return bool True if the path matches the pattern, false otherwise
      */
-    public function is(string $pattern): bool
+    public static function is(string $pattern): bool
     {
-        $path = $this->uri();
+        $path = request()->uri();
 
         $pattern = str_replace('\*', '.*', preg_quote($pattern, '#'));
 
@@ -319,5 +319,25 @@ trait RequestParser
         }
 
         return false;
+    }
+
+    /**
+     * Get the current request route name
+     *
+     * @return string|bool|null
+     */
+    public static function route(?string $name = null): string|bool|null
+    {
+        $routeName = array_search(
+            request()->uri(),
+            app('route')->getRouteNames(),
+            true
+        ) ?: null;
+
+        if (\is_null($name)) {
+            return $routeName;
+        }
+
+        return $routeName === $name ? true : false;
     }
 }
