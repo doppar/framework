@@ -3,14 +3,16 @@
 namespace Phaseolies\Error;
 
 use Symfony\Component\Console\Output\ConsoleOutput;
-use Phaseolies\Support\Facades\Log;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Support\LoggerService;
 
 class ErrorHandler
 {
     public static function handle(): void
     {
+        self::configureErrorReporting();
+
         set_exception_handler(function ($exception) {
             $errorMessage = $exception->getMessage();
             $errorFile = $exception->getFile();
@@ -22,7 +24,7 @@ class ErrorHandler
             $logMessage .= "\nFile: " . $exception->getFile();
             $logMessage .= "\nLine: " . $exception->getLine();
             $logMessage .= "\nTrace: " . $exception->getTraceAsString();
-            Log::channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
+            app(LoggerService::class)->channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
 
             if (request()->isAjax() || request()->is('/api/*')) {
                 if ($exception instanceof HttpResponseException) {
@@ -117,7 +119,7 @@ class ErrorHandler
                 $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
                 $lines = explode("\n", $fileContent);
                 $startLine = max(0, $errorLine - 10);
-                $endLine = min(count($lines) - 1, $errorLine + 10);
+                $endLine = min(count($lines) - 1, $errorLine + 100);
                 $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
 
                 $highlightedLines = [];
@@ -136,8 +138,36 @@ class ErrorHandler
                 $languageClass = "language-$fileExtension";
 
                 echo str_replace(
-                    ['{{ error_message }}', '{{ error_file }}', '{{ error_line }}', '{{ error_trace }}', '{{ file_content }}', '{{ file_extension }}'],
-                    [$errorMessage, $errorFile, $errorLine, nl2br(htmlspecialchars($errorTrace)), $formattedCode, $languageClass],
+                    [
+                        '{{ error_message }}',
+                        '{{ error_file }}',
+                        '{{ error_line }}',
+                        '{{ error_trace }}',
+                        '{{ file_content }}',
+                        '{{ file_extension }}',
+                        '{{ php_version }}',
+                        '{{ request_method }}',
+                        '{{ request_url }}',
+                        '{{ timestamp }}',
+                        '{{ server_software }}',
+                        '{{ platform }}',
+                        '{{ exception_class }}'
+                    ],
+                    [
+                        $errorMessage,
+                        $errorFile,
+                        $errorLine,
+                        nl2br(htmlspecialchars($errorTrace)),
+                        $formattedCode,
+                        $languageClass,
+                        PHP_VERSION,
+                        request()->getMethod(),
+                        request()->fullUrl(),
+                        now()->toDayDateTimeString(),
+                        $_SERVER['SERVER_SOFTWARE'],
+                        php_uname(),
+                        class_basename($exception)
+                    ],
                     file_get_contents(__DIR__ . '/error_page_template.html')
                 );
             } else {
@@ -150,6 +180,18 @@ class ErrorHandler
                     include $errorPage;
                 }
             }
+        });
+    }
+
+    /**
+     * Display the warning errors and others minor errors
+     *
+     * @return void
+     */
+    protected static function configureErrorReporting(): void
+    {
+        set_error_handler(function ($severity, $message, $file, $line) {
+            throw new \ErrorException($message, 0, $severity, $file, $line);
         });
     }
 

@@ -49,7 +49,6 @@ class Console extends SymfonyApplication
      */
     protected function resolveCommand(string|Command $command): Command
     {
-
         if (is_string($command)) {
             $command = $this->app->make($command);
         }
