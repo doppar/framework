@@ -104,7 +104,7 @@ class Response implements HttpStatus
     }
 
     /**
-     * Clones the current Response instance.
+     * Clones the current headers instance.
      */
     public function __clone()
     {

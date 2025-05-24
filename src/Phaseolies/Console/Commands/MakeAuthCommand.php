@@ -117,14 +117,14 @@ EOT;
                 </a>
                 <div class="d-flex align-items-center gap-3">
                     @guest
-                        <a href="{{ route('login') }}" class="btn btn-light-custom">Login</a>
-                        <a href="{{ route('register') }}" class="btn btn-light-custom">Register</a>
+                        <a href="{{ route('login') }}" class="btn btn-light-custom {{ Request::is('/login') ? 'active' : '' }}">Login</a>
+                        <a href="{{ route('register') }}" class="btn btn-light-custom {{ Request::is('/register') ? 'active' : '' }}">Register</a>
                     @else
-                        <a href="{{ route('dashboard') }}" class="btn btn-light-custom">Dashboard</a>
+                        <a href="{{ route('dashboard') }}" class="btn btn-light-custom {{ Request::is('/home') ? 'active' : '' }}">Dashboard</a>
                         <div class="dropdown">
                             <button class="btn btn-light-custom dropdown-toggle" type="button" id="dropdownMenuButton"
                                 data-bs-toggle="dropdown" aria-expanded="false">
-                                {{ Phaseolies\Support\Facades\Auth::user()->name }}
+                                {{ Auth::user()->name }}
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
@@ -195,8 +195,8 @@ EOT;
         </div>
         <div class="card-body">
             <p class="fw-bold fs-5">
-                You are logged in as
-                <span class="text-success fw-bold">{{ Phaseolies\Support\Facades\Auth::user()->email }}</span>
+                You are logged in
+                <span class="text-success fw-bold">{{ Auth::user()->name }}</span>
             </p>
         </div>
     </div>

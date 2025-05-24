@@ -144,13 +144,18 @@ trait BladeCompiler
      * @param string|array|null $string
      * @param string $charset
      *
-     * @return string
+     * @return string|null
      */
-    public function e(string|array|null $string, $charset = null): string
+    public function e(mixed $string, ?string $charset = null): ?string
     {
+        if ($string === null) {
+            return null;
+        }
+
         if (is_array($string)) {
             $string = implode(' ', $string);
         }
-        return htmlspecialchars($string, ENT_QUOTES, is_null($charset) ? 'UTF-8' : $charset);
+
+        return htmlspecialchars((string)$string, ENT_QUOTES, $charset ?? 'UTF-8');
     }
 }
