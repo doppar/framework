@@ -86,7 +86,7 @@ class CsrfTokenMiddleware implements Middleware
      * @param \Phaseolies\Http\Response $response
      * @return \Phaseolies\Http\Response
      */
-    protected function addCookieToResponse($request, $response)
+    protected function addCookieToResponse($request, $response): Response
     {
         $config = config('session');
 
@@ -102,7 +102,7 @@ class CsrfTokenMiddleware implements Middleware
      * @param array $config
      * @return \Phaseolies\Http\Response\Cookie
      */
-    protected function addCookie($request, $config)
+    protected function addCookie($request, $config): Cookie
     {
         return new Cookie(
             'XSRF-TOKEN',
@@ -124,7 +124,7 @@ class CsrfTokenMiddleware implements Middleware
      * @param \Phaseolies\Http\Request $request
      * @return string|null
      */
-    protected function getTokenFromRequest($request)
+    protected function getTokenFromRequest($request): ?string
     {
         $token = $request->input('_token') ?: $request->headers->get('X-CSRF-TOKEN');
 

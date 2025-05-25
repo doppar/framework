@@ -46,6 +46,7 @@ class Session
     public function get(string $key, $default = null)
     {
         $value = $this->data[$key] ?? $default;
+
         $keys = ['success', 'info', 'errors', 'danger', 'warning', 'primary', 'message', 'error'];
         if (in_array($key, $keys)) {
             $this->forget($key);

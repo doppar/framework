@@ -70,12 +70,10 @@ use App\Http\Controllers\Auth\LoginController;
 
 Route::get('home', [HomeController::class, 'home'])->name('dashboard')->middleware('auth');
 Route::post('logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
-Route::group(['middleware' => ['guest']], function () {
-    Route::get('/login', [LoginController::class, 'index'])->name('login');
-    Route::post('/login', [LoginController::class, 'login']);
-    Route::get('/register', [RegisterController::class, 'index'])->name('register');
-    Route::post('/register', [RegisterController::class, 'register']);
-});
+Route::get('login', [LoginController::class, 'index'])->name('login')->middleware('guest');
+Route::post('login', [LoginController::class, 'login'])->middleware('guest');
+Route::get('register', [RegisterController::class, 'index'])->name('register')->middleware('guest');
+Route::post('register', [RegisterController::class, 'register'])->middleware('guest');
 
 EOT;
 
@@ -235,7 +233,8 @@ class LoginController extends Controller
 
         if (\$user) {
             if (Auth::try(\$request->passed())) {
-                return redirect('/home')->with('success', 'You are logged in');
+                return redirect()->intended('/home')
+                    ->with('success', 'You are logged in');
             }
             return back()->with('error', 'Email or password is incorrect');
         }

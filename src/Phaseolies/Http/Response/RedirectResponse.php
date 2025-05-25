@@ -46,14 +46,36 @@ class RedirectResponse extends Response
     }
 
     /**
+     * Stores the current full URL in the session to allow previously intended location.
+     *
+     * @param string $default
+     * @param int $status
+     * @param array $headers
+     * @param bool $secure
+     * @return RedirectResponse
+     */
+    public function intended($default = '/', $status = 302, array $headers = [], ?bool $secure = null): RedirectResponse
+    {
+        $intended = session()->get('url.intended');
+
+        if ($intended) {
+            session()->forget('url.intended');
+            return $this->to($intended, $status, $headers, $secure);
+        }
+
+        return $this->to($default, $status, $headers, $secure);
+    }
+
+    /**
      * Redirect to a specified URL.
      *
      * @param string $url
      * @param int $statusCode
      * @param array $headers
+     * @param bool $secure
      * @return RedirectResponse
      */
-    public function to(string $url, int $statusCode = 302, array $headers = [], $secure = null): RedirectResponse
+    public function to(string $url, int $statusCode = 302, array $headers = [], ?bool $secure = null): RedirectResponse
     {
         $this->setStatusCode($statusCode);
         foreach ($headers as $name => $value) {
@@ -76,7 +98,7 @@ class RedirectResponse extends Response
      * @param bool $fallback
      * @return RedirectResponse
      */
-    public function back($status = 302, $headers = [], $fallback = false): RedirectResponse
+    public function back($status = 302, $headers = [], ?bool $fallback = false): RedirectResponse
     {
         $url = request()->headers->get('referer') ?? '/';
         $this->setStatusCode($status);
