@@ -5,9 +5,28 @@ namespace Phaseolies\Http\Response;
 use Phaseolies\Support\Router;
 use Phaseolies\Session\MessageBag;
 use Phaseolies\Http\Response;
+use Phaseolies\Support\Facades\Str;
 
 class RedirectResponse extends Response
 {
+    /**
+     * Handle dynamic method calls into the class.
+     *
+     * @param string $method
+     * @param array $parameters
+     * @return mixed
+     * @throws \BadMethodCallException
+     */
+    public function __call($method, $parameters)
+    {
+        if (Str::startsWith($method, 'with')) {
+            $key = Str::snake(substr($method, 4));
+            return $this->with($key, $parameters[0]);
+        }
+
+        throw new \BadMethodCallException("Method {$method} does not exist.");
+    }
+
     /**
      * Sets the redirect target of this response.
      *
@@ -242,13 +261,13 @@ class RedirectResponse extends Response
     /**
      * Set the flash message
      *
-     * @param string $type
+     * @param string $key
      * @param string $message
      * @return RedirectResponse
      */
-    public function with(string $type, string $message): RedirectResponse
+    public function with(string $key, string $message): RedirectResponse
     {
-        session()->put($type, $message);
+        session()->put($key, $message);
 
         return $this;
     }

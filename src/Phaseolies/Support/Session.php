@@ -47,8 +47,7 @@ class Session
     {
         $value = $this->data[$key] ?? $default;
 
-        $keys = ['success', 'info', 'errors', 'danger', 'warning', 'primary', 'message', 'error'];
-        if (in_array($key, $keys)) {
+        if ($key !== '_token' && $key !== 'user') {
             $this->forget($key);
         }
 
@@ -94,7 +93,7 @@ class Session
     /**
      * Put a key-value pair into the session.
      *
-     * @param string $key
+     * @param string|array $key
      * @param mixed $value
      * @return void
      */

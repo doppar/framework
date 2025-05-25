@@ -234,20 +234,19 @@ class LoginController extends Controller
         if (\$user) {
             if (Auth::try(\$request->passed())) {
                 return redirect()->intended('/home')
-                    ->with('success', 'You are logged in');
+                    ->withSuccess('You are logged in');
             }
-            return back()->with('error', 'Email or password is incorrect');
+            return back()->withError('Email or password is incorrect');
         }
 
-        return back()->with('error', 'User does not exist');
+        return back()->withError('User does not exist');
     }
 
     public function logout()
     {
         Auth::logout();
 
-        return redirect()->to('/login')
-            ->with('success', 'You are successfully logged out');
+        return redirect('/login')->withSuccess('You are successfully logged out');
     }
 }
 EOT;
@@ -282,18 +281,13 @@ class RegisterController extends Controller
             'confirm_password' => 'required|same_as:password',
         ]);
 
-        \$user = User::create([
+        User::create([
             'name' => \$request->name,
             'email' => \$request->email,
             'password' => Hash::make(\$request->password)
         ]);
 
-        if (\$user) {
-            return redirect()->to('/login')
-                ->with('success', 'User created successfully');
-        }
-
-        return redirect()->back();
+        return back()->withSuccess('User created successfully');
     }
 }
 EOT;
