@@ -149,8 +149,8 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title') Welcome @endsection
-@yield('content')
+@section('title') Welcome
+@section('content')
     <div class="container d-flex justify-content-center align-items-center" style="height: 65vh;">
         <div class="content text-center">
             <p style="font-weight: 700; font-size:20px">{{ trans('messages.welcome', ['version' => \Phaseolies\Application::VERSION]) }}</p>
@@ -169,8 +169,8 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title') Dashboard @endsection
-@yield('content')
+@section('title') Dashboard
+@section('content')
     <div class="card shadow-lg mb-4">
         <div class="card-header text-black fw-bold">
             <h5 class="fw-bold fs-5">{{ __('Dashboard') }}</h5>
@@ -300,8 +300,8 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title') Login @endsection
-@yield('content')
+@section('title') Login
+@section('content')
     <div class="card-header border-bottom-0 text-center mt-5">
         <h5 class="fw-bold fs-5">Login</h5>
     </div>
@@ -336,8 +336,8 @@ EOT;
     {
         return <<<EOT
 @extends('layouts.app')
-@section('title') Register @endsection
-@yield('content')
+@section('title') Register
+@section('content')
     <div class="card-header border-bottom-0 text-center mt-5">
         <h5 class="fw-bold fs-5">Register</h5>
     </div>
