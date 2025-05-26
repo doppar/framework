@@ -136,7 +136,7 @@ class ErrorHandler
 
                 $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
                 $languageClass = "language-$fileExtension";
-
+                ob_end_clean();
                 echo str_replace(
                     [
                         '{{ error_message }}',
@@ -168,7 +168,7 @@ class ErrorHandler
                         php_uname(),
                         class_basename($exception)
                     ],
-                    file_get_contents(__DIR__ . '/error_page_template.html')
+                    file_get_contents(__DIR__ . '/error_page_template.blade.php')
                 );
             } else {
                 $customPath = base_path("resources/views/errors/500.blade.php");

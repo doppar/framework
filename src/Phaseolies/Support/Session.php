@@ -47,9 +47,21 @@ class Session
     {
         $value = $this->data[$key] ?? $default;
 
-        if ($key !== '_token' && $key !== 'user') {
-            $this->forget($key);
-        }
+        return $value;
+    }
+
+    /**
+     * Get a session value by key.
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function pull(string $key, $default = null)
+    {
+        $value = $this->data[$key] ?? $default;
+
+        $this->forget($key);
 
         return $value;
     }
@@ -64,6 +76,8 @@ class Session
     public function getPeek(string $key, $default = null)
     {
         $value = $this->peek[$key] ?? $default;
+
+        $this->forget($key);
 
         return $value;
     }

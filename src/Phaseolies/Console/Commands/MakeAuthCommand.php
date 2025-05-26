@@ -96,22 +96,15 @@ EOT;
             integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
-            body {
-                font-family: 'Poppins', sans-serif;
-                background: #f8f9fa;
-            }
-
-            .navbar {
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            }
+           .btn-check:checked+.btn,.btn-primary,.btn.active,.btn.show,.btn:first-child:active,:not(.btn-check)+.btn:active{color:#fff;background:#8486ff}.btn-primary,.btn-primary:hover{background:#8486ff}body{font-family:Poppins,sans-serif;background:#edf2f7}.navbar{box-shadow:0 2px 10px rgba(0,0,0,.1)}.btn-primary{border:unset}
         </style>
     </head>
     <body>
         <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
             <div class="container">
                 <a class="navbar-brand" href="{{ route('home') }}">
-                    <img src="{{ enqueue('logo.png') }}" alt="Logo" width="60"
-                        height="60">
+                    <img src="{{ enqueue('logo.png') }}" alt="Logo" width="100"
+                        height="40">
                 </a>
                 <div class="d-flex align-items-center gap-3">
                     @guest
@@ -140,15 +133,6 @@ EOT;
         <div class="container mt-5 pt-5">
             <div class="row justify-content-center">
                 <div class="col-md-8">
-                    @if (session()->has('success'))
-                        <div class="alert alert-success">
-                            {{ session()->get('success') }}
-                        </div>
-                    @elseif(session()->has('error'))
-                        <div class="alert alert-danger">
-                            {{ session()->get('error') }}
-                        </div>
-                    @endif
                     @yield('content')
                 </div>
             </div>
@@ -337,7 +321,7 @@ EOT;
                     <input type="checkbox" class="form-check-input" id="remember" name="remember">
                     <label class="form-check-label" for="remember">Remember Me</label>
                 </div>
-                <button type="submit" class="btn btn-secondary w-100">{{ __('Sign in') }}</button>
+                <button type="submit" class="btn btn-primary w-100">{{ __('Sign in') }}</button>
             </form>
             <div class="text-center mt-3">
                 Don't have an account? <a href="{{ route('register') }}" class="text-decoration-none">{{ __('Register') }}</a>
@@ -377,7 +361,7 @@ EOT;
                     <label for="password" class="form-label">Confirm Password</label>
                     <input type="password" class="form-control" name="confirm_password">
                 </div>
-                <button type="submit" class="btn btn-secondary w-100">{{ __('Register') }}</button>
+                <button type="submit" class="btn btn-primary w-100">{{ __('Register') }}</button>
             </form>
             <div class="text-center mt-3">
                 Already have an account? <a href="{{ route('login') }}" class="text-decoration-none">{{ __('Sign in') }}</a>
