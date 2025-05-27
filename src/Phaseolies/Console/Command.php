@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Console;
 
+use RecursiveIteratorIterator;
+use RecursiveDirectoryIterator;
 use Phaseolies\Application;
 
 class Command extends Console
@@ -32,6 +34,24 @@ class Command extends Console
             fn($file) => 'Phaseolies\\Console\\Commands\\' . basename($file, '.php'),
             $commandFiles
         );
+
+        $files = [];
+        $userDefineCommandsDir = base_path('app/Schedule/Commands');
+        $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);
+        $iterator = new RecursiveIteratorIterator($dirIterator);
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        $files = array_map(function ($file) use ($userDefineCommandsDir) {
+            $relativePath = str_replace([$userDefineCommandsDir, '.php', '/'], ['', '', '\\'], $file);
+            return 'App\\Schedule\\Commands' . $relativePath;
+        }, $files);
+
+        $commandClasses = array_merge($files, $commandClasses);
 
         $commands = [];
         foreach ($commandClasses as $command) {
