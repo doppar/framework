@@ -14,16 +14,17 @@
   },
   "require": {
     "php": "^8.3",
+    "dragonmantank/cron-expression": "^3.4",
     "monolog/monolog": "^3.0",
+    "nesbot/carbon": "^3.8",
     "phpmailer/phpmailer": "^6.9",
+    "psr/simple-cache": "^3.0",
     "ramsey/collection": "^2.1",
+    "symfony/cache": "^7.2",
     "symfony/console": "^7.2",
     "symfony/process": "^7.2",
     "symfony/var-dumper": "^7.1",
-    "vlucas/phpdotenv": "^5.5",
-    "nesbot/carbon": "^3.8",
-    "psr/simple-cache": "^3.0",
-    "symfony/cache": "^7.2"
+    "vlucas/phpdotenv": "^5.5"
   },
   "require-dev": {
     "mockery/mockery": "^1.6",

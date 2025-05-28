@@ -133,7 +133,7 @@ abstract class Command extends SymfonyCommand
     }
 
     /**
-     * Execute the console command (Laravel-style).
+     * Execute the console command.
      *
      * @return int
      */
