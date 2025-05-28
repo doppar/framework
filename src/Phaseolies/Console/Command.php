@@ -37,21 +37,23 @@ class Command extends Console
 
         $files = [];
         $userDefineCommandsDir = base_path('app/Schedule/Commands');
-        $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);
-        $iterator = new RecursiveIteratorIterator($dirIterator);
+        if (\is_dir($userDefineCommandsDir)) {
+            $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);
+            $iterator = new RecursiveIteratorIterator($dirIterator);
 
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $files[] = $file->getPathname();
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $files[] = $file->getPathname();
+                }
             }
+
+            $files = array_map(function ($file) use ($userDefineCommandsDir) {
+                $relativePath = str_replace([$userDefineCommandsDir, '.php', '/'], ['', '', '\\'], $file);
+                return 'App\\Schedule\\Commands' . $relativePath;
+            }, $files);
+
+            $commandClasses = array_merge($files, $commandClasses);
         }
-
-        $files = array_map(function ($file) use ($userDefineCommandsDir) {
-            $relativePath = str_replace([$userDefineCommandsDir, '.php', '/'], ['', '', '\\'], $file);
-            return 'App\\Schedule\\Commands' . $relativePath;
-        }, $files);
-
-        $commandClasses = array_merge($files, $commandClasses);
 
         $commands = [];
         foreach ($commandClasses as $command) {
