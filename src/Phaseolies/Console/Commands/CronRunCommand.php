@@ -34,23 +34,69 @@ class CronRunCommand extends Command
         foreach ($commandsToRun as $command) {
             $output->writeln('<comment>Running:</comment> ' . $command->getCommand());
 
+            $env = array_merge(getenv(), [
+                'APP_RUNNING_IN_CONSOLE' => true,
+                'APP_SCHEDULE_RUNNING' => true
+            ]);
+
             if ($command->shouldRunInBackground()) {
-                $process = new Process(['php', 'pool', $command->getCommand()]);
-                $process->start();
-                $output->writeln('<info>Scheduled command started in background:</info> ' . $command->getCommand());
+                $this->runInBackground($command, $output, $env);
             } else {
-                $process = new Process(['php', 'pool', $command->getCommand()]);
-                $process->run();
-                
-                if ($process->isSuccessful()) {
-                    $output->writeln('<info>Success:</info> ' . $command->getCommand());
-                } else {
-                    $output->writeln('<error>Error:</error> ' . $command->getCommand());
-                    $output->writeln('<error>Output:</error> ' . $process->getErrorOutput());
-                }
+                $this->runInForeground($command, $output, $env);
             }
         }
 
         return Command::SUCCESS;
+    }
+
+    protected function runInBackground($command, $output, $env): void
+    {
+        $logFile = storage_path('logs/'.md5($command->getCommand()).'.log');
+        $commandString = sprintf(
+            'php pool %s >> %s 2>&1',
+            $command->getCommand(),
+            $logFile
+        );
+
+        if ($command->withoutOverlapping) {
+            $command->lock();
+        }
+
+        $process = new Process(['nohup', 'sh', '-c', $commandString], base_path(), $env);
+        $process->setTimeout(null);
+        $process->start();
+
+        file_put_contents(
+            $command->getLockFile().'.pid',
+            $process->getPid()
+        );
+
+        $output->writeln(sprintf(
+            '<info>Background process started (PID: %d, Log: %s)</info>',
+            $process->getPid(),
+            $logFile
+        ));
+    }
+
+    protected function runInForeground($command, $output, $env): void
+    {
+        if ($command->withoutOverlapping) {
+            $command->lock();
+        }
+
+        $process = new Process(['php', 'pool', $command->getCommand()], base_path(), $env);
+        $process->setTimeout(null);
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            $output->writeln('<info>Success:</info> ' . $command->getCommand());
+        } else {
+            $output->writeln('<error>Error:</error> ' . $command->getCommand());
+            $output->writeln('<error>Output:</error> ' . $process->getErrorOutput());
+        }
+
+        if ($command->withoutOverlapping) {
+            $command->releaseLock();
+        }
     }
 }
