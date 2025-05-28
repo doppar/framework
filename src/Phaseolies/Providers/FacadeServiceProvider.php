@@ -16,6 +16,7 @@ use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\Response;
 use Phaseolies\Database\Migration\Schema;
 use Phaseolies\Database\Database;
+use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
 use Phaseolies\Auth\Security\Authenticate;
@@ -114,6 +115,10 @@ class FacadeServiceProvider extends ServiceProvider
         // Bind the 'schema' service to a singleton instance of the Schema class.
         // This handles database schema related jobs
         $this->app->singleton('schema', Schema::class);
+
+        // Bind the 'pool' service to a singleton instance of the SchedulePool class.
+        // This handles pool console related jobs
+        $this->app->singleton('pool', SchedulePool::class);
     }
 
     /**
