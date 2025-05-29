@@ -5,7 +5,7 @@ namespace Phaseolies\Console\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 class StorageLinkCommand extends Command
 {
@@ -20,27 +20,47 @@ class StorageLinkCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $filesystem = new Filesystem();
+        $links = config('filesystem.links');
 
-        $publicStorage = base_path('public/storage');
-        $target = base_path('storage/app/public');
-
-        if (is_link($publicStorage)) {
-            $output->writeln('<comment>Storage link already exists.</comment>');
-            return Command::SUCCESS;
-        }
-
-        if (file_exists($publicStorage)) {
-            $filesystem->remove($publicStorage);
-        }
-
-        try {
-            $filesystem->symlink($target, $publicStorage);
-            $output->writeln('<info>Symbolic link created successfully</info>');
-            return Command::SUCCESS;
-        } catch (\Exception $e) {
-            $output->writeln('<error>Failed to create symbolic link: ' . $e->getMessage() . '</error>');
+        if (empty($links)) {
+            $output->writeln('<error>No symbolic links configured in config/filesystems.php</error>');
             return Command::FAILURE;
         }
+
+        foreach ($links as $link => $target) {
+            if (is_link($link)) {
+                $currentTarget = readlink($link);
+
+                if ($currentTarget === $target) {
+                    $output->writeln("<info>✓ Link already exists</info>");
+                    continue;
+                }
+
+                $output->writeln("<comment>✗ Link exists but points elsewhere. Replacing...</comment>");
+                unlink($link);
+            } elseif (file_exists($link)) {
+                $output->writeln("<comment>✗ File/directory exists at {$link}. Removing...</comment>");
+                $rmProcess = Process::fromShellCommandline(sprintf('rm -rf %s', escapeshellarg($link)));
+                $rmProcess->run();
+
+                if (!$rmProcess->isSuccessful()) {
+                    $output->writeln('<error>Failed to remove: ' . $rmProcess->getErrorOutput() . '</error>');
+                    return Command::FAILURE;
+                }
+            }
+
+            $cmd = sprintf('ln -s %s %s', escapeshellarg($target), escapeshellarg($link));
+            $symlinkProcess = Process::fromShellCommandline($cmd);
+            $symlinkProcess->run();
+
+            if ($symlinkProcess->isSuccessful()) {
+                $output->writeln("<info>✓ Symbolic Link created: {$link} → {$target}</info>");
+            } else {
+                $output->writeln('<error>Failed to create symlink: ' . $symlinkProcess->getErrorOutput() . '</error>');
+                return Command::FAILURE;
+            }
+        }
+
+        return Command::SUCCESS;
     }
 }

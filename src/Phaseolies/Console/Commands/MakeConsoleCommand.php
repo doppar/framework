@@ -98,7 +98,7 @@ class {$className} extends Command
      */
     protected function handle(): int
     {
-        return 1;
+        return 0;
     }
 }
 
