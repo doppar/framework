@@ -503,7 +503,7 @@ function now()
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function info(mixed $payload): void
@@ -514,7 +514,7 @@ function info(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function warning(mixed $payload): void
@@ -525,7 +525,7 @@ function warning(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function error(mixed $payload): void
@@ -536,7 +536,7 @@ function error(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function alert(mixed $payload): void
@@ -547,7 +547,7 @@ function alert(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function notice(mixed $payload): void
@@ -558,7 +558,7 @@ function notice(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function emergency(mixed $payload): void
@@ -569,7 +569,7 @@ function emergency(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function critical(mixed $payload): void
@@ -580,7 +580,7 @@ function critical(mixed $payload): void
 /**
  * Log helper
  *
- * @param mixed
+ * @param mixed $message The message to log.
  * @return void
  */
 function debug(mixed $payload): void

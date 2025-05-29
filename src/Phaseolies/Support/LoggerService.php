@@ -161,6 +161,8 @@ class LoggerService extends LogService
     {
         $channel = $this->currentChannel ?? 'stack';
 
+        $this->reset();
+
         if ($this->currentChannel === null) {
             $this->addHandler(new DefaultLogHandler());
         }

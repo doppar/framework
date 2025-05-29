@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Console\Schedule;
 
+use DateTimeZone;
 use Cron\CronExpression;
 
 class ScheduledCommand
@@ -59,6 +60,13 @@ class ScheduledCommand
     private $maxLockTime = 1440;
 
     /**
+     * The timezone the command should run in.
+     *
+     * @var string|null
+     */
+    private $timezone = null;
+
+    /**
      * Initializes the command with default lock and tracking file paths.
      *
      * @param string $command
@@ -101,6 +109,36 @@ class ScheduledCommand
     }
 
     /**
+     * Schedule the command to run every two minutes.
+     *
+     * @return self
+     */
+    public function everyTwoMinutes(): self
+    {
+        return $this->cron("*/2 * * * *");
+    }
+
+    /**
+     * Schedule the command to run every three minutes.
+     *
+     * @return self
+     */
+    public function everyThreeMinutes(): self
+    {
+        return $this->cron("*/3 * * * *");
+    }
+
+    /**
+     * Schedule the command to run every four minutes.
+     *
+     * @return self
+     */
+    public function everyFourMinutes(): self
+    {
+        return $this->cron("*/4 * * * *");
+    }
+
+    /**
      * Schedule the command to run every five minutes.
      *
      * @return self
@@ -121,13 +159,23 @@ class ScheduledCommand
     }
 
     /**
-     * Schedule the command to run every ten minutes.
+     * Schedule the command to run every fifteen minutes.
      *
      * @return self
      */
     public function everyFifteenMinutes(): self
     {
         return $this->cron("*/15 * * * *");
+    }
+
+    /**
+     * Schedule the command to run every twenty minutes.
+     *
+     * @return self
+     */
+    public function everyTwentyMinutes(): self
+    {
+        return $this->cron("*/20 * * * *");
     }
 
     /**
@@ -228,6 +276,236 @@ class ScheduledCommand
     }
 
     /**
+     * Schedule the command to run hourly at a specific minute.
+     *
+     * @param int $minute The minute of the hour (0-59)
+     * @return self
+     */
+    public function hourlyAt(int $minute): self
+    {
+        return $this->cron("{$minute} * * * *");
+    }
+
+    /**
+     * Schedule the command to run every odd hour.
+     *
+     * @param int $minutes The minutes past the hour (0-59)
+     * @return self
+     */
+    public function everyOddHour(int $minutes = 0): self
+    {
+        return $this->cron("{$minutes} 1-23/2 * * *");
+    }
+
+    /**
+     * Schedule the command to run every two hours.
+     *
+     * @param int $minutes The minutes past the hour (0-59)
+     * @return self
+     */
+    public function everyTwoHours(int $minutes = 0): self
+    {
+        return $this->cron("{$minutes} */2 * * *");
+    }
+
+    /**
+     * Schedule the command to run every four hours.
+     *
+     * @param int $minutes The minutes past the hour (0-59)
+     * @return self
+     */
+    public function everyFourHours(int $minutes = 0): self
+    {
+        return $this->cron("{$minutes} */4 * * *");
+    }
+
+    /**
+     * Schedule the command to run every six hours.
+     *
+     * @param int $minutes The minutes past the hour (0-59)
+     * @return self
+     */
+    public function everySixHours(int $minutes = 0): self
+    {
+        return $this->cron("{$minutes} */6 * * *");
+    }
+
+    /**
+     * Schedule the command to run twice daily at specified hours.
+     *
+     * @param int $firstHour First hour (0-23)
+     * @param int $secondHour Second hour (0-23)
+     * @return self
+     */
+    public function twiceDaily(int $firstHour, int $secondHour): self
+    {
+        return $this->cron("0 {$firstHour},{$secondHour} * * *");
+    }
+
+    /**
+     * Schedule the command to run twice daily at specified hours and minute.
+     *
+     * @param int $firstHour First hour (0-23)
+     * @param int $secondHour Second hour (0-23)
+     * @param int $minute The minute of the hour (0-59)
+     * @return self
+     */
+    public function twiceDailyAt(int $firstHour, int $secondHour, int $minute): self
+    {
+        return $this->cron("{$minute} {$firstHour},{$secondHour} * * *");
+    }
+
+    /**
+     * Schedule the command to run weekly on a specific day and time.
+     *
+     * @param int $day Day of week (0-6, 0 = Sunday)
+     * @param string $time Time in "HH:MM" format
+     * @return self
+     */
+    public function weeklyOn(int $day, string $time): self
+    {
+        $parts = explode(':', $time);
+        $hour = $parts[0];
+        $minute = $parts[1] ?? '0';
+
+        return $this->cron("{$minute} {$hour} * * {$day}");
+    }
+
+    /**
+     * Schedule the command to run monthly on a specific day and time.
+     *
+     * @param int $day Day of month (1-31)
+     * @param string $time Time in "HH:MM" format
+     * @return self
+     */
+    public function monthlyOn(int $day, string $time): self
+    {
+        $parts = explode(':', $time);
+        $hour = $parts[0];
+        $minute = $parts[1] ?? '0';
+
+        return $this->cron("{$minute} {$hour} {$day} * *");
+    }
+
+    /**
+     * Schedule the command to run twice monthly on specific days and time.
+     *
+     * @param int $firstDay First day of month (1-31)
+     * @param int $secondDay Second day of month (1-31)
+     * @param string $time Time in "HH:MM" format
+     * @return self
+     */
+    public function twiceMonthly(int $firstDay, int $secondDay, string $time): self
+    {
+        $parts = explode(':', $time);
+        $hour = $parts[0];
+        $minute = $parts[1] ?? '0';
+
+        return $this->cron("{$minute} {$hour} {$firstDay},{$secondDay} * *");
+    }
+
+    /**
+     * Schedule the command to run on the last day of the month at a specific time.
+     *
+     * @param string $time Time in "HH:MM" format
+     * @return self
+     */
+    public function lastDayOfMonth(string $time): self
+    {
+        $parts = explode(':', $time);
+        $hour = $parts[0];
+        $minute = $parts[1] ?? '0';
+
+        return $this->cron("{$minute} {$hour} L * *");
+    }
+
+    /**
+     * Restrict the command to run only between specific hours.
+     *
+     * @param string $startTime Start time in "HH:MM" format
+     * @param string $endTime End time in "HH:MM" format
+     * @return self
+     */
+    public function between(string $startTime, string $endTime): self
+    {
+        $start = explode(':', $startTime);
+        $end = explode(':', $endTime);
+
+        $startHour = (int)$start[0];
+        $startMinute = $start[1] ?? '0';
+        $endHour = (int)$end[0];
+        $endMinute = $end[1] ?? '0';
+
+        if ($endHour < $startHour || ($endHour == $startHour && $endMinute < $startMinute)) {
+            $part1 = $this->createBetweenExpression($startHour, $startMinute, 23, 59);
+            $part2 = $this->createBetweenExpression(0, 0, $endHour, $endMinute);
+
+            $this->expression = "{$this->expression} && ({$part1} || {$part2})";
+        } else {
+            $expression = $this->createBetweenExpression($startHour, $startMinute, $endHour, $endMinute);
+            $this->expression = "{$this->expression} && {$expression}";
+        }
+
+        return $this;
+    }
+
+    /**
+     * Helper method to create a between expression for cron.
+     *
+     * @param int $startHour
+     * @param string $startMinute
+     * @param int $endHour
+     * @param string $endMinute
+     * @return string
+     */
+    private function createBetweenExpression(int $startHour, string $startMinute, int $endHour, string $endMinute): string
+    {
+        if ($startHour == $endHour) {
+            return sprintf(
+                '%d %d-%d * * *',
+                $startMinute,
+                $startHour,
+                $endHour
+            );
+        }
+
+        return sprintf(
+            '%d-%d %d-%d * * *',
+            $startMinute,
+            $endMinute,
+            $startHour,
+            $endHour
+        );
+    }
+
+    /**
+     * Set the timezone for the command's schedule.
+     *
+     * @param string $timezone Valid PHP timezone identifier
+     * @return self
+     * @throws \Exception if the timezone is invalid
+     */
+    public function timezone(string $timezone): self
+    {
+        if (!in_array($timezone, DateTimeZone::listIdentifiers())) {
+            throw new \InvalidArgumentException("Invalid timezone '{$timezone}'");
+        }
+
+        $this->timezone = $timezone;
+        return $this;
+    }
+
+    /**
+     * Get the timezone for this command.
+     *
+     * @return string|null
+     */
+    public function getTimezone(): ?string
+    {
+        return $this->timezone;
+    }
+
+    /**
      * Prevent overlapping executions of the command.
      * Optionally, set a custom max lock time (in minutes).
      *
@@ -270,15 +548,25 @@ class ScheduledCommand
      */
     public function isDue(): bool
     {
+        $now = new \DateTime('now', $this->timezone ? new DateTimeZone($this->timezone) : config('app.timezone'));
+
         // Check if command is due based on cron schedule
         $cron = new CronExpression($this->expression);
-        if (!$cron->isDue()) {
+        if (!$cron->isDue($now)) {
             return false;
         }
 
         // Check for overlapping if enabled
         if ($this->withoutOverlapping) {
             $lockFile = $this->getLockFile();
+            $pidFile = $lockFile . '.pid';
+
+            if (file_exists($pidFile)) {
+                $processInfo = json_decode(file_get_contents($pidFile), true);
+                if (!$this->isProcessRunning($processInfo['pid'] ?? 0)) {
+                    $this->releaseLock();
+                }
+            }
 
             // Check if lock file exists and is still valid
             if (file_exists($lockFile)) {
@@ -370,6 +658,11 @@ class ScheduledCommand
     {
         if (file_exists($this->lockFile)) {
             unlink($this->lockFile);
+        }
+
+        $pidFile = $this->lockFile . '.pid';
+        if (file_exists($pidFile)) {
+            unlink($pidFile);
         }
     }
 
