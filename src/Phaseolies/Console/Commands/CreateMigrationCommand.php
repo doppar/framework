@@ -25,7 +25,7 @@ class CreateMigrationCommand extends Command
     {
         $this
             ->setName('make:migration')
-            ->setDescription('Create a new migration file')
+            ->setDescription('Creates a new migration file')
             ->addArgument('name', InputArgument::REQUIRED, 'The name of the migration')
             ->addOption('create', null, InputOption::VALUE_OPTIONAL, 'The table to be created')
             ->addOption('table', null, InputOption::VALUE_OPTIONAL, 'The table to migrate');

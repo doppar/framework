@@ -43,8 +43,6 @@ class SchedulePool
 
             $processInfo = [
                 'pid' => $process->getPid(),
-                'command' => $command,
-                'status' => 'started',
                 'start_time' => time()
             ];
 

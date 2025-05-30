@@ -492,7 +492,7 @@ function abort_if($condition, $code, $message = '', array $headers = []): void
 }
 
 /**
- * Get the current timestamps
+ * Get the current timestamp with optional timezone
  * @return \Carbon\Carbon
  */
 function now()

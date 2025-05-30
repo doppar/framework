@@ -4,6 +4,7 @@ namespace Phaseolies\Console\Schedule;
 
 use DateTimeZone;
 use Cron\CronExpression;
+use Carbon\Carbon;
 
 class ScheduledCommand
 {
@@ -67,15 +68,98 @@ class ScheduledCommand
     private $timezone = null;
 
     /**
+     * Dates on which the command should not run.
+     *
+     * @var array
+     */
+    private $excludedDates = [];
+
+    /**
+     * Additional conditions that may affect the execution of the command.
+     *
+     * @var array
+     */
+    private $additionalConditions = [];
+
+    /**
+     * The rate limit value for the command, if applicable.
+     *
+     * @var int|null
+     */
+    private $rateLimit = null;
+
+    /**
+     * The condition that might be applied on cron expression
+     *
+     * @var callable
+     */
+    private $condition = null;
+
+    /**
+     * The callback to execute when the command succeeds.
+     *
+     * @var callable|null
+     */
+    private $onSuccessCallback = null;
+
+    /**
+     * The callback to execute when the command fails.
+     *
+     * @var callable|null
+     */
+    private $onFailureCallback = null;
+
+    /**
+     * The number of times the command has been attempted.
+     *
+     * @var int
+     */
+    private $attempts = 0;
+
+    /**
+     * The maximum number of retry attempts.
+     *
+     * @var int
+     */
+    private $maxRetries = 0;
+
+    /**
+     * The delay between retry attempts in seconds.
+     *
+     * @var int
+     */
+    private $retryDelay = 60;
+
+    /**
      * Initializes the command with default lock and tracking file paths.
      *
      * @param string $command
      */
     public function __construct(string $command)
     {
+        if (empty(trim($command))) {
+            throw new \InvalidArgumentException('Command cannot be empty');
+        }
+
         $this->command = $command;
-        $this->lastRunFile = sys_get_temp_dir() . "/doppar_cron_" . md5($this->command);
-        $this->lockFile = sys_get_temp_dir() . "/doppar_cron_lock_" . md5($this->command);
+        $tempDir = sys_get_temp_dir();
+        $this->lastRunFile = $tempDir . "/doppar_cron_" . md5($this->command);
+        $this->lockFile = $tempDir . "/doppar_cron_lock_" . md5($this->command);
+
+        $this->ensureSecureFilePermissions($this->lastRunFile);
+        $this->ensureSecureFilePermissions($this->lockFile);
+    }
+
+    /**
+     * Ensure secure file permissions for lock files.
+     *
+     * @param string $filePath Path to the file
+     */
+    private function ensureSecureFilePermissions(string $filePath): void
+    {
+        if (file_exists($filePath)) {
+            chmod($filePath, 0600);
+        }
     }
 
     /**
@@ -272,6 +356,7 @@ class ScheduledCommand
     public function cron(string $expression): self
     {
         $this->expression = $expression;
+
         return $this;
     }
 
@@ -428,54 +513,49 @@ class ScheduledCommand
      */
     public function between(string $startTime, string $endTime): self
     {
-        $start = explode(':', $startTime);
-        $end = explode(':', $endTime);
-
-        $startHour = (int)$start[0];
-        $startMinute = $start[1] ?? '0';
-        $endHour = (int)$end[0];
-        $endMinute = $end[1] ?? '0';
-
-        if ($endHour < $startHour || ($endHour == $startHour && $endMinute < $startMinute)) {
-            $part1 = $this->createBetweenExpression($startHour, $startMinute, 23, 59);
-            $part2 = $this->createBetweenExpression(0, 0, $endHour, $endMinute);
-
-            $this->expression = "{$this->expression} && ({$part1} || {$part2})";
-        } else {
-            $expression = $this->createBetweenExpression($startHour, $startMinute, $endHour, $endMinute);
-            $this->expression = "{$this->expression} && {$expression}";
+        if (
+            !preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $startTime) ||
+            !preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $endTime)
+        ) {
+            throw new \InvalidArgumentException('Time must be in "HH:MM" format');
         }
+
+        $this->addTimeCondition(function () use ($startTime, $endTime) {
+            $timezone = $this->timezone ?: config('app.timezone', 'UTC');
+            $now = Carbon::now($timezone);
+
+            // Extract hour and minute
+            [$startHour, $startMinute] = explode(':', $startTime);
+            [$endHour, $endMinute] = explode(':', $endTime);
+
+            // Set start and end to today with the correct times
+            $start = $now->copy()->setTime($startHour, $startMinute);
+            $end = $now->copy()->setTime($endHour, $endMinute);
+
+            if ($start->lt($end)) {
+                // Normal range (e.g., 15:00 to 17:00)
+                return $now->between($start, $end);
+            }
+
+            // Overnight range (e.g., 23:00 to 02:00)
+            return $now->gte($start) || $now->lte($end);
+        });
 
         return $this;
     }
 
     /**
-     * Helper method to create a between expression for cron.
+     * Adding time condition
      *
-     * @param int $startHour
-     * @param string $startMinute
-     * @param int $endHour
-     * @param string $endMinute
-     * @return string
+     * @param callable $condition
+     * @return void
      */
-    private function createBetweenExpression(int $startHour, string $startMinute, int $endHour, string $endMinute): string
+    private function addTimeCondition(callable $condition): void
     {
-        if ($startHour == $endHour) {
-            return sprintf(
-                '%d %d-%d * * *',
-                $startMinute,
-                $startHour,
-                $endHour
-            );
+        if (!isset($this->additionalConditions)) {
+            $this->additionalConditions = [];
         }
-
-        return sprintf(
-            '%d-%d %d-%d * * *',
-            $startMinute,
-            $endMinute,
-            $startHour,
-            $endHour
-        );
+        $this->additionalConditions[] = $condition;
     }
 
     /**
@@ -541,62 +621,403 @@ class ScheduledCommand
     }
 
     /**
-     * Determine if the command is due to run at the current time.
-     * Uses the CRON expression and compares it against the current time.
-     *
-     * @return bool True if the command should be executed now, false otherwise.
+     * Add dates when the command should NOT run (e.g., holidays).
+     * @param array|string $dates Format: "YYYY-MM-DD" or ["YYYY-MM-DD", ...]
      */
-    public function isDue(): bool
+    public function exclude(array|string ...$dates): self
     {
-        $now = new \DateTime('now', $this->timezone ? new DateTimeZone($this->timezone) : config('app.timezone'));
+        $dates = count($dates) === 1 && is_array($dates[0])
+            ? $dates[0]
+            : $dates;
 
-        // Check if command is due based on cron schedule
-        $cron = new CronExpression($this->expression);
-        if (!$cron->isDue($now)) {
+        $this->excludedDates = array_merge($this->excludedDates, $dates);
+
+        return $this;
+    }
+
+    /**
+     * Set max executions per time window (e.g., "5/1h" for 5 runs per hour)
+     *
+     * @param string $limit Format: "COUNT/TIME" (e.g., "10/1h", "1/30m")
+     * @return self
+     * @throws \InvalidArgumentException if the format is invalid
+     */
+    public function throttle(string $limit): self
+    {
+        if (!preg_match('/^\d+\/[1-9]\d*[smhd]$/', $limit)) {
+            throw new \InvalidArgumentException(
+                'Invalid throttle format. Expected "attempts/interval" where interval is like 1s, 5m, 2h, or 1d'
+            );
+        }
+
+        $this->rateLimit = $limit;
+        return $this;
+    }
+
+    /**
+     * Checking if the cron within the ratelimit range
+     *
+     * @return bool
+     */
+    private function isWithinRateLimit(): bool
+    {
+        if (!$this->rateLimit) return true;
+
+        $parts = explode('/', $this->rateLimit);
+        if (count($parts) !== 2) {
+            throw new \InvalidArgumentException('Invalid rate limit format');
+        }
+
+        $maxAttempts = (int)$parts[0];
+        $interval = strtolower(trim($parts[1]));
+
+        $unit = substr($interval, -1);
+        $value = (int)substr($interval, 0, -1);
+
+        $decaySeconds = match ($unit) {
+            's' => $value,
+            'm' => $value * 60,
+            'h' => $value * 3600,
+            'd' => $value * 86400,
+            default => throw new \InvalidArgumentException('Invalid time unit')
+        };
+
+        $logFile = storage_path('schedule/cron_throttle_' . md5($this->command) . '.log');
+
+        if (!file_exists(dirname($logFile))) {
+            mkdir(dirname($logFile), 0755, true);
+        }
+
+        // Use file locking to prevent race conditions
+        $fp = fopen($logFile, 'c+');
+        if (!flock($fp, LOCK_EX)) {
+            fclose($fp);
             return false;
         }
 
-        // Check for overlapping if enabled
-        if ($this->withoutOverlapping) {
-            $lockFile = $this->getLockFile();
-            $pidFile = $lockFile . '.pid';
-
-            if (file_exists($pidFile)) {
-                $processInfo = json_decode(file_get_contents($pidFile), true);
-                if (!$this->isProcessRunning($processInfo['pid'] ?? 0)) {
-                    $this->releaseLock();
-                }
-            }
-
-            // Check if lock file exists and is still valid
-            if (file_exists($lockFile)) {
-                $lockTime = file_get_contents($lockFile);
-                $lockDuration = $this->maxLockTime * 60; // Convert to seconds
-
-                // If lock is still valid, skip execution
-                if (time() - (int) $lockTime < $lockDuration) {
-                    // Check if process is actually still running
-                    $pidFile = $lockFile . ".pid";
-                    if (file_exists($pidFile)) {
-                        $processInfo = json_decode(
-                            file_get_contents($pidFile),
-                            true
-                        );
-                        if ($this->isProcessRunning($processInfo["pid"] ?? 0)) {
-                            return false;
-                        }
-                    }
-
-                    // Process isn't running but lock exists - clean up
-                    $this->releaseLock();
-                }
-            }
-
-            // Create new lock
-            $this->lock();
+        $runs = [];
+        if (filesize($logFile) > 0) {
+            $runs = json_decode(fread($fp, filesize($logFile)), true) ?: [];
         }
 
+        // Filter out expired runs
+        $currentTime = time();
+        $runs = array_filter($runs, fn($time) => $currentTime - $time < $decaySeconds);
+
+        if (count($runs) >= $maxAttempts) {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            return false;
+        }
+
+        // Add current run
+        $runs[] = $currentTime;
+
+        // Write back to file
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($runs));
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
         return true;
+    }
+
+    /**
+     * Set a condition closure. Command runs only if it returns `true`.
+     * @param callable $condition
+     */
+    public function when(callable $condition): self
+    {
+        $this->condition = $condition;
+        return $this;
+    }
+
+    /**
+     * Set a callback to execute when the command succeeds.
+     *
+     * @param callable $callback Receives the command output as parameter
+     * @return self
+     */
+    public function onSuccess(callable $callback): self
+    {
+        $this->onSuccessCallback = $callback;
+        return $this;
+    }
+
+    /**
+     * Set a callback to execute when the command fails.
+     *
+     * @param callable $callback Receives the exception and attempt count as parameters
+     * @return self
+     */
+    public function onFailure(callable $callback): self
+    {
+        $this->onFailureCallback = $callback;
+        return $this;
+    }
+
+    /**
+     * Execute the command with proper sanitization and callback handling.
+     *
+     * @return mixed The command output or true if running in background
+     * @throws \Exception If the command fails and no retries are left
+     */
+    public function run()
+    {
+        try {
+            $command = $this->sanitizeCommand($this->command);
+
+            if ($this->shouldRunInBackground()) {
+                $command = $command . ' > /dev/null 2>&1 &';
+                exec($command, $output, $returnVar);
+
+                if ($returnVar !== 0) {
+                    throw new \RuntimeException("Command failed to start in background");
+                }
+
+                $result = true;
+            } else {
+                exec($command, $output, $returnVar);
+
+                if ($returnVar !== 0) {
+                    throw new \RuntimeException("Command failed with exit code: {$returnVar}");
+                }
+
+                $result = implode("\n", $output);
+            }
+
+            if ($this->onSuccessCallback) {
+                call_user_func($this->onSuccessCallback, $result);
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->onFailureCallback) {
+                call_user_func($this->onFailureCallback, $e, $this->attempts + 1);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Basic command sanitization to prevent command injection.
+     *
+     * @param string $command The command to sanitize
+     * @return string The sanitized command
+     */
+    private function sanitizeCommand(string $command): string
+    {
+        $command = escapeshellcmd($command);
+
+        $command = str_replace("\0", '', $command);
+
+        return $command;
+    }
+
+    /**
+     * Execute the command with retry logic and proper cleanup.
+     *
+     * @return mixed The command output or true if running in background
+     * @throws \Exception If all retry attempts are exhausted
+     */
+    public function runWithRetry()
+    {
+        $this->attempts = 0;
+        $lastException = null;
+        $maxRetries = $this->maxRetries;
+
+        while ($this->attempts <= $maxRetries) {
+            try {
+                $this->attempts++;
+                $result = $this->run();
+
+                // Reset attempts on success
+                $this->attempts = 0;
+                return $result;
+            } catch (\Exception $e) {
+                $lastException = $e;
+
+                if ($this->onFailureCallback) {
+                    call_user_func($this->onFailureCallback, $e, $this->attempts);
+                }
+
+                if ($this->attempts <= $maxRetries) {
+                    sleep($this->retryDelay);
+                } else {
+                    // Ensure cleanup on final failure
+                    $this->attempts = 0;
+                    if ($this->withoutOverlapping) {
+                        $this->releaseLock();
+                    }
+                }
+            }
+        }
+
+        throw new \Exception(
+            "Command failed after {$maxRetries} attempts. Last error: " .
+                $lastException->getMessage(),
+            0,
+            $lastException
+        );
+    }
+
+    /**
+     * Set max retry attempts and delay between retries.
+     *
+     * @param int $retries Maximum number of retry attempts
+     * @param int $delaySeconds Delay between retries in seconds
+     * @return self
+     */
+    public function retry(int $retries, int $delaySeconds = 60): self
+    {
+        $this->maxRetries = $retries;
+        $this->retryDelay = $delaySeconds;
+
+        return $this;
+    }
+
+    /**
+     * Determine if the command is due to run with comprehensive checks.
+     *
+     * @return bool True if the command should be executed now, false otherwise.
+     * @throws \InvalidArgumentException if cron expression is invalid
+     */
+    public function isDue(): bool
+    {
+        try {
+            $timezone = $this->timezone ?: config('app.timezone', 'UTC');
+            $now = now($timezone);
+
+            // Check excluded dates
+            if (in_array($now->format('Y-m-d'), $this->excludedDates)) {
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Skipped due to excluded date');
+                }
+                return false;
+            }
+
+            // Check additional conditions (including time conditions from between())
+            if (!empty($this->additionalConditions)) {
+                foreach ($this->additionalConditions as $condition) {
+                    if (!call_user_func($condition)) {
+                        return false;
+                    }
+                }
+            }
+
+            // Check custom condition
+            if ($this->condition && !call_user_func($this->condition)) {
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Skipped due to custom condition');
+                }
+                return false;
+            }
+
+            // Validate cron expression
+            if (!CronExpression::isValidExpression($this->expression)) {
+                throw new \InvalidArgumentException("Invalid CRON expression: {$this->expression}");
+            }
+
+            // Check cron schedule
+            $cron = new CronExpression($this->expression);
+            if (!$cron->isDue($now, $timezone)) {
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Not due according to schedule');
+                }
+                return false;
+            }
+
+            // Check rate limiting
+            if (!$this->isWithinRateLimit()) {
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Rate limit exceeded');
+                }
+                return false;
+            }
+
+            // Handle overlapping prevention
+            if ($this->withoutOverlapping) {
+                $canRun = $this->handleOverlappingPrevention();
+                if (!$canRun && $this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Skipped due to overlapping prevention');
+                }
+                return $canRun;
+            }
+
+            if ($this->onSuccessCallback) {
+                call_user_func($this->onSuccessCallback, 'Command is due to run');
+            }
+            return true;
+        } catch (\Exception $e) {
+            if ($this->onFailureCallback) {
+                call_user_func($this->onFailureCallback, $e, 0);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Handle the overlapping prevention logic.
+     *
+     * @return bool True if command can run (no overlap), false otherwise
+     */
+    private function handleOverlappingPrevention(): bool
+    {
+        $lockFile = $this->getLockFile();
+        $pidFile = $lockFile . '.pid';
+
+        // Clean up stale locks
+        if (file_exists($pidFile)) {
+            $processInfo = @json_decode(file_get_contents($pidFile), true);
+            if (!$this->isProcessRunning($processInfo['pid'] ?? 0)) {
+                $this->releaseLock();
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Cleaned up stale lock');
+                }
+            }
+        }
+
+        // Check if lock exists and is valid
+        if (file_exists($lockFile)) {
+            $lockTime = @file_get_contents($lockFile);
+            $lockDuration = $this->maxLockTime * 60;
+
+            if (time() - (int)$lockTime < $lockDuration) {
+                if (file_exists($pidFile)) {
+                    $processInfo = @json_decode(file_get_contents($pidFile), true);
+                    if ($this->isProcessRunning($processInfo['pid'] ?? 0)) {
+                        return false;
+                    }
+                }
+                $this->releaseLock();
+                if ($this->onSuccessCallback) {
+                    call_user_func($this->onSuccessCallback, 'Released expired lock');
+                }
+            }
+        }
+
+        // Create new lock with process ID
+        $this->lock();
+        file_put_contents($pidFile, json_encode(['pid' => getmypid()]));
+
+        if ($this->onSuccessCallback) {
+            call_user_func($this->onSuccessCallback, 'Lock acquired, command can run');
+        }
+        return true;
+    }
+
+    /**
+     * Clean up all lock files, including those from background processes.
+     */
+    public function cleanup(): void
+    {
+        $this->releaseLock();
+
+        $throttleFile = $this->lastRunFile . '_throttle.log';
+        if (file_exists($throttleFile)) {
+            unlink($throttleFile);
+        }
     }
 
     /**
@@ -672,8 +1093,8 @@ class ScheduledCommand
      */
     public function __destruct()
     {
-        if (!$this->runInBackground && $this->withoutOverlapping) {
-            $this->releaseLock();
+        if ($this->withoutOverlapping) {
+            $this->cleanup();
         }
     }
 }
