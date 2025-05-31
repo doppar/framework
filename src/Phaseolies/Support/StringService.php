@@ -21,7 +21,7 @@ class StringService
      *
      * @example
      * Extracts from position 7 to the end
-     * Str::substr("Hello, World!", 7); 
+     * Str::substr("Hello, World!", 7);
      * Output: "World!"
      */
     public function substr(string $input, int $start, ?int $length = null): string
@@ -49,7 +49,9 @@ class StringService
      */
     public function countWord(string $string): int
     {
-        return str_word_count($string);
+        preg_match_all('/\p{L}[\p{L}\p{Mn}\p{Pd}\'’]*/u', $string, $matches);
+
+        return count($matches[0]);
     }
 
     /**
@@ -77,14 +79,19 @@ class StringService
     }
 
     /**
-     * Convert a snake_case string to camelCase.
+     * Convert a snake_case or kebab-case string to camelCase.
+     * Unicode-safe and does not require any extra dependencies.
      *
-     * @param string $input The snake_case string.
+     * @param string $input The input string (snake_case or kebab-case).
      * @return string The converted camelCase string.
      */
-    public function camel(string $input): string
+    function camel(string $input): string
     {
-        return lcfirst(str_replace('_', '', ucwords($input, '_')));
+        $input = str_replace(['-', '_'], ' ', $input);
+        $input = mb_convert_case($input, MB_CASE_TITLE, 'UTF-8');
+        $input = str_replace(' ', '', $input);
+
+        return lcfirst($input);
     }
 
     /**
@@ -105,8 +112,8 @@ class StringService
             return $string;
         }
 
-        $startPart = substr($string, 0, $visibleFromStart);
-        $endPart = substr($string, -$visibleFromEnd);
+        $startPart  = substr($string, 0, $visibleFromStart);
+        $endPart    = substr($string, -$visibleFromEnd);
         $middlePart = str_repeat($maskCharacter, $length - $visibleFromStart - $visibleFromEnd);
 
         return $startPart . $middlePart . $endPart;
@@ -114,15 +121,34 @@ class StringService
 
     /**
      * Truncate a string to a specific length and append a suffix if truncated.
+     * Unicode-safe (uses mb_* functions).
      *
-     * @param string $string The input string.
-     * @param int $maxLength The maximum allowed length.
-     * @param string $suffix The suffix to append if truncated (default: '...').
-     * @return string The truncated string.
+     * @param string $string    The input string.
+     * @param int    $maxLength The maximum allowed length (including suffix).
+     * @param string $suffix    The suffix to append if truncated (default: '…').
+     * @param string $encoding  The character encoding (default: 'UTF-8').
+     *
+     * @return string The truncated string (with suffix if it was longer than $maxLength).
      */
-    public function truncate(string $string, int $maxLength, string $suffix = '...'): string
-    {
-        return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
+    public function truncate(
+        string $string,
+        int $maxLength,
+        string $suffix = '…',
+        string $encoding = 'UTF-8'
+    ): string {
+        $strlen = mb_strlen($string, $encoding);
+        if ($strlen <= $maxLength) {
+            return $string;
+        }
+
+        $suffixLen = mb_strlen($suffix, $encoding);
+        if ($suffixLen >= $maxLength) {
+            return mb_substr($suffix, 0, $maxLength, $encoding);
+        }
+
+        $truncatedPart = mb_substr($string, 0, $maxLength - $suffixLen, $encoding);
+
+        return $truncatedPart . $suffix;
     }
 
     /**
@@ -171,18 +197,19 @@ class StringService
     }
 
     /**
-     * Check if a string contains another string (case-insensitive).
+     * Check if a string contains another string (case-insensitive or sensitive).
      *
-     * @param string $haystack The string to search in.
-     * @param string $needle The string to search for.
-     * @return bool True if found, false otherwise.
+     * @param string          $haystack    The string to search in.
+     * @param string|array    $needles     The string or array of strings to search for.
+     * @param bool            $ignoreCase  Whether to perform a case-insensitive search (default: true).
+     * @return bool                       True if any of the needles is found, false otherwise.
      *
      * @example
-     * Str::contains('Hello World', 'world'); // true
-     * Str::contains('Hello World', ['foo', 'World']); // true
-     * Str::contains('Hello World', 'world', false); // false (case sensitive)
+     * Str::contains('Hello World', 'world');            // true
+     * Str::contains('Hello World', ['foo', 'World']);   // true
+     * Str::contains('Hello World', 'world', false);     // false (case‐sensitive)
      */
-    public function contains(string $haystack, string|array $needles, bool $ignoreCase = true): bool
+    public function contains(string $haystack, string | array $needles, bool $ignoreCase = true): bool
     {
         if (is_array($needles)) {
             foreach ($needles as $needle) {
@@ -190,7 +217,6 @@ class StringService
                     return true;
                 }
             }
-
             return false;
         }
 
@@ -202,32 +228,37 @@ class StringService
     }
 
     /**
-     * Limit the number of words in a string.
+     * Limit the number of words in a string, handling Unicode and preserving
+     * natural word boundaries (splitting on whitespace).
      *
      * @param string $string The input string.
-     * @param int $words The maximum number of words.
-     * @param string $end The ending suffix (default: '...').
-     * @return string The truncated string.
+     * @param int    $words  The maximum number of words to keep.
+     * @param string $end    The suffix to append if truncation occurs (default: '...').
+     * @param string $encoding The character encoding (default: 'UTF-8').
+     *
+     * @return string The possibly truncated string, with $end appended if truncated.
      *
      * @example
-     * Str::limitWords("This is a test string", 3); // Returns "This is a..."
+     *    limitWords("This is a test string", 3);    // Returns "This is a..."
+     *    limitWords("বাংলা ভাষা সুন্দর", 2);        // Returns "বাংলা ভাষা..."
+     *    limitWords("OneWordOnly", 3);              // Returns "OneWordOnly"
      */
-    public function limitWords(string $string, int $words, string $end = '...'): string
+    function limitWords(string $string, int $words, string $end = '...', string $encoding = 'UTF-8'): string
     {
-        $pattern = '/(\p{L}[\p{L}\p{Mn}\p{Pd}\']*\p{L}|\p{L})/u';
-        preg_match_all($pattern, $string, $matches);
+        $trimmed = trim($string);
 
-        $wordArray = $matches[0] ?? [];
+        if ($trimmed === '') {
+            return '';
+        }
 
+        $wordArray = preg_split('/\s+/u', $trimmed);
+
+        // If the total number of words is less than or equal to $words, return original.
         if (count($wordArray) <= $words) {
             return $string;
         }
 
         $limited = implode(' ', array_slice($wordArray, 0, $words));
-
-        if (!preg_match('/\s/u', $string)) {
-            $limited = implode('', array_slice($wordArray, 0, $words));
-        }
 
         return $limited . $end;
     }
@@ -258,11 +289,13 @@ class StringService
      * @return string The string without whitespace.
      *
      * @example
-     * Str::removeWhitespace("Hello   World"); // Returns "HelloWorld"
+     * Str::removeWhiteSpace("Hello   World"); // Returns "HelloWorld"
      */
     public function removeWhiteSpace(string $input): string
     {
-        return preg_replace('/\s+/', '', $input);
+        // Use a Unicode‐aware regex to strip any sequence of whitespace characters.
+        // The 'u' modifier ensures proper handling of multibyte (UTF‐8) input.
+        return preg_replace('/\s+/u', '', $input) ?? '';
     }
 
     /**
@@ -289,19 +322,28 @@ class StringService
     }
 
     /**
-     * Check if a string starts with another string (case-sensitive).
+     * Check if a string starts with one or more given needles (case-sensitive).
      *
-     * @param string $haystack The string to search in.
-     * @param string $needle The string to search for.
-     * @return bool True if found, false otherwise.
+     * @param string          $haystack The string to search in.
+     * @param string|array    $needles  The substring or array of substrings to check.
+     * @return bool                    True if $haystack starts with any of the needles.
      *
      * @example
-     * Str::startsWith("Hello World", "Hello"); // Returns true
+     * Str::startsWith("Hello World", "Hello");        // true
+     * Str::startsWith("Hello World", ["Hi", "Hello"]); // true
      */
-    public function startsWith(string $haystack, string|array $needles): bool
+    public function startsWith(string $haystack, string | array $needles): bool
     {
+        // Cast $needles to an array so we can handle a single string or multiple needles uniformly.
         foreach ((array) $needles as $needle) {
-            if ((string) $needle !== '' && mb_strpos($haystack, $needle, 0, 'UTF-8') === 0) {
+            // Skip empty needles (""), since every string technically starts with an empty string.
+            if ($needle === '') {
+                continue;
+            }
+
+            // mb_strpos returns the position of the first occurrence of $needle in $haystack.
+            // If that position is exactly 0, $haystack begins with $needle.
+            if (mb_strpos($haystack, $needle, 0, 'UTF-8') === 0) {
                 return true;
             }
         }
@@ -310,19 +352,39 @@ class StringService
     }
 
     /**
-     * Check if a string ends with another string (case-sensitive).
+     * Check if a string ends with one or more given needles (case‐sensitive).
+     * This version is Unicode‐safe (works with any UTF‐8 text).
      *
-     * @param string $haystack The string to search in.
-     * @param string $needle The string to search for.
-     * @return bool True if found, false otherwise.
+     * @param string          $haystack  The string to search in.
+     * @param string|array    $needles   A single string or an array of strings to test.
+     * @param string          $encoding  Character encoding (UTF-8 by default).
+     * @return bool                     True if $haystack ends with ANY of the needles.
      *
      * @example
-     * Str::endsWith("Hello World", "World"); // Returns true
+     * Str::endsWith("Hello World", "World");         // true
+     * Str::endsWith("Hello World", ["ld", "Foo"]);   // true
+     * Str::endsWith("বাংলাদেশ", "দেশ");               // true
      */
-    public function endsWith(string $haystack, string|array $needles): bool
+    public function endsWith(string $haystack, string | array $needles, string $encoding = 'UTF-8'): bool
     {
+        $haystackLength = mb_strlen($haystack, $encoding);
+
+        // Cast needles to array so we can loop uniformly.
         foreach ((array) $needles as $needle) {
-            if ((string) $needle !== '' && mb_substr($haystack, -mb_strlen($needle, 'UTF-8'), null, 'UTF-8') === (string) $needle) {
+            // Skip empty needle—every string “ends” with an empty string, but we usually don’t want to count that.
+            if ($needle === '') {
+                continue;
+            }
+
+            $needleLength = mb_strlen($needle, $encoding);
+
+            if ($needleLength > $haystackLength) {
+                continue;
+            }
+
+            $endingSegment = mb_substr($haystack, $haystackLength - $needleLength, $needleLength, $encoding);
+
+            if ($endingSegment === $needle) {
                 return true;
             }
         }
@@ -331,28 +393,54 @@ class StringService
     }
 
     /**
-     * Convert a string to studly case (StudlyCase).
+     * Convert a string to StudlyCase (each “word” capitalized, no separators).
      *
-     * @param string $input The input string.
-     * @return string The studly-cased string.
+     * This version is Unicode‐safe and works with multibyte characters (e.g., Arabic, Bengali, emojis).
+     *
+     * @param string $input     The input string (e.g., "hello_world", "foo-bar", "বাংলা_ভাষা").
+     * @param string $encoding  Character encoding (default: "UTF-8").
+     * @return string           The StudlyCase string (e.g., "HelloWorld", "FooBar", "বাংলাভাষা").
      *
      * @example
-     * Str::studly("hello_world"); // Returns "HelloWorld"
+     * Str::studly("hello_world");      // Returns "HelloWorld"
+     * Str::studly("foo-bar_baz");      // Returns "FooBarBaz"
+     * Str::studly("বাংলা_ভাষা");         // Returns "বাংলাভাষা"
+     * Str::studly("mixeD-Case_input"); // Returns "MixedCaseInput"
      */
-    public function studly(string $input): string
+    public function studly(string $input, string $encoding = 'UTF-8'): string
     {
-        return str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', $input)));
+        $spaced = str_replace(['-', '_'], ' ', $input);
+
+        $titled = mb_convert_case($spaced, MB_CASE_TITLE, $encoding);
+
+        $studly = str_replace(' ', '', $titled);
+
+        return $studly;
     }
 
     /**
-     * Reverse a string while preserving multi-byte characters.
+     * Reverse a UTF-8 string while preserving multi-byte characters.
      *
-     * @param string $input The input string.
-     * @return string The reversed string.
+     * @param string $input     The input string.
+     * @param string $encoding  The character encoding (default: 'UTF-8').
+     * @return string           The reversed string.
+     *
+     * @example
+     * Str::reverse("Hello");              // "olleH"
+     * Str::reverse("বাংলা");               // "াল্নাব"
      */
-    public function reverse(string $input): string
+    public function reverse(string $input, string $encoding = 'UTF-8'): string
     {
-        return implode('', array_reverse(mb_str_split($input)));
+        if (function_exists('mb_str_split')) {
+            $chars = mb_str_split($input, 1, $encoding);
+        } else {
+            $chars = preg_split('/(?<!^)(?!$)/u', $input);
+            if ($chars === false) {
+                return $input;
+            }
+        }
+
+        return implode('', array_reverse($chars));
     }
 
     /**
@@ -375,9 +463,9 @@ class StringService
      */
     public function longestCommonSubstring(string $str1, string $str2): string
     {
-        $matrix = array_fill(0, strlen($str1) + 1, array_fill(0, strlen($str2) + 1, 0));
+        $matrix    = array_fill(0, strlen($str1) + 1, array_fill(0, strlen($str2) + 1, 0));
         $maxLength = 0;
-        $endIndex = 0;
+        $endIndex  = 0;
 
         for ($i = 1; $i <= strlen($str1); $i++) {
             for ($j = 1; $j <= strlen($str2); $j++) {
@@ -385,7 +473,7 @@ class StringService
                     $matrix[$i][$j] = $matrix[$i - 1][$j - 1] + 1;
                     if ($matrix[$i][$j] > $maxLength) {
                         $maxLength = $matrix[$i][$j];
-                        $endIndex = $i;
+                        $endIndex  = $i;
                     }
                 }
             }
@@ -442,7 +530,7 @@ class StringService
         }
 
         return preg_replace(
-            "/(" . preg_quote($keyword, '/') . ")/i",
+            '/(' . preg_quote($keyword, '/') . ')/i',
             "<$tag>$1</$tag>",
             $input
         );
