@@ -121,34 +121,15 @@ class StringService
 
     /**
      * Truncate a string to a specific length and append a suffix if truncated.
-     * Unicode-safe (uses mb_* functions).
      *
-     * @param string $string    The input string.
-     * @param int    $maxLength The maximum allowed length (including suffix).
-     * @param string $suffix    The suffix to append if truncated (default: '…').
-     * @param string $encoding  The character encoding (default: 'UTF-8').
-     *
-     * @return string The truncated string (with suffix if it was longer than $maxLength).
+     * @param string $string The input string.
+     * @param int $maxLength The maximum allowed length.
+     * @param string $suffix The suffix to append if truncated (default: '...').
+     * @return string The truncated string.
      */
-    public function truncate(
-        string $string,
-        int $maxLength,
-        string $suffix = '…',
-        string $encoding = 'UTF-8'
-    ): string {
-        $strlen = mb_strlen($string, $encoding);
-        if ($strlen <= $maxLength) {
-            return $string;
-        }
-
-        $suffixLen = mb_strlen($suffix, $encoding);
-        if ($suffixLen >= $maxLength) {
-            return mb_substr($suffix, 0, $maxLength, $encoding);
-        }
-
-        $truncatedPart = mb_substr($string, 0, $maxLength - $suffixLen, $encoding);
-
-        return $truncatedPart . $suffix;
+    public function truncate(string $string, int $maxLength, string $suffix = '...'): string
+    {
+        return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
     }
 
     /**
