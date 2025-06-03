@@ -35,7 +35,7 @@ trait BladeCondition
      */
     protected function compileElse(): string
     {
-        return '<?php else: ?>';
+        return "<?php else: ?>";
     }
 
     /**
@@ -45,7 +45,7 @@ trait BladeCondition
      */
     protected function compileEndif(): string
     {
-        return '<?php endif; ?>';
+        return "<?php endif; ?>";
     }
 
     /**
@@ -67,7 +67,7 @@ trait BladeCondition
      */
     protected function compileEndunless(): string
     {
-        return '<?php endif; ?>';
+        return "<?php endif; ?>";
     }
 
     /**
@@ -89,7 +89,7 @@ trait BladeCondition
      */
     protected function compileEndisset(): string
     {
-        return '<?php endif; ?>';
+        return "<?php endif; ?>";
     }
 
     /**
@@ -129,7 +129,7 @@ trait BladeCondition
      */
     protected function compileDefault(): string
     {
-        return '<?php default: ?>';
+        return "<?php default: ?>";
     }
 
     /**
@@ -144,11 +144,11 @@ trait BladeCondition
         if ($condition) {
             preg_match('/\(\s*(-?\d+)\s*\)$/', $condition, $matches);
             return $matches
-                ? '<?php break ' . max(1, $matches[1]) . '; ?>'
+                ? "<?php break " . max(1, $matches[1]) . "; ?>"
                 : "<?php if{$condition} break; ?>";
         }
 
-        return '<?php break; ?>';
+        return "<?php break; ?>";
     }
 
     /**
@@ -158,7 +158,7 @@ trait BladeCondition
      */
     protected function compileEndswitch(): string
     {
-        return '<?php endswitch; ?>';
+        return "<?php endswitch; ?>";
     }
 
     /**
@@ -173,11 +173,11 @@ trait BladeCondition
         if ($condition) {
             preg_match('/\(\s*(-?\d+)\s*\)$/', $condition, $matches);
             return $matches
-                ? '<?php continue ' . max(1, $matches[1]) . '; ?>'
+                ? "<?php continue " . max(1, $matches[1]) . "; ?>"
                 : "<?php if{$condition} continue; ?>";
         }
 
-        return '<?php continue; ?>';
+        return "<?php continue; ?>";
     }
 
     /**
@@ -192,12 +192,11 @@ trait BladeCondition
         if ($condition) {
             preg_match('/\(\s*(-?\d+)\s*\)$/', $condition, $matches);
             return $matches
-                ? '<?php exit ' . max(1, $matches[1]) . '; ?>'
+                ? "<?php exit " . max(1, $matches[1]) . "; ?>"
                 : "<?php if{$condition} exit; ?>";
         }
-        return '<?php exit; ?>';
+        return "<?php exit; ?>";
     }
-
 
     /**
      * Usage: @php($varName = 'value').
@@ -222,11 +221,11 @@ trait BladeCondition
     {
         $default = JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT;
 
-        if (isset($data) && '(' == $data[0]) {
+        if (isset($data) && "(" == $data[0]) {
             $data = substr($data, 1, -1);
         }
 
-        $parts = explode(',', $data);
+        $parts = explode(",", $data);
         $options = isset($parts[1]) ? trim($parts[1]) : $default;
         $depth = isset($parts[2]) ? trim($parts[2]) : 512;
 
@@ -269,7 +268,7 @@ trait BladeCondition
      */
     protected function compileEndfor(): string
     {
-        return '<?php endfor; ?>';
+        return "<?php endfor; ?>";
     }
 
     /**
@@ -286,7 +285,8 @@ trait BladeCondition
         $iteratee = trim($matches[1]);
         $iteration = trim($matches[2]);
         $initLoop = "\$__currloopdata = {$iteratee}; \$this->addLoop(\$__currloopdata);";
-        $iterateLoop = '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
+        $iterateLoop =
+            '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
 
         return "<?php {$initLoop} foreach(\$__currloopdata as {$iteration}): {$iterateLoop} ?>";
     }
@@ -298,7 +298,7 @@ trait BladeCondition
      */
     protected function compileEndforeach(): string
     {
-        return '<?php endforeach; ?>';
+        return "<?php endforeach; ?>";
     }
 
     /**
@@ -315,13 +315,14 @@ trait BladeCondition
         $iteratee = trim($matches[1]);
         $iteration = trim($matches[2]);
         $initLoop = "\$__currloopdata = {$iteratee}; \$this->addLoop(\$__currloopdata);";
-        $iterateLoop = '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
+        $iterateLoop =
+            '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
 
         ++$this->emptyCounter;
 
-        return "<?php {$initLoop} \$__empty_{$this->emptyCounter} = true;"
-            . " foreach(\$__currloopdata as {$iteration}): "
-            . "\$__empty_{$this->emptyCounter} = false; {$iterateLoop} ?>";
+        return "<?php {$initLoop} \$__empty_{$this->emptyCounter} = true;" .
+            " foreach(\$__currloopdata as {$iteration}): " .
+            "\$__empty_{$this->emptyCounter} = false; {$iterateLoop} ?>";
     }
 
     /**
@@ -344,7 +345,7 @@ trait BladeCondition
      */
     protected function compileEndforelse(): string
     {
-        return '<?php endif; ?>';
+        return "<?php endif; ?>";
     }
 
     /**
@@ -366,7 +367,7 @@ trait BladeCondition
      */
     protected function compileEndwhile(): string
     {
-        return '<?php endwhile; ?>';
+        return "<?php endwhile; ?>";
     }
 
     /**
@@ -378,7 +379,7 @@ trait BladeCondition
      */
     protected function compileExtends($parent): string
     {
-        if (isset($parent[0]) && '(' === $parent[0]) {
+        if (isset($parent[0]) && "(" === $parent[0]) {
             $parent = substr($parent, 1, -1);
         }
 
@@ -394,7 +395,7 @@ trait BladeCondition
      */
     protected function compileInclude($view): string
     {
-        if (isset($view[0]) && '(' === $view[0]) {
+        if (isset($view[0]) && "(" === $view[0]) {
             $view = substr($view, 1, -1);
         }
 
@@ -498,6 +499,73 @@ trait BladeCondition
     {
         $token = csrf_token();
 
-        return '<input type="hidden" name="_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+        return '<input type="hidden" name="_token" value="' .
+            htmlspecialchars($token, ENT_QUOTES, "UTF-8") .
+            '">' .
+            "\n";
+    }
+
+    /**
+     * Usage: @can('ability-name'[, $args])
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileScope($expression): string
+    {
+        return "<?php if (\\Doppar\\Authorizer\\Support\\Facades\\Guard::allows{$expression}): ?>";
+    }
+
+    /**
+     * Usage: @elsescope('ability-name'[, $args])
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileElsescope($expression): string
+    {
+        return "<?php elseif (\\Doppar\\Authorizer\\Support\\Facades\\Guard::allows{$expression}): ?>";
+    }
+
+    /**
+     * Usage: @endscope
+     *
+     * @return string
+     */
+    protected function compileEndscope(): string
+    {
+        return "<?php endif; ?>";
+    }
+
+    /**
+     * Usage: @scopenot('ability-name'[, $args])
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileScopenot($expression): string
+    {
+        return "<?php if (!\\Doppar\\Authorizer\\Support\\Facades\\Guard::allows{$expression}): ?>";
+    }
+
+    /**
+     * Usage: @elsescopenot('ability-name'[, $args])
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileElsescopenot($expression): string
+    {
+        return "<?php elseif (!\\Doppar\\Authorizer\\Support\\Facades\\Guard::allows{$expression}): ?>";
+    }
+
+    /**
+     * Usage: @endscopenot
+     *
+     * @return string
+     */
+    protected function compileEndscopenot(): string
+    {
+        return "<?php endif; ?>";
     }
 }

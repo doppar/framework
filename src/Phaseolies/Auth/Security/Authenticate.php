@@ -217,4 +217,14 @@ class Authenticate extends Model
     {
         return auth()->user()->id ?? null;
     }
+
+    /**
+     * Check if the user is authorized to do some action.
+     *
+     * @return bool
+     */
+    public function can(string $scope): bool
+    {
+        return Guard::allows($scope);
+    }
 }
