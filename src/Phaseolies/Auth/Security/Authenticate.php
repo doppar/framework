@@ -3,8 +3,9 @@
 namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
-use App\Models\User;
+use Phaseolies\Support\Facades\Cache;
 use Phaseolies\Database\Eloquent\Model;
+use App\Models\User;
 
 class Authenticate extends Model
 {
@@ -221,10 +222,15 @@ class Authenticate extends Model
     /**
      * Check if the user is authorized to do some action.
      *
+     * @param string $scope
      * @return bool
      */
     public function can(string $scope): bool
     {
-        return Guard::allows($scope);
+        return Cache::stash(
+            "auth_scope_{$scope}",
+            3600,
+            fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
+        );
     }
 }
