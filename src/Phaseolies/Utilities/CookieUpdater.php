@@ -35,6 +35,7 @@ class CookieUpdater
     public function withValue(?string $value): self
     {
         $this->cookie = $this->cookie->withValue($value);
+
         return $this;
     }
 
@@ -47,6 +48,7 @@ class CookieUpdater
     public function withExpires($expire): self
     {
         $this->cookie = $this->cookie->withExpires($expire);
+
         return $this;
     }
 
@@ -59,6 +61,7 @@ class CookieUpdater
     public function withPath(string $path): self
     {
         $this->cookie = $this->cookie->withPath($path);
+
         return $this;
     }
 
@@ -71,6 +74,7 @@ class CookieUpdater
     public function withDomain(?string $domain): self
     {
         $this->cookie = $this->cookie->withDomain($domain);
+
         return $this;
     }
 
@@ -83,6 +87,7 @@ class CookieUpdater
     public function withSecure(bool $secure = true): self
     {
         $this->cookie = $this->cookie->withSecure($secure);
+
         return $this;
     }
 
@@ -95,6 +100,7 @@ class CookieUpdater
     public function withHttpOnly(bool $httpOnly = true): self
     {
         $this->cookie = $this->cookie->withHttpOnly($httpOnly);
+
         return $this;
     }
 
@@ -108,6 +114,7 @@ class CookieUpdater
     public function withRaw(bool $raw = true): self
     {
         $this->cookie = $this->cookie->withRaw($raw);
+
         return $this;
     }
 
@@ -121,6 +128,7 @@ class CookieUpdater
     public function withSameSite(?string $sameSite): self
     {
         $this->cookie = $this->cookie->withSameSite($sameSite);
+
         return $this;
     }
 
@@ -133,6 +141,7 @@ class CookieUpdater
     public function withPartitioned(bool $partitioned = true): self
     {
         $this->cookie = $this->cookie->withPartitioned($partitioned);
+
         return $this;
     }
 
