@@ -41,6 +41,7 @@ class Middleware
 
     /**
      * Handle the incoming request through the middleware chain
+     *
      * @param Request $request
      * @param Closure $handler
      * @return Response

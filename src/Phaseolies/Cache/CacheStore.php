@@ -211,7 +211,24 @@ class CacheStore implements CacheInterface
     public function decrement($key, $value = 1): int|bool
     {
         $key = $this->prefixedKey($key);
-        return $this->increment($key, $value * -1);
+        $this->validateKey($key);
+        $item = $this->adapter->getItem($key);
+
+        if (!$item->isHit()) {
+            return false;
+        }
+
+        $current = (int)$item->get();
+        $new = $current - $value;
+        $item->set($new);
+
+        // Preserve existing expiration
+        if ($item->getMetadata()['expiry'] ?? null) {
+            $item->expiresAt(\DateTime::createFromFormat('U', $item->getMetadata()['expiry']));
+        }
+
+        $this->adapter->save($item);
+        return $new;
     }
 
     /**
@@ -222,13 +239,23 @@ class CacheStore implements CacheInterface
      * @param  null|int|DateInterval  $ttl
      * @return bool
      */
-    public function add($key, $value, $ttl = null)
+    public function add($key, $value, $ttl = null): bool
     {
         $key = $this->prefixedKey($key);
-        if ($this->has($key)) {
+        $this->validateKey($key);
+
+        if ($this->adapter->hasItem($key)) {
             return false;
         }
-        return $this->set($key, $value, $ttl);
+
+        $item = $this->adapter->getItem($key);
+        $item->set($value);
+
+        if ($ttl !== null) {
+            $item->expiresAfter($this->convertTtlToSeconds($ttl));
+        }
+
+        return $this->adapter->save($item);
     }
 
     /**
@@ -241,8 +268,13 @@ class CacheStore implements CacheInterface
     public function forever($key, $value): bool
     {
         $key = $this->prefixedKey($key);
+        $this->validateKey($key);
 
-        return $this->set($key, $value);
+        $item = $this->adapter->getItem($key);
+        $item->set($value);
+        $item->expiresAfter(null);
+
+        return $this->adapter->save($item);
     }
 
     /**
@@ -254,8 +286,13 @@ class CacheStore implements CacheInterface
     public function forget($key): bool
     {
         $key = $this->prefixedKey($key);
+        $this->validateKey($key);
 
-        return $this->delete($key);
+        if (!$this->adapter->hasItem($key)) {
+            return false;
+        }
+
+        return $this->adapter->deleteItem($key);
     }
 
     /**

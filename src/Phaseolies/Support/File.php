@@ -84,6 +84,7 @@ class File extends \SplFileInfo
     {
         $name = $this->getClientOriginalName();
         $extension = pathinfo($name, PATHINFO_EXTENSION);
+
         return strtolower($extension);
     }
 
@@ -96,6 +97,7 @@ class File extends \SplFileInfo
     public function generateUniqueName(?string $extension = null): string
     {
         $extension = $extension ?? $this->getClientOriginalExtension();
+
         return uniqid() . '.' . $extension;
     }
 
