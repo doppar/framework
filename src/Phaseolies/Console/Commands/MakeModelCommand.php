@@ -5,34 +5,38 @@ namespace Phaseolies\Console\Commands;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Database\Migration\MigrationCreator;
 
 class MakeModelCommand extends Command
 {
     protected static $defaultName = 'make:model';
+
+    protected MigrationCreator $creator;
+
+    public function __construct(MigrationCreator $creator)
+    {
+        parent::__construct();
+        $this->creator = $creator;
+    }
 
     protected function configure()
     {
         $this
             ->setName('make:model')
             ->setDescription('Creates a new model class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the model class.');
+            ->addArgument('name', InputArgument::REQUIRED, 'The name of the model class.')
+            ->addOption('migration', 'm', InputOption::VALUE_NONE, 'Create a new migration file for the model');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $name = $input->getArgument('name');
-
-        // Split the name by slashes to handle subfolders and class name
+        $withMigration = $input->getOption('migration');
         $parts = explode('/', $name);
-
-        // The class name is the last part (after the last slash)
         $className = array_pop($parts);
-
-        // The namespace is the remaining parts joined by backslashes
         $namespace = 'App\\Models' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-
-        // Construct the file path by replacing slashes with directory separators
         $filePath = base_path() . '/app/Models/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
 
         // Check if the model already exists
@@ -41,21 +45,22 @@ class MakeModelCommand extends Command
             return Command::FAILURE;
         }
 
-        // Create necessary directories if they don't exist
         $directoryPath = dirname($filePath);
 
         if (!is_dir($directoryPath)) {
             $result = mkdir($directoryPath, 0755, true);
         }
 
-        // Generate the content for the new model
         $content = $this->generateModelContent($namespace, $className);
-
-        // Write the new model file to disk
         file_put_contents($filePath, $content);
-
-        // Inform the user that the model has been created
         $output->writeln('<info>Model created successfully</info>');
+
+        if ($withMigration) {
+            $tableName = str()->snake($className);
+            $migrationName = "create_{$tableName}_table";
+
+            $this->createMigration($migrationName, $tableName, $output);
+        }
 
         return Command::SUCCESS;
     }
@@ -74,5 +79,22 @@ class {$className} extends Model
     //
 }
 EOT;
+    }
+
+    protected function createMigration(string $name, string $table, OutputInterface $output): void
+    {
+        $file = $this->creator->create(
+            $name,
+            $this->getMigrationPath(),
+            $table,
+            true
+        );
+
+        $output->writeln("<info>Migration created:</info> {$file}");
+    }
+
+    protected function getMigrationPath(): string
+    {
+        return base_path('database/migrations');
     }
 }
