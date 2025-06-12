@@ -675,7 +675,7 @@ class Router extends Kernel
 
             $response = app(Response::class);
             if (!($result instanceof Response)) {
-                return $this->getResolutionResponse($result, $response);
+                return $this->getResolutionResponse($request, $result, $response);
             }
 
             return $result;
@@ -731,31 +731,67 @@ class Router extends Kernel
      * - Objects (any class) are JSON-encoded.
      * - Arrays, Collections, Models, and Builders are JSON-encoded.
      * - Non-JSON types (strings, numbers, etc.) are returned as-is.
-     * @param $response
-     * @param mixed $result
+     * @param $request
+     * @param $result
+     * @param mixed $response
      * @return Response
      */
-    private function getResolutionResponse($result, $response): Response
+    private function getResolutionResponse($request, $result, $response): Response
     {
-        if ($result instanceof Collection) {
+        if ($this->shouldBeJson($result)) {
+            $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
-            $result = json_encode($result->toArray());
-        } elseif (
-            $result instanceof Model ||
-            $result instanceof Builder ||
-            $result instanceof \stdClass ||
-            $result instanceof \ArrayObject ||
-            $result instanceof \JsonSerializable ||
-            is_array($result) ||
-            is_object($result)
-        ) {
-            $response->headers->set('Content-Type', 'application/json');
-            $result = json_encode($result);
+            $result = $this->convertToSerializable($result);
+            $response->setBody(json_encode($result, JSON_THROW_ON_ERROR));
+        } else {
+            $response->setBody($result);
         }
 
-        $response->setBody($result);
-
         return $response;
+    }
+
+    /**
+     * Determine if the given data should be returned as JSON.
+     *
+     * @param mixed $data
+     * @return bool
+     */
+    protected function shouldBeJson($data): bool
+    {
+        return is_array($data) ||
+            $data instanceof \JsonSerializable ||
+            $data instanceof Model ||
+            $data instanceof Collection ||
+            $data instanceof Builder ||
+            $data instanceof \stdClass ||
+            $data instanceof \ArrayObject;
+    }
+
+    /**
+     * Convert various data types into a format suitable for serialization
+     *
+     * @param mixed $data
+     * @return mixed
+     */
+    protected function convertToSerializable($data)
+    {
+        if ($data instanceof Model || $data instanceof Collection) {
+            return $data->toArray();
+        }
+
+        if ($data instanceof Builder) {
+            return $data->get()->toArray();
+        }
+
+        if ($data instanceof \JsonSerializable) {
+            return $data->jsonSerialize();
+        }
+
+        if ($data instanceof \stdClass || $data instanceof \ArrayObject) {
+            return (array) $data;
+        }
+
+        return $data;
     }
 
     /**
