@@ -31,6 +31,9 @@ class StartServerCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        $views = base_path('storage/framework/views');
+        $this->deleteDirectoryContents($views);
+
         $port = $this->determineAvailablePort(
             (int)$input->getOption('port'),
             $output
@@ -97,5 +100,25 @@ class StartServerCommand extends Command
         }
 
         return false;
+    }
+
+    /**
+     * Recursively delete all files and subdirectories in a directory.
+     *
+     * @param string $directory
+     */
+    private function deleteDirectoryContents($directory)
+    {
+        $files = array_diff(scandir($directory), ['.', '..']);
+
+        foreach ($files as $file) {
+            $filePath = $directory . DIRECTORY_SEPARATOR . $file;
+            if (is_dir($filePath)) {
+                $this->deleteDirectoryContents($filePath);
+                rmdir($filePath);
+            } else {
+                unlink($filePath);
+            }
+        }
     }
 }

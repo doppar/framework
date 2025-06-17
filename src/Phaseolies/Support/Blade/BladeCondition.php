@@ -399,7 +399,12 @@ trait BladeCondition
             $view = substr($view, 1, -1);
         }
 
-        return "<?php include \$this->prepare({$view}) ?>";
+        $parts = explode(',', $view, 2);
+
+        $viewPart = trim($parts[0]);
+        $dataPart = isset($parts[1]) ? ', ' . trim($parts[1]) : '';
+
+        return "<?php include \$this->prepare({$viewPart}{$dataPart}) ?>";
     }
 
     /**

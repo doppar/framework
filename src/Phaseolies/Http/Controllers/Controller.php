@@ -154,7 +154,7 @@ class Controller extends View
      *
      * @param string $view
      */
-    public function prepare($view): string
+    public function prepare($view, array $data = []): string
     {
         $actual = $this->findView($view);
         $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
@@ -166,6 +166,7 @@ class Controller extends View
             }
 
             $content = file_get_contents($actual);
+
             // Add @set() directive using extend() method, we need 2 parameters here
             $this->extend(function ($value) {
                 return preg_replace("/@set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
@@ -180,6 +181,17 @@ class Controller extends View
             // Replace @php and @endphp blocks
             $content = $this->replacePhpBlocks($content);
 
+            if (!empty($data)) {
+                $dataExport = var_export($data, true);
+                $content = "<?php extract($dataExport); ?>" . $content;
+            }
+
+            file_put_contents($cache, $content);
+        } else if (!empty($data)) {
+            // If using cached file, we still need to extract variables
+            $dataExport = var_export($data, true);
+            $content = file_get_contents($cache);
+            $content = "<?php extract($dataExport); ?>" . $content;
             file_put_contents($cache, $content);
         }
 

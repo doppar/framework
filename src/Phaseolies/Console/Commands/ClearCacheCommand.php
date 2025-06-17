@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Console\Commands;
 
+use Phaseolies\Support\Facades\Cache;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -19,9 +20,10 @@ class ClearCacheCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $cacheDir = base_path() . '/storage/framework';
-
+        $cacheDir = base_path('storage/framework/cache');
         $this->deleteDirectoryContents($cacheDir);
+
+        Cache::clear();
 
         $output->writeln('<info>Cache cleared successfully</info>');
         return Command::SUCCESS;
