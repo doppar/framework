@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Support;
 
+use Phaseolies\Http\Exceptions\RouteNameNotFoundException;
+
 class UrlGenerator
 {
     /**
@@ -52,9 +54,10 @@ class UrlGenerator
      * @param string|null $baseUrl The base URL for generating URLs
      * @param bool $secure Whether to use HTTPS by default
      */
-    public function __construct($baseUrl = null, $secure = false)
+    public function __construct(?string $baseUrl = null, bool $secure = false)
     {
         $this->baseUrl = $baseUrl ? rtrim($baseUrl, '/') : $this->determineBaseUrl();
+
         $this->secure = $secure;
     }
 
@@ -75,7 +78,7 @@ class UrlGenerator
      * @param bool|null $secure Whether to force HTTPS
      * @return string
      */
-    public function enqueue($path = '/', $secure = null)
+    public function enqueue(string $path = '/', ?bool $secure = null)
     {
         return $this->to($path, [], $secure)->make();
     }
@@ -108,9 +111,13 @@ class UrlGenerator
      * @param bool|null $secure Whether to force HTTPS
      * @return string
      */
-    public function route($name, $parameters = [], $secure = null)
+    public function route(string $name, array $parameters = [], ?bool $secure = null)
     {
         $path = app('route')->route($name, $parameters);
+
+        if (empty($path)) {
+            throw new RouteNameNotFoundException(404, "Route [ {$name} ] not found");
+        }
 
         return $this->enqueue($path, $secure);
     }
@@ -123,7 +130,7 @@ class UrlGenerator
      * @param bool|null $secure
      * @return $this
      */
-    public function to($path = '/', $parameters = [], $secure = null)
+    public function to(string $path = '/', array $parameters = [], ?bool $secure = null)
     {
         $this->path = ltrim($path, '/');
 
@@ -144,7 +151,7 @@ class UrlGenerator
      * @param string|array $query
      * @return $this
      */
-    public function withQuery($query = [])
+    public function withQuery(array $query = [])
     {
         if (is_string($query)) {
             parse_str($query, $parsedQuery);
@@ -162,9 +169,10 @@ class UrlGenerator
      * @param int $expiration
      * @return $this
      */
-    public function withSignature($expiration = 3600)
+    public function withSignature(int $expiration = 3600)
     {
         $this->expiration = $expiration;
+
         return $this;
     }
 
@@ -174,9 +182,10 @@ class UrlGenerator
      * @param string $fragment
      * @return $this
      */
-    public function withFragment($fragment = '')
+    public function withFragment(string $fragment = '')
     {
         $this->fragment = ltrim($fragment, '#');
+
         return $this;
     }
 
@@ -225,7 +234,7 @@ class UrlGenerator
      * @param bool|null $secure
      * @return string
      */
-    public function signed($path = '/', array $parameters = [], $expiration = 3600, $secure = null)
+    public function signed(string $path = '/', array $parameters = [], int $expiration = 3600, ?bool $secure = null)
     {
         return $this->to($path, $parameters, $secure)
             ->withSignature($expiration)
@@ -282,6 +291,7 @@ class UrlGenerator
     public function setSecure(bool $secure)
     {
         $this->secure = $secure;
+
         return $this;
     }
 }

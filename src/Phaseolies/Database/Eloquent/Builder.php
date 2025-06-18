@@ -2,16 +2,17 @@
 
 namespace Phaseolies\Database\Eloquent;
 
-use Phaseolies\Support\Collection;
 use PDO;
 use PDOException;
 use PDOStatement;
-use Phaseolies\Database\Eloquent\Query\QueryCollection;
 use Phaseolies\Support\Facades\URL;
+use Phaseolies\Support\Collection;
+use Phaseolies\Database\Eloquent\Query\QueryProcessor;
+use Phaseolies\Database\Eloquent\Query\QueryCollection;
 
 class Builder
 {
-    use QueryCollection;
+    use QueryCollection, QueryProcessor;
 
     /**
      * @var PDO

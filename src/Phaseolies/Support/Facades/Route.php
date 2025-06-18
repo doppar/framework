@@ -11,6 +11,8 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\Router options(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router head(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router any(string $uri, array|string|callable|null $callback)
+ * @method static \Phaseolies\Support\Router redirect(string $uri, string $destination, int $status = 302)
+ *
  * @see \Phaseolies\Support\Router
  */
 

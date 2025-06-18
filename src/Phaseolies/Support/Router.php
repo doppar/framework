@@ -362,6 +362,34 @@ class Router extends Kernel
     }
 
     /**
+     * Register a redirect route
+     *
+     * @param string $uri The path to redirect from
+     * @param string $destination The path or URL to redirect to
+     * @param int $status HTTP status code (default: 302)
+     * @return self
+     */
+    public function redirect(string $uri, string $destination, int $status = 302): self
+    {
+        return $this->get(
+            path: $uri,
+            callback: function (Request $request) use ($destination, $status) {
+                if (strpos($destination, '/') !== 0 && isset(self::$namedRoutes[$destination])) {
+                    $destination = $this->route($destination);
+                }
+
+                if (filter_var($destination, FILTER_VALIDATE_URL)) {
+                    return redirect($destination, $status);
+                }
+
+                $destination = str_starts_with($destination, '/') ? $destination : '/' . $destination;
+
+                return redirect($request->getBaseUrl() . $destination, $status);
+            }
+        );
+    }
+
+    /**
      * Add a route with group attributes applied.
      *
      * @param string $method
