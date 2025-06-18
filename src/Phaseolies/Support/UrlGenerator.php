@@ -151,7 +151,7 @@ class UrlGenerator
      * @param string|array $query
      * @return $this
      */
-    public function withQuery(array $query = [])
+    public function withQuery(array|string $query = [])
     {
         if (is_string($query)) {
             parse_str($query, $parsedQuery);
