@@ -159,15 +159,22 @@ class LoggerService extends LogService
      */
     protected function reader(): Logger
     {
-        $channel = $this->currentChannel ?? 'stack';
+        $channel = $this->currentChannel;
 
-        $this->reset();
-
-        if ($this->currentChannel === null) {
-            $this->addHandler(new DefaultLogHandler());
+        if ($channel === null) {
+            match (env('LOG_CHANNEL', 'stack')) {
+                'daily' => $this->addHandler(new DailyLogHandler()),
+                'stack' => $this->addHandler(new DefaultLogHandler()),
+                'slack' => $this->addHandler(new SlackLogHandler()),
+                'single' => $this->addHandler(new SingleLogHandler()),
+                default => throw new UnsupportedLogDriverException("Unsupported log channel: $channel"),
+            };
         }
 
-        return parent::getLogger($channel);
+        $logger = parent::getLogger($channel);
+        $this->reset();
+
+        return $logger;
     }
 
     /**

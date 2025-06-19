@@ -5,7 +5,6 @@ namespace Phaseolies\Logger\Drivers;
 use Phaseolies\Logger\Contracts\LogHandlerInterface;
 use Phaseolies\Logger\Contracts\AbstractHandler;
 use Monolog\Logger;
-use Monolog\Level;
 use Monolog\Handler\SlackWebhookHandler;
 use Monolog\Formatter\LineFormatter;
 
@@ -32,11 +31,12 @@ class SlackLogHandler extends AbstractHandler implements LogHandlerInterface
         $slackHandler = new SlackWebhookHandler(
             $webhookUrl,
             null,
-            config('logging.channels.slack.username'),
+            config('logging.channels.slack.username', 'Doppar Log'),
             true,
-            config('logging.channels.slack.emoji'),
+            config('logging.channels.slack.emoji', ':robot_face:'),
             false,
-            true
+            true,
+            Logger::DEBUG
         );
 
         $formatter = new LineFormatter(

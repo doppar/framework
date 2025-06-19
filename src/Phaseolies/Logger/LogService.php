@@ -44,6 +44,7 @@ class LogService implements ResettableInterface
     public function getLogger(?string $channel = null): Logger
     {
         $channel = $channel ?? env('LOG_CHANNEL', 'stack');
+
         $this->logger = new Logger($channel);
 
         foreach ($this->handlers as $handler) {
