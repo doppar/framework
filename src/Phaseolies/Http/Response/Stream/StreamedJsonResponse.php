@@ -12,7 +12,6 @@
 namespace Phaseolies\Http\Response\Stream;
 
 use Phaseolies\Http\Response\Stream\StreamedResponse;
-use Phaseolies\Http\Response\JsonResponse;
 
 /**
  * StreamedJsonResponse represents a streamed HTTP response for JSON.
@@ -59,7 +58,7 @@ class StreamedJsonResponse extends StreamedResponse
         private readonly iterable $data,
         int $status = 200,
         array $headers = [],
-        private int $encodingOptions = JsonResponse::DEFAULT_ENCODING_OPTIONS,
+        private int $encodingOptions = self::DEFAULT_ENCODING_OPTIONS,
     ) {
         parent::__construct($this->stream(...), $status, $headers);
 
