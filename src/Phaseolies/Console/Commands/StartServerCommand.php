@@ -109,6 +109,11 @@ class StartServerCommand extends Command
      */
     private function deleteDirectoryContents($directory)
     {
+        // Check if directory exists first
+        if (!file_exists($directory)) {
+            return;
+        }
+
         $files = array_diff(scandir($directory), ['.', '..']);
 
         foreach ($files as $file) {
