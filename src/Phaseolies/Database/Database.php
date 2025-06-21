@@ -3,6 +3,7 @@
 namespace Phaseolies\Database;
 
 use Phaseolies\Support\Collection;
+use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Query\Builder;
 use Phaseolies\Database\Procedure\ProcedureResult;
 use Phaseolies\Database\Eloquent\Model;
@@ -373,6 +374,18 @@ class Database
             $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
             throw new PDOException("Failed to drop all tables: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Create a raw SQL expression
+     *
+     * @param string $expression
+     * @param array $bindings
+     * @return RawExpression
+     */
+    public static function sql(string $expression, array $bindings = []): RawExpression
+    {
+        return new RawExpression($expression, $bindings);
     }
 
     /**

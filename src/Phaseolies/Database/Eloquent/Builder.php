@@ -7,12 +7,13 @@ use PDOException;
 use PDOStatement;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Collection;
+use Phaseolies\Database\Eloquent\Query\QueryUtils;
 use Phaseolies\Database\Eloquent\Query\QueryProcessor;
 use Phaseolies\Database\Eloquent\Query\QueryCollection;
 
 class Builder
 {
-    use QueryCollection, QueryProcessor;
+    use QueryCollection, QueryProcessor, QueryUtils;
 
     /**
      * @var PDO
@@ -136,13 +137,19 @@ class Builder
     /**
      * Add a WHERE condition.
      *
-     * @param string $field
-     * @param string $operator
-     * @param mixed $value
+     * @param string $field Field name
+     * @param mixed $operator Operator or value (if only 2 arguments passed)
+     * @param mixed $value Value to compare (optional)
      * @return self
      */
-    public function where(string $field, string $operator, $value): self
+    public function where(string $field, $operator, $value = null): self
     {
+        // If only 2 arguments are passed, assume operator is '='
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
         if ($value === null) {
             if ($operator === '=') {
                 return $this->whereNull($field);
@@ -152,20 +159,28 @@ class Builder
         }
 
         $this->conditions[] = ['AND', $field, $operator, $value];
+
         return $this;
     }
 
     /**
      * Add an OR WHERE condition.
      *
-     * @param string $field
-     * @param string $operator
-     * @param mixed $value
+     * @param string $field Field name
+     * @param mixed $operator Operator or value (if only 2 arguments passed)
+     * @param mixed $value Value to compare (optional)
      * @return self
      */
-    public function orWhere(string $field, string $operator, $value): self
+    public function orWhere(string $field, $operator, $value = null): self
     {
+        // If only 2 arguments are passed, assume operator is '='
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
         $this->conditions[] = ['OR', $field, $operator, $value];
+
         return $this;
     }
 
@@ -265,7 +280,9 @@ class Builder
         if (!empty($this->conditions)) {
             $conditionStrings = [];
             foreach ($this->conditions as $condition) {
-                if (isset($condition['type']) && ($condition['type'] === 'EXISTS' || $condition['type'] === 'NOT EXISTS')) {
+                if (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
+                    $conditionStrings[] = $condition['sql'];
+                } elseif (isset($condition['type']) && ($condition['type'] === 'EXISTS' || $condition['type'] === 'NOT EXISTS')) {
                     $conditionStrings[] = "{$condition['type']} ({$condition['subquery']})";
                 } elseif ($condition[2] === 'BETWEEN' || $condition[2] === 'NOT BETWEEN') {
                     $conditionStrings[] = "{$condition[1]} {$condition[2]} ? AND ?";
@@ -285,7 +302,14 @@ class Builder
         }
 
         if (!empty($this->orderBy)) {
-            $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
+            $orderByStrings = array_map(function ($o) {
+                if (isset($o['type']) && $o['type'] === 'RAW_ORDER_BY') {
+                    return $o['expression'];
+                }
+                // Regular order by clause (array with field and direction)
+                return "$o[0] $o[1]";
+            }, $this->orderBy);
+
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
         }
 
@@ -518,18 +542,6 @@ class Builder
     }
 
     /**
-     * Add a raw WHERE clause to the query
-     *
-     * @param string $sql
-     * @return self
-     */
-    public function whereRaw(string $sql): self
-    {
-        $this->conditions[] = ['AND', 'RAW', $sql];
-        return $this;
-    }
-
-    /**
      * Format conditions with AND/OR.
      *
      * @param array $conditionStrings
@@ -540,10 +552,20 @@ class Builder
         $formattedConditions = [];
 
         foreach ($this->conditions as $index => $condition) {
-            if ($index > 0) {
-                $formattedConditions[] = $condition[0];
+            if (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
+                // For raw conditions
+                // Use the boolean operator they specified
+                if ($index > 0) {
+                    $formattedConditions[] = $condition['boolean'];
+                }
+                $formattedConditions[] = $conditionStrings[$index];
+            } else {
+                // For regular conditions
+                if ($index > 0) {
+                    $formattedConditions[] = $condition[0];
+                }
+                $formattedConditions[] = $conditionStrings[$index];
             }
-            $formattedConditions[] = $conditionStrings[$index];
         }
 
         return $formattedConditions;
@@ -1550,6 +1572,44 @@ class Builder
     }
 
     /**
+     * Add a raw ORDER BY clause to the query.
+     *
+     * @param string $sql The raw ORDER BY expression
+     * @param array $bindings Optional bindings for parameters
+     * @return self
+     */
+    public function orderByRaw(string $sql, array $bindings = []): self
+    {
+        $this->orderBy[] = [
+            'type' => 'RAW_ORDER_BY',
+            'expression' => $sql,
+            'bindings' => $bindings
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Add a raw WHERE clause to the query with optional bindings.
+     *
+     * @param string $sql The raw SQL WHERE clause
+     * @param array $bindings Optional bindings for parameters
+     * @param string $boolean The boolean operator (AND/OR)
+     * @return self
+     */
+    public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): self
+    {
+        $this->conditions[] = [
+            'type' => 'RAW_WHERE',
+            'sql' => $sql,
+            'bindings' => $bindings,
+            'boolean' => $boolean
+        ];
+
+        return $this;
+    }
+
+    /**
      * Properly quote an identifier for SQL.
      *
      * @param string $identifier
@@ -1663,15 +1723,24 @@ class Builder
     {
         $index = 1;
 
+        foreach ($this->orderBy as $order) {
+            if (isset($order['type']) && $order['type'] === 'RAW_ORDER_BY' && !empty($order['bindings'])) {
+                foreach ($order['bindings'] as $value) {
+                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                }
+            }
+        }
+
         foreach ($this->conditions as $condition) {
             if (isset($condition['type'])) {
                 // Bind all RAW_* bindings
-                if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY'])) {
+                if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY', 'RAW_WHERE'])) {
                     if (!empty($condition['bindings']) && is_array($condition['bindings'])) {
                         foreach ($condition['bindings'] as $value) {
                             $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
                         }
                     }
+
                     continue;
                 }
 
@@ -2231,12 +2300,15 @@ class Builder
         if (is_int($value)) {
             return PDO::PARAM_INT;
         }
+
         if (is_bool($value)) {
             return PDO::PARAM_BOOL;
         }
+
         if (is_null($value)) {
             return PDO::PARAM_NULL;
         }
+
         return PDO::PARAM_STR;
     }
 }
