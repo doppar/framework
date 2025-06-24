@@ -52,13 +52,32 @@ class UrlGenerator
      * Create a new UrlGenerator instance.
      *
      * @param string|null $baseUrl The base URL for generating URLs
-     * @param bool $secure Whether to use HTTPS by default
+     * @param bool|null $secure Whether to use HTTPS by default
      */
-    public function __construct(?string $baseUrl = null, bool $secure = false)
+    public function __construct(?string $baseUrl = null, ?bool $secure = null)
     {
         $this->baseUrl = $baseUrl ? rtrim($baseUrl, '/') : $this->determineBaseUrl();
 
-        $this->secure = $secure;
+        $this->secure = $secure ?? $this->isSecureRequest();
+    }
+
+    /**
+     * Checks if the current request is made over a secure (HTTPS) connection.
+     *
+     * @return bool
+     */
+    protected function isSecureRequest(): bool
+    {
+        static $isSecure = null;
+
+        if ($isSecure === null) {
+            $isSecure = ! $this->isRunningUnitTestsOrConsole() ?
+                request()->isSecure() : (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+                || ($_SERVER['SERVER_PORT'] ?? null) == 443
+                || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null) === 'https';
+        }
+
+        return $isSecure;
     }
 
     /**
@@ -80,7 +99,7 @@ class UrlGenerator
      */
     public function enqueue(string $path = '/', ?bool $secure = null)
     {
-        return $this->to($path, [], $secure)->make();
+        return $this->to($path, [], $secure ?? $this->secure)->make();
     }
 
     /**
@@ -293,5 +312,17 @@ class UrlGenerator
         $this->secure = $secure;
 
         return $this;
+    }
+
+    /**
+     * Determines if the application is running UNIT TEST
+     *
+     * @return bool
+     */
+    private function isRunningUnitTestsOrConsole(): bool
+    {
+        return strpos($_SERVER['argv'][0] ?? '', 'phpunit') !== false
+            || \PHP_SAPI === 'cli'
+            || \PHP_SAPI === 'phpdbg';
     }
 }

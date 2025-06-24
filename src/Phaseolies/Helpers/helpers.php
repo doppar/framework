@@ -354,8 +354,9 @@ function base_url(string $path = ''): string
 {
     static $baseUrl = null;
 
-    // If we already determined the base URL, return it with the path
-    if ($baseUrl !== null) {
+    // Return cached version if available 
+    // and not forcing a new check
+    if ($baseUrl !== null && !defined('FORCE_BASE_URL_REFRESH')) {
         return $baseUrl . ($path ? '/' . ltrim($path, '/') : '');
     }
 
@@ -363,14 +364,27 @@ function base_url(string $path = ''): string
         $appUrl = getenv('APP_URL') ?: 'http://localhost';
         $baseUrl = rtrim($appUrl, '/');
     } else {
-        $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        // Modern HTTPS detection
+        $isHttps = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+            || ($_SERVER['SERVER_PORT'] ?? null) == 443
+            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null) === 'https'
+            || ($_SERVER['HTTP_CF_VISITOR'] ?? null) === '{"scheme":"https"}'; // Cloudflare support
+
+        $scheme = $isHttps ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $baseUrl = $scheme . '://' . $host;
 
-        // If using a subdirectory, include that in base URL
-        $scriptName = $_SERVER['SCRIPT_NAME'];
-        $baseDir = str_replace(basename($scriptName), '', $scriptName);
-        $baseUrl .= rtrim($baseDir, '/');
+        // Handle subdirectory installations
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        if ($scriptName) {
+            $baseDir = str_replace(basename($scriptName), '', $scriptName);
+            $baseUrl .= rtrim($baseDir, '/');
+        }
+    }
+
+    // Allow environment override
+    if (getenv('FORCE_HTTPS') === 'true') {
+        $baseUrl = str_replace('http://', 'https://', $baseUrl);
     }
 
     return $baseUrl . ($path ? '/' . ltrim($path, '/') : '');
