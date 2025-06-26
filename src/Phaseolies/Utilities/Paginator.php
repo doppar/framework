@@ -84,18 +84,28 @@ class Paginator
         $currentPage = $this->currentPage();
         $lastPage = $this->lastPage();
 
-        // Add the first page
-        if ($currentPage > 1) {
+        // Add the first page only if it's not already going to be included
+        // Changed from > 1 to > 2 to prevent duplicate
+        if ($currentPage > 2) {
             $elements[] = 1;
         }
 
         // Add ellipsis if the current page is far from the first page
+        // Changed from > 2 to > 3 to match new first page condition
         if ($currentPage > 3) {
             $elements[] = '...';
         }
 
         // Add pages around the current page
-        for ($i = max(1, $currentPage - 2); $i <= min($lastPage, $currentPage + 2); $i++) {
+        $startPage = max(1, $currentPage - 2);
+        $endPage = min($lastPage, $currentPage + 2);
+
+        // Ensure we don't duplicate the first page
+        if ($startPage === 1 && !empty($elements) && $elements[0] === 1) {
+            $startPage = 2;
+        }
+
+        for ($i = $startPage; $i <= $endPage; $i++) {
             $elements[] = $i;
         }
 
@@ -104,8 +114,8 @@ class Paginator
             $elements[] = '...';
         }
 
-        // Add the last page
-        if ($currentPage < $lastPage) {
+        // Add the last page if it's not already included
+        if ($currentPage < $lastPage - 1) {
             $elements[] = $lastPage;
         }
 
