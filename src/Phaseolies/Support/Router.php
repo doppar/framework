@@ -156,9 +156,12 @@ class Router extends Kernel
             self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
             $uri = strtok(request()->uri(), '?');
             $method = strtoupper(request()->method());
-            if ($cached['routes'][$method][$uri] === 'closure') {
+            $requestedPath = $cached['routes'][$method][$uri] ?? '';
+
+            if ($requestedPath === 'closure') {
                 return false;
             }
+
             return true;
         }
 
