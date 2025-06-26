@@ -23,7 +23,7 @@ class CookieSessionHandler extends AbstractSessionHandler
     {
         if ($this->shouldRegenerate()) {
             $this->regenerate();
-            $_SESSION['last_regenerated'] = time();
+            session()->put('last_regenerated', time());
         }
 
         $this->generateToken();

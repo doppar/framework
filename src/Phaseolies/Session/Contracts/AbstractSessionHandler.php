@@ -62,7 +62,7 @@ abstract class AbstractSessionHandler implements SessionHandlerInterface
      */
     protected function shouldRegenerate(): bool
     {
-        return !isset($_SESSION['last_regenerated']) ||
-            (time() - $_SESSION['last_regenerated']) > ($this->config['lifetime'] * 60);
+        return !session()->has('last_regenerated') ||
+            (time() - session('last_regenerated')) > ($this->config['lifetime'] * 60);
     }
 }

@@ -96,7 +96,7 @@ EOT;
             integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
         <style>
-           .btn-check:checked+.btn,.btn-primary,.btn.active,.btn.show,.btn:first-child:active,:not(.btn-check)+.btn:active{color:#fff;background:#8486ff}.btn-primary,.btn-primary:hover{background:#8486ff}body{font-family:Poppins,sans-serif;background:#edf2f7}.navbar{box-shadow:0 2px 10px rgba(0,0,0,.1)}.btn-primary{border:unset}
+           .btn-check:checked+.btn,.btn-primary,.btn.active,.btn.show,.btn:first-child:active,:not(.btn-check)+.btn:active{color:#fff;background:#8486ff}.btn-primary,.btn-primary:hover{background:#8486ff}body{font-family:Poppins,sans-serif;background:#f8f8f8}.navbar{box-shadow:0 2px 10px rgba(0,0,0,.1)}.btn-primary{border:unset}
         </style>
     </head>
     <body>
