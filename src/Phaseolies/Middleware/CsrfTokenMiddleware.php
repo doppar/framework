@@ -10,9 +10,17 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\TokenMismatchException;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Closure;
+use Phaseolies\Support\Facades\Crypt;
 
 class CsrfTokenMiddleware implements Middleware
 {
+    /**
+     * Indicates whether the XSRF-TOKEN cookie should be set on the response.
+     *
+     * @var bool
+     */
+    protected $addHttpCookie = true;
+
     /**
      * Handles an incoming request and verifies the CSRF token.
      *
@@ -72,7 +80,7 @@ class CsrfTokenMiddleware implements Middleware
      */
     public function isTokenMatch($request): bool
     {
-        $token = $this->getTokenFromRequest($request);
+        $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
 
         return is_string($request->session()->token()) &&
             is_string($token) &&
@@ -88,6 +96,10 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function addCookieToResponse($request, $response): Response
     {
+        if (PHP_SAPI === 'cli' || defined('STDIN')) {
+            return $response;
+        }
+
         $config = config('session');
 
         $response->headers->setCookie($this->addCookie($request, $config));
@@ -104,17 +116,18 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function addCookie($request, $config): Cookie
     {
+        $token = Crypt::encrypt($request->session()->token());
+
         return new Cookie(
             'XSRF-TOKEN',
-            $request->session()->token(),
-            60 * $config['lifetime'],
+            $token,
+            time() + 60 * $config['lifetime'],
             $config['path'],
             $config['domain'],
             $config['secure'],
             false,
             false,
-            $config['same_site'] ?? null,
-            $config['partitioned'] ?? false
+            $config['same_site'] ?? 'lax'
         );
     }
 
@@ -144,9 +157,9 @@ class CsrfTokenMiddleware implements Middleware
      *
      * @return bool
      */
-    public function shouldAddXsrfTokenCookie($request): bool
+    public function shouldAddXsrfTokenCookie(): bool
     {
-        return $request->isApiRequest();
+        return $this->addHttpCookie;
     }
 
     /**

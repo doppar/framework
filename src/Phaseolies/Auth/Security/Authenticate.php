@@ -3,6 +3,7 @@
 namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
+use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\Facades\Cache;
 use Phaseolies\Database\Eloquent\Model;
 use App\Models\User;
@@ -42,13 +43,14 @@ class Authenticate extends Model
         $authKeyValue = $credentials[$authKey] ?? '';
         $password = $credentials['password'] ?? '';
 
-        $user = User::query()->where($authKey, '=', $authKeyValue)->first();
+        $user = User::query()->where($authKey, $authKeyValue)->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             return false;
         }
 
         $this->login($user, $remember);
+
         return true;
     }
 
@@ -107,6 +109,7 @@ class Authenticate extends Model
 
         if ($user) {
             $this->statelessUser = $user;
+
             return $user;
         }
 
@@ -125,19 +128,20 @@ class Authenticate extends Model
         }
 
         if (session()->has('user')) {
-            $user = User::find(session()->get('user')->id);
+            $user = User::find(session('user')->id);
+
             if ($user) {
-                $reflectionProperty = new \ReflectionProperty(User::class, 'unexposable');
-                $reflectionProperty->setAccessible(true);
-                $user->makeHidden($reflectionProperty->getValue($user));
                 return $user;
             }
         }
 
         if (cookie()->has('remember_token')) {
-            $user = User::query()->where('remember_token', '=', cookie()->get('remember_token'))->first();
+            $rememberToken = Crypt::decrypt(cookie()->get('remember_token'));
+            $user = User::query()->where('remember_token', $rememberToken)->first();
+
             if ($user) {
                 $this->setUser($user);
+
                 return $user;
             }
         }
@@ -161,6 +165,7 @@ class Authenticate extends Model
     public function logout(): void
     {
         $this->statelessUser = null;
+
         session()->forget('user');
 
         if (cookie()->has('remember_token')) {
@@ -185,18 +190,22 @@ class Authenticate extends Model
      */
     private function setRememberToken(User $user): void
     {
-        $token = bin2hex(random_bytes(32));
-        $user->remember_token = Hash::make($token);
+        $token = bin2hex(random_bytes(50));
+        $user->remember_token = $token;
         $user->save();
+        $rememberToken = Crypt::encrypt($token);
 
         setcookie(
             'remember_token',
-            $token,
-            time() + 60 * 60 * 24 * 30, // 30 days
-            '/',
-            '',
-            true,  // HTTPS only
-            true   // HttpOnly
+            $rememberToken,
+            [
+                'expires' => time() + 60 * 60 * 24 * 30,
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+                'samesite' => config('session.same_site', 'Lax')
+            ]
         );
     }
 

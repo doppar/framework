@@ -221,7 +221,7 @@ function session($key = null, $default = null): mixed
  */
 function csrf_token(): ?string
 {
-    return request()->session()->token() ?? null;
+    return session('_token') ?? null;
 }
 
 /**

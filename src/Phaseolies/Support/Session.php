@@ -217,7 +217,7 @@ class Session
      */
     public function token(): ?string
     {
-        return $this->get('_token');
+        return session('_token');
     }
 
     /**

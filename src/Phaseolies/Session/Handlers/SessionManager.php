@@ -3,7 +3,6 @@
 namespace Phaseolies\Session\Handlers;
 
 use Phaseolies\Session\Contracts\SessionHandlerInterface;
-use Phaseolies\Config\Config;
 
 class SessionManager
 {
@@ -28,9 +27,23 @@ class SessionManager
             return;
         }
 
-        $sessionConfig = (array) Config::get('session');
+        $config = (array) config('session');
 
-        self::$handler = SessionHandlerFactory::create($sessionConfig['driver'], $sessionConfig);
+        // Only set name for non-cookie drivers
+        if ($config['driver'] !== 'cookie') {
+            session_name($config['cookie']);
+        }
+
+        session_set_cookie_params([
+            'lifetime' => $config['expire_on_close'] ? 0 : $config['lifetime'] * 60,
+            'path' => $config['path'],
+            'domain' => $config['domain'],
+            'secure' => $config['secure'],
+            'httponly' => $config['http_only'],
+            'samesite' => $config['same_site']
+        ]);
+
+        self::$handler = SessionHandlerFactory::create($config['driver'], $config);
         self::$handler->initialize();
         self::$handler->start();
     }
@@ -46,6 +59,7 @@ class SessionManager
         if (self::$handler === null) {
             throw new \RuntimeException("Session handler not initialized");
         }
+
         return self::$handler;
     }
 }

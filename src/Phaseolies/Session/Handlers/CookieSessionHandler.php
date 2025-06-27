@@ -15,10 +15,6 @@ class CookieSessionHandler extends AbstractSessionHandler
      */
     public function initialize(): void
     {
-        if (session_status() === PHP_SESSION_NONE && !session_start()) {
-            throw new RuntimeException("Failed to start session.");
-        }
-
         $this->configureCookieSession();
         $this->setCookieParameters();
         $this->validate();
@@ -35,6 +31,10 @@ class CookieSessionHandler extends AbstractSessionHandler
      */
     public function start(): void
     {
+        if (session_status() === PHP_SESSION_NONE && !session_start()) {
+            throw new RuntimeException("Failed to start session.");
+        }
+
         if ($this->shouldRegenerate()) {
             $this->regenerate();
             session()->put('last_regenerated', time());
@@ -51,28 +51,7 @@ class CookieSessionHandler extends AbstractSessionHandler
      * methods (`open`, `close`, `read`, `write`, `destroy`, `gc`) are used.
      * It configures security-related settings like `httponly`, `secure`, and `samesite`.
      */
-    private function configureCookieSession(): void
-    {
-        @ini_set('session.save_handler', 'user');
-        @ini_set('session.use_cookies', 1);
-        @ini_set('session.use_only_cookies', 1);
-        @ini_set('session.use_strict_mode', 1);
-        @ini_set('session.cookie_httponly', $this->config['http_only'] ? 1 : 0);
-        @ini_set('session.cookie_secure', $this->config['secure'] ? 1 : 0);
-        @ini_set('session.cookie_samesite', $this->config['same_site']);
-        @ini_set('session.cookie_path', $this->config['path']);
-        @ini_set('session.cookie_domain', $this->config['domain']);
-        @ini_set('session.cookie_lifetime', $this->config['expire_on_close'] ? 0 : $this->config['lifetime'] * 60);
-
-        @session_set_save_handler(
-            [$this, 'open'],
-            [$this, 'close'],
-            [$this, 'read'],
-            [$this, 'write'],
-            [$this, 'destroy'],
-            [$this, 'gc']
-        );
-    }
+    private function configureCookieSession(): void {}
 
     /**
      * Applies cookie parameters based on configuration.
@@ -84,16 +63,6 @@ class CookieSessionHandler extends AbstractSessionHandler
      */
     private function setCookieParameters(): void
     {
-        @session_set_cookie_params([
-            'lifetime' => $this->config['expire_on_close'] ? 0 : $this->config['lifetime'] * 60,
-            'path' => $this->config['path'],
-            'domain' => $this->config['domain'],
-            'secure' => $this->config['secure'],
-            'httponly' => $this->config['http_only'],
-            'samesite' => $this->config['same_site']
-        ]);
-
-        @session_name($this->config['cookie']);
         @ini_set('session.gc_maxlifetime', $this->config['lifetime'] * 60);
     }
 
@@ -182,7 +151,7 @@ class CookieSessionHandler extends AbstractSessionHandler
             $encrypted = $this->encrypt($sessionData);
 
             $result = setcookie(
-                @session_name(),
+                @session_name(config('session.cookie')),
                 $encrypted,
                 [
                     'expires' => $params['lifetime'] ? time() + $params['lifetime'] : 0,
