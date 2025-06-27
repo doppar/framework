@@ -138,7 +138,7 @@ class Blueprint
      * @param int|null $scale Number of digits after decimal point (optional)
      * @return ColumnDefinition
      */
-    public function float(string $column, int $precision = null, int $scale = null): ColumnDefinition
+    public function float(string $column, ?int $precision = null, ?int $scale = null): ColumnDefinition
     {
         return $this->addColumn('float', $column, array_filter(compact('precision', 'scale')));
     }
@@ -670,7 +670,7 @@ class Blueprint
      * @param int|null $scale Number of digits after decimal point (optional)
      * @return ColumnDefinition
      */
-    public function double(string $column, int $precision = null, int $scale = null): ColumnDefinition
+    public function double(string $column, ?int $precision = null, ?int $scale = null): ColumnDefinition
     {
         return $this->addColumn('double', $column, array_filter(compact('precision', 'scale')));
     }

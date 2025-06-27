@@ -126,6 +126,7 @@ class CookieSessionHandler extends AbstractSessionHandler
             if (empty($data)) {
                 throw new RuntimeException('Empty decrypted session data');
             }
+
             return $data;
         } catch (RuntimeException $e) {
             $this->destroyCookie();
@@ -151,7 +152,7 @@ class CookieSessionHandler extends AbstractSessionHandler
             $encrypted = $this->encrypt($sessionData);
 
             $result = setcookie(
-                @session_name(config('session.cookie')),
+                session_name(config('session.cookie')),
                 $encrypted,
                 [
                     'expires' => $params['lifetime'] ? time() + $params['lifetime'] : 0,
@@ -167,7 +168,8 @@ class CookieSessionHandler extends AbstractSessionHandler
                 return false;
             }
 
-            $_COOKIE[@session_name()] = $encrypted;
+            $_COOKIE[session_name(config('session.cookie'))] = $encrypted;
+
             return true;
         } catch (RuntimeException $e) {
             return false;
@@ -216,6 +218,7 @@ class CookieSessionHandler extends AbstractSessionHandler
         ]);
 
         unset($_COOKIE[$this->config['cookie']]);
+
         return true;
     }
 
@@ -231,6 +234,7 @@ class CookieSessionHandler extends AbstractSessionHandler
         $key = Config::get('app.key');
         $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length('aes-256-cbc'));
         $encrypted = openssl_encrypt($data, 'aes-256-cbc', $key, 0, $iv);
+
         return base64_encode($iv . $encrypted);
     }
 
@@ -248,6 +252,7 @@ class CookieSessionHandler extends AbstractSessionHandler
         $ivSize = openssl_cipher_iv_length('aes-256-cbc');
         $iv = substr($data, 0, $ivSize);
         $encrypted = substr($data, $ivSize);
+
         return openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
     }
 }
