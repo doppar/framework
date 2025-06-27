@@ -57,6 +57,7 @@ trait InteractsWithTrustedProxies
     public function setProxies($proxies): self
     {
         $this->proxies = $proxies;
+
         return $this;
     }
 
@@ -69,6 +70,7 @@ trait InteractsWithTrustedProxies
     public function setHeaders(int $headers): self
     {
         $this->headers = $headers;
+
         return $this;
     }
 
@@ -81,6 +83,7 @@ trait InteractsWithTrustedProxies
     public function setPrivateSubnets(array $subnets): self
     {
         $this->privateSubnets = $subnets;
+
         return $this;
     }
 }

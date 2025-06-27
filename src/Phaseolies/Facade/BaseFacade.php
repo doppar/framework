@@ -23,7 +23,7 @@ abstract class BaseFacade
     /**
      * Set the application instance.
      *
-     * @param  \Phaseolies\Application  $app
+     * @param \Phaseolies\Application $app
      * @return void
      */
     public static function setFacadeApplication($app)

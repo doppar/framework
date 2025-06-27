@@ -4,10 +4,6 @@ namespace Phaseolies\Session\Contracts;
 
 use Phaseolies\Session\Contracts\SessionHandlerInterface;
 
-/**
- * Abstract base class for session handlers providing common functionality
- * for session management including token generation and session regeneration.
- */
 abstract class AbstractSessionHandler implements SessionHandlerInterface
 {
     /**

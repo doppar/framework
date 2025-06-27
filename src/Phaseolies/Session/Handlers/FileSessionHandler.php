@@ -7,12 +7,23 @@ use RuntimeException;
 
 class FileSessionHandler extends AbstractSessionHandler
 {
+    /**
+     * Initializes the file-based session handler by:
+     * - Ensuring the session storage directory exists.
+     * - Setting necessary PHP INI directives for file-based sessions.
+     */
     public function initialize(): void
     {
         $this->ensureSessionDirectoryExists();
         $this->configureFileSession();
     }
 
+    /**
+     * Starts the session, applies custom session cache settings,
+     * and performs session regeneration and token generation as needed.
+     *
+     * @throws RuntimeException if the session fails to start.
+     */
     public function start(): void
     {
         // Disable PHP's default session cache headers
@@ -35,6 +46,10 @@ class FileSessionHandler extends AbstractSessionHandler
         $this->generateToken();
     }
 
+    /**
+     * Ensures the session save directory exists.
+     * If it doesn't, attempts to create it. Fails with an exception if creation fails.
+     */
     private function ensureSessionDirectoryExists(): void
     {
         if (!is_dir($this->config['files'])) {
@@ -44,6 +59,10 @@ class FileSessionHandler extends AbstractSessionHandler
         }
     }
 
+    /**
+     * Configures PHP to use the filesystem for session storage
+     * with specific path and lifetime settings pulled from config.
+     */
     private function configureFileSession(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -53,5 +72,9 @@ class FileSessionHandler extends AbstractSessionHandler
         }
     }
 
+    /**
+     * Placeholder for session validation logic.
+     * This could be expanded to implement custom validation checks.
+     */
     public function validate(): void {}
 }

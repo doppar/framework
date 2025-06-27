@@ -449,16 +449,16 @@ class Builder
      * Only executes callback when condition is strictly true or has a non-empty value
      * (0 and false will not trigger the callback)
      *
-     * @param mixed $condition The condition to evaluate
+     * @param mixed $value The $value to evaluate
      * @param callable $callback The callback that adds query constraints
      * @param callable|null $default Optional default callback if condition is false
      * @return self
      */
-    public function if($condition, callable $callback, ?callable $default = null): self
+    public function if($value, callable $callback, ?callable $default = null): self
     {
-        $value = is_callable($condition) ? $condition() : $condition;
+        $payload = is_callable($value) ? $value() : $value;
 
-        if ($value === true || $this->hasValue($value)) {
+        if ($payload === true || $this->hasValue($payload)) {
             $callback($this);
         } elseif ($default !== null) {
             $default($this);

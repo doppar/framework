@@ -30,14 +30,9 @@ class MessageBag
     }
 
     /**
-     * Retrieves the old input data that was previously stored in the session.
-     * If a specific key is provided, it will return the value associated with that key;
-     * otherwise, it returns all stored input data.
+     * Retrieves the old input data that was previously stored in the session..
      *
-     * This is commonly used to retain form values between requests, for example,
-     * when a form is redisplayed after a validation failure.
-     *
-     * @param string|null $key The key for a specific input value (e.g., 'email'). If null, returns all stored input.
+     * @param string|null $key
      *
      * @return string|null
      *
@@ -75,6 +70,7 @@ class MessageBag
     public static function clear(): void
     {
         session()->flushPeek();
+
         session()->forget('input');
     }
 
