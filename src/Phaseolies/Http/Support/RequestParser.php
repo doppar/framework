@@ -158,7 +158,11 @@ trait RequestParser
     public function query(?string $key = null, $default = null): mixed
     {
         $queryString = $this->getQueryString();
-        parse_str($queryString, $queryParams);
+
+        $queryParams = [];
+        if ($queryString !== null) {
+            parse_str($queryString, $queryParams);
+        }
 
         if ($key !== null) {
             return $queryParams[$key] ?? $default;

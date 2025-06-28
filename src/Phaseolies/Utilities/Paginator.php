@@ -178,13 +178,18 @@ class Paginator
         }
 
         if ($this->hasPages()) {
+            $queryParams = request()->query();
+
             $html = '<div class="d-flex justify-content-between align-items-center">';
             $html .= '<div class="d-flex align-items-center">';
             $html .= '<span class="me-2">Jump:</span>';
             $html .= '<select class="form-select form-select-sm" onchange="window.location.href = this.value">';
 
             for ($i = 1; $i <= $this->lastPage(); $i++) {
-                $html .= '<option value="' . $this->url($i) . '" ' . ($i == $this->currentPage() ? 'selected' : '') . '>';
+                $url = $this->url($i);
+                $url = $this->appendQueryParameters($url, $queryParams);
+
+                $html .= '<option value="' . $url . '" ' . ($i == $this->currentPage() ? 'selected' : '') . '>';
                 $html .= 'Page ' . $i;
                 $html .= '</option>';
             }
@@ -196,16 +201,25 @@ class Paginator
             $html .= '</div>';
 
             $html .= '<ul class="pagination mb-0">';
+
+            // Previous page link with query parameters
             if ($this->onFirstPage()) {
                 $html .= '<li class="page-item disabled"><span class="page-link">« Previous</span></li>';
             } else {
-                $html .= '<li class="page-item"><a class="page-link" href="' . $this->previousPageUrl() . '" rel="prev">« Previous</a></li>';
+                $prevUrl = $this->previousPageUrl();
+                $prevUrl = $this->appendQueryParameters($prevUrl, $queryParams);
+                $html .= '<li class="page-item"><a class="page-link" href="' . $prevUrl . '" rel="prev">« Previous</a></li>';
             }
+
+            // Next page link with query parameters
             if ($this->hasMorePages()) {
-                $html .= '<li class="page-item"><a class="page-link" href="' . $this->nextPageUrl() . '" rel="next">Next »</a></li>';
+                $nextUrl = $this->nextPageUrl();
+                $nextUrl = $this->appendQueryParameters($nextUrl, $queryParams);
+                $html .= '<li class="page-item"><a class="page-link" href="' . $nextUrl . '" rel="next">Next »</a></li>';
             } else {
                 $html .= '<li class="page-item disabled"><span class="page-link">Next »</span></li>';
             }
+
             $html .= '</ul>';
             $html .= '</div>';
 
@@ -224,33 +238,46 @@ class Paginator
         if (file_exists(resource_path('views/vendor/pagination/number.blade.php'))) {
             return view('vendor.pagination.number', ['paginator' => $this])->render();
         }
+
         if ($this->hasPages()) {
+            $queryParams = request()->query();
+
             $html = '<div class="d-flex justify-content-between align-items-center">';
             $html .= '<div class="ms-3">';
             $html .= 'Page ' . $this->currentPage() . ' of ' . $this->lastPage();
             $html .= '</div>';
             $html .= '<ul class="pagination mb-0">';
 
+            // Previous page link
             if ($this->onFirstPage()) {
                 $html .= '<li class="page-item disabled"><span class="page-link">« Previous</span></li>';
             } else {
-                $html .= '<li class="page-item"><a class="page-link" href="' . $this->previousPageUrl() . '" rel="prev">« Previous</a></li>';
+                $prevUrl = $this->previousPageUrl();
+                $prevUrl = $this->appendQueryParameters($prevUrl, $queryParams);
+                $html .= '<li class="page-item"><a class="page-link" href="' . $prevUrl . '" rel="prev">« Previous</a></li>';
             }
 
+            // Page number links
             foreach ($this->numbers() as $page) {
                 if (is_string($page)) {
                     // Dots (ellipsis)
                     $html .= '<li class="page-item disabled"><span class="page-link">' . $page . '</span></li>';
                 } else {
                     $isActive = $page == $this->currentPage();
+                    $pageUrl = $this->url($page);
+                    $pageUrl = $this->appendQueryParameters($pageUrl, $queryParams);
+
                     $html .= '<li class="page-item' . ($isActive ? ' active' : '') . '">';
-                    $html .= '<a class="page-link" href="' . $this->url($page) . '">' . $page . '</a>';
+                    $html .= '<a class="page-link" href="' . $pageUrl . '">' . $page . '</a>';
                     $html .= '</li>';
                 }
             }
 
+            // Next page link
             if ($this->hasMorePages()) {
-                $html .= '<li class="page-item"><a class="page-link" href="' . $this->nextPageUrl() . '" rel="next">Next »</a></li>';
+                $nextUrl = $this->nextPageUrl();
+                $nextUrl = $this->appendQueryParameters($nextUrl, $queryParams);
+                $html .= '<li class="page-item"><a class="page-link" href="' . $nextUrl . '" rel="next">Next »</a></li>';
             } else {
                 $html .= '<li class="page-item disabled"><span class="page-link">Next »</span></li>';
             }
@@ -262,5 +289,38 @@ class Paginator
         }
 
         return null;
+    }
+
+    /**
+     * Append query parameters to a URL
+     *
+     * @param string|null $url
+     * @param array $queryParams
+     * @return string
+     */
+    protected function appendQueryParameters(?string $url, array $queryParams): string
+    {
+        if (!$url) {
+            return '';
+        }
+
+        // Parse the URL to get its components
+        $parsedUrl = parse_url($url);
+
+        $existingParams = [];
+
+        // Get existing query parameters from the URL
+        if (isset($parsedUrl['query'])) {
+            parse_str($parsedUrl['query'], $existingParams);
+        }
+
+        // Merge with new parameters
+        // New ones take precedence
+        $mergedParams = array_merge($queryParams, $existingParams);
+
+        // Rebuild the URL using base_url
+        $query = http_build_query($mergedParams);
+
+        return base_url($parsedUrl['path'] ?? '') . '?' . $query;
     }
 }

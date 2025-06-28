@@ -126,11 +126,11 @@ class UrlGenerator
      * Generate a URL for a named route.
      *
      * @param string $name The route name
-     * @param array|string $parameters Route parameters
+     * @param array|string|int $parameters Route parameters
      * @param bool|null $secure Whether to force HTTPS
      * @return string
      */
-    public function route(string $name, array $parameters = [], ?bool $secure = null)
+    public function route(string $name, array|string|int $parameters = [], ?bool $secure = null)
     {
         $path = app('route')->route($name, $parameters);
 
@@ -145,11 +145,11 @@ class UrlGenerator
      * Set the path and optional parameters.
      *
      * @param string $path
-     * @param array|string $parameters
+     * @param array|string|int $parameters
      * @param bool|null $secure
      * @return $this
      */
-    public function to(string $path = '/', array $parameters = [], ?bool $secure = null)
+    public function to(string $path = '/', array|string|int $parameters = [], ?bool $secure = null)
     {
         $this->path = ltrim($path, '/');
 
@@ -248,12 +248,12 @@ class UrlGenerator
      * Generate a signed URL.
      *
      * @param string $path
-     * @param array $parameters
+     * @param array|string|int $parameters
      * @param int $expiration
      * @param bool|null $secure
      * @return string
      */
-    public function signed(string $path = '/', array $parameters = [], int $expiration = 3600, ?bool $secure = null)
+    public function signed(string $path = '/', array|string|int $parameters = [], int $expiration = 3600, ?bool $secure = null)
     {
         return $this->to($path, $parameters, $secure)
             ->withSignature($expiration)

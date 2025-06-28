@@ -163,7 +163,7 @@ function view($view, array $data = [], array $headers = []): Response
     $response->setBody($content);
 
     foreach ($headers as $name => $value) {
-        request()->headers->set($name, $value);
+        $response->headers->set($name, $value);
     }
 
     return $response;
