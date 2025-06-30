@@ -679,7 +679,3 @@ function __($key = null, $replace = [], $locale = null)
     return trans($key, $replace, $locale);
 }
 
-
-function test()  {
-    return 'test';
-}
