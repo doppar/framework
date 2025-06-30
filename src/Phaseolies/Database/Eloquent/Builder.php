@@ -449,7 +449,7 @@ class Builder
      * Only executes callback when condition is strictly true or has a non-empty value
      * (0 and false will not trigger the callback)
      *
-     * @param mixed $value The $value to evaluate
+     * @param mixed $value
      * @param callable $callback The callback that adds query constraints
      * @param callable|null $default Optional default callback if condition is false
      * @return self

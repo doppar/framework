@@ -237,7 +237,7 @@ class Authenticate extends Model
     public function can(string $scope): bool
     {
         return Cache::stash(
-            "auth_scope_{$scope}",
+            "auth_scope_{$scope}_".$this->id(),
             3600,
             fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
         );
