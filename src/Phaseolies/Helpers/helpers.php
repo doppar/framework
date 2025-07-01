@@ -692,3 +692,15 @@ function __($key = null, $replace = [], $locale = null)
 
     return trans($key, $replace, $locale);
 }
+
+/**
+     * Repeat the given string.
+     *
+     * @param  string  $string
+     * @param  int  $times
+     * @return string
+*/
+function repeat(string $string, int $times)
+{
+        return str_repeat($string, $times);
+}
