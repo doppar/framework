@@ -24,7 +24,10 @@ class ErrorHandler
             $logMessage .= "\nFile: " . $exception->getFile();
             $logMessage .= "\nLine: " . $exception->getLine();
             $logMessage .= "\nTrace: " . $exception->getTraceAsString();
-            app(LoggerService::class)->channel(env('LOG_CHANNEL', 'stack'))->error($logMessage);
+
+            app(LoggerService::class)
+                ->channel(env('LOG_CHANNEL', 'stack'))
+                ->error($logMessage);
 
             if (request()->isAjax() || request()->is('/api/*')) {
                 if ($exception instanceof HttpResponseException) {
@@ -34,7 +37,7 @@ class ErrorHandler
                         $errorFile,
                         $errorLine,
                         $errorTrace,
-                        $statusCode,
+                        $statusCode === 0 ? 500 : $statusCode,
                         $responseErrors
                     );
                     return;
@@ -43,7 +46,7 @@ class ErrorHandler
                         $errorFile,
                         $errorLine,
                         $errorTrace,
-                        $errorCode,
+                        $errorCode === 0 ? 500 : $errorCode,
                         $errorMessage
                     );
                     return;
@@ -239,7 +242,8 @@ class ErrorHandler
         header('Content-Type: application/json');
         http_response_code($statusCode);
 
-        echo json_encode($response);
+        echo json_encode($response, JSON_UNESCAPED_SLASHES);
+
         exit;
     }
 }

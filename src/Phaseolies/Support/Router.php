@@ -686,35 +686,42 @@ class Router extends Kernel
      */
     public function resolve(Application $app, Request $request): Response
     {
-        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-        if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
+        try {
+            $currentMiddleware = $this->getCurrentRouteMiddleware($request);
+            if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
 
-        $callback = $this->getCallback($request);
-        if (!$callback) abort(404);
+            $callback = $this->getCallback($request);
+            if (!$callback) abort(404);
 
-        $routeParams = $request->getRouteParams();
-        $handler = function ($request) use ($callback, $app, $routeParams) {
-            if (is_array($callback)) {
-                $result = $this->resolveControllerAction($callback, $app, $routeParams);
-            } elseif (is_string($callback) && class_exists($callback)) {
-                $result = $this->resolveControllerAction($callback, $app, $routeParams);
-            } elseif ($callback instanceof \Closure) {
-                $result = $this->resolveClosure($callback, $app, $routeParams, $request);
-            } else {
-                $result = call_user_func($callback, ...array_values($routeParams));
-            }
+            $routeParams = $request->getRouteParams();
+            $handler = function ($request) use ($callback, $app, $routeParams) {
+                if (is_array($callback)) {
+                    $result = $this->resolveControllerAction($callback, $app, $routeParams);
+                } elseif (is_string($callback) && class_exists($callback)) {
+                    $result = $this->resolveControllerAction($callback, $app, $routeParams);
+                } elseif ($callback instanceof \Closure) {
+                    $result = $this->resolveClosure($callback, $app, $routeParams, $request);
+                } else {
+                    $result = call_user_func($callback, ...array_values($routeParams));
+                }
 
-            $response = app(Response::class);
-            if (!($result instanceof Response)) {
-                return $this->getResolutionResponse($request, $result, $response);
-            }
+                $response = app(Response::class);
+                if (!($result instanceof Response)) {
+                    return $this->getResolutionResponse($request, $result, $response);
+                }
 
-            return $result;
-        };
+                return $result;
+            };
 
-        $response = $this->handle($request, $handler);
+            $response = $this->handle($request, $handler);
 
-        return $response;
+            return $response;
+        } catch (\Exception $e) {
+            throw new \Exception(
+                $e->getMessage() === '' ? "The route '{$request->fullUrl()}' does not exist for request type {$request->getMethod()}}": $e->getMessage(), 
+                $e->getCode() === 0 ? 404 : $e->getCode()
+            );
+        }
     }
 
     /**
