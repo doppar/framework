@@ -2,14 +2,15 @@
 
 namespace Phaseolies\Support;
 
+use Ramsey\Collection\Collection;
+use Phaseolies\Utilities\Attributes\Resolver;
+use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Phaseolies\Http\Validation\FormRequest;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Application;
-use Ramsey\Collection\Collection;
-use Phaseolies\Http\Validation\FormRequest;
-use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use App\Http\Kernel;
 
 class Router extends Kernel
@@ -718,7 +719,7 @@ class Router extends Kernel
             return $response;
         } catch (\Exception $e) {
             throw new \Exception(
-                $e->getMessage() === '' ? "The route '{$request->fullUrl()}' does not exist for request type {$request->getMethod()}}": $e->getMessage(), 
+                $e->getMessage() === '' ? "The route '{$request->fullUrl()}' does not exist for request type {$request->getMethod()}}" : $e->getMessage(),
                 $e->getCode() === 0 ? 404 : $e->getCode()
             );
         }
@@ -851,14 +852,73 @@ class Router extends Kernel
             [$controllerClass, $actionMethod] = $callback;
         }
 
+        // Process class-level dependencies
+        $this->processClassDependencies($controllerClass, $app);
+
         $reflector = new \ReflectionClass($controllerClass);
 
         $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
         $controllerInstance = new $controllerClass(...$constructorDependencies);
 
+        // Process method-level dependencies
+        $this->processMethodDependencies($reflector, $actionMethod, $app);
+
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Handle class level dependency injection
+     *
+     * @param string $className
+     * @param mixed $app
+     * @return void
+     */
+    protected function processClassDependencies(string $className, $app): void
+    {
+        if (!class_exists($className)) {
+            return;
+        }
+
+        $reflection = new \ReflectionClass($className);
+        $attributes = $reflection->getAttributes(Resolver::class);
+
+        foreach ($attributes as $attribute) {
+            $dependency = $attribute->newInstance();
+            if ($dependency->singleton) {
+                $app->singleton($dependency->abstract, $dependency->concrete);
+            } else {
+                $app->bind($dependency->abstract, $dependency->concrete);
+            }
+        }
+    }
+
+    /**
+     * Handle method attribute dependency injection
+     *
+     * @param \ReflectionClass $class
+     * @param string $methodName
+     * @param mixed $app
+     * @return void
+     */
+    protected function processMethodDependencies(\ReflectionClass $class, string $methodName, $app): void
+    {
+        if (!$class->hasMethod($methodName)) {
+            return;
+        }
+
+        $method = $class->getMethod($methodName);
+        $attributes = $method->getAttributes(Resolver::class);
+
+        foreach ($attributes as $attribute) {
+            $dependency = $attribute->newInstance();
+            if ($dependency->singleton) {
+                $app->singleton($dependency->abstract, $dependency->concrete);
+            } else {
+                $app->bind($dependency->abstract, $dependency->concrete);
+            }
+        }
     }
 
     /**

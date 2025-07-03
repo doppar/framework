@@ -2,14 +2,15 @@
 
 namespace Phaseolies\Database\Eloquent;
 
-use PDO;
-use PDOException;
-use PDOStatement;
+use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Query\QueryUtils;
 use Phaseolies\Database\Eloquent\Query\QueryProcessor;
 use Phaseolies\Database\Eloquent\Query\QueryCollection;
+use PDOStatement;
+use PDOException;
+use PDO;
 
 class Builder
 {
@@ -1808,6 +1809,24 @@ class Builder
      */
     public function update(array $attributes): bool
     {
+        static $timestamps = [];
+        $hasCastToDateAttribute = false;
+        $class = $this->modelClass;
+
+        if (!array_key_exists($class, $timestamps)) {
+            $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
+            if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
+                // The property has the #[CastToDate] attribute
+                $hasCastToDateAttribute = true;
+            }
+        }
+
+        if ($timestamps[$class]) {
+            $attributes['updated_at'] = $hasCastToDateAttribute
+                ? now()->startOfDay()
+                : now();
+        }
+
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
 
         $sql = "UPDATE {$this->table} SET $setClause";
@@ -1848,6 +1867,7 @@ class Builder
     public function from(string $table): self
     {
         $this->table = $table;
+
         return $this;
     }
 
@@ -2310,5 +2330,49 @@ class Builder
         }
 
         return PDO::PARAM_STR;
+    }
+
+    /**
+     * Exclude columns from the select query
+     *
+     * @param string|array ...$columns Columns to exclude (can be array or multiple strings)
+     * @return self
+     */
+    public function omit(string|array ...$columns): self
+    {
+        $columns = count($columns) === 1 && is_array($columns[0])
+            ? $columns[0]
+            : $columns;
+
+        if ($this->fields === ['*']) {
+            $this->fields = $this->getTableColumns();
+        }
+
+        $this->fields = array_diff($this->fields, $columns);
+
+        return $this;
+    }
+
+    /**
+     * Filter records that have at least one related record matching the given condition
+     *
+     * @param string $relation The relationship name to check
+     * @param string $column The related model's column to compare
+     * @param mixed $operator Comparison operator or value if only 3 arguments passed
+     * @param mixed $value The value to compare against
+     * @return self
+     */
+    public function whereLinked($relation, $column, $operator = null, $value = null): self
+    {
+        if (func_num_args() === 3) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        // Use the present() method to filter models that have the relationship
+        // and apply the additional condition to the related models
+        return $this->present($relation, function ($query) use ($column, $operator, $value) {
+            $query->where($column, $operator, $value);
+        });
     }
 }

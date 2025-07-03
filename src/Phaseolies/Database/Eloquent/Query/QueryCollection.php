@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Database\Eloquent\Query;
 
+use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
@@ -55,14 +56,19 @@ trait QueryCollection
     /**
      * Finds a model record by its primary key.
      *
-     * @param mixed $primaryKey The value of the primary key to search for.
-     * @return mixed The model instance or null if no record is found.
+     * @param string|array $primaryKey The value of the primary key (can be array or multiple strings)
+     * @return mixed
      */
-    public static function find(mixed $primaryKey)
+    public static function find(string|int|array $primaryKey)
     {
-        return static::query()
-            ->where((new static)->primaryKey, '=', $primaryKey)
-            ->first();
+        $query = static::query();
+        $key = (new static)->primaryKey;
+
+        if (is_array($primaryKey)) {
+            return $query->whereIn($key, $primaryKey)->get();
+        }
+
+        return $query->where($key, $primaryKey)->first();
     }
 
     /**
@@ -140,11 +146,22 @@ trait QueryCollection
      */
     public function save(): bool
     {
+        static $attributeCache = [];
+        $class = static::class;
+
+        if (!array_key_exists($class, $attributeCache)) {
+            $attributeCache[$class] = $this->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class);
+        }
+
+        $dateTime = $attributeCache[$class]
+            ? now()->startOfDay()
+            : now();
+
         $attributes = $this->getCreatableAttributes();
 
         if (isset($this->attributes[$this->primaryKey])) {
             if ($this->timeStamps) {
-                $attributes['updated_at'] = Carbon::now();
+                $attributes['updated_at'] = $dateTime;
             }
 
             $primaryKeyValue = $this->attributes[$this->primaryKey];
@@ -154,8 +171,8 @@ trait QueryCollection
         }
 
         if ($this->timeStamps) {
-            $attributes['created_at'] = Carbon::now();
-            $attributes['updated_at'] = Carbon::now();
+            $attributes['created_at'] = $dateTime;
+            $attributes['updated_at'] = $dateTime;
         }
 
         $id = $this->query()->insert($attributes);
@@ -283,5 +300,54 @@ trait QueryCollection
         }
 
         return $query;
+    }
+
+    /**
+     * Accesses a private or protected property of a class using reflection.
+     *
+     * @param string $class The fully qualified class name.
+     * @param string $attribute The property name to retrieve.
+     * @return mixed The value of the specified property.
+     *
+     * @throws \Exception If the property does not exist on the given class.
+     */
+    protected function getClassProperty(string $class, string $attribute): mixed
+    {
+        $reflection = new \ReflectionClass($class);
+
+        if ($reflection->hasProperty($attribute)) {
+            $property = $reflection->getProperty($attribute);
+            $property->setAccessible(true);
+
+            return $property->isStatic()
+                ? $property->getValue()
+                : $property->getValue(new $this->modelClass);
+        }
+
+        throw new \Exception("Property '{$attribute}' does not exist in class '{$class}'.");
+    }
+
+    /**
+     * Checks whether a class property has a specific attribute.
+     *
+     * @param object|string $class The fully qualified class name.
+     * @param string $attribute The property name to inspect.
+     * @param string $attributeClass The attribute class to check for (e.g. CastToDate::class).
+     * @return bool True if the attribute exists on the property, false otherwise.
+     *
+     * @throws \Exception If the property does not exist on the given class.
+     */
+    protected function propertyHasAttribute(object|string $class, string $attribute, string $attributeClass): bool
+    {
+        $reflection = new \ReflectionClass($class);
+
+        if (! $reflection->hasProperty($attribute)) {
+            throw new \Exception("Property '{$attribute}' does not exist in class '{$class}'.");
+        }
+
+        $property = $reflection->getProperty($attribute);
+        $attributes = $property->getAttributes($attributeClass);
+
+        return !empty($attributes);
     }
 }
