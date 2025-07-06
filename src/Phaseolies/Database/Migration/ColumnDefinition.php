@@ -61,6 +61,17 @@ class ColumnDefinition
     }
 
     /**
+     * Set the column to be indexed.
+     *
+     * @return self
+     */
+    public function index(): self
+    {
+        $this->attributes['index'] = true;
+        return $this;
+    }
+
+    /**
      * Set the column as primary key.
      *
      * @return self

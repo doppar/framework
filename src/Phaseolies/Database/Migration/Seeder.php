@@ -19,7 +19,7 @@ class Seeder
                 throw new \RuntimeException("Seeder class {$seeder} not found");
             }
 
-            $instance = new $seeder();
+            $instance = app($seeder);
 
             if (method_exists($instance, 'run')) {
                 $instance->run();

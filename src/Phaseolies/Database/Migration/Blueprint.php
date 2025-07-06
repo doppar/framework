@@ -721,6 +721,20 @@ class Blueprint
         // Create the main CREATE TABLE statement
         $statements[] = "CREATE TABLE {$this->table} (" . implode(', ', $columns) . ") ENGINE={$this->engine}";
 
+        // Add index creation statements for columns marked with index()
+        // Add unique creation statements for columns marked with unique()
+        foreach ($this->columns as $column) {
+            if (isset($column->attributes['index']) && $column->attributes['index']) {
+                $indexName = "idx_{$this->table}_{$column->name}";
+                $statements[] = "CREATE INDEX {$indexName} ON {$this->table} ({$column->name})";
+            }
+
+            if (isset($column->attributes['unique']) && $column->attributes['unique']) {
+                $constraintName = "{$this->table}_{$column->name}_unique";
+                $statements[] = "ALTER TABLE {$this->table} ADD CONSTRAINT {$constraintName} UNIQUE ({$column->name})";
+            }
+        }
+
         // Add any additional commands (like foreign keys)
         foreach ($this->commands as $command) {
             if ($command instanceof ForeignKeyDefinition) {

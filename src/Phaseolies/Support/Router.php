@@ -687,42 +687,36 @@ class Router extends Kernel
      */
     public function resolve(Application $app, Request $request): Response
     {
-        try {
-            $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-            if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
+        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
+        if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
 
-            $callback = $this->getCallback($request);
-            if (!$callback) abort(404);
+        $callback = $this->getCallback($request);
+        if (!$callback) abort(404);
 
-            $routeParams = $request->getRouteParams();
-            $handler = function ($request) use ($callback, $app, $routeParams) {
-                if (is_array($callback)) {
-                    $result = $this->resolveControllerAction($callback, $app, $routeParams);
-                } elseif (is_string($callback) && class_exists($callback)) {
-                    $result = $this->resolveControllerAction($callback, $app, $routeParams);
-                } elseif ($callback instanceof \Closure) {
-                    $result = $this->resolveClosure($callback, $app, $routeParams, $request);
-                } else {
-                    $result = call_user_func($callback, ...array_values($routeParams));
-                }
+        $routeParams = $request->getRouteParams();
 
-                $response = app(Response::class);
-                if (!($result instanceof Response)) {
-                    return $this->getResolutionResponse($request, $result, $response);
-                }
+        $handler = function ($request) use ($callback, $app, $routeParams) {
+            if (is_array($callback)) {
+                $result = $this->resolveControllerAction($callback, $app, $routeParams);
+            } elseif (is_string($callback) && class_exists($callback)) {
+                $result = $this->resolveControllerAction($callback, $app, $routeParams);
+            } elseif ($callback instanceof \Closure) {
+                $result = $this->resolveClosure($callback, $app, $routeParams, $request);
+            } else {
+                $result = call_user_func($callback, ...array_values($routeParams));
+            }
 
-                return $result;
-            };
+            $response = app(Response::class);
+            if (!($result instanceof Response)) {
+                return $this->getResolutionResponse($request, $result, $response);
+            }
 
-            $response = $this->handle($request, $handler);
+            return $result;
+        };
 
-            return $response;
-        } catch (\Exception $e) {
-            throw new \Exception(
-                $e->getMessage() === '' ? "The route '{$request->fullUrl()}' does not exist for request type {$request->getMethod()}}" : $e->getMessage(),
-                $e->getCode() === 0 ? 404 : $e->getCode()
-            );
-        }
+        $response = $this->handle($request, $handler);
+
+        return $response;
     }
 
     /**
@@ -852,16 +846,14 @@ class Router extends Kernel
             [$controllerClass, $actionMethod] = $callback;
         }
 
-        // Process class-level dependencies
-        $this->processClassDependencies($controllerClass, $app);
+        $this->processAttributesClassDependencies($controllerClass, $app);
 
         $reflector = new \ReflectionClass($controllerClass);
 
         $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
         $controllerInstance = new $controllerClass(...$constructorDependencies);
 
-        // Process method-level dependencies
-        $this->processMethodDependencies($reflector, $actionMethod, $app);
+        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
 
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
@@ -872,26 +864,15 @@ class Router extends Kernel
      * Handle class level dependency injection
      *
      * @param string $className
-     * @param mixed $app
+     * @param Application $app
      * @return void
      */
-    protected function processClassDependencies(string $className, $app): void
+    protected function processAttributesClassDependencies(string $className, $app): void
     {
-        if (!class_exists($className)) {
-            return;
-        }
-
         $reflection = new \ReflectionClass($className);
         $attributes = $reflection->getAttributes(Resolver::class);
 
-        foreach ($attributes as $attribute) {
-            $dependency = $attribute->newInstance();
-            if ($dependency->singleton) {
-                $app->singleton($dependency->abstract, $dependency->concrete);
-            } else {
-                $app->bind($dependency->abstract, $dependency->concrete);
-            }
-        }
+        $this->resolveAttributesDependency($attributes ?? [], $app);
     }
 
     /**
@@ -899,25 +880,31 @@ class Router extends Kernel
      *
      * @param \ReflectionClass $class
      * @param string $methodName
-     * @param mixed $app
+     * @param Application $app
      * @return void
      */
-    protected function processMethodDependencies(\ReflectionClass $class, string $methodName, $app): void
+    protected function processAttributesMethodDependencies(\ReflectionClass $class, string $methodName, $app): void
     {
-        if (!$class->hasMethod($methodName)) {
-            return;
-        }
-
         $method = $class->getMethod($methodName);
         $attributes = $method->getAttributes(Resolver::class);
 
+        $this->resolveAttributesDependency($attributes ?? [], $app);
+    }
+
+    /**
+     * Resolve attributes
+     *
+     * @param array $attributes
+     * @param Application $app
+     * @return void
+     */
+    public function resolveAttributesDependency(array $attributes, $app): void
+    {
         foreach ($attributes as $attribute) {
             $dependency = $attribute->newInstance();
-            if ($dependency->singleton) {
-                $app->singleton($dependency->abstract, $dependency->concrete);
-            } else {
-                $app->bind($dependency->abstract, $dependency->concrete);
-            }
+            $dependency->singleton
+                ? $app->singleton($dependency->abstract, $dependency->concrete)
+                : $app->bind($dependency->abstract, $dependency->concrete);
         }
     }
 
