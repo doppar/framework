@@ -111,11 +111,13 @@ class VendorPublishCommand extends Command
 
     protected function publishPaths(array $paths, OutputInterface $output, bool $force = false)
     {
-        foreach ($paths as $from => $to) {
-            if (is_dir($from)) {
-                $this->publishDirectory($from, $to, $output, $force);
-            } else {
-                $this->publishFile($from, $to, $output, $force);
+        foreach ($paths as $item) {
+            foreach ($item as $from => $to) {
+                if (is_dir($from)) {
+                    $this->publishDirectory($from, $to, $output, $force);
+                } else {
+                    $this->publishFile($from, $to, $output, $force);
+                }
             }
         }
     }

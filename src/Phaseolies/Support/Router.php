@@ -5,7 +5,7 @@ namespace Phaseolies\Support;
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
-use Phaseolies\Http\Validation\FormRequest;
+use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Eloquent\Model;
@@ -740,6 +740,9 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $typeName = $paramType->getName();
+                $resolvedInstance = $this->resolveFormRequestValidationClass($app, $typeName);
+                $dependencies[] = $resolvedInstance;
+
                 if ($app->has($typeName)) {
                     $dependencies[] = $app->get($typeName);
                 } elseif (class_exists($typeName)) {
@@ -757,6 +760,37 @@ class Router extends Kernel
         }
 
         return $callback(...$dependencies);
+    }
+
+    /**
+     * Resolve form request class
+     *
+     * This method handles the resolution and initialization of form request validation classes.
+     * It ensures the class is properly bound in the container and triggers validation if needed.
+     *
+     * @param Application $app The application instance
+     * @param string $typeName The class name to resolve
+     * @return mixed
+     */
+    private function resolveFormRequestValidationClass($app, $typeName): mixed
+    {
+        if (!$app->has($typeName)) {
+            if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
+                $app->singleton($typeName, function () use ($app, $typeName) {
+                    return new $typeName($app->get(Request::class));
+                });
+            } else {
+                $app->singleton($typeName, $typeName);
+            }
+        }
+
+        $resolvedInstance = app($typeName);
+
+        if ($resolvedInstance instanceof ValidatesWhenResolved) {
+            $resolvedInstance->resolvedFormRequestValidation();
+        }
+
+        return $resolvedInstance;
     }
 
     /**
@@ -970,21 +1004,7 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
-
-                if (!$app->has($resolvedClass)) {
-                    if (is_subclass_of($resolvedClass, FormRequest::class)) {
-                        $app->singleton($resolvedClass, function () use ($app, $resolvedClass) {
-                            return new $resolvedClass($app->get(Request::class));
-                        });
-                    } else {
-                        $app->singleton($resolvedClass, $resolvedClass);
-                    }
-                }
-
-                $resolvedInstance = app($resolvedClass);
-                if ($resolvedInstance instanceof FormRequest) {
-                    $resolvedInstance->resolvedFormRequestValidation();
-                }
+                $resolvedInstance = $this->resolveFormRequestValidationClass($app, $resolvedClass);
                 $dependencies[] = $resolvedInstance;
             } elseif (isset($routeParams[$paramName])) {
                 $dependencies[] = $routeParams[$paramName];
