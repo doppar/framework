@@ -517,9 +517,8 @@ class Router extends Kernel
 
         if ($this->currentRoutePath) {
             $method = $this->getCurrentRequestMethod();
-            foreach ((array) $keys as $key) {
-                self::$routeMiddlewares[$method][$this->currentRoutePath] = (array) $keys;
-            }
+            $current = self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [];
+            self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge($current, (array) $keys);
         }
 
         return $this;
