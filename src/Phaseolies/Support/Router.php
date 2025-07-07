@@ -12,6 +12,7 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Application;
 use App\Http\Kernel;
+use Phaseolies\Utilities\Attributes\Middleware;
 
 class Router extends Kernel
 {
@@ -446,6 +447,13 @@ class Router extends Kernel
             $this->middleware($groupMiddleware);
         }
 
+        // After registering the route,
+        // process controller middleware
+        // if it's a controller action
+        if (is_array($callback) && count($callback) === 2 && is_string($callback[0])) {
+            $this->processControllerMiddleware($callback, app());
+        }
+
         return $this;
     }
 
@@ -687,11 +695,14 @@ class Router extends Kernel
      */
     public function resolve(Application $app, Request $request): Response
     {
-        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-        if ($currentMiddleware) $this->applyRouteMiddleware($request, $app, $currentMiddleware);
-
         $callback = $this->getCallback($request);
         if (!$callback) abort(404);
+
+        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
+
+        if ($currentMiddleware) {
+            $this->applyRouteMiddleware($request, $app, $currentMiddleware);
+        }
 
         $routeParams = $request->getRouteParams();
 
@@ -717,6 +728,22 @@ class Router extends Kernel
         $response = $this->handle($request, $handler);
 
         return $response;
+    }
+
+    /**
+     * Handle attributes based middleware defination
+     *
+     * @param array $callback
+     * @param Application $app
+     * @return void
+     */
+    protected function processControllerMiddleware(array $callback, $app): void
+    {
+        [$controllerClass, $actionMethod] = $callback;
+        $reflector = new \ReflectionClass($controllerClass);
+        $this->processAttributesClassDependencies($controllerClass, $app);
+
+        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
     }
 
     /**
@@ -907,6 +934,49 @@ class Router extends Kernel
         $attributes = $reflection->getAttributes(Resolver::class);
 
         $this->resolveAttributesDependency($attributes ?? [], $app);
+
+        $middlewareAttributes = $reflection->getAttributes(Middleware::class);
+        $this->processAttributesMiddlewares($middlewareAttributes);
+    }
+
+    /**
+     * Process attributes based middleware
+     *
+     * @param array $middlewareAttributes
+     * @return void
+     */
+    public function processAttributesMiddlewares(array $middlewareAttributes): void
+    {
+        $middlewareToApply = [];
+
+        foreach ($middlewareAttributes as $attribute) {
+            $middleware = $attribute->newInstance();
+            foreach ($middleware->getMiddlewareClasses() as $middlewareItem) {
+                if (
+                    isset($this->routeMiddleware['web'][$middlewareItem]) ||
+                    isset($this->routeMiddleware['api'][$middlewareItem])
+                ) {
+                    $middlewareToApply[] = $middlewareItem;
+                } elseif (class_exists($middlewareItem)) {
+                    $key = array_search($middlewareItem, $this->routeMiddleware['web'], true) ?:
+                        array_search($middlewareItem, $this->routeMiddleware['api'], true);
+                    if ($key !== false) {
+                        $middlewareToApply[] = $key;
+                    } else {
+                        $middlewareToApply[] = $middlewareItem;
+                    }
+                }
+            }
+        }
+
+        // Apply middleware to current route
+        if (!empty($middlewareToApply) && $this->currentRoutePath) {
+            $method = $this->getCurrentRequestMethod();
+            self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge(
+                self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [],
+                $middlewareToApply
+            );
+        }
     }
 
     /**
@@ -923,6 +993,10 @@ class Router extends Kernel
         $attributes = $method->getAttributes(Resolver::class);
 
         $this->resolveAttributesDependency($attributes ?? [], $app);
+
+        // Process Middleware attributes
+        $middlewareAttributes = $method->getAttributes(Middleware::class);
+        $this->processAttributesMiddlewares($middlewareAttributes);
     }
 
     /**
