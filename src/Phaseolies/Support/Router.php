@@ -988,6 +988,12 @@ class Router extends Kernel
      */
     protected function processAttributesMethodDependencies(\ReflectionClass $class, string $methodName, $app): void
     {
+        if (!$class->hasMethod($methodName)) {
+            throw new \BadMethodCallException(
+                "Method {$class->getName()}::{$methodName}() does not exist"
+            );
+        }
+
         $method = $class->getMethod($methodName);
         $attributes = $method->getAttributes(Resolver::class);
 
@@ -1055,8 +1061,23 @@ class Router extends Kernel
         array $routeParams
     ): array {
         $method = $reflector->getMethod($actionMethod);
+        $parameters = $method->getParameters();
 
-        return $this->resolveParameters($method->getParameters(), $app, $routeParams);
+        $methodParamNames = [];
+        foreach ($parameters as $param) {
+            $methodParamNames[] = $param->getName();
+        }
+
+        $unmatchedParams = array_diff(array_keys($routeParams), $methodParamNames);
+
+        if (!empty($unmatchedParams)) {
+            throw new \InvalidArgumentException(
+                "Route provides parameter(s) [" . implode(', ', $unmatchedParams) . "] " .
+                    "but not accepted by method " . $reflector->getName() . "::" . $actionMethod . "()."
+            );
+        }
+
+        return $this->resolveParameters($parameters, $app, $routeParams);
     }
 
     /**

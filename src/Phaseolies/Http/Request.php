@@ -128,6 +128,7 @@ class Request
     protected ?array $charsets = null;
     protected ?array $encodings = null;
     private bool $isIisRewrite = false;
+    protected array $routeParams = [];
 
     /**
      * Constructor: Initializes request data from PHP superglobals.
@@ -1411,9 +1412,7 @@ class Request
      */
     public function setRouteParams(array $params): self
     {
-        $this->attributes->replace(
-            array_merge($this->attributes->all(), $params)
-        );
+        $this->routeParams = $params;
 
         return $this;
     }
@@ -1425,7 +1424,7 @@ class Request
      */
     public function getRouteParams(): array
     {
-        return $this->attributes->all();
+        return $this->routeParams;
     }
 
     /**
