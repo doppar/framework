@@ -241,10 +241,10 @@ class File extends \SplFileInfo
     /**
      * StoreAs function store the file with filename
      *
-     * @param callable $callback
      * @param string $path
      * @param string $fileName
-     * @return boolean
+     * @param callable $callback
+     * @return bool
      */
     public function storeAs(string $path, string $fileName = '', ?callable $callback = null): bool
     {
