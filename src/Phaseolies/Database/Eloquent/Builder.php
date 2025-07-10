@@ -2375,4 +2375,79 @@ class Builder
             $query->where($column, $operator, $value);
         });
     }
+
+    /**
+     * Handle dynamic method calls into the builder.
+     *
+     * @param string $method
+     * @param array $parameters
+     * @return mixed
+     */
+    public function __call($method, $parameters)
+    {
+        if (method_exists($this->getModel(), $method)) {
+            return $this->callScope($method, $parameters);
+        }
+
+        if (str_starts_with($method, 'where')) {
+            return $this->resolveDynamicKeyToCondition($method, $parameters);
+        }
+
+        throw new \BadMethodCallException(sprintf(
+            'Method %s::%s does not exist.', static::class, $method
+        ));
+    }
+
+    /**
+     * Apply the given anonymous function on the current builder instance.
+     *
+     * @param string $scope
+     * @param array $parameters
+     * @return mixed
+     */
+    protected function callScope($scope, $parameters)
+    {
+        return $this->getModel()->{ucfirst($scope)}(...array_merge([$this], $parameters));
+    }
+
+    /**
+     * Handle dynamic "where" clause methods.
+     *
+     * @param string $method
+     * @param array $parameters
+     * @return self
+     */
+    protected function resolveDynamicKeyToCondition(string $method, array $parameters): self
+    {
+        $column = $this->camelToSnake(lcfirst(substr($method, 5)));
+
+        $operator = '=';
+        $value = $parameters[0] ?? null;
+
+        if (count($parameters) === 2) {
+            $operator = $parameters[0];
+            $value = $parameters[1];
+        }
+
+        if ($value === null) {
+            if ($operator === '=') {
+                return $this->whereNull($column);
+            } elseif ($operator === '!=') {
+                return $this->whereNotNull($column);
+            }
+        }
+
+        return $this->where($column, $operator, $value);
+    }
+
+    /**
+     * Convert camelCase to snake_case for column names
+     *
+     * @param string $input
+     * @return string
+     */
+    protected function camelToSnake(string $input): string
+    {
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $input));
+    }
 }
