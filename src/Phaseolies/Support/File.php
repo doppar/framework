@@ -246,7 +246,7 @@ class File extends \SplFileInfo
      * @param string $fileName
      * @return boolean
      */
-    public function storeAs(?callable $callback = null, string $path, string $fileName = ''): bool
+    public function storeAs(string $path, string $fileName = '', ?callable $callback = null): bool
     {
         if (! is_callable($callback)) {
             return false;
