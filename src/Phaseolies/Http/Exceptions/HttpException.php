@@ -23,25 +23,24 @@ class HttpException extends \RuntimeException implements HttpExceptionInterface
         string $message = '',
         ?\Throwable $previous = null,
         private array $headers = [],
-        int $code = 0,
     ) {
-        parent::__construct($message, $code, $previous);
+        parent::__construct($message, $statusCode, $previous);
     }
 
-    public static function fromStatusCode(int $statusCode, string $message = '', ?\Throwable $previous = null, array $headers = [], int $code = 0): self
+    public static function fromStatusCode(int $statusCode, string $message = '', ?\Throwable $previous = null, array $headers = []): self
     {
         return match ($statusCode) {
-            400 => new BadRequestHttpException($message, $previous, $code, $headers),
-            403 => new AccessDeniedHttpException($message, $previous, $code, $headers),
-            404 => new NotFoundHttpException($message, $previous, $code, $headers),
-            406 => new NotAcceptableHttpException($message, $previous, $code, $headers),
-            409 => new ConflictHttpException($message, $previous, $code, $headers),
-            423 => new LockedHttpException($message, $previous, $code, $headers),
-            415 => new UnsupportedMediaTypeHttpException($message, $previous, $code, $headers),
-            422 => new UnprocessableEntityHttpException($message, $previous, $code, $headers),
-            429 => new TooManyRequestsHttpException(null, $message, $previous, $code, $headers),
-            503 => new ServiceUnavailableHttpException(null, $message, $previous, $code, $headers),
-            default => new static($statusCode, $message, $previous, $headers, $code),
+            400 => new BadRequestHttpException($message, $previous, $statusCode, $headers),
+            403 => new AccessDeniedHttpException($message, $previous, $statusCode, $headers),
+            404 => new NotFoundHttpException($message, $previous, $statusCode, $headers),
+            406 => new NotAcceptableHttpException($message, $previous, $statusCode, $headers),
+            409 => new ConflictHttpException($message, $previous, $statusCode, $headers),
+            423 => new LockedHttpException($message, $previous, $statusCode, $headers),
+            415 => new UnsupportedMediaTypeHttpException($message, $previous, $statusCode, $headers),
+            422 => new UnprocessableEntityHttpException($message, $previous, $statusCode, $headers),
+            429 => new TooManyRequestsHttpException(null, $message, $previous, $statusCode, $headers),
+            503 => new ServiceUnavailableHttpException(null, $message, $previous, $statusCode, $headers),
+            default => new static($statusCode, $message, $previous, $headers, $statusCode),
         };
     }
 
