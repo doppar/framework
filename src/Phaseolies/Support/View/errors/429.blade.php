@@ -26,7 +26,7 @@
                     </div>
 
                     <div class="ml-4 text-lg text-gray-500 uppercase tracking-wider">
-                        <?php echo $message ?> 
+                        <?php echo $message ?>
                     </div>
                 </div>
             </div>

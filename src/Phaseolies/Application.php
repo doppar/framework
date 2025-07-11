@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.6.8';
+    const VERSION = '2.6.9';
 
     /**
      * The base path of the application installation.
