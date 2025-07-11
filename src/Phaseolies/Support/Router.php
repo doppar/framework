@@ -766,9 +766,7 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $typeName = $paramType->getName();
-                $resolvedInstance = $this->resolveFormRequestValidationClass($app, $typeName);
-                $dependencies[] = $resolvedInstance;
-
+                $this->resolveFormRequestValidationClass($app, $typeName);
                 if ($app->has($typeName)) {
                     $dependencies[] = $app->get($typeName);
                 } elseif (class_exists($typeName)) {
