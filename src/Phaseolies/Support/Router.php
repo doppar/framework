@@ -686,6 +686,7 @@ class Router extends Kernel
 
     /**
      * Resolves and executes the route callback with middleware and dependencies.
+     *
      * @param Application $app
      * @param Request $request
      * @throws \ReflectionException If there is an issue with reflection.
@@ -695,7 +696,7 @@ class Router extends Kernel
     public function resolve(Application $app, Request $request): Response
     {
         $callback = $this->getCallback($request);
-        if (!$callback) abort(404, "404 Not Found: The requested route '{$request->uri()}' could not be found.");
+        if (!$callback) abort(404, "The Requested Route '{$request->uri()}' Not Found.");
 
         $currentMiddleware = $this->getCurrentRouteMiddleware($request);
 
@@ -711,12 +712,12 @@ class Router extends Kernel
             } elseif (is_string($callback) && class_exists($callback)) {
                 $result = $this->resolveControllerAction($callback, $app, $routeParams);
             } elseif ($callback instanceof \Closure) {
-                $result = $this->resolveClosure($callback, $app, $routeParams, $request);
+                $result = $this->resolveClosure($callback, $app, $routeParams);
             } else {
                 $result = call_user_func($callback, ...array_values($routeParams));
             }
 
-            $response = app(Response::class);
+            $response = app('response');
             if (!($result instanceof Response)) {
                 return $this->getResolutionResponse($request, $result, $response);
             }
@@ -749,12 +750,11 @@ class Router extends Kernel
      * Resolves a closure with dependency injection.
      *
      * @param \Closure $callback
-     * @param mixed $app
-     * @param mixed $routeParams
-     * @param mixed $request
+     * @param Application $app
+     * @param array $routeParams
      * @return mixed
      */
-    private function resolveClosure(\Closure $callback, $app, $routeParams, $request): mixed
+    private function resolveClosure(\Closure $callback, $app, $routeParams): mixed
     {
         $reflection = new \ReflectionFunction($callback);
         $parameters = $reflection->getParameters();
@@ -766,7 +766,10 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $typeName = $paramType->getName();
-                $this->resolveFormRequestValidationClass($app, $typeName);
+                if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
+                    $this->resolveFormRequestValidationClass($app, $typeName);
+                }
+
                 if ($app->has($typeName)) {
                     $dependencies[] = $app->get($typeName);
                 } elseif (class_exists($typeName)) {
@@ -800,9 +803,7 @@ class Router extends Kernel
     {
         if (!$app->has($typeName)) {
             if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
-                $app->singleton($typeName, function () use ($app, $typeName) {
-                    return new $typeName($app->get(Request::class));
-                });
+                $app->singleton($typeName, fn() => new $typeName(app('request')));
             } else {
                 $app->singleton($typeName, $typeName);
             }
