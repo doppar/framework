@@ -194,4 +194,17 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this;
     }
+
+    /**
+     * Add an item to the end of the collection.
+     *
+     * @param mixed $item
+     * @return $this
+     */
+    public function push(mixed $item): self
+    {
+        $this->items[] = $item;
+
+        return $this;
+    }
 }

@@ -15,6 +15,10 @@ class Encryption
      */
     public function encrypt(mixed $data): string
     {
+        if ($data === null) {
+            throw new RuntimeException('Cannot encrypt null value');
+        }
+
         [$cipher, $key] =  $this->getAppKeyAndChiper();
 
         if (is_array($data)) {

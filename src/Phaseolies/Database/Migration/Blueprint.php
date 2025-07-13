@@ -475,6 +475,7 @@ class Blueprint
     {
         return $this->addColumn('multiPolygon', $column);
     }
+
     /**
      * Create a big auto-incrementing unsigned integer column.
      *

@@ -16,6 +16,7 @@ use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\Authenticate;
 use Carbon\Carbon;
+use Phaseolies\Support\Facades\Crypt;
 
 /**
  * Gets an environment variable from available sources, and provides emulation
@@ -691,4 +692,26 @@ function __($key = null, $replace = [], $locale = null)
     }
 
     return trans($key, $replace, $locale);
+}
+
+/**
+ * Encrypts a given string
+ *
+ * @param string $string
+ * @return string
+ */
+function encrypt($string)
+{
+    return Crypt::encrypt($string);
+}
+
+/**
+ * Decrypts a given string
+ *
+ * @param string $string
+ * @return string
+ */
+function dycrypt($string)
+{
+    return Crypt::decrypt($string);
 }

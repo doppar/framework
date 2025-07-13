@@ -4,10 +4,12 @@ namespace Phaseolies\Database\Eloquent;
 
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
+use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Query\QueryUtils;
 use Phaseolies\Database\Eloquent\Query\QueryProcessor;
 use Phaseolies\Database\Eloquent\Query\QueryCollection;
+use Phaseolies\Database\Eloquent\Model;
 use PDOStatement;
 use PDOException;
 use PDO;
@@ -661,22 +663,57 @@ class Builder
      */
     public function get(): Collection
     {
-        try {
-            $stmt = $this->pdo->prepare($this->toSql());
-            $this->bindValues($stmt);
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $models = array_map(fn($item) => new $this->modelClass($item), $results);
+        $collection = new Collection($this->modelClass, []);
+        $needsEncryption = $this->needsEncryption();
+        $encryptedAttributes = $needsEncryption ? $this->getEncryptedAttributes() : [];
 
-            $collection = new Collection($this->modelClass, $models);
-
-            if (!empty($this->eagerLoad)) {
-                $this->eagerLoadRelations($collection);
+        $this->cursor(function ($model) use ($collection, $needsEncryption, $encryptedAttributes) {
+            if ($needsEncryption) {
+                $this->encryptModelAttributes($model, $encryptedAttributes);
             }
+            $collection->push($model);
+        });
 
-            return $collection;
-        } catch (PDOException $e) {
-            throw new PDOException("Database error: " . $e->getMessage());
+        if (!empty($this->eagerLoad)) {
+            $this->eagerLoadRelations($collection);
+        }
+
+        return $collection;
+    }
+
+    /**
+     * Check if the model needs encryption
+     *
+     * @return bool
+     */
+    protected function needsEncryption(): bool
+    {
+        return is_subclass_of($this->modelClass, Encryptable::class);
+    }
+
+    /**
+     * Get encrypted attributes for the model
+     *
+     * @return array
+     */
+    protected function getEncryptedAttributes(): array
+    {
+        return $this->needsEncryption()
+            ? (new $this->modelClass)->getEncryptedProperties()
+            : [];
+    }
+
+    /**
+     * Encrypt attributes for a single model
+     *
+     * @param Model $model
+     * @param array $attributes
+     * @return void
+     */
+    protected function encryptModelAttributes($model, array $attributes): void
+    {
+        foreach ($attributes as $attribute) {
+            $model->$attribute = encrypt($model->$attribute);
         }
     }
 
@@ -2394,7 +2431,9 @@ class Builder
         }
 
         throw new \BadMethodCallException(sprintf(
-            'Method %s::%s does not exist.', static::class, $method
+            'Method %s::%s does not exist.',
+            static::class,
+            $method
         ));
     }
 
