@@ -12,6 +12,7 @@ class ErrorHandler
     public static function handle(): void
     {
         self::configureErrorReporting();
+        self::configureShutdownReporting();
 
         set_exception_handler(function ($exception) {
             $errorMessage = $exception->getMessage();
@@ -198,6 +199,24 @@ class ErrorHandler
                 return false;
             }
             throw new \ErrorException($message, 0, $severity, $file, $line);
+        });
+    }
+
+    /**
+     * Display E_COMPILE_ERROR and E_ERROR types errors
+     *
+     * @return void
+     */
+    protected static function configureShutdownReporting(): void
+    {
+        register_shutdown_function(function () {
+            $error = error_get_last();
+            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+                if (strpos($error['message'], 'fsockopen():') === 0) {
+                    return;
+                }
+                throw new \ErrorException("A fatal error occurred: " . $error['message']);
+            }
         });
     }
 

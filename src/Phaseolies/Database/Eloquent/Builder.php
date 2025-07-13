@@ -713,7 +713,9 @@ class Builder
     protected function encryptModelAttributes($model, array $attributes): void
     {
         foreach ($attributes as $attribute) {
-            $model->$attribute = encrypt($model->$attribute);
+            $model->$attribute = $model->$attribute
+                ? encrypt($model->$attribute)
+                : $model->$attribute;
         }
     }
 
@@ -1484,7 +1486,9 @@ class Builder
                 $model = new $this->modelClass($item);
                 if ($model instanceof Encryptable) {
                     foreach ($model->getEncryptedProperties() as $attribute) {
-                        $model->$attribute = encrypt($model->$attribute);
+                        $model->$attribute = $model->$attribute
+                            ? encrypt($model->$attribute)
+                            : $model->$attribute;
                     }
                 }
                 return $model;
