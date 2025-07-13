@@ -711,7 +711,7 @@ function encrypt($string)
  * @param string $string
  * @return string
  */
-function dycrypt($string)
+function decrypt($string)
 {
     return Crypt::decrypt($string);
 }

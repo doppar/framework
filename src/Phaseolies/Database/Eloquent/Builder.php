@@ -1479,7 +1479,16 @@ class Builder
             $this->bindValues($stmt);
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $models = array_map(fn($item) => new $this->modelClass($item), $results);
+
+            $models = array_map(function ($item) {
+                $model = new $this->modelClass($item);
+                if ($model instanceof Encryptable) {
+                    foreach ($model->getEncryptedProperties() as $attribute) {
+                        $model->$attribute = encrypt($model->$attribute);
+                    }
+                }
+                return $model;
+            }, $results);
 
             $collection = new Collection($this->modelClass, $models);
 
