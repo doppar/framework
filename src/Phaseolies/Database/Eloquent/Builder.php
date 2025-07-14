@@ -1521,7 +1521,22 @@ class Builder
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            return $result ? new $this->modelClass($result) : null;
+            if (!$result) {
+                return null;
+            }
+
+            $model = new $this->modelClass($result);
+
+            if ($this->needsEncryption()) {
+                $encryptedAttributes = $this->getEncryptedAttributes();
+                foreach ($encryptedAttributes as $attribute) {
+                    $model->$attribute = $model->$attribute
+                        ? encrypt($model->$attribute)
+                        : $model->$attribute;
+                }
+            }
+
+            return $model;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
