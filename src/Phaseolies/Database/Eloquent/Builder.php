@@ -96,6 +96,11 @@ class Builder
     protected array $relationInfo = [];
 
     /**
+     * @var bool
+     */
+    protected bool $takeWithoutEncryption = true;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
@@ -233,6 +238,18 @@ class Builder
     public function offset(int $offset): self
     {
         $this->offset = $offset;
+        return $this;
+    }
+
+    /**
+     * Indicates that data should be fetched without encryption.
+     *
+     * @return self
+     */
+    public function withoutEncryption(): self
+    {
+        $this->takeWithoutEncryption = false;
+
         return $this;
     }
 
@@ -668,7 +685,7 @@ class Builder
         $encryptedAttributes = $needsEncryption ? $this->getEncryptedAttributes() : [];
 
         $this->cursor(function ($model) use ($collection, $needsEncryption, $encryptedAttributes) {
-            if ($needsEncryption) {
+            if ($needsEncryption && $this->takeWithoutEncryption) {
                 $this->encryptModelAttributes($model, $encryptedAttributes);
             }
             $collection->push($model);
@@ -1484,7 +1501,7 @@ class Builder
 
             $models = array_map(function ($item) {
                 $model = new $this->modelClass($item);
-                if ($model instanceof Encryptable) {
+                if ($model instanceof Encryptable && $this->takeWithoutEncryption) {
                     foreach ($model->getEncryptedProperties() as $attribute) {
                         $model->$attribute = $model->$attribute
                             ? encrypt($model->$attribute)
@@ -1527,7 +1544,7 @@ class Builder
 
             $model = new $this->modelClass($result);
 
-            if ($this->needsEncryption()) {
+            if ($this->needsEncryption() && $this->takeWithoutEncryption) {
                 $encryptedAttributes = $this->getEncryptedAttributes();
                 foreach ($encryptedAttributes as $attribute) {
                     $model->$attribute = $model->$attribute
