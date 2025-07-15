@@ -711,28 +711,25 @@ class Blueprint
         $statements = [];
 
         // Convert all columns to their SQL representations
-        $columns = array_filter(array_map(function ($column) {
-            return $column->toSql();
-        }, $this->columns));
+        $columns = array_filter(array_map(fn($column) => $column->toSql(), $this->columns));
 
         if (empty($columns)) {
             throw new \RuntimeException("No columns defined for table {$this->table}");
         }
 
-        // Create the main CREATE TABLE statement
-        $statements[] = "CREATE TABLE {$this->table} (" . implode(', ', $columns) . ") ENGINE={$this->engine}";
+        $isAfter = !empty(array_filter($columns, fn($col) => str_contains($col, 'AFTER')));
 
-        // Add index creation statements for columns marked with index()
-        // Add unique creation statements for columns marked with unique()
-        foreach ($this->columns as $column) {
-            if (isset($column->attributes['index']) && $column->attributes['index']) {
-                $indexName = "idx_{$this->table}_{$column->name}";
-                $statements[] = "CREATE INDEX {$indexName} ON {$this->table} ({$column->name})";
+        if (! $isAfter) {
+            $columnDefinitions = array_map(fn($col) => $col->toSql(), $this->columns);
+            $statements[] = "CREATE TABLE `{$this->table}` (" . implode(', ', $columnDefinitions) . ") ENGINE={$this->engine}";
+
+            foreach ($this->columns as $column) {
+                $this->handleIndexAndUniqueColumn($column, $statements);
             }
-
-            if (isset($column->attributes['unique']) && $column->attributes['unique']) {
-                $constraintName = "{$this->table}_{$column->name}_unique";
-                $statements[] = "ALTER TABLE {$this->table} ADD CONSTRAINT {$constraintName} UNIQUE ({$column->name})";
+        } else {
+            foreach ($this->columns as $column) {
+                $statements[] = "ALTER TABLE `{$this->table}` ADD COLUMN " . $column->toSql();
+                $this->handleIndexAndUniqueColumn($column, $statements);
             }
         }
 
@@ -744,6 +741,26 @@ class Blueprint
         }
 
         return implode('; ', $statements);
+    }
+
+    /**
+     * Handles the creation of index and unique constraints for a column.
+     *
+     * @param ColumnDefinition $column
+     * @param array &$statements
+     * @return void
+     */
+    protected function handleIndexAndUniqueColumn(ColumnDefinition $column, array &$statements): void
+    {
+        if (isset($column->attributes['index']) && $column->attributes['index']) {
+            $indexName = "idx_{$this->table}_{$column->name}";
+            $statements[] = "CREATE INDEX `{$indexName}` ON `{$this->table}` (`{$column->name}`)";
+        }
+
+        if (isset($column->attributes['unique']) && $column->attributes['unique']) {
+            $constraintName = "{$this->table}_{$column->name}_unique";
+            $statements[] = "ALTER TABLE `{$this->table}` ADD CONSTRAINT `{$constraintName}` UNIQUE (`{$column->name}`)";
+        }
     }
 
     /**

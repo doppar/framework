@@ -32,6 +32,9 @@ class Schema
         $blueprint = new Blueprint($table);
 
         $callback($blueprint);
+
+        $statements = $blueprint->toSql();
+        DB::execute($statements);
     }
 
     /**

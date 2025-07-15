@@ -83,6 +83,18 @@ class ColumnDefinition
     }
 
     /**
+     * Set the column for after a column
+     *
+     * @param string $column
+     * @return self
+     */
+    public function after(string $column): self
+    {
+        $this->attributes['after'] = $column;
+        return $this;
+    }
+
+    /**
      * Convert the column definition to its SQL representation.
      *
      * @return string The SQL column definition
@@ -109,6 +121,11 @@ class ColumnDefinition
                 ? "'{$this->attributes['default']}'"  // Quote string values
                 : $this->attributes['default'];       // Leave non-strings as-is
             $sql .= " DEFAULT {$default}";
+        }
+
+        // adding AFTER clause if specified
+        if (isset($this->attributes['after'])) {
+            $sql .= " AFTER {$this->attributes['after']}";
         }
 
         return $sql;
