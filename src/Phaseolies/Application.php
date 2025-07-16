@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.7.6';
+    const VERSION = '2.7.7';
 
     /**
      * The base path of the application installation.
@@ -750,22 +750,18 @@ class Application extends Container
     {
         try {
             $response = $this->router->resolve($this, $request);
-            $response->prepare($request);
-
-            if ($response instanceof Response) {
-                $response->send();
-            } else {
-                echo $response;
+            if (!$response instanceof Response) {
+                $response = $response->setBody((string) $response);
             }
-        } catch (HttpException $exception) {
+
+            $response->prepare($request)->send();
+        } catch (HttpException $e) {
+            app('response')->setException($e->getMessage());
             if ($request->isAjax() || $request->is('/api/*')) {
-                throw new HttpResponseException(
-                    $exception->getMessage(),
-                    $exception->getCode()
-                );
+                throw new HttpResponseException($e->getMessage(), $e->getCode());
             }
 
-            Response::dispatchHttpException($exception);
+            Response::dispatchHttpException($e);
         }
     }
 }

@@ -119,9 +119,7 @@ class Response implements HttpStatus
      */
     public function setBody(?string $body): static
     {
-        $this->original = $body;
-
-        $this->body = $body ?? '';
+        $this->body = $body;
 
         return $this;
     }
@@ -134,6 +132,65 @@ class Response implements HttpStatus
     public function getBody(): string
     {
         return $this->body;
+    }
+
+    /**
+     * Set the original content.
+     *
+     * @param mixed $original
+     * @return self
+     */
+    public function setOriginal($original): static
+    {
+        $this->original = $original;
+
+        return $this;
+    }
+
+    /**
+     * Get the original content.
+     *
+     * @return mixed
+     */
+    public function getOriginal()
+    {
+        return $this->original;
+    }
+
+    /**
+     * Set the response charset.
+     *
+     * @param string $charset
+     * @return self
+     */
+    public function setCharset(string $charset): static
+    {
+        $this->charset = $charset;
+
+        return $this;
+    }
+
+    /**
+     * Get the response charset.
+     *
+     * @return string|null
+     */
+    public function getCharset(): ?string
+    {
+        return $this->charset;
+    }
+
+    /**
+     * Set the response exception.
+     *
+     * @param $exception
+     * @return self
+     */
+    public function setException($exception): static
+    {
+        $this->exception = $exception;
+
+        return $this;
     }
 
     /**

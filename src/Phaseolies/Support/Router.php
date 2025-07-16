@@ -718,6 +718,8 @@ class Router extends Kernel
             }
 
             $response = app('response');
+            $response->setOriginal($result);
+
             if (!($result instanceof Response)) {
                 return $this->getResolutionResponse($request, $result, $response);
             }
