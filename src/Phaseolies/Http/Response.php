@@ -127,9 +127,9 @@ class Response implements HttpStatus
     /**
      * Get the response body content.
      *
-     * @return string
+     * @return string|null
      */
-    public function getBody(): string
+    public function getBody(): ?string
     {
         return $this->body;
     }
