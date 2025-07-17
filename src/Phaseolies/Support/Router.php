@@ -838,7 +838,7 @@ class Router extends Kernel
             $result = $this->convertToSerializable($result);
             $response->setBody(json_encode($result, JSON_THROW_ON_ERROR));
         } else {
-            $response->setBody($result);
+            $response->setBody($result ?? '');
         }
 
         return $response;

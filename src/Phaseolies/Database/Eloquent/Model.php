@@ -2,10 +2,11 @@
 
 namespace Phaseolies\Database\Eloquent;
 
+use Stringable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Query\QueryCollection;
+use Phaseolies\Database\Eloquent\Hooks\HookHandler;
 use Phaseolies\Database\Contracts\Support\Jsonable;
-use Stringable;
 use JsonSerializable;
 use ArrayAccess;
 
@@ -106,19 +107,133 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected $lastPivotTable;
 
     /**
+     * Array of registered hooks for the model
+     *
+     * @var array
+     */
+    protected $hooks = [];
+
+    /**
+     * Stores the original attribute values before any modifications
+     *
+     * @var array
+     */
+    protected $originalAttributes = [];
+
+    /**
      * Model constructor.
      *
      * @param array $attributes Initial attributes to populate the model.
      */
     public function __construct(array $attributes = [])
     {
+        static $bootInit = [];
+        static $bootComplete = [];
+
+        $class = static::class;
+
+        if (!isset($bootInit[$class])) {
+            $this->registerHooks();
+            HookHandler::execute('booting', $this);
+            $bootInit[$class] = true;
+        }
+
         $this->fill($attributes);
 
-        // Automatically set the table name
-        // If not explicitly defined.
         if (!isset($this->table)) {
             $this->table = $this->getTable();
         }
+
+        if (!isset($bootComplete[$class])) {
+            HookHandler::execute('booted', $this);
+            $bootComplete[$class] = true;
+        }
+    }
+
+    /**
+     * Register hooks defined in the model
+     */
+    protected function registerHooks(): void
+    {
+        if (!empty($this->hooks)) {
+            HookHandler::register(static::class, $this->hooks);
+        }
+    }
+
+    /**
+     * Execute before hooks
+     *
+     * @param string $event
+     * @return bool Return false to cancel operation
+     */
+    protected function fireBeforeHooks(string $event): bool
+    {
+        HookHandler::execute('before_' . $event, $this);
+
+        return true;
+    }
+
+    /**
+     * Execute after hooks
+     *
+     * @param string $event
+     * @return void
+     */
+    protected function fireAfterHooks(string $event): void
+    {
+        HookHandler::execute('after_' . $event, $this);
+    }
+
+    /**
+     * Sets the original attribute values for the model
+     *
+     * This stores a snapshot of the model's attributes, typically used:
+     * - Before making changes to track what changed
+     * - In hook events to compare before/after states
+     * - For dirty checking to see which attributes were modified
+     *
+     * @param array $attributes Associative array of attribute names and values
+     * @return void
+     */
+    public function setOriginalAttributes(array $attributes): void
+    {
+        $this->originalAttributes = $attributes;
+    }
+
+    /**
+     * Gets all original attribute values
+     *
+     * @return array
+     */
+    public function getOriginalAttributes(): array
+    {
+        return $this->originalAttributes;
+    }
+
+    /**
+     * Gets a single original attribute value
+     *
+     * @param string $key The attribute name to retrieve
+     * @param mixed $default
+     * @return mixed
+     */
+    public function getOriginal(string $key, $default = null)
+    {
+        return $this->originalAttributes[$key] ?? $default;
+    }
+
+    /**
+     * Get all model attributes
+     *
+     * @return array
+     */
+    public function getAttributes(): array
+    {
+        if(isset($this->attributes[$this->primaryKey])){
+            return $this::find($this->attributes[$this->primaryKey])->toArray();
+        }
+
+        return [];
     }
 
     /**
@@ -291,13 +406,23 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function delete(): bool
     {
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('deleted') === false) {
+            return false;
+        }
+
         if (!isset($this->attributes[$this->primaryKey])) {
             return false;
         }
 
-        return static::query()
-            ->where($this->primaryKey, '=', $this->attributes[$this->primaryKey])
+        $result = static::query()
+            ->where($this->primaryKey,  $this->attributes[$this->primaryKey])
             ->delete();
+
+        if ($result && self::$isHookShouldBeCalled) {
+            $this->fireAfterHooks('deleted');
+        }
+
+        return $result;
     }
 
     /**

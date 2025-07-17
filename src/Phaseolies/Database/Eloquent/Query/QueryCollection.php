@@ -7,7 +7,6 @@ use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Database\Database;
-use Carbon\Carbon;
 
 /**
  * The QueryCollection trait provides methods for querying the database
@@ -16,6 +15,11 @@ use Carbon\Carbon;
  */
 trait QueryCollection
 {
+    /**
+     * @var bool
+     */
+    protected static bool $isHookShouldBeCalled = true;
+
     /**
      * Creates and returns a new query builder instance for the model.
      *
@@ -31,6 +35,21 @@ trait QueryCollection
             get_class($model),
             $model->pageSize
         );
+    }
+
+    /**
+     * Disable the execution of model hooks for the current instance.
+     *
+     * Call this method when you want to perform operations on the model
+     * without triggering any defined hooks (e.g., before_deleted, etc.).
+     *
+     * @return self
+     */
+    public static function withoutHook(): self
+    {
+        self::$isHookShouldBeCalled = false;
+
+        return app(static::class);
     }
 
     /**
@@ -62,6 +81,7 @@ trait QueryCollection
     public static function find(string|int|array $primaryKey)
     {
         $query = static::query();
+
         $key = (new static)->primaryKey;
 
         if (is_array($primaryKey)) {
@@ -159,15 +179,28 @@ trait QueryCollection
 
         $attributes = $this->getCreatableAttributes();
 
-        if (isset($this->attributes[$this->primaryKey])) {
+        $isUpdatable = isset($this->attributes[$this->primaryKey]);
+
+        if ($isUpdatable) {
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                return false;
+            }
+
             if ($this->timeStamps) {
                 $attributes['updated_at'] = $dateTime;
             }
 
             $primaryKeyValue = $this->attributes[$this->primaryKey];
-            return $this->query()
-                ->where($this->primaryKey, '=', $primaryKeyValue)
+
+            $response = $this->query()
+                ->where($this->primaryKey, $primaryKeyValue)
                 ->update($attributes);
+
+            if (self::$isHookShouldBeCalled && $response) {
+                $this->fireAfterHooks('updated');
+            }
+
+            return $response;
         }
 
         if ($this->timeStamps) {
@@ -175,7 +208,16 @@ trait QueryCollection
             $attributes['updated_at'] = $dateTime;
         }
 
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
+            return false;
+        }
+
         $id = $this->query()->insert($attributes);
+
+        if ($id && self::$isHookShouldBeCalled) {
+            $this->fireAfterHooks('created');
+        }
+
         if ($id) {
             $this->attributes[$this->primaryKey] = $id;
             return true;

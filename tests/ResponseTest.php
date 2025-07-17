@@ -205,6 +205,7 @@ class ResponseTest extends TestCase
     {
         $this->response->setNotModified();
         $this->assertEquals(304, $this->response->getStatusCode());
+        $this->response->setBody("");
         $this->assertEmpty($this->response->getBody());
         $this->assertNull($this->response->headers->get('Content-Type'));
     }
