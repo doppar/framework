@@ -139,6 +139,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         }
 
         $this->fill($attributes);
+        $this->originalAttributes = $this->attributes;
 
         if (!isset($this->table)) {
             $this->table = $this->getTable();
@@ -229,11 +230,32 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function getAttributes(): array
     {
-        if(isset($this->attributes[$this->primaryKey])){
-            return $this::find($this->attributes[$this->primaryKey])->toArray();
-        }
+        return $this->attributes;
+    }
 
-        return [];
+    /**
+     * Check the attribute is dirty or not
+     *
+     * @param string $key
+     * @return bool
+     */
+    public function isDirtyAttr(string $key): bool
+    {
+        return array_key_exists($key, $this->getDirtyAttributes());
+    }
+
+    /**
+     * Dynamically sets the table name for the model.
+     *
+     * This method allows overriding the default table name used by the model.
+     * It is useful when you need to work with dynamic or runtime-determined tables.
+     *
+     * @param string $table The name of the table to be set.
+     * @return void
+     */
+    public function setTable(string $table)
+    {
+        $this->table = $table;
     }
 
     /**
@@ -261,8 +283,21 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function fill(array $attributes)
     {
         foreach ($attributes as $key => $value) {
-            $this->attributes[$key] = $this->sanitize($value);
+            $this->setAttribute($key, $value);
         }
+    }
+
+    public function setAttribute($key, $value)
+    {
+        $value = $this->sanitize($value);
+
+        // Always track original value
+        // when first setting
+        if (!array_key_exists($key, $this->originalAttributes)) {
+            $this->originalAttributes[$key] = $this->attributes[$key] ?? null;
+        }
+
+        $this->attributes[$key] = $value;
     }
 
     /**
@@ -285,7 +320,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function __set($name, $value)
     {
-        $this->attributes[$name] = $this->sanitize($value);
+        $this->setAttribute($name, $this->sanitize($value));
     }
 
     /**
@@ -386,7 +421,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function offsetSet($offset, $value): void
     {
-        $this->attributes[$offset] = $this->sanitize($value);
+        $this->setAttribute($offset, $value);
     }
 
     /**

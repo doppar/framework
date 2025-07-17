@@ -115,8 +115,12 @@ class HookHandler
         $modelClass = get_class($model);
         $hooks = self::$hooks[$modelClass][$event] ?? [];
 
+        // Only set original attributes for before hooks
+        // if they're not already set
         if (str_starts_with($event, 'before_')) {
-            $model->setOriginalAttributes($model->getAttributes());
+            if (empty($model->getOriginalAttributes())) {
+                $model->setOriginalAttributes($model->getAttributes());
+            }
         }
 
         foreach ($hooks as $hook) {

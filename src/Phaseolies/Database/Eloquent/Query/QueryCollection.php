@@ -85,10 +85,19 @@ trait QueryCollection
         $key = (new static)->primaryKey;
 
         if (is_array($primaryKey)) {
-            return $query->whereIn($key, $primaryKey)->get();
+            $models = $query->whereIn($key, $primaryKey)->get();
+            foreach ($models as $model) {
+                $model->originalAttributes = $model->attributes;
+            }
+            return $models;
         }
 
-        return $query->where($key, $primaryKey)->first();
+        $model = $query->where($key, $primaryKey)->first();
+        if ($model) {
+            $model->originalAttributes = $model->attributes;
+        }
+
+        return $model;
     }
 
     /**
@@ -177,31 +186,41 @@ trait QueryCollection
             ? now()->startOfDay()
             : now();
 
-        $attributes = $this->getCreatableAttributes();
-
         $isUpdatable = isset($this->attributes[$this->primaryKey]);
 
         if ($isUpdatable) {
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
-                return false;
+            $dirtyAttributes = $this->getDirtyAttributes();
+            if (!empty($this->creatable)) {
+                $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+            }
+
+            if (empty($dirtyAttributes)) {
+                return true;
             }
 
             if ($this->timeStamps) {
-                $attributes['updated_at'] = $dateTime;
+                $dirtyAttributes['updated_at'] = $dateTime;
             }
 
             $primaryKeyValue = $this->attributes[$this->primaryKey];
 
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                return false;
+            }
+
             $response = $this->query()
                 ->where($this->primaryKey, $primaryKeyValue)
-                ->update($attributes);
+                ->update($dirtyAttributes);
 
             if (self::$isHookShouldBeCalled && $response) {
                 $this->fireAfterHooks('updated');
+                $this->originalAttributes = $this->attributes;
             }
 
             return $response;
         }
+
+        $attributes = $this->getCreatableAttributes();
 
         if ($this->timeStamps) {
             $attributes['created_at'] = $dateTime;
@@ -224,6 +243,26 @@ trait QueryCollection
         }
 
         return false;
+    }
+
+    /**
+     * Get model dirty attributes
+     *
+     * @return array
+     */
+    public function getDirtyAttributes(): array
+    {
+        $dirty = [];
+        foreach ($this->attributes as $key => $value) {
+            if (
+                !array_key_exists($key, $this->originalAttributes) ||
+                $this->originalAttributes[$key] != $value
+            ) {
+                $dirty[$key] = $value;
+            }
+        }
+
+        return $dirty;
     }
 
     /**
@@ -263,7 +302,7 @@ trait QueryCollection
         $query = static::query();
 
         foreach ($attributes as $field => $value) {
-            $query->where($field, '=', $value);
+            $query->where($field, $value);
         }
 
         $model = $query->first();
