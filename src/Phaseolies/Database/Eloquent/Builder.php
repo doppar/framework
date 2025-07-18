@@ -673,23 +673,60 @@ class Builder
     }
 
     /**
-     * Execute the query and return a collection of models.
+     * Lazily executes the query and yields one model instance at a time.
      *
-     * @return Collection
+     * @return \Generator
      * @throws PDOException
+     */
+    private function fetchLazy(): \Generator
+    {
+        $stmt = null;
+
+        try {
+            $stmt = $this->pdo->prepare($this->toSql());
+            $this->bindValues($stmt);
+            $stmt->execute();
+
+            $needsEncryption = $this->needsEncryption();
+            $encryptedAttributes = $this->getEncryptedAttributes();
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $model = app($this->modelClass, [$row]);
+
+                if ($needsEncryption && $this->takeWithoutEncryption) {
+                    foreach ($encryptedAttributes as $attribute) {
+                        $model->$attribute = encrypt($model->$attribute);
+                    }
+                }
+
+                yield $model;
+            }
+        } finally {
+            if ($stmt instanceof PDOStatement) {
+                $stmt->closeCursor();
+            }
+        }
+    }
+
+    /**
+     * Execute the query and return a collection of model instances.
+     *
+     * @return Collection A collection of model instances.
      */
     public function get(): Collection
     {
-        $collection = new Collection($this->modelClass, []);
-        $needsEncryption = $this->needsEncryption();
-        $encryptedAttributes = $needsEncryption ? $this->getEncryptedAttributes() : [];
+        $models = [];
 
-        $this->cursor(function ($model) use ($collection, $needsEncryption, $encryptedAttributes) {
-            if ($needsEncryption && $this->takeWithoutEncryption) {
-                $this->encryptModelAttributes($model, $encryptedAttributes);
-            }
-            $collection->push($model);
-        });
+        foreach ($this->fetchLazy() as $model) {
+            $models[] = $model;
+        }
+
+        $collection = new Collection($this->modelClass, $models);
+
+        unset($models);
+        if (gc_enabled()) {
+            gc_collect_cycles();
+        }
 
         if (!empty($this->eagerLoad)) {
             $this->eagerLoadRelations($collection);

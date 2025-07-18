@@ -207,4 +207,33 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this;
     }
+
+    /**
+     * Output or return memory usage stats related to the current collection.
+     *
+     * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
+     * @return string|array
+     */
+    public function withMemoryUsage(bool $asString = true): string|array
+    {
+        $usage = memory_get_usage(true);
+        $peak  = memory_get_peak_usage(true);
+
+        $data = [
+            'current_usage_bytes' => $usage,
+            'peak_usage_bytes'    => $peak,
+            'current_usage_mb'    => round($usage / 1024 / 1024, 2) . ' MB',
+            'peak_usage_mb'       => round($peak / 1024 / 1024, 2) . ' MB',
+        ];
+
+        if ($asString) {
+            return sprintf(
+                "Memory usage: %s, Peak: %s",
+                $data['current_usage_mb'],
+                $data['peak_usage_mb']
+            );
+        }
+
+        return $data;
+    }
 }
