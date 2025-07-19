@@ -49,7 +49,7 @@ class JsonResponse extends StreamedResponse
             return;
         }
 
-        echo json_encode($data, $jsonEncodingOptions);
+        echo json_encode($data ?? new \stdClass(), $jsonEncodingOptions);
     }
 
     private function streamArray(array $data, int $jsonEncodingOptions, int $keyEncodingOptions): void

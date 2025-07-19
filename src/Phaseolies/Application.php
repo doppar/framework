@@ -23,7 +23,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.8.4';
+    const VERSION = '2.8.5';
 
     /**
      * The base path of the application installation.
@@ -612,7 +612,6 @@ class Application extends Container
         $this->singleton('request', Request::class);
         $this->singleton('router', Router::class);
         $this->router = app('router');
-        $this->singleton('response', Response::class);
         $this->singleton('console', fn($app) => new \Phaseolies\Console\Console($app, 'Doppar Framework', Application::VERSION));
         $this->singleton('view', \Phaseolies\Support\View\Factory::class);
         $this->singleton('migrator', function () {
