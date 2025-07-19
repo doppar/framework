@@ -696,7 +696,9 @@ class Builder
 
                 if ($needsEncryption && $this->takeWithoutEncryption) {
                     foreach ($encryptedAttributes as $attribute) {
-                        $model->$attribute = encrypt($model->$attribute);
+                        $model->$attribute = $model->$attribute
+                            ? encrypt($model->$attribute)
+                            : $model->$attribute;
                     }
                 }
 
