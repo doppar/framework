@@ -1518,12 +1518,6 @@ class Builder
     }
 
     /**
-     * Execute the query and return an array of arrays.
-     *
-     * @return array
-     * @throws PDOException
-     */
-    /**
      * Execute the query and return an array of arrays (for pagination).
      *
      * @return array
@@ -1532,30 +1526,7 @@ class Builder
     public function getForPagination(): array
     {
         try {
-            $stmt = $this->pdo->prepare($this->toSql());
-            $this->bindValues($stmt);
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            $models = array_map(function ($item) {
-                $model = new $this->modelClass($item);
-                if ($model instanceof Encryptable && $this->takeWithoutEncryption) {
-                    foreach ($model->getEncryptedProperties() as $attribute) {
-                        $model->$attribute = $model->$attribute
-                            ? encrypt($model->$attribute)
-                            : $model->$attribute;
-                    }
-                }
-                return $model;
-            }, $results);
-
-            $collection = new Collection($this->modelClass, $models);
-
-            if (!empty($this->eagerLoad)) {
-                $this->eagerLoadRelations($collection);
-            }
-
-            return $collection->all();
+            return $this->get()->all();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
