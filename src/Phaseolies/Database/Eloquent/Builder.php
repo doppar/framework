@@ -13,10 +13,11 @@ use Phaseolies\Database\Eloquent\Model;
 use PDOStatement;
 use PDOException;
 use PDO;
+use Phaseolies\Database\Eloquent\Query\Debuggable;
 
 class Builder
 {
-    use QueryCollection, QueryProcessor, QueryUtils;
+    use QueryCollection, QueryProcessor, QueryUtils, Debuggable;
 
     /**
      * @var PDO

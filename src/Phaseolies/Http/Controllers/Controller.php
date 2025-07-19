@@ -14,11 +14,42 @@ class Controller extends View
 {
     use Cache, BladeCompiler, Directives, BladeCondition;
 
+    /**
+     * @var array
+     */
     protected $loopStacks = [];
 
+    /**
+     * @var int
+     */
     protected $emptyCounter = 0;
 
+    /**
+     * @var bool
+     */
     protected $firstCaseSwitch = true;
+
+    /**
+     * @var bool
+     */
+    protected $jitEnabled = true;
+
+    /**
+     * 0 = none, 1 = basic, 2 = aggressive
+     *
+     * @var int
+     */
+    protected $optimizationLevel = 2;
+
+    /**
+     * @var array
+     */
+    protected $lazyComponents = [];
+
+    /**
+     * @var array
+     */
+    protected $compiledTemplates = [];
 
     /**
      * Constructor to initialize the template engine with default settings
@@ -52,6 +83,10 @@ class Controller extends View
         $this->blocks = [];
         $this->blockStacks = [];
         $this->loopStacks = [];
+
+        $this->jitEnabled = env('BLADE_JIT_ENABLED', true);
+        $this->optimizationLevel = env('BLADE_OPTIMIZATION_LEVEL', 2);
+        $this->setOptimizationLevel($this->optimizationLevel);
     }
 
     /**
@@ -150,6 +185,21 @@ class Controller extends View
     }
 
     /**
+     * Set optimization level (0-2)
+     *
+     * @param int $level
+     * @return void
+     */
+    public function setOptimizationLevel(int $level): void
+    {
+        if (!in_array($level, [0, 1, 2], true)) {
+            throw new \InvalidArgumentException('Optimization level must be 0, 1, or 2');
+        }
+
+        $this->optimizationLevel = max(0, min(2, $level));
+    }
+
+    /**
      * Prepare the view file (locate and extract).
      *
      * @param string $view
@@ -160,48 +210,372 @@ class Controller extends View
         $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
         $cache = base_path($this->cacheFolder) . DIRECTORY_SEPARATOR . $viewKey . '__' . sprintf('%u', crc32($viewKey)) . '.php';
 
-        if (!is_file($cache) || filemtime($actual) > filemtime($cache)) {
-            if (!is_file($actual)) {
-                throw new RuntimeException('View not found: ' . $actual);
-            }
+        $needsRecompile = !is_file($cache) || filemtime($actual) > filemtime($cache);
 
-            $content = file_get_contents($actual);
-
-            // Add @set() directive using extend() method, we need 2 parameters here
-            $this->extend(function ($value) {
-                return preg_replace("/@set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
-            });
-
-            $compilers = ['Statements', 'Comments', 'Echos', 'Extensions'];
-
-            foreach ($compilers as $compiler) {
-                $content = $this->{'compile' . $compiler}($content);
-            }
-
-            // Replace @php and @endphp blocks
-            $content = $this->replacePhpBlocks($content);
-
-            if (!empty($data)) {
-                $dataExport = var_export($data, true);
-                $content = "<?php extract($dataExport); ?>" . $content;
-            }
-
+        if ($needsRecompile) {
+            $content = $this->compileView($actual, $data);
             file_put_contents($cache, $content);
-        } else if (!empty($data)) {
-            // If using cached file, we still need to extract variables
+        } elseif (!empty($data)) {
             $dataExport = var_export($data, true);
             $content = file_get_contents($cache);
             $content = "<?php extract($dataExport); ?>" . $content;
             file_put_contents($cache, $content);
         }
 
+        // Always apply JIT optimizations if enabled
+        if ($this->jitEnabled) {
+            $cache = $this->applyJitOptimizations($cache, $viewKey, $needsRecompile);
+        }
+
         return $cache;
+    }
+
+    /**
+     * Compile view content with standard Blade compilation
+     *
+     * @param string $actual
+     * @param array $data
+     * @return string
+     */
+    protected function compileView(string $actual, array $data): string
+    {
+        if (!is_file($actual)) {
+            throw new RuntimeException('View not found: ' . $actual);
+        }
+
+        $content = file_get_contents($actual);
+
+        // Add @set() directive using extend() method, we need 2 parameters here
+        $this->extend(function ($value) {
+            return preg_replace("/@set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
+        });
+
+        $compilers = ['Statements', 'Comments', 'Echos', 'Extensions'];
+
+        foreach ($compilers as $compiler) {
+            $content = $this->{'compile' . $compiler}($content);
+        }
+
+        // Replace @php and @endphp blocks
+        $content = $this->replacePhpBlocks($content);
+
+        if (!empty($data)) {
+            $dataExport = var_export($data, true);
+            $content = "<?php extract($dataExport); ?>" . $content;
+        }
+
+        return $content;
+    }
+
+    /**
+     * Apply JIT optimizations to compiled template
+     *
+     * @param string $cachePath
+     * @param string $viewKey
+     * @param bool $freshContent
+     * @return string
+     */
+    protected function applyJitOptimizations(string $cachePath, string $viewKey, bool $freshContent = false): string
+    {
+        try {
+            // Return already optimized content if available
+            if (isset($this->compiledTemplates[$viewKey])) {
+                return $this->compiledTemplates[$viewKey];
+            }
+
+            $content = file_get_contents($cachePath);
+            $optimizedContent = $content;
+
+            // Only optimize if we have fresh content or optimization level requires it
+            if ($freshContent || $this->optimizationLevel > 0) {
+                // Level 1 optimizations
+                if ($this->optimizationLevel >= 1) {
+                    $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
+                    $optimizedContent = $this->optimizeControlStructures($optimizedContent);
+                    $optimizedContent = $this->optimizeEchoStatements($optimizedContent);
+                    $optimizedContent = $this->optimizeBladeLoops($optimizedContent);
+                }
+
+                // Level 2 optimizations
+                if ($this->optimizationLevel >= 2) {
+                    $optimizedContent = $this->inlineSmallTemplates($optimizedContent);
+                    $optimizedContent = $this->optimizeComplexLoops($optimizedContent);
+                    $optimizedContent = $this->lazyLoadComponents($optimizedContent);
+                }
+
+                // Save optimized version if different
+                if ($optimizedContent !== $content) {
+                    file_put_contents($cachePath, $optimizedContent);
+                }
+            }
+
+            // Cache in memory for this request
+            $this->compiledTemplates[$viewKey] = $cachePath;
+
+            return $cachePath;
+        } catch (\Throwable $th) {
+            error("JIT optimization failed for {$viewKey}: " . $th->getMessage());
+            return $cachePath; // Fallback to original
+        }
+    }
+
+    /**
+     * Optimize complex loops including nested
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function optimizeComplexLoops(string $content): string
+    {
+        // Optimize nested loops
+        $content = preg_replace_callback(
+            '/\<\?php\s+foreach\s*\((.*?)\)\s*:\s*\?\>(.*?)\<\?php\s+endforeach\s*;\s*\?\>/s',
+            function ($matches) {
+                $expression = $matches[1];
+                $loopContent = $matches[2];
+
+                // Count nested loops to optimize depth tracking
+                $nestedCount = substr_count($loopContent, '<?php foreach');
+
+                if ($nestedCount > 0) {
+                    return "<?php foreach($expression): ?>$loopContent<?php endforeach; ?>";
+                }
+
+                // For non-nested loops, we can optimize further
+                return "<?php foreach($expression): ?>$loopContent<?php endforeach; ?>";
+            },
+            $content
+        );
+
+        // Optimize loops with known counts
+        $content = preg_replace_callback(
+            '/\<\?php\s+\$__currentLoopData\s*=\s*(.*?)\s*;\s*\$__env->addLoop\(\$__currentLoopData\);\s*foreach\(\$__currentLoopData\s+as\s+(.*?)\):\s*\$__env->incrementLoopIndices\(\);\s*\$\w+\s*=\s*\$__env->getFirstLoop\(\);\s*\?\>/',
+            function ($matches) {
+                $data = $matches[1];
+                $item = $matches[2];
+
+                // Simple variable optimization
+                if (preg_match('/^\$\w+$/', $data)) {
+                    return "<?php foreach({$data} as {$item}): ?>";
+                }
+
+                // Method call optimization
+                if (preg_match('/^\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*->[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\(\)$/', $data)) {
+                    return "<?php foreach({$data} as {$item}): ?>";
+                }
+
+                return $matches[0];
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Optimize all the necessary control structures
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function optimizeControlStructures(string $content): string
+    {
+        // Optimize if/elseif/else structures
+        $content = preg_replace([
+            '/\<\?php\s+if\s*\((.*?)\)\s*:\s*\?\>/s',
+            '/\<\?php\s+elseif\s*\((.*?)\)\s*:\s*\?\>/s',
+            '/\<\?php\s+else\s*:\s*\?\>/s',
+            '/\<\?php\s+endif\s*;\s*\?\>/s'
+        ], [
+            '<?php if($1): ?>',
+            '<?php elseif($1): ?>',
+            '<?php else: ?>',
+            '<?php endif; ?>'
+        ], $content);
+
+        // Optimize loops (foreach, for, while)
+        $content = preg_replace([
+            '/\<\?php\s+foreach\s*\((.*?)\)\s*:\s*\?\>/s',
+            '/\<\?php\s+endforeach\s*;\s*\?\>/s',
+            '/\<\?php\s+for\s*\((.*?)\)\s*:\s*\?\>/s',
+            '/\<\?php\s+endfor\s*;\s*\?\>/s',
+            '/\<\?php\s+while\s*\((.*?)\)\s*:\s*\?\>/s',
+            '/\<\?php\s+endwhile\s*;\s*\?\>/s'
+        ], [
+            '<?php foreach($1): ?>',
+            '<?php endforeach; ?>',
+            '<?php for($1): ?>',
+            '<?php endfor; ?>',
+            '<?php while($1): ?>',
+            '<?php endwhile; ?>'
+        ], $content);
+
+        // Preserving newlines in HTML
+        $content = preg_replace('/\>\s+\</', '><', $content);
+
+        // Preserve HTML comments
+        $content = preg_replace_callback('/<!--(.*?)-->/s', function ($matches) {
+            return '<!--' . trim($matches[1]) . '-->';
+        }, $content);
+
+        return $content;
+    }
+
+    /**
+     * Optimize Blade foreach loops
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function optimizeBladeLoops(string $content): string
+    {
+        return preg_replace_callback(
+            '/\@foreach\s*\((.*?)\)(.*?)\@endforeach/s',
+            function ($matches) {
+                $expression = trim($matches[1]);
+                $loopContent = $matches[2];
+
+                // Optimize the loop content
+                $optimizedContent = $this->optimizeControlStructures($loopContent);
+
+                return "<?php foreach($expression): ?>$optimizedContent<?php endforeach; ?>";
+            },
+            $content
+        );
+    }
+
+    /**
+     * Optimize echo statement effectively
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function optimizeEchoStatements(string $content): string
+    {
+        // Combine consecutive echos
+        $content = preg_replace('/\<\?=\s*(.*?)\s*\?\>\s*\<\?=\s*(.*?)\s*\?\>/', '<?=$1.$2?>', $content);
+
+        // Remove unnecessary parentheses
+        $content = preg_replace('/\<\?=\s*\((.*?)\)\s*\?\>/', '<?=$1?>', $content);
+
+        return $content;
+    }
+
+    /**
+     * Handling inline small templates
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function inlineSmallTemplates(string $content): string
+    {
+        // Inline small @include directives (for very small templates)
+        if (preg_match_all('/\@include\(\s*[\'"](.*?)[\'"]\s*(?:,\s*(.*?)\s*)?\)/', $content, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $view = trim($match[1], '\'"');
+                $data = isset($match[2]) ? $match[2] : '[]';
+
+                try {
+                    $includedContent = $this->compileView($this->findView($view), []);
+
+                    // Only inline if the content is small
+                    if (strlen($includedContent) < 500) {
+                        $content = str_replace($match[0], $includedContent, $content);
+                    }
+                } catch (\Exception $e) {
+                    // Skip if the view can't be found
+                    continue;
+                }
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Optimize loops
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function optimizeLoops(string $content): string
+    {
+        // Optimize foreach loops with known counts
+        $content = preg_replace_callback(
+            '/\<\?php\s+\$__currentLoopData\s*=\s*(.*?)\s*;\s*\$__env->addLoop\(\$__currentLoopData\);\s*foreach\(\$__currentLoopData\s+as\s+(.*?)\):\s*\$__env->incrementLoopIndices\(\);\s*\$\w+\s*=\s*\$__env->getFirstLoop\(\);\s*\?\>/',
+            function ($matches) {
+                $data = $matches[1];
+                $item = $matches[2];
+
+                // If the data is a simple variable, we can optimize
+                if (preg_match('/^\$\w+$/', $data)) {
+                    return "<?php foreach({$data} as {$item}): ?>";
+                }
+
+                return $matches[0];
+            },
+            $content
+        );
+
+        return $content;
+    }
+
+    /**
+     * Lazy load components
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function lazyLoadComponents(string $content): string
+    {
+        // Find component tags and mark them for lazy loading
+        if (preg_match_all(
+            '/\<\?php\s+if\s*\(\s*!\s*isset\(\$component\)\s*\)\s*:\s*\$component\s*=\s*\$__env->getComponent\(\s*(.*?)\s*\);\s*endif;\s*echo\s*\$component->render\(\s*(.*?)\s*\);\s*\?\>/',
+            $content,
+            $matches,
+            PREG_SET_ORDER
+        )) {
+
+            foreach ($matches as $match) {
+                $componentName = trim($match[1], '\'"');
+                $componentData = $match[2];
+
+                // Register component for lazy loading
+                $this->lazyComponents[$componentName] = true;
+
+                // Replace with lazy loading code
+                $lazyCode = <<<PHP
+<?php 
+if (!isset(\$__lazyComponents['$componentName'])) {
+    \$__lazyComponents['$componentName'] = \$__env->getComponent($match[1]);
+}
+echo \$__lazyComponents['$componentName']->render($componentData);
+?>
+PHP;
+                $content = str_replace($match[0], $lazyCode, $content);
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Clear all the compiled templates
+     *
+     * @return void
+     */
+    public function clearCompiledTemplates(): void
+    {
+        $this->compiledTemplates = [];
+        $this->lazyComponents = [];
+        $this->loopStacks = [];
     }
 
     /**
      * Add new loop to the stack.
      *
      * @param mixed $data
+     * @return void
      */
     public function addLoop($data): void
     {
