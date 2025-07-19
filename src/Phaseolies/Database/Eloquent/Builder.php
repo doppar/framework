@@ -1518,21 +1518,6 @@ class Builder
     }
 
     /**
-     * Execute the query and return an array of arrays (for pagination).
-     *
-     * @return array
-     * @throws PDOException
-     */
-    public function getForPagination(): array
-    {
-        try {
-            return $this->get()->all();
-        } catch (PDOException $e) {
-            throw new PDOException("Database error: " . $e->getMessage());
-        }
-    }
-
-    /**
      * Execute the query and return the first result.
      *
      * @return mixed
@@ -1777,7 +1762,7 @@ class Builder
 
         $offset = ($page - 1) * $perPage;
         $total = $this->count();
-        $results = $this->limit($perPage)->offset($offset)->getForPagination();
+        $results = $this->limit($perPage)->offset($offset)->get()->all();
 
         $lastPage = max(ceil($total / $perPage), 1);
         $path = URL::current();
