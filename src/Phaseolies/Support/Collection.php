@@ -14,7 +14,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * @var array
      */
-    protected $items = [];
+    protected array $data = [];
 
     /**
      * @var string
@@ -23,42 +23,42 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
     /**
      * @param string $model
-     * @param array|null $items
+     * @param array|null $data
      */
-    public function __construct(string $model, ?array $items = [])
+    public function __construct(string $model, ?array $data = [])
     {
         $this->model = $model;
-        $this->items = $items;
+        $this->data = $data;
     }
 
     public function offsetExists($offset): bool
     {
-        return isset($this->items[$offset]);
+        return isset($this->data[$offset]);
     }
 
     public function offsetGet($offset): mixed
     {
-        return $this->items[$offset] ?? null;
+        return $this->data[$offset] ?? null;
     }
 
     public function offsetSet($offset, $value): void
     {
-        $this->items[$offset] = $value;
+        $this->data[$offset] = $value;
     }
 
     public function offsetUnset($offset): void
     {
-        unset($this->items[$offset]);
+        unset($this->data[$offset]);
     }
 
     public function __get($name)
     {
-        return $this->items[$name] ?? null;
+        return $this->data[$name] ?? null;
     }
 
     public function __isset($name)
     {
-        return isset($this->items[$name]);
+        return isset($this->data[$name]);
     }
 
     /**
@@ -67,27 +67,27 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function getIterator(): Traversable
     {
-        return new ArrayIterator($this->items);
+        return new ArrayIterator($this->data);
     }
 
     /**
-     * Count the number of items in the collection.
+     * Count the number of data in the collection.
      *
      * @return int
      */
     public function count(): int
     {
-        return count($this->items);
+        return count($this->data);
     }
 
     /**
-     * Get all items in the collection
+     * Get all data in the collection
      *
      * @return array
      */
     public function all(): array
     {
-        return $this->items;
+        return $this->data;
     }
 
     /**
@@ -97,7 +97,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function first(): mixed
     {
-        return $this->items[0] ?? null;
+        return $this->data[0] ?? null;
     }
 
     /**
@@ -109,7 +109,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function keyBy(string $key): array
     {
         $result = [];
-        foreach ($this->items as $item) {
+        foreach ($this->data as $item) {
             $result[$item->$key] = $item;
         }
         return $result;
@@ -124,7 +124,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function groupBy(string $key): array
     {
         $result = [];
-        foreach ($this->items as $item) {
+        foreach ($this->data as $item) {
             $result[$item->$key][] = $item;
         }
         return $result;
@@ -139,7 +139,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         return array_map(function ($item) {
             return $item instanceof Model ? $item->toArray() : $item;
-        }, $this->items);
+        }, $this->data);
     }
 
     /**
@@ -152,7 +152,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         $mappedItems = [];
 
-        foreach ($this->items as $item) {
+        foreach ($this->data as $item) {
             $mappedItems[] = $callback($item);
         }
 
@@ -169,7 +169,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         $filteredItems = [];
 
-        foreach ($this->items as $key => $item) {
+        foreach ($this->data as $key => $item) {
             if ($callback($item, $key)) {
                 $filteredItems[] = $item;
             }
@@ -186,7 +186,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function each(callable $callback)
     {
-        foreach ($this->items as $key => $item) {
+        foreach ($this->data as $key => $item) {
             if ($callback($item, $key) === false) {
                 break;
             }
@@ -203,7 +203,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function push(mixed $item): self
     {
-        $this->items[] = $item;
+        $this->data[] = $item;
 
         return $this;
     }

@@ -447,9 +447,9 @@ class Router extends Kernel
             $this->middleware($groupMiddleware);
         }
 
-        // After registering the route,
-        // process controller middleware
-        // if it's a controller action
+        // After the route has been registered,
+        // check if the callback refers to a controller method.
+        // If so, process any middleware attributes associated with the controller.
         if (is_array($callback) && count($callback) === 2 && is_string($callback[0])) {
             $this->processControllerMiddleware($callback, app());
         }
@@ -707,23 +707,12 @@ class Router extends Kernel
         $routeParams = $request->getRouteParams();
 
         $handler = function ($request) use ($callback, $app, $routeParams) {
-            if (is_array($callback)) {
-                $result = $this->resolveControllerAction($callback, $app, $routeParams);
-            } elseif (is_string($callback) && class_exists($callback)) {
-                $result = $this->resolveControllerAction($callback, $app, $routeParams);
-            } elseif ($callback instanceof \Closure) {
-                $result = $this->resolveClosure($callback, $app, $routeParams);
-            } else {
-                $result = call_user_func($callback, ...array_values($routeParams));
-            }
-
+            $result = $this->resolveAction($callback, $app, $routeParams);
             $response = app('response');
             $response->setOriginal($result);
-
             if (!($result instanceof Response)) {
                 return $this->getResolutionResponse($request, $result, $response);
             }
-
             return $result;
         };
 
@@ -743,52 +732,19 @@ class Router extends Kernel
     {
         [$controllerClass, $actionMethod] = $callback;
         $reflector = new \ReflectionClass($controllerClass);
-        $this->processAttributesClassDependencies($controllerClass, $app);
 
-        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
-    }
+        // Process middleware defined at the class level
+        // if any are present
+        $classMiddlewareAttributes = $reflector->getAttributes(Middleware::class);
+        $this->processAttributesMiddlewares($classMiddlewareAttributes);
 
-    /**
-     * Resolves a closure with dependency injection.
-     *
-     * @param \Closure $callback
-     * @param Application $app
-     * @param array $routeParams
-     * @return mixed
-     */
-    private function resolveClosure(\Closure $callback, $app, $routeParams): mixed
-    {
-        $reflection = new \ReflectionFunction($callback);
-        $parameters = $reflection->getParameters();
-        $dependencies = [];
-
-        foreach ($parameters as $parameter) {
-            $paramName = $parameter->getName();
-            $paramType = $parameter->getType();
-
-            if ($paramType && !$paramType->isBuiltin()) {
-                $typeName = $paramType->getName();
-                if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
-                    $this->resolveFormRequestValidationClass($app, $typeName);
-                }
-
-                if ($app->has($typeName)) {
-                    $dependencies[] = $app->get($typeName);
-                } elseif (class_exists($typeName)) {
-                    $dependencies[] = $app->make($typeName);
-                } else {
-                    throw new \Exception("Cannot resolve dependency {$typeName}");
-                }
-            } elseif (isset($routeParams[$paramName])) {
-                $dependencies[] = $routeParams[$paramName];
-            } elseif ($parameter->isDefaultValueAvailable()) {
-                $dependencies[] = $parameter->getDefaultValue();
-            } else {
-                throw new \Exception("Cannot resolve parameter {$paramName}");
-            }
+        // Process middleware defined at the method level
+        // if any are present
+        if ($reflector->hasMethod($actionMethod)) {
+            $method = $reflector->getMethod($actionMethod);
+            $methodMiddlewareAttributes = $method->getAttributes(Middleware::class);
+            $this->processAttributesMiddlewares($methodMiddlewareAttributes);
         }
-
-        return $callback(...$dependencies);
     }
 
     /**
@@ -898,23 +854,52 @@ class Router extends Kernel
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveControllerAction(array|string $callback, $app, array $routeParams): mixed
+    private function resolveAction(mixed $callback, $app, array $routeParams): mixed
     {
         if (is_string($callback)) {
             $controllerClass = $callback;
             $actionMethod = "__invoke";
+        } else if ($callback instanceof \Closure) {
+            $reflection = new \ReflectionFunction($callback);
+            $parameters = $reflection->getParameters();
+            foreach ($parameters as $parameter) {
+                $paramName = $parameter->getName();
+                $paramType = $parameter->getType();
+
+                if ($paramType && !$paramType->isBuiltin()) {
+                    $typeName = $paramType->getName();
+                    if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
+                        $this->resolveFormRequestValidationClass($app, $typeName);
+                    }
+
+                    if ($app->has($typeName)) {
+                        $dependencies[] = $app->get($typeName);
+                    } elseif (class_exists($typeName)) {
+                        $dependencies[] = $app->make($typeName);
+                    } else {
+                        throw new \Exception("Cannot resolve dependency {$typeName}");
+                    }
+                } elseif (isset($routeParams[$paramName])) {
+                    $dependencies[] = $routeParams[$paramName];
+                } elseif ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                } else {
+                    throw new \Exception("Cannot resolve parameter {$paramName}");
+                }
+            }
+
+            return $callback(...$dependencies);
         } else {
             [$controllerClass, $actionMethod] = $callback;
         }
 
-        $this->processAttributesClassDependencies($controllerClass, $app);
-
         $reflector = new \ReflectionClass($controllerClass);
+
+        $this->processAttributesClassDependencies($controllerClass, $app);
+        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
 
         $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
         $controllerInstance = new $controllerClass(...$constructorDependencies);
-
-        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
 
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
@@ -934,9 +919,6 @@ class Router extends Kernel
         $attributes = $reflection->getAttributes(Resolver::class);
 
         $this->resolveAttributesDependency($attributes ?? [], $app);
-
-        $middlewareAttributes = $reflection->getAttributes(Middleware::class);
-        $this->processAttributesMiddlewares($middlewareAttributes);
     }
 
     /**
@@ -999,10 +981,6 @@ class Router extends Kernel
         $attributes = $method->getAttributes(Resolver::class);
 
         $this->resolveAttributesDependency($attributes ?? [], $app);
-
-        // Process Middleware attributes
-        $middlewareAttributes = $method->getAttributes(Middleware::class);
-        $this->processAttributesMiddlewares($middlewareAttributes);
     }
 
     /**
