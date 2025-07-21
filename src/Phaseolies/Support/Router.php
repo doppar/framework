@@ -889,7 +889,7 @@ class Router extends Kernel
                 }
             }
 
-            return $callback(...$dependencies);
+            return $callback(...$dependencies ?? []);
         } else {
             [$controllerClass, $actionMethod] = $callback;
         }
