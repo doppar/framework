@@ -809,6 +809,7 @@ class Router extends Kernel
     protected function shouldBeJson($data): bool
     {
         return is_array($data) ||
+            is_object($data) ||
             $data instanceof \JsonSerializable ||
             $data instanceof Model ||
             $data instanceof Collection ||

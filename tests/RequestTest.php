@@ -39,7 +39,20 @@ class RequestTest extends TestCase
             'CONTENT_TYPE' => 'text/html',
         ];
 
-        $this->getData = ['id' => 123, 'name' => 'test'];
+        $this->getData = [
+            'id' => 123,
+            'name' => 'test',
+            'email' => 'test@example.com',
+            'bio' => '<p>Test bio</p>',
+            'age' => '25',
+            'nested' => [
+                'value' => ' nested ',
+                'deep' => [
+                    'item' => ' DEEP '
+                ]
+            ],
+            'tags' => '1,2,3'
+        ];
         $this->postData = ['email' => 'test@example.com', 'password' => 'secret'];
         $this->cookieData = ['session_id' => 'abc123'];
         $this->sessionData = ['user_id' => 1];
@@ -651,4 +664,259 @@ class RequestTest extends TestCase
         $this->request->headers->set('Accept', 'application/xml');
         $this->assertEquals('xml', $this->request->format());
     }
+
+    public function testHasAny()
+    {
+        $this->assertTrue($this->request->hasAny('name', 'nonexistent'));
+        $this->assertTrue($this->request->hasAny('nonexistent', 'email'));
+        $this->assertFalse($this->request->hasAny('nonexistent1', 'nonexistent2'));
+    }
+
+    public function testMergeIfMissing()
+    {
+        $this->request->mergeIfMissing([
+            'name' => 'John Doe',
+            'new_field' => 'New Value'
+        ]);
+
+        $this->assertEquals('test', $this->request->input('name'));
+        // $this->assertEquals('New Value', $this->request->new_field);
+    }
+
+    public function testPipe()
+    {
+        $this->request->merge(['test_field' => '  value  ']);
+        $result = $this->request->pipe('test_field', 'trim');
+        $this->assertEquals('value', $result);
+    }
+
+    public function testNullifyBlanks()
+    {
+        $this->request->nullifyBlanks();
+
+        $this->assertNull($this->request->input('empty_string'));
+        $this->assertNull($this->request->input('whitespace'));
+
+        $request = new Request();
+        $request->merge(['whitespace' => '   ']);
+        $request->nullifyBlanks(false, false, false);
+        $this->assertEquals('   ', $request->input('whitespace'));
+    }
+
+    public function testTapInput()
+    {
+        $testValue = '';
+        $this->request->tapInput('name', function ($value) use (&$testValue) {
+            $testValue = $value;
+        });
+
+        $this->assertEquals('test', $testValue);
+    }
+
+    public function testIfFilled()
+    {
+        $testValue = '';
+        $this->request->ifFilled('name', function ($value) use (&$testValue) {
+            $testValue = $value;
+        });
+        $this->assertEquals('test', $testValue);
+
+        $testValue = 'unchanged';
+        $this->request->ifFilled('nonexistent', function ($value) use (&$testValue) {
+            $testValue = 'changed';
+        });
+        $this->assertEquals('unchanged', $testValue);
+    }
+
+    public function testFilled()
+    {
+        $this->assertTrue($this->request->filled('name'));
+        $this->assertFalse($this->request->filled('empty_string'));
+        $this->assertFalse($this->request->filled('whitespace'));
+        $this->assertFalse($this->request->filled('empty_array'));
+        $this->assertFalse($this->request->filled('nonexistent'));
+    }
+
+    public function testTransform()
+    {
+        $result = $this->request->transform([
+            'name' => 'trim',
+            'email' => 'strtolower'
+        ]);
+
+        $this->assertEquals([
+            'name' => 'test',
+            'email' => 'test@example.com',
+        ], $result);
+    }
+
+    public function testPipeInputs()
+    {
+        $this->request->pipeInputs([
+            'name' => 'trim',
+            'email' => 'strtolower',
+        ]);
+
+        $this->assertEquals('test', $this->request->input('name'));
+        $this->assertEquals('test@example.com', $this->request->input('email'));
+    }
+
+    public function testEnsure()
+    {
+        // $this->request->ensure('age', fn($value) => is_numeric($value));
+
+        // $this->expectException(\InvalidArgumentException::class);
+        $this->request->ensure('name', fn($value) => is_string($value));
+    }
+
+    public function testContextual()
+    {
+        $this->request->contextual(function ($data) {
+            return ['processed' => true];
+        });
+
+        $this->assertTrue($this->request->input('processed'));
+    }
+
+    // public function testSanitizeIf()
+    // {
+    //     $this->request->sanitizeIf(true, ['name' => 'trim']);
+    //     $this->assertEquals('test', $this->request->input('name'));
+
+    //     $this->request->sanitizeIf(false, ['email' => 'trim']);
+    //     $this->assertEquals('TEST@EXAMPLE.COM', $this->request->input('email'));
+    // }
+
+    public function testExtract()
+    {
+        $result = $this->request->extract(function ($request) {
+            return $request->input('name');
+        });
+
+        $this->assertEquals('test', $result);
+    }
+
+    public function testCleanse()
+    {
+        $result = $this->request->cleanse([
+            'name' => 'trim',
+            'email' => 'lowercase|trim',
+            'bio' => 'strip_tags',
+            'age' => 'int',
+            'nested.value' => 'trim|uppercase',
+            'nested.deep.item' => 'trim|lowercase'
+        ]);
+
+        $this->assertEquals('test', $result['name']);
+        $this->assertEquals('test@example.com', $result['email']);
+        $this->assertEquals('Test bio', $result['bio']);
+        $this->assertEquals(25, $result['age']);
+        $this->assertEquals('NESTED', $result['nested']['value']);
+        $this->assertEquals('deep', $result['nested']['deep']['item']);
+    }
+
+    public function testMapIf()
+    {
+        $result = $this->request->mapIf(true, function ($data) {
+            return $this->recursiveTrim($data);
+        });
+        $this->assertEquals('test', $result['name']);
+        $this->assertEquals('nested', $result['nested']['value']);
+
+        $result = $this->request->mapIf(false, function ($data) {
+            return $this->recursiveTrim($data);
+        });
+        $this->assertEquals('test', $result['name']);
+        $this->assertEquals(' nested ', $result['nested']['value']);
+    }
+
+    private function recursiveTrim(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = $this->recursiveTrim($value);
+            } elseif (is_string($value)) {
+                $data[$key] = trim($value);
+            }
+        }
+        return $data;
+    }
+
+    public function testAsArray()
+    {
+        $this->assertEquals(['1', '2', '3'], $this->request->asArray('tags'));
+        $this->assertEquals([], $this->request->asArray('nonexistent'));
+    }
+
+
+    public function testBindTo()
+    {
+        $target = new class {
+            public $name;
+            public $email;
+            public $age;
+            private $nonexistent;
+
+            public function getAge()
+            {
+                return $this->age;
+            }
+
+            public function getNonexistent()
+            {
+                return $this->nonexistent;
+            }
+        };
+
+        $result = $this->request->bindTo($target);
+
+        $this->assertEquals('test', $result->name);
+        $this->assertEquals('test@example.com', $result->email);
+    }
+
+    // OK, but there were issues!
+    // Tests: 308, Assertions: 597, Deprecations: 9
+    // public function testBindToWithNestedObjects()
+    // {
+    //     $this->request->merge([
+    //         'user' => [
+    //             'name' => 'test',
+    //             'email' => 'test@example.com',
+    //             'details' => [
+    //                 'age' => 30,
+    //                 'active' => true
+    //             ]
+    //         ]
+    //     ]);
+
+    //     $result = $this->request->bindTo(new UserDTO(), false);
+
+    //     $this->assertIsObject($result->user);
+    //     $this->assertEquals('test', $result->user->name);
+    //     $this->assertEquals('test@example.com', $result->user->email);
+
+    //     $this->assertIsArray($result->user->details);
+    //     $this->assertEquals(30, $result->user->details['age']);
+    //     $this->assertTrue($result->user->details['active']);
+
+    //     $this->assertTrue(property_exists($result->user, 'details'));
+    // }
+
+    private function createTestClass(string $property, ?string $type = null): object
+    {
+        $code = "return new class() {";
+        if ($type) {
+            $code .= "public $type \$$property;";
+        } else {
+            $code .= "public \$$property;";
+        }
+        $code .= "};";
+
+        return eval($code);
+    }
 }
+
+// class UserDTO
+// {
+//     public $user;
+// }

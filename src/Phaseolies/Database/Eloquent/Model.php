@@ -758,6 +758,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function setRelations(array $relations): self
     {
         $this->relations = $relations;
+
         return $this;
     }
 
@@ -779,6 +780,16 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function getAuthKeyName(): string
     {
         return "email";
+    }
+
+    /**
+     * Check is the model usage timestamps
+     *
+     * @return bool
+     */
+    public function usesTimestamps(): bool
+    {
+       return $this->timeStamps;
     }
 
     /**

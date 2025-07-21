@@ -1880,6 +1880,125 @@ class Builder
     }
 
     /**
+     * Insert new records or update existing ones (upsert).
+     *
+     * @param array $values Array of records to insert/update
+     * @param array|string $uniqueBy Column(s) that uniquely identify records
+     * @param array|null $updateColumns Columns to update if record exists (null means update all)
+     * @param bool $ignoreErrors Whether to continue on error (like duplicate keys)
+     * @return int Number of affected rows
+     * @throws PDOException
+     */
+    public function upsert(
+        array $values,
+        array|string $uniqueBy,
+        ?array $updateColumns = null,
+        bool $ignoreErrors = false
+    ): int {
+        if (empty($values)) {
+            return 0;
+        }
+
+        // Normalize the uniqueBy parameter
+        $uniqueBy = (array) $uniqueBy;
+        if (empty($uniqueBy)) {
+            throw new \InvalidArgumentException('Unique key columns must be specified');
+        }
+
+        // Handle timestamp configuration
+        static $timestamps = [];
+        $hasCastToDateAttribute = false;
+        $class = $this->modelClass;
+        $model = $this->getModel();
+
+        if (!array_key_exists($class, $timestamps)) {
+            $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
+            if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
+                $hasCastToDateAttribute = true;
+            }
+        }
+
+        $usesTimestamps = $timestamps[$class] && $model->usesTimestamps();
+        $currentTime = $hasCastToDateAttribute ? now()->startOfDay() : now();
+
+        // Get column names from first record and add timestamp columns if needed
+        $columns = array_keys(reset($values));
+        if ($usesTimestamps) {
+            if (!in_array('created_at', $columns)) {
+                $columns[] = 'created_at';
+            }
+            if (!in_array('updated_at', $columns)) {
+                $columns[] = 'updated_at';
+            }
+        }
+        $columnsStr = implode(', ', array_map(fn($col) => "`$col`", $columns));
+
+        // Prepare placeholders and bindings
+        $placeholders = [];
+        $bindings = [];
+
+        foreach ($values as $record) {
+            // Validate record structure
+            if (array_diff(array_keys($record), $columns)) {
+                throw new \InvalidArgumentException('All records must have the same columns');
+            }
+
+            // Add timestamps if needed
+            if ($usesTimestamps) {
+                if (!isset($record['created_at'])) {
+                    $record['created_at'] = $currentTime;
+                }
+                $record['updated_at'] = $currentTime;
+            }
+
+            $rowPlaceholders = [];
+            foreach ($columns as $column) {
+                $rowPlaceholders[] = '?';
+                $bindings[] = $record[$column] ?? null;
+            }
+            $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
+        }
+
+        // Determine columns to update
+        $updateColumns = $updateColumns ?? array_diff($columns, $uniqueBy);
+
+        // Always include updated_at in updates if using timestamps
+        if ($usesTimestamps && !in_array('updated_at', $updateColumns)) {
+            $updateColumns[] = 'updated_at';
+        }
+
+        // Build the ON DUPLICATE KEY UPDATE clause
+        $updateStatements = array_map(
+            fn($col) => "`$col` = VALUES(`$col`)",
+            $updateColumns
+        );
+
+        // Build the SQL query
+        $sql = "INSERT " . ($ignoreErrors ? "IGNORE " : "") .
+            "INTO `{$this->table}` ({$columnsStr}) VALUES " .
+            implode(', ', $placeholders) .
+            " ON DUPLICATE KEY UPDATE " .
+            implode(', ', $updateStatements);
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            // Bind all values
+            foreach ($bindings as $index => $value) {
+                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
+            }
+
+            $stmt->execute();
+            return $stmt->rowCount();
+        } catch (PDOException $e) {
+            if ($ignoreErrors) {
+                return 0;
+            }
+            throw new PDOException("Database error during upsert: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Update records in the database.
      *
      * @param array $attributes
@@ -1899,7 +2018,7 @@ class Builder
             }
         }
 
-        if ($timestamps[$class]) {
+        if ($timestamps[$class] && app($class)->usesTimestamps()) {
             $attributes['updated_at'] = $hasCastToDateAttribute
                 ? now()->startOfDay()
                 : now();
