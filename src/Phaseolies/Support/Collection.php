@@ -31,34 +31,49 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         $this->data = $data;
     }
 
+    /**
+     * Determines if the specified offset exists in the data array.
+     *
+     * @param mixed $offset
+     * @return bool
+     */
     public function offsetExists($offset): bool
     {
         return isset($this->data[$offset]);
     }
 
+    /**
+     * Returns the value at the specified offset, or null if it doesn't exist.
+     *
+     * @param mixed $offset
+     * @return mixed
+     */
     public function offsetGet($offset): mixed
     {
         return $this->data[$offset] ?? null;
     }
 
+    /**
+     * Sets a value at the specified offset in the data array.
+     *
+     * @param mixed $offset
+     * @param mixed $value
+     * @return void
+     */
     public function offsetSet($offset, $value): void
     {
         $this->data[$offset] = $value;
     }
 
+    /**
+     * Removes the value at the specified offset from the data array.
+     *
+     * @param mixed $offset
+     * @return void
+     */
     public function offsetUnset($offset): void
     {
         unset($this->data[$offset]);
-    }
-
-    public function __get($name)
-    {
-        return $this->data[$name] ?? null;
-    }
-
-    public function __isset($name)
-    {
-        return isset($this->data[$name]);
     }
 
     /**
@@ -209,6 +224,42 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
+     * Flatten a multi-dimensional collection into a single level.
+     *
+     * @param int $depth The maximum depth to flatten (default: infinite)
+     * @return static
+     */
+    public function flatten(int $depth = PHP_INT_MAX): self
+    {
+        $result = [];
+        $stack = [];
+
+        foreach (array_reverse($this->data) as $item) {
+            $stack[] = ['item' => $item, 'depth' => 0];
+        }
+
+        while (!empty($stack)) {
+            $current = array_pop($stack);
+            $item = $current['item'];
+            $currentDepth = $current['depth'];
+
+            if (is_array($item) && $currentDepth < $depth) {
+                // Only process array values (ignoring keys)
+                foreach (array_reverse(array_values($item)) as $subItem) {
+                    $stack[] = [
+                        'item' => is_array($subItem) ? $subItem : $subItem,
+                        'depth' => $currentDepth + 1
+                    ];
+                }
+            } else {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
+
+    /**
      * Output or return memory usage stats related to the current collection.
      *
      * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
@@ -235,5 +286,15 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         }
 
         return $data;
+    }
+
+    public function __get($name)
+    {
+        return $this->data[$name] ?? null;
+    }
+
+    public function __isset($name)
+    {
+        return isset($this->data[$name]);
     }
 }

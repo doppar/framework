@@ -183,4 +183,73 @@ class CollectionTest extends TestCase
 
         $this->assertEquals(3, $sum);
     }
+
+    public function testFlatten()
+    {
+        $model = $this->makeTestModel(0, 'Test');
+
+        // Test basic flattening
+        $collection1 = new Collection(get_class($model), [
+            [1, 2, [3, 4]],
+            [5, 6],
+            7,
+            [8, [9, 10]]
+        ]);
+
+        $flattened1 = $collection1->flatten();
+        $this->assertEquals([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], $flattened1->all());
+
+        // Test with limited depth
+        $collection2 = new Collection(get_class($model), [
+            [1, [2, [3, [4, 5]]]],
+            [6, [7]]
+        ]);
+
+        $flattenedDepth1 = $collection2->flatten(1);
+        $this->assertEquals([1, [2, [3, [4, 5]]], 6, [7]], $flattenedDepth1->all());
+
+        $flattenedDepth2 = $collection2->flatten(2);
+        $this->assertEquals([1, 2, [3, [4, 5]], 6, 7], $flattenedDepth2->all());
+
+        // Test with model objects
+        $model1 = $this->makeTestModel(1, 'Alice');
+        $model2 = $this->makeTestModel(2, 'Bob');
+        $model3 = $this->makeTestModel(3, 'Charlie');
+
+        $collection3 = new Collection(get_class($model1), [
+            $model1,
+            [$model2, $model3]
+        ]);
+
+        $flattenedModels = $collection3->flatten();
+        $this->assertEquals([$model1, $model2, $model3], $flattenedModels->all());
+
+        // Test with empty collection
+        $emptyCollection = new Collection(get_class($model), []);
+        $this->assertEquals([], $emptyCollection->flatten()->all());
+
+        // Test with mixed types
+        $mixedCollection = new Collection(get_class($model), [
+            'a',
+            ['b', ['c' => 'd']],
+            new \stdClass(),
+            [1, 2]
+        ]);
+
+        $flattenedMixed = $mixedCollection->flatten();
+        $this->assertCount(6, $flattenedMixed->all());
+        $this->assertEquals('a', $flattenedMixed->all()[0]);
+        $this->assertEquals('b', $flattenedMixed->all()[1]);
+
+        // Only value from associative array
+        $this->assertEquals('d', $flattenedMixed->all()[2]);
+        $this->assertInstanceOf(\stdClass::class, $flattenedMixed->all()[3]);
+        $this->assertEquals(1, $flattenedMixed->all()[4]);
+
+        // Test that original collection remains unchanged
+        $original = [1, [2, 3]];
+        $collectionOriginal = new Collection(get_class($model), $original);
+        $collectionOriginal->flatten();
+        $this->assertEquals($original, $collectionOriginal->all());
+    }
 }
