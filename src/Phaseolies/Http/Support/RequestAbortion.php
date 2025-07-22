@@ -15,7 +15,7 @@ class RequestAbortion
      */
     public function abort($code, $message = '', array $headers = []): void
     {
-        throw new HttpException($code, $message, \null, $headers);
+        throw HttpException::fromStatusCode($code, $message, null, $headers);
     }
 
     /**
@@ -29,7 +29,7 @@ class RequestAbortion
     public function abortIf($condition, $code, $message = '', array $headers = []): void
     {
         if ($condition) {
-            self::abort($code, $message, $headers);
+            $this->abort($code, $message, $headers);
         }
     }
 }

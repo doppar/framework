@@ -680,7 +680,7 @@ class Response implements HttpStatus
             http_response_code($statusCode);
             include $errorPage;
         } else {
-            throw new HttpException($statusCode, $message);
+            abort($statusCode, $message);
         }
     }
 

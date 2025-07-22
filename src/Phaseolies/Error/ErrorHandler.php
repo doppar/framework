@@ -240,7 +240,8 @@ class ErrorHandler
         if (
             $statusCode === Response::HTTP_TOO_MANY_REQUESTS ||
             $statusCode === Response::HTTP_UNPROCESSABLE_ENTITY ||
-            $statusCode === Response::HTTP_UNAUTHORIZED
+            $statusCode === Response::HTTP_UNAUTHORIZED ||
+            $statusCode === 419
         ) {
             $response = [
                 'success' => false,

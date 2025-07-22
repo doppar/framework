@@ -175,10 +175,10 @@ class CsrfTokenMiddleware implements Middleware
         if ($request->isAjax() || $request->is('/api/*') || $request->wantsJson()) {
             throw new HttpResponseException(
                 $message,
-                Response::HTTP_UNAUTHORIZED
+                419
             );
         }
 
-        throw new TokenMismatchException(Response::HTTP_UNAUTHORIZED, $message);
+        throw new TokenMismatchException(419, $message);
     }
 }
