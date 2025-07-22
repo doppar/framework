@@ -44,4 +44,18 @@ class Mailable
      * @var array
      */
     public $attachments = [];
+
+    /**
+     * The subject of the mail
+     *
+     * @var string
+     */
+    public $subject;
+
+    /**
+     * The body of the mail
+     *
+     * @var mixed
+     */
+    public $body;
 }
