@@ -334,12 +334,25 @@ class Controller extends View
         // Process script blocks
         $content = preg_replace_callback('/<script\b[^>]*>.*?<\/script>/is', function ($matches) use (&$placeholders, &$i) {
             $key = "__SCRIPT_{$i}__";
-            $script = preg_replace([
-                '/\/\/[^\n]*\n/',    // Remove single-line comments
-                '/\/\*.*?\*\//s',    // Remove multi-line comments
-                '/\s+/'              // Collapse whitespace
-            ], ['', '', ' '], $matches[0]);
-            $placeholders[$key] = $script;
+            $scriptTag = $matches[0];
+
+            // Skip minification if it's an external script (has 'src=' attribute)
+            if (preg_match('/\bsrc\s*=\s*/i', $scriptTag)) {
+                $placeholders[$key] = $scriptTag;
+            } else {
+                // Minify only inline JS content
+                if (preg_match('/(<script\b[^>]*>)(.*?)(<\/script>)/is', $scriptTag, $parts)) {
+                    $minified = preg_replace([
+                        '/\/\/[^\n]*\n/',     // Remove single-line comments
+                        '/\/\*.*?\*\//s',     // Remove multi-line comments
+                        '/\s+/'               // Collapse whitespace
+                    ], ['', '', ' '], $parts[2]);
+
+                    $scriptTag = $parts[1] . trim($minified) . $parts[3];
+                }
+                $placeholders[$key] = $scriptTag;
+            }
+
             $i++;
             return $key;
         }, $content);
