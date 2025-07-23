@@ -19,12 +19,13 @@ class Console extends SymfonyApplication
      * Create a new Console instance.
      *
      * @param \Phaseolies\Application $app
-     * @param mixed string
+     * @param string string
      * @param string $version
      */
     public function __construct(Application $app, string $name = 'Doppar Framework', string $version = '1.0.0')
     {
         parent::__construct($name, $version);
+
         $this->app = $app;
     }
 

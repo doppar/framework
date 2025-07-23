@@ -101,9 +101,16 @@ final class Config
     protected static function cacheConfig(): void
     {
         $oldFiles = glob(storage_path('framework/cache/configs_*.php'));
+
         foreach ($oldFiles as $file) {
             if (file_exists($file)) {
-                @unlink($file);
+                try {
+                    @unlink($file);
+                } catch (\Throwable $e) {
+                    if (file_exists($file)) {
+                        throw new \RuntimeException("Failed to unlink old config cache file: {$file}", 0, $e);
+                    }
+                }
             }
         }
 

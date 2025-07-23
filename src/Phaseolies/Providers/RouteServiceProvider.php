@@ -16,7 +16,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         // Bind the 'route' key in the container to a singleton instance of Router.
         // This ensures that the same Router instance is returned whenever 'route' is resolved.
-        $this->app->singleton('route', Router::class);
+        $this->app->router = app('route');
 
         $path = urldecode(
             parse_url(request()->server->get("REQUEST_URI", "/"), PHP_URL_PATH)

@@ -3,30 +3,40 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Support\Facades\Cache;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class ClearCacheCommand extends Command
 {
-    protected static $defaultName = 'cache:clear';
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'cache:clear';
 
-    protected function configure()
-    {
-        $this
-            ->setName('cache:clear')
-            ->setDescription('Clear all cache files from the storage/framework folder.');
-    }
+    /**
+     * The command description shown in the Pool command list.
+     *
+     * This should clearly explain what the command does at a high level.
+     */
+    protected $description = 'Clear cache files from the storage/framework/cache folder.';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
         $cacheDir = base_path('storage/framework/cache');
+
         $this->deleteDirectoryContents($cacheDir);
 
         Cache::clear();
 
-        $output->writeln('<info>Cache cleared successfully</info>');
-        return Command::SUCCESS;
+        $this->info('Cache cleared successfully');
+
+        return 0;
     }
 
     /**
@@ -36,15 +46,20 @@ class ClearCacheCommand extends Command
      */
     private function deleteDirectoryContents($directory)
     {
+        if (!is_dir($directory)) {
+            return;
+        }
+
         $files = array_diff(scandir($directory), ['.', '..']);
 
         foreach ($files as $file) {
             $filePath = $directory . DIRECTORY_SEPARATOR . $file;
+
             if (is_dir($filePath)) {
                 $this->deleteDirectoryContents($filePath);
-                rmdir($filePath);
-            } else {
-                unlink($filePath);
+                @rmdir($filePath);
+            } elseif (is_file($filePath)) {
+                @unlink($filePath);
             }
         }
     }

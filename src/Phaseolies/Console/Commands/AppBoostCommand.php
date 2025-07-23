@@ -5,7 +5,7 @@ namespace Phaseolies\Console\Commands;
 use Phaseolies\Support\Facades\Pool;
 use Phaseolies\Console\Schedule\Command;
 
-class AppReviewCommand extends Command
+class AppBoostCommand extends Command
 {
     /**
      * The name of the console command.
@@ -15,9 +15,7 @@ class AppReviewCommand extends Command
     protected $name = 'boost';
 
     /**
-     * The command description shown in the Artisan command list.
-     *
-     * This should clearly explain what the command does at a high level.
+     * The description of the console command
      */
     protected $description = 'Optimizes application performance by clearing and rebuilding caches (config, routes, views)';
 
@@ -57,7 +55,7 @@ class AppReviewCommand extends Command
     {
         $this->info("Starting: <comment>{$command}</comment>");
 
-        Pool::call($command);
+        Pool::call($command, false);
 
         $this->info("Completed: <info>{$command}</info>");
     }

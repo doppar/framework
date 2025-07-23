@@ -7,7 +7,6 @@ use Phaseolies\Providers\ServiceProvider;
 use Phaseolies\Providers\CoreProviders;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
-use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\Database\Migration\Migrator;
@@ -23,7 +22,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.8.7';
+    const VERSION = '2.8.7.1';
 
     /**
      * The base path of the application installation.
@@ -122,6 +121,20 @@ class Application extends Container
     protected $resolvingCallbacks = [];
 
     /**
+     * Holds the cached configuration flag.
+     *
+     * @var null
+     */
+    protected $cachedConfig = null;
+
+    /**
+     * Stores cached paths to avoid redundant file system lookups.
+     *
+     * @var array<string>
+     */
+    protected $pathCache = [];
+
+    /**
      * Application constructor.
      *
      * Initializes the application by:
@@ -134,8 +147,8 @@ class Application extends Container
      */
     public function __construct()
     {
-        $this->withExceptionHandler();
         parent::setInstance($this);
+        $this->withExceptionHandler();
         $this->withConfiguration();
         $this->bindSingletonClasses();
         $this->registerCoreProviders();
@@ -195,8 +208,12 @@ class Application extends Container
      */
     public function withConfiguration(): self
     {
-        Config::initialize();
-        $this->environment = \config('app.env') ?? env('APP_ENV');
+        if ($this->cachedConfig === null) {
+            Config::initialize();
+            $this->cachedConfig = true;
+        }
+
+        $this->environment = $this->cachedConfig['app.env'] ?? env('APP_ENV');
 
         return $this;
     }
@@ -221,7 +238,9 @@ class Application extends Container
             $this->loadCoreProviders() ?? [],
             config('app.providers')
         );
+
         $this->registerProviders($providers);
+
         return $this;
     }
 
@@ -355,13 +374,15 @@ class Application extends Container
      * Returns the path for a given folder name.
      *
      * @param string $folder
-     *   The folder name.
      * @return string
-     *   The full path to the folder.
      */
     protected function getPath(string $folder): string
     {
-        return base_path($folder);
+        if (!isset($this->pathCache[$folder])) {
+            $this->pathCache[$folder] = base_path($folder);
+        }
+
+        return $this->pathCache[$folder];
     }
 
     /**
@@ -610,9 +631,19 @@ class Application extends Container
         $this->singleton('path.resources', fn() => $this->resourcesPath());
         $this->singleton('path.database', fn() => $this->databasePath());
         $this->singleton('request', Request::class);
-        $this->singleton('router', Router::class);
-        $this->router = app('router');
-        $this->singleton('console', fn($app) => new \Phaseolies\Console\Console($app, 'Doppar Framework', Application::VERSION));
+
+        $this->singleton('route', Router::class);
+        $this->router = app('route');
+
+        $this->singleton(
+            'console',
+            fn($app) => new \Phaseolies\Console\Console(
+                app: $app,
+                version: 'Doppar Framework',
+                name: Application::VERSION
+            )
+        );
+
         $this->singleton('view', \Phaseolies\Support\View\Factory::class);
         $this->singleton('migrator', function () {
             return new Migrator(
