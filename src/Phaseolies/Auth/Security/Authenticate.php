@@ -6,15 +6,14 @@ use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\Facades\Cache;
 use Phaseolies\Database\Eloquent\Model;
-use App\Models\User;
 
-class Authenticate extends Model
+class Authenticate
 {
     private $data = [];
 
     /**
      * The current stateless user (for onceUsingId)
-     * @var User|null
+     * @var Model|null
      */
     private $statelessUser = null;
 
@@ -38,12 +37,13 @@ class Authenticate extends Model
      */
     public function try(array $credentials = [], bool $remember = false): bool
     {
-        $authKey = app(User::class)->getAuthKeyName();
+        $authModel = app(config('auth.model'));
+        $customAuthKey = $authModel->getAuthKeyName();
 
-        $authKeyValue = $credentials[$authKey] ?? '';
+        $authKeyValue = $credentials[$customAuthKey] ?? '';
         $password = $credentials['password'] ?? '';
 
-        $user = User::query()->where($authKey, $authKeyValue)->first();
+        $user = $authModel::query()->where($customAuthKey, $authKeyValue)->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             return false;
@@ -57,16 +57,18 @@ class Authenticate extends Model
     /**
      * Log in a user instance.
      *
-     * @param User $user
+     * @param Model $user
      * @param bool $remember
      * @return bool
      * @throws \InvalidArgumentException
      */
     public function login($user, bool $remember = false): bool
     {
-        if (!$user instanceof User) {
+        $authModel = app(config('auth.model'));
+
+        if (!$user instanceof $authModel) {
             throw new \InvalidArgumentException(
-                'Argument #1 ($user) must be an instance of App\Models\User but ' . gettype($user) . ' given'
+                "Argument #1 ($user) must be an instance of $authModel " . gettype($user) . ' given'
             );
         }
 
@@ -84,11 +86,13 @@ class Authenticate extends Model
      *
      * @param int $id
      * @param bool $remember
-     * @return User|null
+     * @return Model|null
      */
-    public function loginUsingId(int $id, bool $remember = false): ?User
+    public function loginUsingId(int $id, bool $remember = false): ?Model
     {
-        $user = User::find($id);
+        $authModel = app(config('auth.model'));
+
+        $user = $authModel::find($id);
 
         if ($user) {
             $this->login($user, $remember);
@@ -101,11 +105,13 @@ class Authenticate extends Model
      * Log in a user by their ID for a single request (no session/cookie).
      *
      * @param int $id
-     * @return User|null
+     * @return Model|null
      */
-    public function onceUsingId(int $id): ?User
+    public function onceUsingId(int $id): ?Model
     {
-        $user = User::find($id);
+        $authModel = app(config('auth.model'));
+
+        $user = $authModel::find($id);
 
         if ($user) {
             $this->statelessUser = $user;
@@ -119,16 +125,18 @@ class Authenticate extends Model
     /**
      * Get the currently authenticated user.
      *
-     * @return User|null
+     * @return Model|null
      */
-    public function user(): ?User
+    public function user(): ?Model
     {
+        $authModel = app(config('auth.model'));
+
         if ($this->statelessUser !== null) {
             return $this->statelessUser;
         }
 
         if (session()->has('user')) {
-            $user = User::find(session('user')->id);
+            $user = $authModel::find(session('user')->id);
 
             if ($user) {
                 return $user;
@@ -137,7 +145,7 @@ class Authenticate extends Model
 
         if (cookie()->has('remember_token')) {
             $rememberToken = Crypt::decrypt(cookie()->get('remember_token'));
-            $user = User::query()->where('remember_token', $rememberToken)->first();
+            $user = $authModel::query()->where('remember_token', $rememberToken)->first();
 
             if ($user) {
                 $this->setUser($user);
@@ -176,9 +184,9 @@ class Authenticate extends Model
     /**
      * Set the authenticated user in the session.
      *
-     * @param User $user
+     * @param Model $user
      */
-    private function setUser(User $user): void
+    private function setUser(Model $user): void
     {
         session()->put('user', $user);
     }
@@ -186,9 +194,9 @@ class Authenticate extends Model
     /**
      * Set the remember token for the user.
      *
-     * @param User $user
+     * @param Model $user
      */
-    private function setRememberToken(User $user): void
+    private function setRememberToken(Model $user): void
     {
         $token = bin2hex(random_bytes(50));
         $user->remember_token = $token;
@@ -237,7 +245,7 @@ class Authenticate extends Model
     public function can(string $scope): bool
     {
         return Cache::stash(
-            "auth_scope_{$scope}_".$this->id(),
+            "auth_scope_{$scope}_" . $this->id(),
             3600,
             fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
         );
