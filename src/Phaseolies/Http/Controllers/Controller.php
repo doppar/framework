@@ -369,6 +369,22 @@ class Controller extends View
             return $key;
         }, $content);
 
+        // Protect PHP blocks
+        $content = preg_replace_callback('/<\?(php)?(.*?)\?>/is', function ($matches) use (&$placeholders, &$i) {
+            $key = "__PHP_{$i}__";
+            $php = $matches[0];
+
+            // Strip safe PHP comments
+            $php = preg_replace([
+                '/\/\/[^\n]*\n/',     // Single-line comments
+                '/\/\*.*?\*\//s'      // Multi-line comments
+            ], ['', ''], $php);
+
+            $placeholders[$key] = $php;
+            $i++;
+            return $key;
+        }, $content);
+
         // Minify HTML
         $content = preg_replace('/\s+/', ' ', $content);
 
