@@ -48,7 +48,7 @@ class CsrfTokenMiddleware implements Middleware
             return $response;
         }
 
-        return $this->handleError($request, "CSRF Token mismatched");
+        return $this->handleError( "CSRF Token mismatched");
     }
 
     /**
@@ -165,20 +165,12 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles CSRF validation errors.
      *
-     * @param Request $request The incoming request instance.
      * @param string $message The error message.
      * @return Response
      * @throws TokenMismatchException
      */
-    protected function handleError(Request $request, string $message): Response
+    protected function handleError(string $message): Response
     {
-        if ($request->isAjax() || $request->is('/api/*') || $request->wantsJson()) {
-            throw new HttpResponseException(
-                $message,
-                419
-            );
-        }
-
         throw new TokenMismatchException(419, $message);
     }
 }

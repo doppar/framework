@@ -756,10 +756,6 @@ class Application extends Container
             $response->prepare($request)->send();
         } catch (HttpException $e) {
             app('response')->setException($e->getMessage());
-            if ($request->isAjax() || $request->is('/api/*')) {
-                throw new HttpResponseException($e->getMessage(), $e->getCode());
-            }
-
             Response::dispatchHttpException($e);
         }
     }

@@ -290,7 +290,8 @@ class Controller extends View
             if ($freshContent || $this->optimizationLevel > 0) {
                 // Level 1 optimizations
                 if ($this->optimizationLevel >= 1) {
-                    $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
+                    $optimizedContent = $this->safeFullMinifyWithJsCssAware($optimizedContent);
+                    // $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
                     $optimizedContent = $this->optimizeControlStructures($optimizedContent);
                     $optimizedContent = $this->optimizeEchoStatements($optimizedContent);
                     $optimizedContent = $this->optimizeBladeLoops($optimizedContent);
@@ -317,6 +318,53 @@ class Controller extends View
             error("JIT optimization failed for {$viewKey}: " . $th->getMessage());
             return $cachePath; // Fallback to original
         }
+    }
+
+    /**
+     * Ignore CSS JS Comments
+     *
+     * @param string $content
+     * @return string
+     */
+    protected function safeFullMinifyWithJsCssAware(string $content): string
+    {
+        $placeholders = [];
+        $i = 0;
+
+        // Process script blocks
+        $content = preg_replace_callback('/<script\b[^>]*>.*?<\/script>/is', function ($matches) use (&$placeholders, &$i) {
+            $key = "__SCRIPT_{$i}__";
+            $script = preg_replace([
+                '/\/\/[^\n]*\n/',    // Remove single-line comments
+                '/\/\*.*?\*\//s',    // Remove multi-line comments
+                '/\s+/'              // Collapse whitespace
+            ], ['', '', ' '], $matches[0]);
+            $placeholders[$key] = $script;
+            $i++;
+            return $key;
+        }, $content);
+
+        // Process style blocks
+        $content = preg_replace_callback('/<style\b[^>]*>.*?<\/style>/is', function ($matches) use (&$placeholders, &$i) {
+            $key = "__STYLE_{$i}__";
+            $style = preg_replace([
+                '/\/\*.*?\*\//s',    // Remove CSS comments
+                '/\s+/'              // Collapse whitespace
+            ], ['', ' '], $matches[0]);
+            $placeholders[$key] = $style;
+            $i++;
+            return $key;
+        }, $content);
+
+        // Minify HTML
+        $content = preg_replace('/\s+/', ' ', $content);
+
+        // Restore protected content
+        foreach ($placeholders as $key => $original) {
+            $content = str_replace($key, $original, $content);
+        }
+
+        return $content;
     }
 
     /**

@@ -674,10 +674,8 @@ class Response implements HttpStatus
         $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.blade.php");
 
         if (file_exists($customPath)) {
-            http_response_code($statusCode);
             include $customPath;
         } elseif (file_exists($errorPage)) {
-            http_response_code($statusCode);
             include $errorPage;
         } else {
             abort($statusCode, $message);
