@@ -2,41 +2,72 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 use RuntimeException;
 
 class KeyGenerateCommand extends Command
 {
-    protected static $defaultName = 'key:generate';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'key:generate';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Generate a new application key and set it in the .env file';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('key:generate')
-            ->setDescription('Generate a new application key and set it in the .env file');
-    }
+        $startTime = microtime(true);
+        $this->newLine();
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $randomKey = base64_encode(random_bytes(32));
+        try {
+            $randomKey = base64_encode(random_bytes(32));
+            $envPath = base_path() . '/.env';
 
-        $envPath = base_path() . '/.env';
+            if (!file_exists($envPath)) {
+                throw new RuntimeException('.env file not found!');
+            }
 
-        if (!file_exists($envPath)) {
-            throw new RuntimeException('.env file not found!');
+            $envContent = file_get_contents($envPath);
+            $newEnvContent = preg_replace(
+                '/^APP_KEY=.*$/m',
+                "APP_KEY=base64:$randomKey",
+                $envContent
+            );
+
+            if (file_put_contents($envPath, $newEnvContent) === false) {
+                throw new RuntimeException('Failed to update .env file.');
+            }
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Application key set successfully');
+            $this->newLine();
+            $this->line("<fg=yellow>🔑 Key:</> <fg=white>base64:$randomKey</>");
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
         }
 
-        $envContent = file_get_contents($envPath);
-        $newEnvContent = preg_replace('/^APP_KEY=.*$/m', "APP_KEY=base64:$randomKey", $envContent);
+        $executionTime = microtime(true) - $startTime;
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
 
-        if (file_put_contents($envPath, $newEnvContent) === false) {
-            throw new RuntimeException('Failed to update .env file.');
-        }
-
-        $output->writeln("<info>Application key set successfully: base64:$randomKey</info>");
-
-        return Command::SUCCESS;
+        return 0;
     }
 }

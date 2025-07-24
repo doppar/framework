@@ -2,41 +2,49 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class ConfigCacheCommand extends Command
 {
-    protected static $defaultName = 'config:cache';
-
     /**
-     * Stores loaded configuration data.
-     *
-     * @var array<string, mixed>
-     */
-    protected array $config = [];
-
-    /**
-     * Cache file path.
+     * The name of the console command.
      *
      * @var string
      */
-    protected string $cacheFile;
+    protected $name = 'config:cache';
 
-    protected function configure()
-    {
-        $this
-            ->setName('config:cache')
-            ->setDescription('Cache the configuration files.');
-    }
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Cache the configuration files.';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
+        $startTime = microtime(true);
+
+        $this->newLine();
+
         app('config')->loadFromCache();
 
-        $output->writeln('<info>Config cached successfully!</info>');
+        $executionTime = microtime(true) - $startTime;
 
-        return Command::SUCCESS;
+        $this->newLine();
+        $this->line('<bg=green;options=bold> SUCCESS </> Application configuration cached successfully.');
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+
+        return 0;
     }
 }

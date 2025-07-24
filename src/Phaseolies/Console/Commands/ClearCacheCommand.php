@@ -28,13 +28,26 @@ class ClearCacheCommand extends Command
      */
     protected function handle(): int
     {
+        $startTime = microtime(true);
+
+        $this->newLine();
+
         $cacheDir = base_path('storage/framework/cache');
-
         $this->deleteDirectoryContents($cacheDir);
-
         Cache::clear();
 
-        $this->info('Cache cleared successfully');
+        $executionTime = microtime(true) - $startTime;
+
+        $this->newLine();
+        $this->line('<bg=green;options=bold> SUCCESS </> Application cache has been gracefully cleared.');
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+        return 0;
 
         return 0;
     }

@@ -353,10 +353,10 @@ class Database
     /**
      * Drop all tables in the database
      *
-     * @return void
+     * @return int
      * @throws PDOException
      */
-    public static function dropAllTables(): void
+    public static function dropAllTables(): int
     {
         $pdo = static::getPdoInstance();
 
@@ -370,6 +370,8 @@ class Database
             }
 
             $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+
+            return count($tables);
         } catch (PDOException $e) {
             $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
             throw new PDOException("Failed to drop all tables: " . $e->getMessage());

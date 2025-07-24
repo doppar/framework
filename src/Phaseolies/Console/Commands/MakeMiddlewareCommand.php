@@ -2,55 +2,88 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakeMiddlewareCommand extends Command
 {
-    protected static $defaultName = 'make:middleware';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:middleware {name}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new middleware class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:middleware')
-            ->setDescription('Creates a new middleware class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the middleware class.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $name = $this->argument('name');
+            $parts = explode('/', $name);
+            $className = array_pop($parts);
+            $namespace = 'App\\Http\\Middleware' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Http/Middleware/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+
+            // Check if middleware already exists
+            if (file_exists($filePath)) {
+                $this->line('<bg=red;options=bold> ERROR </> Middleware already exists at:');
+                $this->newLine();
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->newLine();
+                return 1;
+            }
+
+            // Create directory if needed
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
+
+            // Generate and save middleware class
+            $content = $this->generateMiddlewareContent($namespace, $className);
+            file_put_contents($filePath, $content);
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Middleware created successfully');
+            $this->newLine();
+            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+            $this->line('<fg=yellow>🔒 Class:</> <fg=white>' . $className . '</>');
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-
-        $parts = explode('/', $name);
-        $className = array_pop($parts);
-
-        $namespace = 'App\\Http\\Middleware' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-
-        $filePath = base_path() . '/app/Http/Middleware/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
-
-        if (file_exists($filePath)) {
-            $output->writeln('<error>Middleware already exists!</error>');
-            return Command::FAILURE;
-        }
-
-        $directoryPath = dirname($filePath);
-        if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
-        }
-
-        $content = $this->generateRouteMiddlewareContent($namespace, $className);
-
-        file_put_contents($filePath, $content);
-
-        $output->writeln('<info>Middleware created successfully</info>');
-
-        return Command::SUCCESS;
-    }
-
-    protected function generateRouteMiddlewareContent(string $namespace, string $className): string
+    /**
+     * Generate middleware class content.
+     */
+    protected function generateMiddlewareContent(string $namespace, string $className): string
     {
         return <<<EOT
 <?php
@@ -68,7 +101,7 @@ class {$className} implements Middleware
      * Handle an incoming request.
      *
      * @param Request \$request
-     * @param \Closure(\Phaseolies\Http\Request) \$next
+     * @param \Closure(\Phaseolies\Http\Request): Response \$next
      * @return Response
      */
     public function __invoke(Request \$request, Closure \$next): Response
@@ -76,6 +109,7 @@ class {$className} implements Middleware
         return \$next(\$request);
     }
 }
+
 EOT;
     }
 }

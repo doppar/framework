@@ -2,49 +2,85 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakeProviderCommand extends Command
 {
-    protected static $defaultName = 'make:provider';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:provider {name}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new service provider class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:provider')
-            ->setDescription('Creates a new service provider class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the provider class.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $name = $this->argument('name');
+            $namespace = 'App\\Providers';
+            $filePath = base_path('app/Providers/' . $name . '.php');
+
+            // Check if provider already exists
+            if (file_exists($filePath)) {
+                $this->line('<bg=red;options=bold> ERROR </> Provider already exists at:');
+                $this->newLine();
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->newLine();
+                return 1;
+            }
+
+            // Create directory if needed
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
+
+            // Generate and save provider class
+            $content = $this->generateProviderContent($namespace, $name);
+            file_put_contents($filePath, $content);
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Provider created successfully');
+            $this->newLine();
+            $this->line('<fg=yellow>📦 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+            $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $name . '</>');
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-
-        $namespace = 'App\\Providers';
-        $filePath = base_path() . '/app/Providers/' . $name . '.php';
-
-        if (file_exists($filePath)) {
-            $output->writeln('<error>Provider already exists!</error>');
-            return Command::FAILURE;
-        }
-
-        $directoryPath = dirname($filePath);
-        if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
-        }
-
-        $content = $this->generateProviderContent($namespace, $name);
-
-        file_put_contents($filePath, $content);
-
-        $output->writeln('<info>Provider created successfully</info>');
-
-        return Command::SUCCESS;
-    }
-
+    /**
+     * Generate provider class content.
+     */
     protected function generateProviderContent(string $namespace, string $className): string
     {
         return <<<EOT
@@ -66,7 +102,7 @@ class {$className} extends ServiceProvider
         //
     }
 
-     /**
+    /**
      * Bootstrap any application services.
      *
      * @return void
@@ -76,6 +112,7 @@ class {$className} extends ServiceProvider
         //
     }
 }
+
 EOT;
     }
 }

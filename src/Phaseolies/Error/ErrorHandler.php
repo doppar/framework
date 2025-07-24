@@ -60,62 +60,16 @@ class ErrorHandler
 
                 $section->writeln([
                     '',
-                    sprintf('<bg=red;fg=white;options=bold>  🚨  %s  </>', $errorMessage),
-                    '',
+                    '<fg=red;options=bold><bg=red;fg=white;> ERROR OCCURRED </></>',
+                    ''
                 ]);
 
-                $section->writeln(sprintf(
-                    '  <fg=yellow>📂 File:</> <href=file://%s><fg=white;options=underscore>%s</></>',
-                    $errorFile,
-                    $errorFile
-                ));
-                $section->writeln(sprintf(
-                    '  <fg=yellow>📌 Line:</> <fg=white>%d</>',
-                    $errorLine
-                ));
+                $section->writeln([
+                    sprintf('<fg=red;>✖ ERROR:</> <fg=red>%s</>', $errorMessage),
+                    sprintf('<fg=red>📁 FILE:</> <fg=white>%s</>', $errorFile),
+                    sprintf('<fg=red>📍 LINE:</> <fg=white>%d</>', $errorLine),
+                ]);
 
-                $traceLines = explode("\n", $errorTrace);
-                $shortTrace = array_slice($traceLines, 0, 2);
-                $hasMore = count($traceLines) > 2;
-
-                $section->writeln('');
-                $section->writeln('  <fg=blue;options=bold>🔍 Stack Trace:</>');
-                $section->writeln('  <fg=gray>┌──────────────────────────────────────────────────────────┐</>');
-
-                foreach ($shortTrace as $line) {
-                    if (preg_match('/#\d+\s+(.*?)(\((\d+)\))?:/', $line, $matches)) {
-                        $file = $matches[1];
-                        $lineNumber = $matches[3] ?? '';
-                        $formatted = preg_replace(
-                            '/(#\d+\s+)(.*?)(\((\d+)\))?:/',
-                            '$1<href=file://$2><fg=cyan;options=underscore>$2</></>$3:',
-                            $line
-                        );
-                        $section->writeln(sprintf('  <fg=gray>│</> %-56s <fg=gray>│</>', $formatted));
-                    } else {
-                        $section->writeln(sprintf('  <fg=gray>│</> %-56s <fg=gray>│</>', $line));
-                    }
-                }
-
-                if ($hasMore) {
-                    $remaining = count($traceLines) - 2;
-                    $section->writeln(sprintf(
-                        '  <fg=gray>│</> <fg=yellow>... %d more</>%s <fg=gray>│</>',
-                        $remaining,
-                        str_repeat(' ', 56 - 38 - strlen((string)$remaining))
-                    ));
-                }
-
-                $section->writeln('  <fg=gray>└──────────────────────────────────────────────────────────┘</>');
-                if (str_contains($errorMessage, 'undefined variable')) {
-                    $varName = preg_match('/undefined variable (\$\w+)/i', $errorMessage, $matches)
-                        ? $matches[1]
-                        : '$variable';
-
-                    $section->writeln('');
-                    $section->writeln('  <fg=green>💡 Quick Fix:</> Define the variable before using it:');
-                    $section->writeln(sprintf('      <fg=white>%s = "default_value";</>', $varName));
-                }
                 exit(1);
             }
 

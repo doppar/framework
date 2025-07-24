@@ -5,7 +5,7 @@ namespace Phaseolies\Utilities\Attributes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_METHOD | Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class Middleware
+final class Middleware
 {
     /**
      * @param string|array $middleware Single middleware class or array of middleware classes

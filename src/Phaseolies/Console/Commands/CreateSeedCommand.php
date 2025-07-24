@@ -2,43 +2,68 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class CreateSeedCommand extends Command
 {
-    protected static $defaultName = 'make:seeder';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:seeder {name}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Creates a new seeder class.';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:seeder')
-            ->setDescription('Creates a new seeder class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the seeder class.');
-    }
+        $startTime = microtime(true);
+        $this->newLine();
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-
+        $name = $this->argument('name');
         $filePath = base_path('database/seeders/' . $name . '.php');
 
         if (file_exists($filePath)) {
-            $output->writeln('<error>Seed file already exists!</error>');
-            return Command::FAILURE;
+            $this->line('<bg=red;options=bold> ERROR </> Seed file already exists!');
+            $this->newLine();
+            return 1;
         }
 
         $content = $this->generateSeedContent($name);
-
         file_put_contents($filePath, $content);
 
-        $output->writeln('<info>Seed file created successfully</info>');
+        $this->line('<bg=green;options=bold> SUCCESS </> Seed file created successfully');
+        $this->newLine();
+        $this->line("<fg=yellow>📁 File:</> <fg=white>{$filePath}</>");
 
-        return Command::SUCCESS;
+        $executionTime = microtime(true) - $startTime;
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+
+        return 0;
     }
 
+    /**
+     * Generate the content for the seeder class.
+     *
+     * @param string \$className
+     * @return string
+     */
     protected function generateSeedContent(string $className): string
     {
         return <<<EOT

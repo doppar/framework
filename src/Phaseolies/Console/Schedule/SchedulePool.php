@@ -16,7 +16,7 @@ class SchedulePool
      * @param bool $background Run in background (recommended for web)
      * @return array Process information
      */
-    public static function call(string $command, bool $background = true): array
+    public static function call(string $command, bool $background = false): array
     {
         $commandArray = ['php', 'pool'];
         $commandArray = array_merge($commandArray, explode(' ', $command));

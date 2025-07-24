@@ -201,4 +201,29 @@ abstract class Command extends SymfonyCommand
     {
         $this->output->writeln("<comment>{$string}</comment>");
     }
+
+    /**
+     * Write a string as standard output.
+     *
+     * @param string $string
+     * @param string|null $style
+     * @return void
+     */
+    protected function line(string $string, ?string $style = null): void
+    {
+        $styled = $style ? "<{$style}>{$string}</{$style}>" : $string;
+
+        $this->output->writeln($styled);
+    }
+
+    /**
+     * Write a blank line to the output.
+     *
+     * @param int $count Number of newlines to write
+     * @return void
+     */
+    protected function newLine($count = 1): void
+    {
+        $this->output->write(str_repeat(PHP_EOL, $count));
+    }
 }

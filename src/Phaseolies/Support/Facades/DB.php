@@ -10,7 +10,7 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Database\Database transaction(\Closure $callback, int $attempts = 1)
  * @method static \Phaseolies\Database\Database transactionLevel(): int
  * @method static \Phaseolies\Database\Database getTableColumns(?string $table = null): array
- * @method static \Phaseolies\Database\Database dropAllTables(): void
+ * @method static \Phaseolies\Database\Database dropAllTables(): int
  * @method static \Phaseolies\Database\Database table(string $table): Builder
  * @method static \Phaseolies\Database\Database getTables(): array
  * @method static \Phaseolies\Database\Database tableExists(string $table): bool
@@ -20,7 +20,6 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Database\Database view(string $viewName, array $where = [], array $params = []): array
  * @method static \Phaseolies\Database\Database query(string $sql, array $params = []): \Phaseolies\Support\Collection
  * @method static \Phaseolies\Database\Database execute(string $sql, array $params = []): int
- * @method static \Phaseolies\Database\Database dropAllTables(): void
  * @method static \Phaseolies\Database\Database statement(string $sql, array $params = []): \PDOStatement
  * @see \Phaseolies\Database\Database
  */

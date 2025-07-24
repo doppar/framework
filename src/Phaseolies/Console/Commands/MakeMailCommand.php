@@ -2,58 +2,93 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakeMailCommand extends Command
 {
-    protected static $defaultName = 'make:mail';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:mail {name}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new Mailable class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:mail')
-            ->setDescription('Creates a new Mailable class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the Mailable class.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $name = $this->argument('name');
+            $parts = explode('/', $name);
+            $className = array_pop($parts);
+
+            // Ensure class name ends with Mail
+            if (!str_ends_with($className, 'Mail')) {
+                $className .= 'Mail';
+            }
+
+            $namespace = 'App\\Mail' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Mail/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+
+            // Check if Mailable already exists
+            if (file_exists($filePath)) {
+                $this->line('<bg=red;options=bold> ERROR </> Mailable already exists at:');
+                $this->newLine();
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->newLine();
+                return 1;
+            }
+
+            // Create directory if needed
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
+
+            // Generate and save Mailable class
+            $content = $this->generateMailContent($namespace, $className);
+            file_put_contents($filePath, $content);
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Mailable created successfully');
+            $this->newLine();
+            $this->line('<fg=yellow>📧 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+            $this->line('<fg=yellow>✉️  Class:</> <fg=white>' . $className . '</>');
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-
-        $parts = explode('/', $name);
-
-        $className = array_pop($parts);
-
-        if (!str_ends_with($className, 'Mail')) {
-            $className .= 'Mail';
-        }
-
-        $namespace = 'App\\Mail' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-
-        $filePath = base_path() . '/app/Mail/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
-
-        if (file_exists($filePath)) {
-            $output->writeln('<error>Mailable already exists!</error>');
-            return Command::FAILURE;
-        }
-
-        $directoryPath = dirname($filePath);
-        if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
-        }
-
-        $content = $this->generateMailContent($namespace, $className);
-
-        file_put_contents($filePath, $content);
-
-        $output->writeln('<info>Mailable created successfully</info>');
-
-        return Command::SUCCESS;
-    }
-
+    /**
+     * Generate Mailable class content.
+     */
     protected function generateMailContent(string $namespace, string $className): string
     {
         return <<<EOT
@@ -108,6 +143,7 @@ class {$className} extends Mailable
         return [];
     }
 }
+
 EOT;
     }
 }

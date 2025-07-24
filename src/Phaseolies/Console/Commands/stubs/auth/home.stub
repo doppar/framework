@@ -1,0 +1,15 @@
+@extends('layouts.app')
+@section('title') Dashboard
+@section('content')
+    <div class="card shadow-lg mb-4">
+        <div class="card-header text-black fw-bold">
+            <h5 class="fw-bold fs-5">{{ __('Dashboard') }}</h5>
+        </div>
+        <div class="card-body">
+            <p class="fw-bold fs-5">
+                You are logged in
+                <span class="text-success fw-bold">{{ Auth::user()->name }}</span>
+            </p>
+        </div>
+    </div>
+@endsection

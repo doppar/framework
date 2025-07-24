@@ -2,34 +2,44 @@
 
 namespace Phaseolies\Console\Commands;
 
+use Phaseolies\Console\Schedule\Command;
 use Database\Seeders\DatabaseSeeder;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Command\Command;
 
 class DBSeedCommand extends Command
 {
-    protected static $defaultName = 'db:seed';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'db:seed {seed?}';
 
-    protected function configure()
-    {
-        $this
-            ->setName('db:seed')
-            ->setDescription('Run database seeds.')
-            ->addArgument('seed', InputArgument::OPTIONAL, 'The name of the seed to run (optional).');
-    }
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Run database seeds.';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $seedName = $input->getArgument('seed');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        $seedName = $this->argument('seed');
 
         if ($seedName) {
             $seederClass = 'Database\\Seeders\\' . $seedName;
 
             if (!class_exists($seederClass)) {
-                $output->writeln("<error>Seeder {$seedName} not found</error>");
-                return Command::FAILURE;
+                $this->line('<bg=red;options=bold> ERROR </> Seeder not found: ' . $seedName);
+                $this->newLine();
+                return 1;
             }
 
             $seeder = new $seederClass();
@@ -39,7 +49,18 @@ class DBSeedCommand extends Command
             $databaseSeeder->run();
         }
 
-        $output->writeln('<info>Seeds executed successfully</info>');
-        return Command::SUCCESS;
+        $this->line('<bg=green;options=bold> SUCCESS </> Seeds executed successfully');
+
+        $executionTime = microtime(true) - $startTime;
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+
+        $this->newLine();
+
+        return 0;
     }
 }

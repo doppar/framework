@@ -2,27 +2,49 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class ClearConfigCommand extends Command
 {
-    protected static $defaultName = 'config:clear';
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'config:clear';
 
-    protected function configure()
-    {
-        $this
-            ->setName('config:clear')
-            ->setDescription('Clear all config cache data.');
-    }
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Clear all config cache data.)';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
+        $startTime = microtime(true);
+
+        $this->newLine();
+
         app('config')->clearCache();
 
-        $output->writeln('<info>Config cache cleared successfully</info>');
+        $executionTime = microtime(true) - $startTime;
 
-        return Command::SUCCESS;
+        $this->newLine();
+        $this->line('<bg=green;options=bold> SUCCESS </> Configuration cache has been gracefully cleared.');
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+
+        return 0;
     }
 }

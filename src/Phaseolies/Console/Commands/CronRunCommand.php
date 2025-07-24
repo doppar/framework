@@ -5,7 +5,6 @@ namespace Phaseolies\Console\Commands;
 use App\Schedule\Schedule;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Process\Process;
 

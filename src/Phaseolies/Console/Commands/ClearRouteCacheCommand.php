@@ -3,26 +3,48 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Support\Facades\Route;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Command\Command;
+use Phaseolies\Console\Schedule\Command;
 
 class ClearRouteCacheCommand extends Command
 {
-    protected static $defaultName = 'route:clear';
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'route:clear';
 
-    protected function configure()
-    {
-        $this
-            ->setName('route:clear')
-            ->setDescription('Clear all route files from the storage/framework/cache folder.');
-    }
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Clear all route cache files from the storage/framework/cache folder';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
+        $startTime = microtime(true);
+
+        $this->newLine();
+
         Route::clearRouteCache();
 
-        $output->writeln('<info>Route cache cleared successfully</info>');
-        return Command::SUCCESS;
+        $executionTime = microtime(true) - $startTime;
+
+        $this->newLine();
+        $this->line('<bg=green;options=bold> SUCCESS </> Route cache has been gracefully cleared.');
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+        return 0;
     }
 }

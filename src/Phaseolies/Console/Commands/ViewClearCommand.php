@@ -2,38 +2,79 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class ViewClearCommand extends Command
 {
-    protected static $defaultName = 'view:clear';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'view:clear';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Clear all compiled view files';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('view:clear')
-            ->setDescription('Clear all compiled view files from the storage/views folder.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $viewCacheDir = base_path('storage/framework/views');
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Compiled views cleared successfully');
+            $this->newLine();
+            $this->clearViewCache($viewCacheDir);
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Clear the view cache directory.
+     */
+    protected function clearViewCache(string $viewCacheDir): void
     {
-        $viewCacheDir = base_path() . '/storage/framework/views';
-
         if (!is_dir($viewCacheDir)) {
-            $output->writeln("<error>View cache directory does not exist: $viewCacheDir</error>");
-            return Command::FAILURE;
+            throw new RuntimeException("View cache directory does not exist: $viewCacheDir");
         }
 
         $files = glob($viewCacheDir . '/*');
+        $count = 0;
+
         foreach ($files as $file) {
             if (is_file($file)) {
-                unlink($file);
+                if (@unlink($file)) {
+                    $count++;
+                }
             }
         }
 
-        $output->writeln('<info>Compiled views cleared successfully!</info>');
-        return Command::SUCCESS;
+        $this->line('<fg=yellow>🗑️  Cleared:</> <fg=white>' . $count . ' compiled view files</>');
     }
 }

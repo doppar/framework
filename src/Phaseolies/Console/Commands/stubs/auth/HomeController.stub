@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Phaseolies\Http\Response;
+use App\Http\Controllers\Controller;
+
+class HomeController extends Controller
+{
+    /**
+     * Display the home page view
+     *
+     * @return Response
+     */
+    public function home(): Response
+    {
+        return view('home');
+    }
+}

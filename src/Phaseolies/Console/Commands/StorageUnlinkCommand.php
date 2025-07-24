@@ -2,28 +2,68 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class StorageUnlinkCommand extends Command
 {
-    protected static $defaultName = 'storage:unlink';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'storage:unlink';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Remove the symbolic link from public/storage to storage/app/public';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('storage:unlink')
-            ->setDescription('Unlink the symbolic link from public/storage to storage/app/public.');
-    }
+        $startTime = microtime(true);
+        $this->newLine();
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $cacheDir = \public_path('storage');
+        try {
+            $linkPath = public_path('storage');
 
-        @unlink($cacheDir);
+            if (!is_link($linkPath)) {
+                $this->line('<bg=yellow;options=bold> WARNING </> No symbolic link found at:');
+                $this->newLine();
+                $this->line('<fg=white>' . $linkPath . '</>');
+                $this->newLine();
+                return 1;
+            }
 
-        $output->writeln('<info>Unlinked the symbolic link successfully</info>');
-        return Command::SUCCESS;
+            if (@unlink($linkPath)) {
+                $this->line('<bg=green;options=bold> SUCCESS </> Symbolic link removed successfully');
+                $this->newLine();
+                $this->line('<fg=yellow>🗑️  Removed:</> <fg=white>' . $linkPath . '</>');
+
+                $executionTime = microtime(true) - $startTime;
+                $this->newLine();
+                $this->line(sprintf(
+                    "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                    $executionTime,
+                    (int) ($executionTime * 1000000)
+                ));
+                $this->newLine();
+
+                return 0;
+            }
+
+            throw new RuntimeException('Failed to remove symbolic link');
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 }

@@ -2,65 +2,116 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 use Symfony\Component\Process\Process;
+use RuntimeException;
 
 class StorageLinkCommand extends Command
 {
-    protected static $defaultName = 'storage:link';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'storage:link';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create symbolic links from public/storage to storage/app/public';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('storage:link')
-            ->setDescription('Create a symbolic link from public/storage to storage/app/public.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $links = config('filesystem.links');
+
+            if (empty($links)) {
+                $this->line('<bg=red;options=bold> ERROR </> No symbolic links configured in config/filesystems.php');
+                $this->newLine();
+                return 1;
+            }
+
+            foreach ($links as $link => $target) {
+                $this->processLink($link, $target);
+            }
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Process a single symbolic link.
+     */
+    protected function processLink(string $link, string $target): void
     {
-        $links = config('filesystem.links');
+        if (is_link($link)) {
+            $currentTarget = readlink($link);
 
-        if (empty($links)) {
-            $output->writeln('<error>No symbolic links configured in config/filesystems.php</error>');
-            return Command::FAILURE;
-        }
-
-        foreach ($links as $link => $target) {
-            if (is_link($link)) {
-                $currentTarget = readlink($link);
-
-                if ($currentTarget === $target) {
-                    $output->writeln("<info>✓ Link already exists</info>");
-                    continue;
-                }
-
-                $output->writeln("<comment>✗ Link exists but points elsewhere. Replacing...</comment>");
-                unlink($link);
-            } elseif (file_exists($link)) {
-                $output->writeln("<comment>✗ File/directory exists at {$link}. Removing...</comment>");
-                $rmProcess = Process::fromShellCommandline(sprintf('rm -rf %s', escapeshellarg($link)));
-                $rmProcess->run();
-
-                if (!$rmProcess->isSuccessful()) {
-                    $output->writeln('<error>Failed to remove: ' . $rmProcess->getErrorOutput() . '</error>');
-                    return Command::FAILURE;
-                }
+            if ($currentTarget === $target) {
+                $this->line('<fg=green>✓ Link already exists:</> <fg=white>' . $link . ' → ' . $target . '</>');
+                return;
             }
 
-            $cmd = sprintf('ln -s %s %s', escapeshellarg($target), escapeshellarg($link));
-            $symlinkProcess = Process::fromShellCommandline($cmd);
-            $symlinkProcess->run();
-
-            if ($symlinkProcess->isSuccessful()) {
-                $output->writeln("<info>✓ Symbolic Link created: {$link} → {$target}</info>");
-            } else {
-                $output->writeln('<error>Failed to create symlink: ' . $symlinkProcess->getErrorOutput() . '</error>');
-                return Command::FAILURE;
-            }
+            $this->line('<fg=yellow>⚠️  Link exists but points elsewhere. Replacing...</>');
+            unlink($link);
+        } elseif (file_exists($link)) {
+            $this->line('<fg=yellow>⚠️  File/directory exists at:</> <fg=white>' . $link . '</> <fg=yellow>Removing...</>');
+            $this->removeExistingPath($link);
         }
 
-        return Command::SUCCESS;
+        $this->createSymlink($link, $target);
+    }
+
+    /**
+     * Remove existing file/directory at path.
+     */
+    protected function removeExistingPath(string $path): void
+    {
+        $process = Process::fromShellCommandline(sprintf('rm -rf %s', escapeshellarg($path)));
+        $process->run();
+
+        if (!$process->isSuccessful()) {
+            throw new RuntimeException('Failed to remove: ' . $process->getErrorOutput());
+        }
+    }
+
+    /**
+     * Create a new symbolic link.
+     */
+    protected function createSymlink(string $link, string $target): void
+    {
+        $process = Process::fromShellCommandline(
+            sprintf('ln -s %s %s', escapeshellarg($target), escapeshellarg($link))
+        );
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            $this->line('<fg=green>✓ Created symbolic link:</> <fg=white>' . $link . ' → ' . $target . '</>');
+        } else {
+            throw new RuntimeException('Failed to create symlink: ' . $process->getErrorOutput());
+        }
     }
 }

@@ -2,66 +2,96 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakeControllerCommand extends Command
 {
-    protected static $defaultName = 'make:controller';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:controller {name} {--i}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new controller class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:controller')
-            ->setDescription('Creates a new controller class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the controller class.')
-            ->addOption('invok', null, InputOption::VALUE_NONE, 'Create an invokable controller.');
+        $startTime = microtime(true);
+        $this->newLine();
+
+        try {
+            $name = $this->argument('name');
+            $isInvokable = $this->option('i');
+
+            $parts = explode('/', $name);
+            $className = array_pop($parts);
+            $namespace = 'App\\Http\\Controllers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Http/Controllers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+
+            if (file_exists($filePath)) {
+                $this->line('<bg=red;options=bold> ERROR </> Controller already exists at:');
+                $this->newLine();
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->newLine();
+                return 1;
+            }
+
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
+
+            $content = $this->generateControllerContent($namespace, $className, $isInvokable);
+            file_put_contents($filePath, $content);
+
+            $this->line('<bg=green;options=bold> SUCCESS </> Controller created successfully');
+            $this->newLine();
+            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+            $this->line('<fg=yellow>📌 Type:</> <fg=white>' . ($isInvokable ? 'Invokable' : 'Standard') . ' controller</>');
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
+        }
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-        $isInvokable = $input->getOption('invok');
-
-        $parts = explode('/', $name);
-
-        $className = array_pop($parts);
-
-        $namespace = 'App\\Http\\Controllers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-
-        $filePath = base_path() . '/app/Http/Controllers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
-
-        if (file_exists($filePath)) {
-            $output->writeln('<error>Controller already exists!</error>');
-            return Command::FAILURE;
-        }
-
-        $directoryPath = dirname($filePath);
-        if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
-        }
-
-        $content = $this->generateControllerContent($namespace, $className, $isInvokable);
-
-        file_put_contents($filePath, $content);
-
-        $output->writeln('<info>Controller created successfully</info>');
-
-        return Command::SUCCESS;
-    }
-
+    /**
+     * Generate controller content based on type.
+     */
     protected function generateControllerContent(string $namespace, string $className, bool $isInvokable): string
     {
-        if ($isInvokable) {
-            return $this->generateInvokableControllerContent($namespace, $className);
-        }
-
-        return $this->generateRegularControllerContent($namespace, $className);
+        return $isInvokable
+            ? $this->generateInvokableControllerContent($namespace, $className)
+            : $this->generateRegularControllerContent($namespace, $className);
     }
 
+    /**
+     * Generate standard controller content.
+     */
     protected function generateRegularControllerContent(string $namespace, string $className): string
     {
         return <<<EOT
@@ -75,9 +105,13 @@ class {$className} extends Controller
 {
     //
 }
+
 EOT;
     }
 
+    /**
+     * Generate invokable controller content.
+     */
     protected function generateInvokableControllerContent(string $namespace, string $className): string
     {
         return <<<EOT
@@ -98,6 +132,7 @@ class {$className} extends Controller
         //
     }
 }
+
 EOT;
     }
 }

@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Support\Facades\Auth;
+use App\Models\User;
+use App\Http\Controllers\Controller;
+use Phaseolies\Http\Response\RedirectResponse;
+
+class LoginController extends Controller
+{
+    /**
+     * Show the login form view.
+     *
+     * @return Response
+     */
+    public function index(): Response
+    {
+        return view('auth.login');
+    }
+
+    /**
+     * Handle an authentication attempt.
+     *
+     * @param Request $request
+     * @return RedirectResponse
+     */
+    public function login(Request $request): RedirectResponse
+    {
+        $request->sanitize([
+            'email' => 'required|email|min:2|max:100',
+            'password' => 'required|min:2|max:20'
+        ]);
+
+        $user = User::query()->where('email', '=', $request->email)->first();
+
+        if ($user) {
+            if (Auth::try($request->passed())) {
+                return redirect()->intended('/home')
+                    ->withSuccess('You are logged in');
+            }
+
+            return back()->withError('Email or password is incorrect');
+        }
+
+        return back()->withError('User does not exist');
+    }
+
+    /**
+     * Log the user out and redirect to login page.
+     *
+     * @return RedirectResponse
+     */
+    public function logout(): RedirectResponse
+    {
+        Auth::logout();
+
+        return redirect('/login')->withSuccess('You are successfully logged out');
+    }
+}
