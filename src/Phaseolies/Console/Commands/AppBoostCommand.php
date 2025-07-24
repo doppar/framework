@@ -4,6 +4,7 @@ namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Support\Facades\Pool;
 use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class AppBoostCommand extends Command
 {
@@ -15,7 +16,9 @@ class AppBoostCommand extends Command
     protected $name = 'boost';
 
     /**
-     * The description of the console command
+     * The description of the console command.
+     *
+     * @var string
      */
     protected $description = 'Optimizes application performance by clearing and rebuilding caches (config, routes, views)';
 
@@ -26,6 +29,9 @@ class AppBoostCommand extends Command
      */
     protected function handle(): int
     {
+        $startTime = microtime(true);
+        $this->newLine();
+
         $commands = [
             'cache:clear',        // Clear application cache
             'route:clear',        // Clear route cache
@@ -36,13 +42,31 @@ class AppBoostCommand extends Command
             'view:cache',         // Recompile views
         ];
 
-        foreach ($commands as $command) {
-            $this->runCommand($command);
+        try {
+            $this->line('<fg=yellow>⚡ Running application optimization commands:</>');
+            $this->newLine();
+
+            foreach ($commands as $command) {
+                $this->runCommand($command);
+            }
+
+            $executionTime = microtime(true) - $startTime;
+            $this->newLine();
+            $this->line('<bg=green;options=bold> SUCCESS </> Application optimization completed successfully');
+            $this->newLine();
+            $this->line(sprintf(
+                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+                $executionTime,
+                (int) ($executionTime * 1000000)
+            ));
+            $this->newLine();
+
+            return 0;
+        } catch (RuntimeException $e) {
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
         }
-
-        $this->info('Application optimization completed successfully.');
-
-        return 0;
     }
 
     /**
@@ -50,13 +74,15 @@ class AppBoostCommand extends Command
      *
      * @param string $command
      * @return void
+     * @throws RuntimeException
      */
     protected function runCommand(string $command): void
     {
-        $this->info("Starting: <comment>{$command}</comment>");
+        $this->line(sprintf(
+            "<fg=blue>➜</> <fg=white>%s</>",
+            $command
+        ));
 
         Pool::call($command, false);
-
-        $this->info("Completed: <info>{$command}</info>");
     }
 }
