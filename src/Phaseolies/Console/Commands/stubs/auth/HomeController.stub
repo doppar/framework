@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Http\Response;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\Authenticate;
 
+#[Middleware([Authenticate::class])]
 class HomeController extends Controller
 {
     /**

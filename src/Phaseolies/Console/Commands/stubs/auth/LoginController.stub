@@ -5,17 +5,21 @@ namespace App\Http\Controllers\Auth;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Support\Facades\Auth;
+use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Http\Response\RedirectResponse;
 use App\Models\User;
 use App\Http\Controllers\Controller;
-use Phaseolies\Http\Response\RedirectResponse;
+use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\GuestMiddleware;
 
 class LoginController extends Controller
 {
-    /**
-     * Show the login form view.
-     *
-     * @return Response
-     */
+   /**
+    * Show the login form view.
+    *
+    * @return Response
+    */
+    #[Middleware([GuestMiddleware::class])]
     public function index(): Response
     {
         return view('auth.login');
@@ -27,6 +31,7 @@ class LoginController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
+    #[Middleware([GuestMiddleware::class])]
     public function login(Request $request): RedirectResponse
     {
         $request->sanitize([
@@ -53,6 +58,7 @@ class LoginController extends Controller
      *
      * @return RedirectResponse
      */
+    #[Middleware([Authenticate::class])]
     public function logout(): RedirectResponse
     {
         Auth::logout();

@@ -384,6 +384,57 @@ trait QueryCollection
     }
 
     /**
+     * Update the model in the database.
+     *
+     * @param array $attributes Key-value pairs of attributes to update
+     * @return bool True if the update was successful, false otherwise
+     */
+    public function update(array $attributes): bool
+    {
+        if (!isset($this->attributes[$this->primaryKey])) {
+            return false;
+        }
+
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+            return false;
+        }
+
+        foreach ($attributes as $key => $value) {
+            $this->setAttribute($key, $value);
+        }
+
+        $dirty = $this->getDirtyAttributes();
+
+        if (empty($dirty)) {
+            return true;
+        }
+
+        if (!empty($this->creatable)) {
+            $dirty = array_intersect_key($dirty, array_flip($this->creatable));
+        }
+
+        if ($this->usesTimestamps()) {
+            $hasCastToDate = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
+            $dirty['updated_at'] = $hasCastToDate
+                ? now()->startOfDay()
+                : now();
+        }
+
+        $result = static::query()
+            ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+            ->update($dirty);
+
+        if ($result) {
+            if (self::$isHookShouldBeCalled) {
+                $this->fireAfterHooks('updated');
+            }
+            $this->originalAttributes = $this->attributes;
+        }
+
+        return $result;
+    }
+
+    /**
      * Accesses a private or protected property of a class using reflection.
      *
      * @param string $class The fully qualified class name.

@@ -6,9 +6,12 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Http\Response\RedirectResponse;
+use Phaseolies\Utilities\Attributes\Middleware;
 use App\Models\User;
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\GuestMiddleware;
 
+#[Middleware([GuestMiddleware::class])]
 class RegisterController extends Controller
 {
     /**

@@ -2006,20 +2006,11 @@ class Builder
      */
     public function update(array $attributes): bool
     {
-        static $timestamps = [];
-        $hasCastToDateAttribute = false;
         $class = $this->modelClass;
 
-        if (!array_key_exists($class, $timestamps)) {
-            $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
-            if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
-                // The property has the #[CastToDate] attribute
-                $hasCastToDateAttribute = true;
-            }
-        }
-
-        if ($timestamps[$class] && app($class)->usesTimestamps()) {
-            $attributes['updated_at'] = $hasCastToDateAttribute
+        if (app($class)->usesTimestamps()) {
+            $hasCastToDate = $this->propertyHasAttribute($class, 'timeStamps', CastToDate::class);
+            $attributes['updated_at'] = $hasCastToDate
                 ? now()->startOfDay()
                 : now();
         }

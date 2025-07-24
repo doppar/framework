@@ -172,12 +172,41 @@ class Authenticate
      */
     public function logout(): void
     {
+        $user = auth()->user();
+
+        if ($user && $user?->remember_token) {
+            $user->remember_token = null;
+            $user->withoutHook();
+            $user->save();
+        }
+
         $this->statelessUser = null;
 
         session()->forget('user');
+        session()->invalidate();
+        session()->regenerateToken();
 
         if (cookie()->has('remember_token')) {
-            setcookie('remember_token', '', time() - 3600, '/');
+            $this->expireRememberCookie();
+        }
+    }
+
+    /**
+     * Removes expired cookie
+     *
+     * @return void
+     */
+    protected function expireRememberCookie(): void
+    {
+        if (cookie()->has('remember_token')) {
+            setcookie('remember_token', '', [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'domain' => config('session.domain') ?? '',
+                'secure' => request()->isSecure(),
+                'httponly' => true,
+                'samesite' => 'lax'
+            ]);
         }
     }
 

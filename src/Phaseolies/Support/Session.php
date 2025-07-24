@@ -250,4 +250,36 @@ class Session
             }
         }
     }
+
+    /**
+     * Invalidate the session (regenerate ID and clear all data).
+     *
+     * @return void
+     */
+    public function invalidate(): void
+    {
+        $this->regenerate(true);
+
+        $this->flush();
+    }
+
+    /**
+     * Regenerate the CSRF token.
+     *
+     * @return void
+     */
+    public function regenerateToken(): void
+    {
+        $this->put('_token', $this->generateToken());
+    }
+
+    /**
+     * Generate a new CSRF token.
+     *
+     * @return string
+     */
+    protected function generateToken(): string
+    {
+        return bin2hex(random_bytes(16));
+    }
 }
