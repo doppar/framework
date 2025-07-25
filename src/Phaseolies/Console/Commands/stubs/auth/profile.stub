@@ -1,0 +1,68 @@
+@extends('layouts.app')
+@section('title') Profile
+@section('content')
+    <div class="container">
+        <div class="row mb-3">
+            <div class="col-12">
+                <h2 class="mb-0 fw-bold">{{ __('Profile') }}</h2>
+                <p class="text-muted fw-bold">Manage your profile and accounts</p>
+            </div>
+        </div>
+        <div class="row mb-5">
+            <div class="col-md-5 mb-3 mb-md-0">
+                <h1 class="fs-3 fw-semibold mb-3">Profile Information</h1>
+                <p class="text-muted">Update your account's profile information and email address.</p>
+            </div>
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="{{ route('profile') }}" method="post">
+                            @csrf
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Name</label>
+                                <input type="text" name="name" class="form-control" value="{{ Auth::user()->name }}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Email</label>
+                                <input type="email" name="email" class="form-control" value="{{ Auth::user()->email }}">
+                            </div>
+                            <button type="submit" class="btn btn-primary fw-semibold">Update Profile</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="mb-5">
+
+        <!-- Update Password Section -->
+        <div class="row">
+            <div class="col-md-5 mb-3 mb-md-0">
+                <h1 class="fs-3 fw-semibold mb-3">Update Password</h1>
+                <p class="text-muted">Ensure your account is using a long, random password to stay secure.</p>
+            </div>
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="{{ route('password.update') }}" method="post">
+                            @csrf
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Current Password</label>
+                                <input type="password" name="old_password" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">New Password</label>
+                                <input type="password" name="new_password" class="form-control">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Confirm Password</label>
+                                <input type="password" name="confirm_password" class="form-control">
+                            </div>
+                            <button type="submit" class="btn btn-primary fw-semibold">Update Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

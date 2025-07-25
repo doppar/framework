@@ -404,14 +404,7 @@ class Router extends Kernel
      */
     protected function addRoute(string $method, string $path, $callback): self
     {
-        if (
-            !is_callable($callback) &&
-            !is_array($callback) &&
-            !is_string($callback) &&
-            class_exists($callback)
-        ) {
-            throw new \InvalidArgumentException('Invalid route defination found');
-        }
+        $this->failFastOnBadRouteDefinition($callback);
 
         // Handle wildcard routes
         if ($path === '*') {
@@ -450,11 +443,50 @@ class Router extends Kernel
         // After the route has been registered,
         // check if the callback refers to a controller method.
         // If so, process any middleware attributes associated with the controller.
-        if (is_array($callback) && count($callback) === 2 && is_string($callback[0])) {
-            $this->processControllerMiddleware($callback, app());
+        if (is_array($callback)) {
+            $this->processControllerMiddleware($callback);
+        } elseif (is_string($callback)) {
+            $this->processControllerMiddleware($callback);
         }
 
         return $this;
+    }
+
+    /**
+     * Validates a route callback and throws exceptions for invalid definitions.
+     *
+     * Performs early validation of route callbacks to fail fast during route registration
+     * rather than at runtime. Checks for:
+     * - Callable functions/closures
+     * - Valid controller method syntax [Controller::class, 'method']
+     * - Invokable controllers (must have __invoke method)
+     *
+     * @param mixed $callback The route callback to validate
+     *
+     * @throws \BadMethodCallException When array-style controller method doesn't exist
+     * @throws \LogicException When invokable controller lacks __invoke method
+     * @throws \InvalidArgumentException For all other invalid callback formats
+     *
+     * @return void
+     */
+    public function failFastOnBadRouteDefinition(mixed $callback): void
+    {
+        if (!is_callable($callback)) {
+            if (is_array($callback) && count($callback) === 2 && is_string($callback[0])) {
+                if (!method_exists($callback[0], $callback[1])) {
+                    throw new \BadMethodCallException(
+                        "Method {$callback[0]}::{$callback[1]}() does not exist"
+                    );
+                }
+            } elseif (is_string($callback) && class_exists($callback)) {
+                $reflection = new \ReflectionClass($callback);
+                if (!$reflection->hasMethod('__invoke')) {
+                    throw new \LogicException("Method {$callback}::__invoke() does not exist");
+                }
+            } else {
+                throw new \InvalidArgumentException('Invalid route definition found');
+            }
+        }
     }
 
     /**
@@ -728,12 +760,17 @@ class Router extends Kernel
      * Handle attributes based middleware defination
      *
      * @param array $callback
-     * @param Application $app
      * @return void
      */
-    protected function processControllerMiddleware(array $callback, $app): void
+    protected function processControllerMiddleware(array|string $callback): void
     {
-        [$controllerClass, $actionMethod] = $callback;
+        if (is_string($callback)) {
+            $controllerClass = $callback;
+            $actionMethod = "__invoke";
+        } else {
+            [$controllerClass, $actionMethod] = $callback;
+        }
+
         $reflector = new \ReflectionClass($controllerClass);
 
         // Process middleware defined at the class level

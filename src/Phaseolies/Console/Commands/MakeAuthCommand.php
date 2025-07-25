@@ -87,8 +87,6 @@ class MakeAuthCommand extends Command
                 mkdir($path, 0755, true);
             }
         }
-
-        @unlink(base_path('resources/views/welcome.blade.php'));
     }
 
     /**
@@ -110,6 +108,11 @@ class MakeAuthCommand extends Command
             base_path('app/Http/Controllers/HomeController.php'),
             $this->getStubContent('HomeController.stub')
         );
+
+        $this->createFile(
+            base_path('app/Http/Controllers/ProfileController.php'),
+            $this->getStubContent('ProfileController.stub')
+        );
     }
 
     /**
@@ -122,7 +125,7 @@ class MakeAuthCommand extends Command
             'auth/register.blade.php' => 'auth/register.stub',
             'layouts/app.blade.php' => 'layouts/app.stub',
             'home.blade.php' => 'home.stub',
-            'welcome.blade.php' => 'welcome.stub',
+            'profile.blade.php' => 'profile.stub',
         ];
 
         foreach ($views as $destination => $stubFile) {
@@ -144,6 +147,7 @@ class MakeAuthCommand extends Command
         }
 
         $routesContent = $this->getStubContent('routes.stub');
+
         file_put_contents($routesPath, $routesContent, FILE_APPEND);
     }
 
@@ -180,10 +184,12 @@ class MakeAuthCommand extends Command
             base_path('app/Http/Controllers/Auth/LoginController.php'),
             base_path('app/Http/Controllers/Auth/RegisterController.php'),
             base_path('app/Http/Controllers/HomeController.php'),
+            base_path('app/Http/Controllers/ProfileController.php'),
             base_path('resources/views/auth/login.blade.php'),
             base_path('resources/views/auth/register.blade.php'),
             base_path('resources/views/layouts/app.blade.php'),
             base_path('resources/views/home.blade.php'),
+            base_path('resources/views/profile.blade.php'),
         ];
 
         foreach ($filesToCheck as $file) {
@@ -205,12 +211,14 @@ class MakeAuthCommand extends Command
                 base_path('app/Http/Controllers/Auth/LoginController.php'),
                 base_path('app/Http/Controllers/Auth/RegisterController.php'),
                 base_path('app/Http/Controllers/HomeController.php'),
+                base_path('app/Http/Controllers/ProfileController.php'),
             ],
             'Views' => [
                 base_path('resources/views/auth/login.blade.php'),
                 base_path('resources/views/auth/register.blade.php'),
                 base_path('resources/views/layouts/app.blade.php'),
                 base_path('resources/views/home.blade.php'),
+                base_path('resources/views/profile.blade.php'),
             ]
         ];
 

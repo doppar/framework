@@ -2,10 +2,14 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ProfileController;
 
-Route::get('home', [HomeController::class, 'home'])->name('dashboard');
-Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+Route::get('home', HomeController::class)->name('dashboard');
 Route::get('login', [LoginController::class, 'index'])->name('login');
 Route::post('login', [LoginController::class, 'login']);
+Route::post('logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('register', [RegisterController::class, 'index'])->name('register');
 Route::post('register', [RegisterController::class, 'register']);
+Route::get('profile', [ProfileController::class, 'index'])->name('profile');
+Route::post('profile', [ProfileController::class, 'update']);
+Route::post('update/password', [ProfileController::class, 'updatePassword'])->name('password.update');
