@@ -138,16 +138,30 @@ trait QueryCollection
     /**
      * Pluck an array of values from a single column.
      *
-     * @param string $column
+     * @param string $value Column name for values
+     * @param string|null $key Column name for keys
      * @return Collection
      */
-    public function pluck(string $column): Collection
+    public function pluck(string $value, ?string $key = null): Collection
     {
-        $values = [];
+        $results = [];
+
         foreach ($this->get() as $item) {
-            $values[] = $item->{$column};
+            $itemValue = $item->{$value} ?? null;
+
+            if (is_null($key)) {
+                $results[] = $itemValue;
+            } else {
+                $itemKey = $item->{$key} ?? null;
+                if (!is_null($itemKey)) {
+                    $results[$itemKey] = $itemValue;
+                } else {
+                    $results[] = $itemValue;
+                }
+            }
         }
-        return new Collection($this->modelClass, $values);
+
+        return new Collection($this->modelClass, $results);
     }
 
     /**

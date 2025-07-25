@@ -50,8 +50,8 @@ class MakeAuthCommand extends Command
             $this->line('<bg=green;options=bold> SUCCESS </> Authentication scaffolding generated successfully');
             $this->newLine();
             $this->line('<fg=yellow>🎉 Generated Files:</>');
-            $this->line('- Controllers: Login, Register, Home');
-            $this->line('- Views: Login, Register, Home, Welcome, Layout');
+            $this->line('- Controllers: Login, Register, Home, Profile');
+            $this->line('- Views: Login, Register, Home, Profile, Layout');
             $this->line('- Routes: Added to web.php');
         } catch (RuntimeException $e) {
             $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());

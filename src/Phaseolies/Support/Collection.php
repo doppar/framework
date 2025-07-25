@@ -243,11 +243,22 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
             $item = $current['item'];
             $currentDepth = $current['depth'];
 
-            if (is_array($item) && $currentDepth < $depth) {
-                // Only process array values (ignoring keys)
+            if ($currentDepth >= $depth) {
+                $result[] = $item;
+                continue;
+            }
+
+            if (is_array($item)) {
                 foreach (array_reverse(array_values($item)) as $subItem) {
                     $stack[] = [
-                        'item' => is_array($subItem) ? $subItem : $subItem,
+                        'item' => $subItem,
+                        'depth' => $currentDepth + 1
+                    ];
+                }
+            } elseif ($item instanceof Collection) {
+                foreach (array_reverse($item->all()) as $subItem) {
+                    $stack[] = [
+                        'item' => $subItem,
                         'depth' => $currentDepth + 1
                     ];
                 }
@@ -257,6 +268,44 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         }
 
         return new static($this->model, $result);
+    }
+
+    /**
+     * Get the values
+     *
+     * @return self
+     */
+    public function values(): self
+    {
+        return new static($this->model, array_values($this->data));
+    }
+
+    /**
+     * Return a new collection with unique items.
+     *
+     * @param string|null $key Optional key to use for determining uniqueness
+     * @param bool $strict Whether to use strict comparison (===)
+     * @return static
+     */
+    public function unique(?string $key = null, bool $strict = false): self
+    {
+        $uniqueItems = [];
+        $exists = [];
+
+        foreach ($this->data as $item) {
+            $value = $key !== null
+                ? (is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null))
+                : $item;
+
+            $serialized = $strict ? serialize($value) : (is_scalar($value) ? $value : serialize($value));
+
+            if (!isset($exists[$serialized])) {
+                $exists[$serialized] = true;
+                $uniqueItems[] = $item;
+            }
+        }
+
+        return new static($this->model, $uniqueItems);
     }
 
     /**
