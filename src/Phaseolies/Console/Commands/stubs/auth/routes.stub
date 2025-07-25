@@ -1,8 +1,8 @@
 
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Auth\RegisterController;
 
 Route::get('home', HomeController::class)->name('dashboard');
 Route::get('login', [LoginController::class, 'index'])->name('login');
