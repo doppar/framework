@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title') Dashboard
+@section('title') Dashboard @endsection
 @section('content')
     <div class="container">
         <div class="row mb-1">
