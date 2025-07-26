@@ -216,10 +216,6 @@ class View extends Factory
         $this->blockStacks = [];
         $this->parents = [];
         $this->cache = [];
-
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
     }
 
     public function __destruct()
