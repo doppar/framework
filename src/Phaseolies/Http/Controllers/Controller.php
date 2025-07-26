@@ -80,8 +80,6 @@ class Controller extends View
         $this->setEchoFormat('$this->e(%s)');
 
         // Initialize arrays for blocks, block stacks, and loop stacks
-        $this->blocks = [];
-        $this->blockStacks = [];
         $this->loopStacks = [];
 
         $this->jitEnabled = env('BLADE_JIT_ENABLED', true);
