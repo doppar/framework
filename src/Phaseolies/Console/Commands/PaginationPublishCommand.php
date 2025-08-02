@@ -14,7 +14,7 @@ class PaginationPublishCommand extends Command
     {
         $this
             ->setName('publish:pagination')
-            ->setDescription('Publish custom pagination views to resources/views/pagination');
+            ->setDescription('Publish pagination views to resources/views/vendor/pagination');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

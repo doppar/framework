@@ -13,7 +13,7 @@ class MigrateCommand extends Command
      *
      * @var string
      */
-    protected $name = 'migrate';
+    protected $name = 'migrate {--path=}';
 
     /**
      * The description of the console command.
@@ -35,6 +35,7 @@ class MigrateCommand extends Command
     public function __construct()
     {
         parent::__construct();
+
         $this->migrator = app('migrator');
     }
 
@@ -49,7 +50,13 @@ class MigrateCommand extends Command
         $this->newLine();
 
         try {
-            $status = $this->migrator->run();
+            $path = $this->option('path');
+
+            if ($path) {
+                $status = $this->migrator->run([$path]);
+            } else {
+                $status = $this->migrator->run();
+            }
 
             if (empty($status)) {
                 $this->line('<bg=blue;options=bold> INFO </> Nothing to migrate');

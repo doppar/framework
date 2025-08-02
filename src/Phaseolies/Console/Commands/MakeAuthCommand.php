@@ -19,7 +19,7 @@ class MakeAuthCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Generate authentication system (controllers, views, and routes)';
+    protected $description = 'Generate authentication system';
 
     /**
      * Execute the console command.
