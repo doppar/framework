@@ -135,6 +135,13 @@ class Application extends Container
     protected $pathCache = [];
 
     /**
+     * The paths listed below will bypass CSRF token verification.
+     *
+     * @var array<string>
+     */
+    protected $relaxablePaths = [];
+
+    /**
      * Application constructor.
      *
      * Initializes the application by:
@@ -760,14 +767,37 @@ class Application extends Container
     /**
      * Set the environment file to be loaded during bootstrapping.
      *
-     * @param  string  $file
+     * @param string $file
      * @return $this
      */
-    public function loadEnvironmentFrom($file)
+    public function loadEnvironmentFrom($file): self
     {
         $this->environmentFile = $file;
 
         return $this;
+    }
+
+    /**
+     * The paths listed below will bypass CSRF token verification.
+     *
+     * @param array $relaxablePaths
+     * @return self
+     */
+    public function setRelaxablePaths(array $relaxablePaths = []): self
+    {
+        $this->relaxablePaths = $relaxablePaths;
+
+        return $this;
+    }
+
+    /**
+     * Get the paths that will bypass CSRF token verification.
+     *
+     * @return self
+     */
+    public function getRelaxablePaths(): array
+    {
+        return $this->relaxablePaths;
     }
 
     /**

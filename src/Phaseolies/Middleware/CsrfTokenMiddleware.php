@@ -3,14 +3,13 @@
 namespace Phaseolies\Middleware;
 
 use Phaseolies\Support\Facades\Str;
-use Phaseolies\Http\Response\Cookie;
+use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Middleware\Contracts\Middleware;
+use Phaseolies\Http\Response\Cookie;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\TokenMismatchException;
-use Phaseolies\Http\Exceptions\HttpResponseException;
 use Closure;
-use Phaseolies\Support\Facades\Crypt;
 
 class CsrfTokenMiddleware implements Middleware
 {
@@ -48,7 +47,7 @@ class CsrfTokenMiddleware implements Middleware
             return $response;
         }
 
-        return $this->handleError( "CSRF Token mismatched");
+        return $this->handleError("CSRF Token mismatched");
     }
 
     /**
@@ -74,12 +73,18 @@ class CsrfTokenMiddleware implements Middleware
 
     /**
      * Check the request token is matched or not
-     * @param Request $request
      *
+     * @param Request $request
      * @return bool
      */
     public function isTokenMatch($request): bool
     {
+        foreach (app()->getRelaxablePaths() as $pattern) {
+            if ($request->is($pattern)) {
+                return true;
+            }
+        }
+
         $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
 
         return is_string($request->session()->token()) &&
@@ -116,6 +121,9 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function addCookie($request, $config): Cookie
     {
+        /**
+         * @var string $token
+         */
         $token = Crypt::encrypt($request->session()->token());
 
         return new Cookie(
