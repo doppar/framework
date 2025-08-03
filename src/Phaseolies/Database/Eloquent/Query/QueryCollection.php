@@ -30,6 +30,8 @@ trait QueryCollection
     {
         $model = new static();
 
+        $connection = $connection ?? $model->connection;
+
         return new Builder(
             Database::getPdoInstance($connection),
             $model->table,
