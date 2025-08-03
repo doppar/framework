@@ -27,6 +27,7 @@ class RawExpression
     public function __construct(string $value, array $bindings = [])
     {
         $this->value = $value;
+
         $this->bindings = $bindings;
     }
 

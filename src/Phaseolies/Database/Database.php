@@ -431,7 +431,7 @@ class Database
      * @param array $bindings
      * @return RawExpression
      */
-    public static function sql(string $expression, array $bindings = []): RawExpression
+    public function sql(string $expression, array $bindings = []): RawExpression
     {
         return new RawExpression($expression, $bindings);
     }
@@ -442,7 +442,7 @@ class Database
      * @param string $table
      * @return Builder
      */
-    public static function table(string $table): Builder
+    public function table(string $table): Builder
     {
         return new Builder($table);
     }
@@ -453,7 +453,7 @@ class Database
      * @param string|null $name Connection name (null for default)
      * @return self
      */
-    public static function connection(?string $name = null): self
+    public function connection(?string $name = null): self
     {
         return new static($name);
     }
