@@ -7,6 +7,21 @@ use Phaseolies\Support\Facades\DB;
 class Schema
 {
     /**
+     * The database connection name
+     */
+    protected ?string $connection = null;
+
+    /**
+     * Create a new Schema instance with a specific connection
+     *
+     * @param string|null $connection
+     */
+    public function __construct(?string $connection = null)
+    {
+        $this->connection = $connection;
+    }
+
+    /**
      * Create a new database table
      *
      * @param string $table Name of the table to create
@@ -18,7 +33,7 @@ class Schema
 
         $callback($blueprint);
 
-        DB::execute($blueprint->toSql());
+        DB::connection($this->connection)->execute($blueprint->toSql());
     }
 
     /**
@@ -35,7 +50,7 @@ class Schema
 
         $statements = $blueprint->toSql();
 
-        DB::execute($statements);
+        DB::connection($this->connection)->execute($statements);
     }
 
     /**
@@ -45,7 +60,7 @@ class Schema
      */
     public function dropIfExists(string $table): void
     {
-        DB::execute("DROP TABLE IF EXISTS {$table}");
+        DB::connection($this->connection)->execute("DROP TABLE IF EXISTS {$table}");
     }
 
     /**
@@ -56,7 +71,7 @@ class Schema
      */
     public function hasTable(string $table): bool
     {
-        return DB::tableExists($table);
+        return DB::connection($this->connection)->tableExists($table);
     }
 
     /**
@@ -65,7 +80,7 @@ class Schema
      */
     public function disableForeignKeyConstraints(): void
     {
-        DB::execute('SET FOREIGN_KEY_CHECKS = 0');
+        DB::connection($this->connection)->execute('SET FOREIGN_KEY_CHECKS = 0');
     }
 
     /**
@@ -74,6 +89,17 @@ class Schema
      */
     public function enableForeignKeyConstraints(): void
     {
-        DB::execute('SET FOREIGN_KEY_CHECKS = 1');
+        DB::connection($this->connection)->execute('SET FOREIGN_KEY_CHECKS = 1');
+    }
+
+    /**
+     * Get a new Schema instance for the specified connection
+     *
+     * @param string|null $connection
+     * @return static
+     */
+    public static function connection(?string $connection): self
+    {
+        return new static($connection);
     }
 }

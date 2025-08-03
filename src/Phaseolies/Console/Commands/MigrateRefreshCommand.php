@@ -52,10 +52,17 @@ class MigrateRefreshCommand extends Command
         $this->newLine();
 
         try {
-            $this->line('<bg=yellow;options=bold> WARNING </> This will drop all database tables!');
+
+            $allConnections = config('database.connections');
+
+            // Show warning message
+            $this->line('<bg=yellow;options=bold> WARNING </> This will drop all database tables from database connection:');
+            foreach (array_keys($allConnections) as $name) {
+                $this->line('- <fg=white>' . $name . '</>');
+            }
             $this->newLine();
 
-            // Basic confirmation implementation
+            // Confirmation
             $this->line('Are you sure you want to proceed? (yes/no) [no]');
             $response = trim(fgets(STDIN));
 
@@ -65,19 +72,24 @@ class MigrateRefreshCommand extends Command
                 return 0;
             }
 
-            $this->line('<fg=yellow>♻️  Refreshing database...</>');
-            $this->newLine();
+            // Process each connection
+            $totalTablesDropped = 0;
+            foreach ($allConnections as $name => $config) {
+                $this->line("<fg=yellow>♻️  Refreshing database on connection: {$name}</>");
 
-            Schema::disableForeignKeyConstraints();
-            $tables = DB::dropAllTables();
-            Schema::enableForeignKeyConstraints();
+                Schema::connection($name)->disableForeignKeyConstraints();
+                $tablesDropped = DB::connection($name)->dropAllTables();
+                Schema::connection($name)->enableForeignKeyConstraints();
 
-            $this->line('<fg=green>✔ Dropped ' . $tables . ' tables</>');
-            $this->newLine();
+                $totalTablesDropped += $tablesDropped;
+                $this->line("<fg=green>✔ Dropped {$tablesDropped} tables from {$name}</>");
+                $this->newLine();
+            }
 
+            $this->line('<fg=yellow>🔁 Running migrations</>');
             $status = $this->migrator->run();
 
-            $this->line('<bg=green;options=bold> SUCCESS </> Database refreshed successfully');
+            $this->line('<bg=green;options=bold> SUCCESS </> Database refresh completed');
             $this->newLine();
             $this->line('<fg=yellow>📊 Migrations Executed:</>');
             foreach ($status as $migration) {
