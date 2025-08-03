@@ -2,49 +2,100 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class PaginationPublishCommand extends Command
 {
-    protected static $defaultName = 'publish:pagination';
+    /**
+     * The name of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'publish:pagination';
 
-    protected function configure()
-    {
-        $this
-            ->setName('publish:pagination')
-            ->setDescription('Publish pagination views to resources/views/vendor/pagination');
-    }
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Publish pagination views to resources/views/vendor/pagination';
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
+        $startTime = microtime(true);
+        $this->newLine();
+
         $paginationPath = resource_path('views/vendor/pagination');
 
-        if (!is_dir($paginationPath)) {
-            mkdir($paginationPath, 0755, true);
-        }
-
-        $files = [
-            'jump.blade.php' => $this->getJumpPaginationView(),
-            'number.blade.php' => $this->getNumberPaginationView(),
-        ];
-
-        foreach ($files as $filename => $content) {
-            $filePath = $paginationPath . DIRECTORY_SEPARATOR . $filename;
-            if (!file_exists($filePath)) {
-                file_put_contents($filePath, $content);
-                $output->writeln("<info>Created:</info> $filePath");
-            } else {
-                $output->writeln("<comment>Skipped (already exists):</comment> $filePath");
+        try {
+            if (!is_dir($paginationPath)) {
+                if (!mkdir($paginationPath, 0755, true)) {
+                    throw new \RuntimeException("Failed to create directory: {$paginationPath}");
+                }
+                $this->line("<info>Created directory:</info> {$paginationPath}");
+                $this->newLine();
             }
+
+            $files = [
+                'jump.blade.php' => $this->getJumpPaginationView(),
+                'number.blade.php' => $this->getNumberPaginationView(),
+            ];
+
+            $createdCount = 0;
+            $skippedCount = 0;
+
+            foreach ($files as $filename => $content) {
+                $filePath = $paginationPath . DIRECTORY_SEPARATOR . $filename;
+
+                if (file_exists($filePath)) {
+                    $this->line("<comment>Already exists:</comment> {$filename}");
+                    $skippedCount++;
+                    continue;
+                }
+
+                if (file_put_contents($filePath, $content) === false) {
+                    throw new \RuntimeException("Failed to write file: {$filePath}");
+                }
+
+                $this->line("<info>Created:</info> {$filename}");
+                $createdCount++;
+            }
+
+            $this->newLine();
+            if ($createdCount > 0) {
+                $this->line('<bg=green;options=bold> SUCCESS </> Pagination views published successfully.');
+            } else {
+                $this->line('<bg=yellow;options=bold> NOTE </> All pagination views already exist.');
+            }
+        } catch (\Exception $e) {
+            $this->newLine();
+            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
+            $this->newLine();
+            return 1;
         }
 
-        $output->writeln('<info>Pagination views published successfully.</info>');
+        $executionTime = microtime(true) - $startTime;
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
 
-        return Command::SUCCESS;
+        return 0;
     }
 
+    /**
+     * Get the jump pagination view content.
+     *
+     * @return string
+     */
     private function getJumpPaginationView(): string
     {
         return <<<'EOT'
@@ -87,6 +138,11 @@ class PaginationPublishCommand extends Command
 EOT;
     }
 
+    /**
+     * Get the number pagination view content.
+     *
+     * @return string
+     */
     private function getNumberPaginationView(): string
     {
         return <<<'EOT'

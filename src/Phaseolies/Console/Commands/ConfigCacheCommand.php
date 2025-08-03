@@ -3,6 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Support\Facades\Config;
 
 class ConfigCacheCommand extends Command
 {
@@ -31,7 +32,9 @@ class ConfigCacheCommand extends Command
 
         $this->newLine();
 
-        app('config')->loadFromCache();
+        Config::clearCache();
+        Config::loadAll();
+        Config::cacheConfig();
 
         $executionTime = microtime(true) - $startTime;
 

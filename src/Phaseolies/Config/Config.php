@@ -98,7 +98,7 @@ final class Config
     /**
      * Cache the configuration to a file.
      */
-    protected static function cacheConfig(): void
+    public static function cacheConfig(): void
     {
         $oldFiles = glob(storage_path('framework/cache/configs_*.php'));
 
