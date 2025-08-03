@@ -51,6 +51,7 @@ class Migrator
 
     /**
      * Run all pending migrations
+     *
      * @return array List of migration files that were executed
      */
     public function run(): array
@@ -85,6 +86,7 @@ class Migrator
 
     /**
      * Get all migration files from the migration path
+     *
      * @return array List of migration file names
      */
     protected function getMigrationFiles(): array
@@ -100,6 +102,7 @@ class Migrator
 
     /**
      * Run a list of migration files
+     *
      * @param array $migrations List of migration file names to run
      */
     protected function runMigrationList(array $migrations): void
@@ -111,6 +114,7 @@ class Migrator
 
     /**
      * Run a single migration file
+     *
      * @param string $file Migration file name
      * @throws \Throwable If migration fails
      */
@@ -140,6 +144,7 @@ class Migrator
 
     /**
      * Resolve a migration file into a Migration instance
+     *
      * @param string $file Migration file name
      * @return Migration Migration instance
      * @throws \RuntimeException If file doesn't exist or invalid migration
@@ -163,6 +168,7 @@ class Migrator
 
     /**
      * Convert a migration file name to a class name
+     *
      * (Note: This method appears unused in the current class implementation)
      * @param string $file Migration file name
      * @return string Class name

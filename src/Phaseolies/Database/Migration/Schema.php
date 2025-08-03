@@ -34,6 +34,7 @@ class Schema
         $callback($blueprint);
 
         $statements = $blueprint->toSql();
+
         DB::execute($statements);
     }
 
@@ -55,7 +56,7 @@ class Schema
      */
     public function hasTable(string $table): bool
     {
-        return \Phaseolies\Database\Database::tableExists($table);
+        return DB::tableExists($table);
     }
 
     /**

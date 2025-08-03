@@ -13,29 +13,68 @@ use PDO;
 class Database
 {
     /**
-     * The active PDO connection
+     * The active PDO connections
      *
-     * @var PDO
+     * @var array
      */
-    protected static $pdo;
+    protected static $connections = [];
 
     /**
-     * The transaction level counter
+     * The transaction level counters for each connection
      *
-     * @var int
+     * @var array
      */
-    protected static $transactions = 0;
+    protected static $transactions = [];
 
     /**
-     * Get the PDO instance for the configured database
+     * The connection name for this instance
+     */
+    protected ?string $connection;
+
+    /**
+     * Create a new database manager instance
+     *
+     * @param string|null $connection
+     */
+    public function __construct(?string $connection = null)
+    {
+        $this->connection = $connection;
+    }
+
+    /**
+     * Get the PDO instance for this connection
+     */
+    protected function getPdo(): PDO
+    {
+        return static::getPdoInstance($this->connection);
+    }
+
+    /**
+     * Get a PDO instance for the specified connection
+     *
+     * @param string|null $connection Connection name (null for default)
      * @return PDO
      * @throws \RuntimeException When database configuration is invalid
      * @throws \PDOException When connection fails
      */
-    public static function getPdoInstance(): PDO
+    public static function getPdoInstance(?string $connection = null): PDO
     {
-        if (!isset(static::$pdo)) {
-            $driver = env('DB_CONNECTION', config('database.default', 'mysql'));
+        $connection = $connection ?: config('database.default');
+
+        if (!isset(static::$connections[$connection])) {
+            $config = config("database.connections.{$connection}");
+
+            if (empty($config) || $config['driver'] !== 'mysql') {
+                throw new \RuntimeException("MySQL database connection [{$connection}] not configured.");
+            }
+
+            $dsn = sprintf(
+                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+                $config['host'],
+                $config['port'],
+                $config['database']
+            );
+
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -44,78 +83,82 @@ class Database
             ];
 
             try {
-                switch (strtolower($driver)) {
-                    case 'mysql':
-                    default:
-                        $host = env('DB_HOST', config('database.connections.mysql.host', '127.0.0.1'));
-                        $port = env('DB_PORT', config('database.connections.mysql.port', '3306'));
-                        $dbName = env('DB_DATABASE', config('database.connections.mysql.database'));
-                        $charset = env('DB_CHARSET', config('database.connections.mysql.charset', 'utf8mb4'));
-                        $dsn = "mysql:host=$host;port=$port;dbname=$dbName;charset=$charset";
-
-                        $username = env('DB_USERNAME', config('database.connections.mysql.username'));
-                        $password = env('DB_PASSWORD', config('database.connections.mysql.password'));
-
-                        static::$pdo = new PDO($dsn, $username, $password);
-                        break;
-                }
-            } catch (\PDOException $e) {
-                throw new \PDOException("Failed to connect to {$driver} database: " . $e->getMessage(), (int) $e->getCode());
-            } catch (\RuntimeException $e) {
-                throw $e;
+                static::$connections[$connection] = new PDO(
+                    $dsn,
+                    $config['username'],
+                    $config['password']
+                );
+            } catch (PDOException $e) {
+                throw new \PDOException(
+                    "Failed to connect to MySQL database [{$connection}]: " . $e->getMessage(),
+                    (int) $e->getCode()
+                );
             }
         }
 
-        return static::$pdo;
+        return static::$connections[$connection];
     }
 
     /**
-     * Start a new database transaction
+     * Begin a transaction on the specified connection
      *
-     * @return void
      * @throws PDOException
+     * @return void
      */
-    public static function beginTransaction(): void
+    public function beginTransaction(): void
     {
-        if (static::$transactions == 0) {
-            static::getPdoInstance()->beginTransaction();
+        $pdo = $this->getPdo();
+        $connection = $this->connection ?? config('database.default');
+
+        if (!isset(static::$transactions[$connection])) {
+            static::$transactions[$connection] = 0;
+        }
+
+        if (static::$transactions[$connection] === 0) {
+            $pdo->beginTransaction();
         } else {
-            static::getPdoInstance()->exec("SAVEPOINT trans" . (static::$transactions + 1));
+            $pdo->exec("SAVEPOINT trans" . (static::$transactions[$connection] + 1));
         }
 
-        static::$transactions++;
+        static::$transactions[$connection]++;
     }
 
     /**
-     * Commit the active database transaction
+     * Commit a transaction on the specified connection
      *
      * @return void
      * @throws PDOException
      */
-    public static function commit(): void
+    public function commit(): void
     {
-        if (static::$transactions == 1) {
-            static::getPdoInstance()->commit();
+        $pdo = $this->getPdo();
+        $connection = $this->connection ?? config('database.default');
+
+        if (static::$transactions[$connection] === 1) {
+            $pdo->commit();
         }
 
-        static::$transactions = max(0, static::$transactions - 1);
+        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
     }
 
     /**
-     * Rollback the active database transaction
+     * Rollback a transaction on the specified connection
      *
      * @return void
      * @throws PDOException
      */
-    public static function rollBack(): void
+    public function rollBack(): void
     {
-        if (static::$transactions == 1) {
-            static::getPdoInstance()->rollBack();
+        $pdo = $this->getPdo();
+        $connection = $this->connection ?? config('database.default');
+
+        if (static::$transactions[$connection] === 1) {
+            $pdo->rollBack();
         } else {
-            static::getPdoInstance()->exec("ROLLBACK TO SAVEPOINT trans" . static::$transactions);
+            $pdo->exec("ROLLBACK TO SAVEPOINT trans" . static::$transactions[$connection]);
         }
 
-        static::$transactions = max(0, static::$transactions - 1);
+        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
     }
 
     /**
@@ -126,17 +169,17 @@ class Database
      * @return mixed
      * @throws \Throwable
      */
-    public static function transaction(\Closure $callback, int $attempts = 1)
+    public function transaction(\Closure $callback, int $attempts = 1)
     {
         for ($currentAttempt = 1; $currentAttempt <= $attempts; $currentAttempt++) {
-            static::beginTransaction();
+            $this->beginTransaction();
 
             try {
                 $result = $callback();
-                static::commit();
+                $this->commit();
                 return $result;
             } catch (\Throwable $e) {
-                static::rollBack();
+                $this->rollBack();
 
                 if ($currentAttempt >= $attempts) {
                     throw $e;
@@ -146,13 +189,16 @@ class Database
     }
 
     /**
-     * Get the number of active transactions
+     * Get the transaction level for a connection
      *
+     * @param string|null $connection
      * @return int
      */
-    public static function transactionLevel(): int
+    public static function transactionLevel(?string $connection = null): int
     {
-        return static::$transactions;
+        $connection = $connection ?: config('database.default');
+
+        return static::$transactions[$connection] ?? 0;
     }
 
     /**
@@ -162,14 +208,14 @@ class Database
      * @return array
      * @throws PDOException
      */
-    public static function getTableColumns(?string $table = null): array
+    public function getTableColumns(?string $table = null): array
     {
         if ($table === null) {
             throw new \InvalidArgumentException('Table name cannot be null');
         }
 
         try {
-            $stmt = static::getPdoInstance()->query("DESCRIBE {$table}");
+            $stmt = $this->getPdo()->query("DESCRIBE {$table}");
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             throw new PDOException("Failed to get table columns: " . $e->getMessage());
@@ -181,9 +227,9 @@ class Database
      *
      * @return array
      */
-    public static function getTables(): array
+    public function getTables(): array
     {
-        $stmt = static::getPdoInstance()->query("SHOW TABLES");
+        $stmt = $this->getPdo()->query("SHOW TABLES");
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -195,10 +241,10 @@ class Database
      * @param string $table
      * @return bool
      */
-    public static function tableExists(string $table): bool
+    public function tableExists(string $table): bool
     {
         try {
-            $result = static::getPdoInstance()->query("SELECT 1 FROM {$table} LIMIT 1");
+            $result = $this->getPdo()->query("SELECT 1 FROM {$table} LIMIT 1");
             return $result !== false;
         } catch (PDOException $e) {
             return false;
@@ -236,9 +282,9 @@ class Database
      * @return ProcedureResult
      * @throws PDOException
      */
-    public static function procedure(string $procedureName, array $params = [], array $outputParams = []): ProcedureResult
+    public function procedure(string $procedureName, array $params = [], array $outputParams = []): ProcedureResult
     {
-        $pdo = static::getPdoInstance();
+        $pdo = $this->getPdo();
 
         $placeholders = implode(',', array_fill(0, count($params) + count($outputParams), '?'));
         $stmt = $pdo->prepare("CALL {$procedureName}({$placeholders})");
@@ -300,10 +346,10 @@ class Database
      * @return \Phaseolies\Support\Collection
      * @throws PDOException
      */
-    public static function query(string $sql, array $params = []): Collection
+    public function query(string $sql, array $params = []): Collection
     {
         try {
-            $stmt = static::getPdoInstance()->prepare($sql);
+            $stmt = $this->getPdo()->prepare($sql);
             $stmt->setFetchMode(PDO::FETCH_ASSOC);
             $stmt->execute($params);
             $results = $stmt->fetchAll();
@@ -325,9 +371,9 @@ class Database
      * @return PDOStatement
      * @throws PDOException
      */
-    public static function statement(string $sql, array $params = []): \PDOStatement
+    public function statement(string $sql, array $params = []): \PDOStatement
     {
-        $stmt = static::getPdoInstance()->prepare($sql);
+        $stmt = $this->getPdo()->prepare($sql);
         $stmt->setFetchMode(PDO::FETCH_ASSOC);
         $stmt->execute($params);
 
@@ -342,9 +388,9 @@ class Database
      * @return int Number of affected rows
      * @throws PDOException
      */
-    public static function execute(string $sql, array $params = []): int
+    public function execute(string $sql, array $params = []): int
     {
-        $stmt = static::getPdoInstance()->prepare($sql);
+        $stmt = $this->getPdo()->prepare($sql);
         $stmt->execute($params);
 
         return $stmt->rowCount();
@@ -356,14 +402,14 @@ class Database
      * @return int
      * @throws PDOException
      */
-    public static function dropAllTables(): int
+    public function dropAllTables(): int
     {
-        $pdo = static::getPdoInstance();
+        $pdo = $this->getPdo();
 
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
 
         try {
-            $tables = static::getTables();
+            $tables = $this->getTables();
 
             if (!empty($tables)) {
                 $pdo->exec('DROP TABLE ' . implode(', ', $tables));
@@ -399,5 +445,16 @@ class Database
     public static function table(string $table): Builder
     {
         return new Builder($table);
+    }
+
+    /**
+     * Get a connection instance for the specified connection name
+     *
+     * @param string|null $name Connection name (null for default)
+     * @return self
+     */
+    public static function connection(?string $name = null): self
+    {
+        return new static($name);
     }
 }

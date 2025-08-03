@@ -23,14 +23,15 @@ trait QueryCollection
     /**
      * Creates and returns a new query builder instance for the model.
      *
+     * @param $connection = 'mysql'
      * @return \Phaseolies\Database\Eloquent\Builder
      */
-    public static function query(): Builder
+    public static function query(?string $connection = null): Builder
     {
         $model = new static();
 
         return new Builder(
-            Database::getPdoInstance(),
+            Database::getPdoInstance($connection),
             $model->table,
             get_class($model),
             $model->pageSize

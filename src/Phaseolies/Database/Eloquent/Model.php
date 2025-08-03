@@ -6,7 +6,9 @@ use Stringable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Query\QueryCollection;
 use Phaseolies\Database\Eloquent\Hooks\HookHandler;
+use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
+use PDO;
 use JsonSerializable;
 use ArrayAccess;
 
@@ -119,6 +121,11 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @var array
      */
     protected $originalAttributes = [];
+
+    /**
+     * The database connection name for the model.
+     */
+    protected $connection = null;
 
     /**
      * Model constructor.
@@ -273,6 +280,44 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         $className = substr($className, strrpos($className, '\\') + 1);
 
         return strtolower($className);
+    }
+
+    /**
+     * Get the database connection for the model.
+     */
+    public function getConnection(): PDO
+    {
+        return Database::getPdoInstance($this->connection);
+    }
+
+    /**
+     * Begin querying the model on a given connection.
+     *
+     * @param string|null $connection
+     * @return Builder
+     */
+    public static function connection(?string $connection = null): Builder
+    {
+        $instance = new static;
+
+        $instance->connection = $connection;
+
+        return $instance->newQuery();
+    }
+
+    /**
+     * Get a new query builder for the model's table.
+     *
+     * @return Builder
+     */
+    public function newQuery(): Builder
+    {
+        return new Builder(
+            $this->getConnection(),
+            $this->getTable(),
+            static::class,
+            $this->pageSize
+        );
     }
 
     /**
