@@ -7,6 +7,7 @@ use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Query\Builder;
 use Phaseolies\Database\Procedure\ProcedureResult;
 use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Connectors\ConnectionFactory;
 use PDOException;
 use PDO;
 
@@ -42,14 +43,6 @@ class Database
     }
 
     /**
-     * Get the PDO instance for this connection
-     */
-    protected function getPdo(): PDO
-    {
-        return static::getPdoInstance($this->connection);
-    }
-
-    /**
      * Get a PDO instance for the specified connection
      *
      * @param string|null $connection Connection name (null for default)
@@ -64,39 +57,33 @@ class Database
         if (!isset(static::$connections[$connection])) {
             $config = config("database.connections.{$connection}");
 
-            if (empty($config) || $config['driver'] !== 'mysql') {
-                throw new \RuntimeException("MySQL database connection [{$connection}] not configured.");
+            if (empty($config)) {
+                throw new \RuntimeException("Database connection [{$connection}] not configured.");
             }
 
-            $dsn = sprintf(
-                'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-                $config['host'],
-                $config['port'],
-                $config['database']
-            );
-
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::ATTR_STRINGIFY_FETCHES => false,
-            ];
-
             try {
-                static::$connections[$connection] = new PDO(
-                    $dsn,
-                    $config['username'],
-                    $config['password']
-                );
+                static::$connections[$connection] = ConnectionFactory::make($config);
             } catch (PDOException $e) {
                 throw new \PDOException(
-                    "Failed to connect to MySQL database [{$connection}]: " . $e->getMessage(),
+                    "Failed to connect to database [{$connection}]: ",
                     (int) $e->getCode()
+                );
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException(
+                    "Database connection error [{$connection}]: " . $e->getMessage()
                 );
             }
         }
 
         return static::$connections[$connection];
+    }
+
+    /**
+     * Get the PDO instance for this connection
+     */
+    protected function getPdo(): PDO
+    {
+        return static::getPdoInstance($this->connection);
     }
 
     /**
