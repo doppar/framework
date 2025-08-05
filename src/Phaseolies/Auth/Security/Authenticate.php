@@ -9,6 +9,8 @@ use Phaseolies\Database\Eloquent\Model;
 
 class Authenticate
 {
+    use InteractsWithTwoFactorAuth;
+
     private $data = [];
 
     /**
@@ -70,6 +72,13 @@ class Authenticate
             throw new \InvalidArgumentException(
                 "Argument #1 ($user) must be an instance of $authModel " . gettype($user) . ' given'
             );
+        }
+
+        if ($this->hasTwoFactorEnabled($user)) {
+            session()->put('2fa_user_id', $user->id);
+            session()->put('2fa_remember', $remember);
+
+            return true;
         }
 
         $this->setUser($user);
