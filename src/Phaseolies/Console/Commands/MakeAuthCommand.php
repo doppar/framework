@@ -50,8 +50,8 @@ class MakeAuthCommand extends Command
             $this->line('<bg=green;options=bold> SUCCESS </> Authentication scaffolding generated successfully');
             $this->newLine();
             $this->line('<fg=yellow>🎉 Generated Files:</>');
-            $this->line('- Controllers: Login, Register, Home, Profile');
-            $this->line('- Views: Login, Register, Home, Profile, Layout');
+            $this->line('- Controllers: Login, Register, Home, Profile, 2FA');
+            $this->line('- Views: Login, Register, Home, Profile, Layout, 2FA');
             $this->line('- Routes: Added to web.php');
         } catch (RuntimeException $e) {
             $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
@@ -105,6 +105,11 @@ class MakeAuthCommand extends Command
         );
 
         $this->createFile(
+            base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
+            $this->getStubContent('TwoFactorAuthController.stub')
+        );
+
+        $this->createFile(
             base_path('app/Http/Controllers/HomeController.php'),
             $this->getStubContent('HomeController.stub')
         );
@@ -123,9 +128,10 @@ class MakeAuthCommand extends Command
         $views = [
             'auth/login.blade.php' => 'auth/login.stub',
             'auth/register.blade.php' => 'auth/register.stub',
+            'auth/2fa.blade.php' => '2fa.stub',
             'layouts/app.blade.php' => 'layouts/app.stub',
             'home.blade.php' => 'home.stub',
-            'profile.blade.php' => 'profile.stub',
+            'profile.blade.php' => 'profile.stub'
         ];
 
         foreach ($views as $destination => $stubFile) {
@@ -183,9 +189,11 @@ class MakeAuthCommand extends Command
         $filesToCheck = [
             base_path('app/Http/Controllers/Auth/LoginController.php'),
             base_path('app/Http/Controllers/Auth/RegisterController.php'),
+            base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
             base_path('app/Http/Controllers/HomeController.php'),
             base_path('app/Http/Controllers/ProfileController.php'),
             base_path('resources/views/auth/login.blade.php'),
+            base_path('resources/views/auth/2fa.blade.php'),
             base_path('resources/views/auth/register.blade.php'),
             base_path('resources/views/layouts/app.blade.php'),
             base_path('resources/views/home.blade.php'),
@@ -210,12 +218,14 @@ class MakeAuthCommand extends Command
             'Controllers' => [
                 base_path('app/Http/Controllers/Auth/LoginController.php'),
                 base_path('app/Http/Controllers/Auth/RegisterController.php'),
+                base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
                 base_path('app/Http/Controllers/HomeController.php'),
                 base_path('app/Http/Controllers/ProfileController.php'),
             ],
             'Views' => [
                 base_path('resources/views/auth/login.blade.php'),
                 base_path('resources/views/auth/register.blade.php'),
+                base_path('resources/views/auth/2fa.blade.php'),
                 base_path('resources/views/layouts/app.blade.php'),
                 base_path('resources/views/home.blade.php'),
                 base_path('resources/views/profile.blade.php'),

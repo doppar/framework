@@ -24,7 +24,10 @@
     "symfony/console": "^7.2",
     "symfony/process": "^7.2",
     "symfony/var-dumper": "^7.1",
-    "vlucas/phpdotenv": "^5.5"
+    "vlucas/phpdotenv": "^5.5",
+    "paragonie/constant_time_encoding": "^3.0",
+    "spomky-labs/otphp": "^11.3",
+    "chillerlan/php-qrcode": "^5.0"
   },
   "require-dev": {
     "mockery/mockery": "^1.6",
