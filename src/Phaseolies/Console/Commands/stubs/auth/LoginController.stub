@@ -14,11 +14,11 @@ use App\Http\Middleware\GuestMiddleware;
 
 class LoginController extends Controller
 {
-   /**
-    * Show the login form view.
-    *
-    * @return Response
-    */
+    /**
+     * Show the login form view.
+     *
+     * @return Response
+     */
     #[Middleware([GuestMiddleware::class])]
     public function index(): Response
     {
@@ -42,11 +42,12 @@ class LoginController extends Controller
         $user = User::query()->where('email', '=', $request->email)->first();
 
         if ($user) {
-            if (Auth::try($request->passed())) {
-                return redirect()->intended('/home')
-                    ->withSuccess('You are logged in');
+            if (Auth::try($request->passed(), true)) {
+                if (Auth::hasTwoFactorEnabled($user)) {
+                    return redirect()->route('verify.2fa');
+                }
+                return redirect()->intended('/home')->withSuccess('You are logged in');
             }
-
             return back()->withError('Email or password is incorrect');
         }
 
