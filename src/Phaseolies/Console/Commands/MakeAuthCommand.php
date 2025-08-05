@@ -128,7 +128,7 @@ class MakeAuthCommand extends Command
         $views = [
             'auth/login.blade.php' => 'auth/login.stub',
             'auth/register.blade.php' => 'auth/register.stub',
-            'auth/2fa.blade.php' => '2fa.stub',
+            'auth/2fa.blade.php' => 'auth/2fa.stub',
             'layouts/app.blade.php' => 'layouts/app.stub',
             'home.blade.php' => 'home.stub',
             'profile.blade.php' => 'profile.stub'
