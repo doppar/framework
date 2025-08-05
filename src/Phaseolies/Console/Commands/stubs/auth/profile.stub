@@ -1,5 +1,7 @@
 @extends('layouts.app')
-@section('title') Profile @endsection
+@section('title')
+    Profile
+@endsection
 @section('content')
     <div class="container">
         <div class="row mb-3">
@@ -10,7 +12,7 @@
         </div>
         <div class="row mb-5">
             <div class="col-md-5 mb-3 mb-md-0">
-                <h1 class="fs-3 fw-semibold mb-3">Profile Information</h1>
+                <h5 class="mb-3">Profile Information</h5>
                 <p class="text-muted">Update your account's profile information and email address.</p>
             </div>
             <div class="col-md-7">
@@ -26,7 +28,7 @@
                                 <label class="form-label fw-semibold">Email</label>
                                 <input type="email" name="email" class="form-control" value="{{ Auth::user()->email }}">
                             </div>
-                            <button type="submit" class="btn btn-primary fw-semibold">Update Profile</button>
+                            <button type="submit" class="btn btn-dark fw-semibold">Update Profile</button>
                         </form>
                     </div>
                 </div>
@@ -38,7 +40,7 @@
         <!-- Update Password Section -->
         <div class="row">
             <div class="col-md-5 mb-3 mb-md-0">
-                <h1 class="fs-3 fw-semibold mb-3">Update Password</h1>
+                <h5 class="mb-3">Update Password</h5>
                 <p class="text-muted">Ensure your account is using a long, random password to stay secure.</p>
             </div>
             <div class="col-md-7">
@@ -58,8 +60,99 @@
                                 <label class="form-label fw-semibold">Confirm Password</label>
                                 <input type="password" name="confirm_password" class="form-control">
                             </div>
-                            <button type="submit" class="btn btn-primary fw-semibold">Update Password</button>
+                            <button type="submit" class="btn btn-dark fw-semibold">Update Password</button>
                         </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr class="my-5">
+
+        <!-- Two-Factor Authentication Section -->
+        <div class="row">
+            <div class="col-md-5 mb-3 mb-md-0">
+                <h5 class="mb-3">Two-Factor Authentication</h5>
+                <p class="text-muted">
+                    Add extra security to your account using two-factor authentication (2FA).
+                </p>
+            </div>
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between flex-wrap">
+                            <div class="flex-grow-1 pe-md-3 mb-3 mb-md-0">
+                                <h6 class="fw-bold mb-3">
+                                    Two-factor authentication is currently
+                                    <span class="{{ Auth::user()->two_factor_secret ? 'text-success' : 'text-danger' }}">
+                                        {{ Auth::user()->two_factor_secret ? 'Enabled' : 'Disabled' }}
+                                    </span>
+                                </h6>
+                                <p class="text-muted mb-3">
+                                    Two-factor authentication (2FA) adds an extra layer of security to your account by
+                                    requiring a time-based code from an authenticator app. Even if your password is
+                                    compromised,
+                                    your account remains protected.
+                                </p>
+                                <form action="{{ route('enable.2fa') }}" method="post">
+                                    @csrf
+                                    <input type="hidden" name="is_enabled_request"
+                                        value="{{ Auth::user()->two_factor_secret ? 0 : 1 }}">
+                                    <button type="submit"
+                                        class="btn btn-{{ Auth::user()->two_factor_secret ? 'danger' : 'dark' }} fw-semibold">
+                                        {{ Auth::user()->two_factor_secret ? 'Disable 2FA' : 'Enable 2FA' }}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        @if (isset($qrCodeImage) && isset($secret) && !empty($recoveryCodes))
+                            <hr class="my-4">
+                            <div class="row">
+                                <!-- Recovery Codes Section (Left) -->
+                                <div class="col-md-7">
+                                    <div class="recovery-codes">
+                                        <h6 class="fw-bold mb-3">Manual Setup</h6>
+                                        <p class="mb-2">Secret Key: <code>{{ $secret }}</code></p>
+                                        <div class="mt-4">
+                                            <h6 class="fw-bold mb-2">How to Set Up Manually</h6>
+                                            <ol class="mb-0 ps-3">
+                                                <li>Open your preferred authenticator app</li>
+                                                <li>Tap the option to <strong>add a new account</strong> or <strong>set up
+                                                        manually</strong>.</li>
+                                                <li>Select <strong>“Enter a setup key”</strong> or similar if prompted.</li>
+                                                <li>Enter your account name.</li>
+                                                <li>Enter the secret key</li>
+                                                <li>Make sure the type is set to <strong>Time-based (TOTP)</strong>.</li>
+                                                <li>Save the account. Your app will now start generating 6-digit codes every
+                                                    30 seconds.</li>
+                                            </ol>
+                                        </div>
+                                        <h6 class="fw-bold mb-2 mt-3">Recovery Codes</h6>
+                                        <p class="mb-2 text-muted">
+                                            Save these recovery codes in a secure place. Each code can be used only once to
+                                            access your account if you lose access to your authenticator app.
+                                        </p>
+                                        @foreach ($recoveryCodes as $code)
+                                            {{ $code }}<br>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <!-- QR Code Section (Right) -->
+                                <div class="col-md-5">
+                                    <p class="mb-2">Or set up 2FA by scanning QR code</p>
+                                    <div class="border d-inline-block bg-light rounded">
+                                        <img src="{{ $qrCodeImage }}" alt="Two-Factor QR Code" height="160"
+                                            width="160">
+                                    </div>
+                                    <p class="mt-2 text-muted" style="max-width: 240px;">
+                                        Open your authenticator app (like Google Authenticator or Authy), tap “+” or “Scan a
+                                        QR code,” and point your camera at the code.
+                                    </p>
+                                </div>
+                            </div>
+                        @endif
+
                     </div>
                 </div>
             </div>
