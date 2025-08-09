@@ -727,15 +727,11 @@ class Router extends Kernel
      */
     public function resolve(Application $app, Request $request): Response
     {
-        $callback = $this->getCallback($request);
-
-        if (!$callback) {
-            throw new \Exception("The Requested Route [{$request->uri()}] Not Found.", 404);
+        if (!$callback = $this->getCallback($request)) {
+            abort(404, 'Route Not Found');
         }
 
-        $currentMiddleware = $this->getCurrentRouteMiddleware($request);
-
-        if ($currentMiddleware) {
+        if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
             $this->applyRouteMiddleware($request, $app, $currentMiddleware);
         }
 

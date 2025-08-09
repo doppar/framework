@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Http\Support;
 
+use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
 
 class RequestAbortion
@@ -15,6 +16,26 @@ class RequestAbortion
      */
     public function abort($code, $message = '', array $headers = []): void
     {
+        $shouldJsonResponse = request()->isAjax() || request()->is('/api/*');
+
+        $customPath = base_path("resources/views/errors/{$code}.blade.php");
+        $packagePath = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$code}.blade.php");
+
+        if (!$shouldJsonResponse) {
+            $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
+
+            if ($viewPath) {
+                ob_get_clean();
+                http_response_code($code);
+                include $viewPath;
+                return;
+            }
+        }
+
+        if ($shouldJsonResponse) {
+            throw new HttpResponseException($message, $code, null, $headers);
+        }
+
         throw HttpException::fromStatusCode($code, $message, null, $headers);
     }
 

@@ -129,14 +129,7 @@ class ErrorHandler
                     file_get_contents(__DIR__ . '/error_page_template.blade.php')
                 );
             } else {
-                $customPath = base_path("resources/views/errors/500.blade.php");
-                $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/500.blade.php");
-                http_response_code(500);
-                if (file_exists($customPath)) {
-                    include $customPath;
-                } elseif (file_exists($errorPage)) {
-                    include $errorPage;
-                }
+                abort(500, "Something went wrong");
             }
         });
     }
