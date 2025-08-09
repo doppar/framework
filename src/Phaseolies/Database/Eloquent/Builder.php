@@ -14,10 +14,11 @@ use PDOStatement;
 use PDOException;
 use PDO;
 use Phaseolies\Database\Eloquent\Query\Debuggable;
+use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
-    use QueryCollection, QueryProcessor, QueryUtils, Debuggable;
+    use QueryCollection, QueryProcessor, QueryUtils, Debuggable, InteractsWithTimeframe;
 
     /**
      * @var PDO

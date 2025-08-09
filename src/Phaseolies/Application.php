@@ -4,7 +4,6 @@ namespace Phaseolies;
 
 use Phaseolies\Support\Router;
 use Phaseolies\Providers\ServiceProvider;
-use Phaseolies\Providers\CoreProviders;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\HttpException;
@@ -17,12 +16,10 @@ use Phaseolies\ApplicationBuilder;
 
 class Application extends Container
 {
-    use CoreProviders;
-
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.8.8.1';
+    const VERSION = '2.8.8.8';
 
     /**
      * The base path of the application installation.
@@ -658,6 +655,24 @@ class Application extends Container
                 \database_path('migrations')
             );
         });
+    }
+
+    /**
+     * Loads the core service providers for the application.
+     *
+     * @return array
+     */
+    protected function loadCoreProviders(): array
+    {
+        return [
+            \Phaseolies\Providers\EnvServiceProvider::class,
+            \Phaseolies\Providers\FacadeServiceProvider::class,
+            \Phaseolies\Providers\LanguageServiceProvider::class,
+            \Phaseolies\Providers\SessionServiceProvider::class,
+            \Phaseolies\Providers\RouteServiceProvider::class,
+            \Phaseolies\Providers\CacheServiceProvider::class,
+            \Phaseolies\Providers\RateLimiterServiceProvider::class,
+        ];
     }
 
     /**
