@@ -9,8 +9,11 @@ use Phaseolies\Database\Eloquent\Model;
 
 class Authenticate
 {
-    use InteractsWithTwoFactorAuth;
+    use InteractsWithTwoFactorAuth, InteractsWithRememberCookie;
 
+    /**
+     * @var array
+     */
     private $data = [];
 
     /**
@@ -152,15 +155,44 @@ class Authenticate
             }
         }
 
-        if (cookie()->has('remember_token')) {
-            $rememberToken = Crypt::decrypt(cookie()->get('remember_token'));
-            $user = $authModel::query()->where('remember_token', $rememberToken)->first();
+        if (cookie()->has($this->getRememberCookieName())) {
+            /**
+             * @var string
+             */
+            $rememberToken = Crypt::decrypt(cookie()->get($this->getRememberCookieName()));
+            $segments = explode('|', $rememberToken);
 
-            if ($user) {
+            if (count($segments) !== 3) {
+                $this->expireRememberCookie();
+                return null;
+            }
+
+            [$id, $token, $hash] = $segments;
+
+            if (!Hash::check($id . $token, $hash)) {
+                $this->expireRememberCookie();
+                return null;
+            }
+
+            $user = $authModel::find($id);
+
+            if (!$user || !$user->remember_token) {
+                $this->expireRememberCookie();
+                return null;
+            }
+
+            if (Hash::check($token, $user->remember_token)) {
                 $this->setUser($user);
-
+                // Rotating the token for security
+                session()->put('auth_via_remember', true);
+                $this->setRememberToken($user);
                 return $user;
             }
+
+            // Token didn't match - possible theft attempt
+            $this->expireRememberCookie();
+            $user->remember_token = null;
+            $user->save();
         }
 
         return null;
@@ -195,27 +227,8 @@ class Authenticate
         session()->invalidate();
         session()->regenerateToken();
 
-        if (cookie()->has('remember_token')) {
+        if (cookie()->has($this->getRememberCookieName())) {
             $this->expireRememberCookie();
-        }
-    }
-
-    /**
-     * Removes expired cookie
-     *
-     * @return void
-     */
-    protected function expireRememberCookie(): void
-    {
-        if (cookie()->has('remember_token')) {
-            setcookie('remember_token', '', [
-                'expires' => time() - 3600,
-                'path' => '/',
-                'domain' => config('session.domain') ?? '',
-                'secure' => request()->isSecure(),
-                'httponly' => true,
-                'samesite' => 'lax'
-            ]);
         }
     }
 
@@ -230,39 +243,14 @@ class Authenticate
     }
 
     /**
-     * Set the remember token for the user.
-     *
-     * @param Model $user
-     */
-    private function setRememberToken(Model $user): void
-    {
-        $token = bin2hex(random_bytes(50));
-        $user->remember_token = $token;
-        $user->save();
-        $rememberToken = Crypt::encrypt($token);
-
-        setcookie(
-            'remember_token',
-            $rememberToken,
-            [
-                'expires' => time() + 60 * 60 * 24 * 30,
-                'path' => '/',
-                'domain' => '',
-                'secure' => true,
-                'httponly' => true,
-                'samesite' => config('session.same_site', 'Lax')
-            ]
-        );
-    }
-
-    /**
      * Check if user was authenticated via remember token.
      *
      * @return bool
      */
     public function viaRemember(): bool
     {
-        return cookie()->has('remember_token');
+        return session('auth_via_remember', false)
+            && cookie()->has($this->getRememberCookieName());
     }
 
     /**
