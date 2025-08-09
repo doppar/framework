@@ -3,6 +3,8 @@
 namespace Tests\Unit;
 
 use Phaseolies\Utilities\Paginator;
+use Phaseolies\Http\Request;
+use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
 class PaginatorTest extends TestCase
@@ -19,6 +21,10 @@ class PaginatorTest extends TestCase
 
     protected function setUp(): void
     {
+        $container = new Container;
+
+        $container->singleton('request', Request::class);
+
         $this->paginator = new Paginator($this->testData);
     }
 

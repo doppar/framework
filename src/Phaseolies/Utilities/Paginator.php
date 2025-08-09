@@ -13,6 +13,7 @@ class Paginator
 
     /**
      * Check if there is any page for pagination
+     *
      * @return bool
      */
     public function hasPages(): bool
@@ -22,6 +23,7 @@ class Paginator
 
     /**
      * Check if the current page is the first page
+     *
      * @return bool
      */
     public function onFirstPage(): bool
@@ -31,6 +33,7 @@ class Paginator
 
     /**
      * Check if there are more pages after the current page
+     *
      * @return bool
      */
     public function hasMorePages(): bool
@@ -40,24 +43,39 @@ class Paginator
 
     /**
      * Get the URL for the previous page
+     *
      * @return string|null
      */
     public function previousPageUrl(): ?string
     {
-        return $this->data['previous_page_url'];
+        if (empty($this->data['previous_page_url'])) {
+            return null;
+        }
+
+        $queryParams = request()->except('page');
+
+        return $this->appendQueryParameters($this->data['previous_page_url'], $queryParams);
     }
 
     /**
      * Get the URL for the next page
+     *
      * @return string|null
      */
     public function nextPageUrl(): ?string
     {
-        return $this->data['next_page_url'];
+        if (empty($this->data['next_page_url'])) {
+            return null;
+        }
+
+        $queryParams = request()->except('page');
+
+        return $this->appendQueryParameters($this->data['next_page_url'], $queryParams);
     }
 
     /**
      * Get the current page number
+     *
      * @return int
      */
     public function currentPage(): int
@@ -67,6 +85,7 @@ class Paginator
 
     /**
      * Get the last page number
+     *
      * @return int
      */
     public function lastPage(): int
@@ -76,6 +95,7 @@ class Paginator
 
     /**
      * Generate an array of page numbers with ellipsis for gaps
+     *
      * @return string|null
      */
     public function jump(): array
@@ -124,6 +144,7 @@ class Paginator
 
     /**
      * Generate an array of page numbers with ellipsis for gaps (simplified version)
+     *
      * @return string|null
      */
     public function numbers(): array
@@ -159,16 +180,21 @@ class Paginator
 
     /**
      * Generate the URL for a specific page
+     *
      * @param int $page
      * @return string
      */
     public function url($page): string
     {
-        return $this->data['path'] . '?page=' . $page;
+        $queryParams = request()->query();
+        $queryParams['page'] = $page;
+
+        return $this->data['path'] . '?' . http_build_query($queryParams);
     }
 
     /**
      * Render pagination links with a "Jump to Page" dropdown
+     *
      * @return string|null
      */
     public function linkWithJumps(): ?string
@@ -231,6 +257,7 @@ class Paginator
 
     /**
      * Render pagination links with page numbers
+     *
      * @return string|null
      */
     public function links(): ?string
@@ -318,9 +345,13 @@ class Paginator
         // New ones take precedence
         $mergedParams = array_merge($queryParams, $existingParams);
 
-        // Rebuild the URL using base_url
+        // Rebuild the URL without modifying the base URL
+        $scheme = isset($parsedUrl['scheme']) ? $parsedUrl['scheme'] . '://' : '';
+        $host = $parsedUrl['host'] ?? '';
+        $port = isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '';
+        $path = $parsedUrl['path'] ?? '';
         $query = http_build_query($mergedParams);
 
-        return base_url($parsedUrl['path'] ?? '') . '?' . $query;
+        return $scheme . $host . $port . $path . '?' . $query;
     }
 }
