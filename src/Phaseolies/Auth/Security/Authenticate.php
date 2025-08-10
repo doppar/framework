@@ -147,10 +147,19 @@ class Authenticate
             return $this->statelessUser;
         }
 
+        if (session()->has('user_cache')) {
+            $cache = session('user_cache');
+
+            if ($this->isUserCacheValid($cache)) {
+                return $cache['user'];
+            }
+        }
+
         if (session()->has('user')) {
             $user = $authModel::find(session('user')->id);
 
             if ($user) {
+                $this->cacheUser($user);
                 return $user;
             }
         }
@@ -223,8 +232,9 @@ class Authenticate
         $this->statelessUser = null;
 
         session()->forget('user');
-        session()->forget('user');
         session()->forget('auth_via_remember');
+        session()->forget('user_cache');
+
         session()->invalidate();
         session()->regenerateToken();
 
@@ -241,6 +251,43 @@ class Authenticate
     private function setUser(Model $user): void
     {
         session()->put('user', $user);
+
+        $this->cacheUser($user);
+    }
+
+    /**
+     * Cache the user data
+     *
+     * @param Model $user
+     * @return void
+     */
+    private function cacheUser(Model $user): void
+    {
+        session()->put('user_cache', [
+            'user' => $user,
+            'version' => $user?->updated_at,
+            'expires_at' => now()->addMinutes(30)->timestamp
+        ]);
+    }
+
+    /**
+     * Check cache expiry
+     *
+     * @param array $cache
+     * @return bool
+     */
+    private function isUserCacheValid(array $cache): bool
+    {
+        if ($cache['expires_at'] < time()) {
+            return false;
+        }
+
+        $currentVersion =  $cache['user']->newQuery()
+            ->select('updated_at')
+            ->where('id', $cache['user']->id)
+            ->first();
+
+        return $cache['version'] === $currentVersion?->updated_at;
     }
 
     /**
