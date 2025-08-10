@@ -223,9 +223,10 @@ trait InteractsWithTwoFactorAuth
     public function generateTwoFactorQrCode(string $qrCodeUrl): string
     {
         $options = new QROptions([
-            'version'      => 5,
-            'outputType'   => QRCode::OUTPUT_MARKUP_SVG,
-            'eccLevel'    => QRCode::ECC_L,
+            'version'      => 10,
+            'outputType'  => QRCode::OUTPUT_MARKUP_SVG,
+            'eccLevel'    => QRCode::ECC_M,
+            'addQuietzone' => true,
         ]);
 
         return (new QRCode($options))->render($qrCodeUrl);

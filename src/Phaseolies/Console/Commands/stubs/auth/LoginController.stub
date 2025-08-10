@@ -42,7 +42,7 @@ class LoginController extends Controller
         $user = User::query()->where('email', '=', $request->email)->first();
 
         if ($user) {
-            if (Auth::try($request->passed(), true)) {
+            if (Auth::try($request->passed())) {
                 if (Auth::hasTwoFactorEnabled($user)) {
                     return redirect()->route('verify.2fa');
                 }

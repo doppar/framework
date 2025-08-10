@@ -56,12 +56,12 @@ class Encryption
         $decryptedData = openssl_decrypt($encryptedData, $cipher, $key, 0, $iv);
 
         if ($decryptedData === false) {
-            throw new RuntimeException('Decryption failed');
+            return false;
         }
 
         $decodedData = json_decode($decryptedData, true);
 
-        // Return the decrypted data as an array 
+        // Return the decrypted data as an array
         // (if JSON decoding succeeded) or as a string
         return $decodedData ? $decodedData : $decryptedData;
     }
