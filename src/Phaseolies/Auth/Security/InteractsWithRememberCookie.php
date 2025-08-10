@@ -34,6 +34,8 @@ trait InteractsWithRememberCookie
 
         $cookieValue = $user->id . '|' . $token . '|' . Hash::make($user->id . $token);
 
+        session()->put('auth_via_remember', true);
+
         $this->setRememberCookie($cookieValue);
     }
 

@@ -184,7 +184,6 @@ class Authenticate
             if (Hash::check($token, $user->remember_token)) {
                 $this->setUser($user);
                 // Rotating the token for security
-                session()->put('auth_via_remember', true);
                 $this->setRememberToken($user);
                 return $user;
             }
@@ -224,6 +223,8 @@ class Authenticate
         $this->statelessUser = null;
 
         session()->forget('user');
+        session()->forget('user');
+        session()->forget('auth_via_remember');
         session()->invalidate();
         session()->regenerateToken();
 
