@@ -9,6 +9,9 @@ use Exception;
 
 class ApplicationBuilder
 {
+    /**
+     * @var TimezoneHandler
+     */
     protected TimezoneHandler $timezoneHandler;
 
     /**

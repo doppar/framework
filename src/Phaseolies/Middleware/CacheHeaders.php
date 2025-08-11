@@ -59,10 +59,10 @@ class CacheHeaders implements Middleware
     /**
      * Parse the middleware options.
      *
-     * @param  array  $options
+     * @param array $options
      * @return array
      */
-    protected function parseOptions(array $options)
+    protected function parseOptions(array $options): array
     {
         $parsed = [
             'etag' => false,

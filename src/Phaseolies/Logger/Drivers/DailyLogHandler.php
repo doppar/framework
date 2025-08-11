@@ -6,9 +6,6 @@ use Phaseolies\Logger\Contracts\LogHandlerInterface;
 use Phaseolies\Logger\Contracts\AbstractHandler;
 use Monolog\Logger;
 
-/**
- * Daily log handler.
- */
 class DailyLogHandler extends AbstractHandler implements LogHandlerInterface
 {
     /**

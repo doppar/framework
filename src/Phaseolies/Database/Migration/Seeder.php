@@ -7,7 +7,7 @@ class Seeder
     /**
      * Call the given seeder class(es).
      *
-     * @param  array|string  $seeders
+     * @param array|string $seeders
      * @return void
      */
     protected function call($seeders): void

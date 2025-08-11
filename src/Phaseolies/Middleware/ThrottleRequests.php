@@ -37,7 +37,6 @@ class ThrottleRequests implements Middleware
      * @param int|string $maxAttempts
      * @param float|int $decayMinutes
      * @return \Phaseolies\Http\Response
-     *
      * @throws \Phaseolies\Http\Exceptions\HttpResponseException
      */
     public function __invoke(Request $request, Closure $next, $maxAttempts = 60, $decayMinutes = 1): Response

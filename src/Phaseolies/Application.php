@@ -23,56 +23,78 @@ class Application extends Container
 
     /**
      * The base path of the application installation.
+     *
+     * @var string
      */
     protected $basePath;
 
     /**
      * Indicates if the application has been bootstrapped.
+     *
+     * @var bool
      */
     protected $hasBeenBootstrapped = false;
 
     /**
      * Indicates if the application has been booted.
+     *
+     * @var bool
      */
     protected $booted = false;
 
     /**
      * The path to the bootstrap directory.
+     *
+     * @var string
      */
     protected $bootstrapPath;
 
     /**
      * The path to the application resources.
+     *
+     * @var string
      */
     protected $resourcesPath;
 
     /**
      * The path to the application directory.
+     *
+     * @var string
      */
     protected $appPath;
 
     /**
      * The path to the configuration files.
+     *
+     * @var string
      */
     protected $configPath;
 
     /**
      * The path to the database directory.
+     *
+     * @var string
      */
     protected $databasePath;
 
     /**
      * The path to the public directory.
+     *
+     * @var string
      */
     protected $publicPath;
 
     /**
      * The path to the storage directory.
+     *
+     * @var string
      */
     protected $storagePath;
 
     /**
      * The name of the environment file.
+     *
+     * @var string
      */
     protected $environmentFile = '.env';
 
@@ -85,11 +107,15 @@ class Application extends Container
 
     /**
      * Indicates if the application is running in the console.
+     * 
+     * @var bool|null
      */
     protected $isRunningInConsole = null;
 
     /**
      * The registered service providers.
+     *
+     * @var array
      */
     protected $serviceProviders = [];
 
@@ -224,6 +250,7 @@ class Application extends Container
 
     /**
      * Get the current application running environments
+     *
      * @return string
      */
     public function getEnvironment(): string
@@ -234,6 +261,7 @@ class Application extends Container
     /**
      * Registers core service providers.
      * If the application is running in the console, it skips registration.
+     *
      * @return self
      */
     protected function registerCoreProviders(): self
@@ -266,15 +294,14 @@ class Application extends Container
 
     /**
      * Boots core service providers.
-     *
      * If the application is running in the console, it skips booting.
      *
      * @return self
-     *   Returns the current instance for method chaining.
      */
     protected function bootCoreProviders(): self
     {
         $this->bootProviders();
+
         if (!$this->providersBooted) {
             $this->providersBooted = true;
         }
@@ -284,13 +311,17 @@ class Application extends Container
 
     /**
      * Boots a list of service providers.
+     *
+     * @return void
      */
     protected function bootProviders(): void
     {
         foreach ($this->serviceProviders as $providerInstance) {
             $providerInstance->boot();
         }
+
         $this->bootstrap();
+
         $this->bootServices();
     }
 
@@ -352,7 +383,6 @@ class Application extends Container
      * Gets the base path of the application.
      *
      * @return string
-     *   The base path of the application.
      */
     public function getBasePath(): string
     {
@@ -361,6 +391,8 @@ class Application extends Container
 
     /**
      * Sets necessary folder paths for the application.
+     *
+     * @return void
      */
     protected function setNecessaryFolderPath(): void
     {
@@ -393,7 +425,6 @@ class Application extends Container
      * Gets the resources path.
      *
      * @return string
-     *   The path to the resources folder.
      */
     public function resourcesPath($path = ''): string
     {
@@ -404,7 +435,6 @@ class Application extends Container
      * Gets the bootstrap path.
      *
      * @return string
-     *   The path to the bootstrap folder.
      */
     public function bootstrapPath($path = ''): string
     {
@@ -415,7 +445,6 @@ class Application extends Container
      * Gets the database path.
      *
      * @return string
-     *   The path to the database folder.
      */
     public function databasePath($path = ''): string
     {
@@ -426,7 +455,6 @@ class Application extends Container
      * Gets the public path.
      *
      * @return string
-     *   The path to the public folder.
      */
     public function publicPath($path = ''): string
     {
@@ -437,7 +465,6 @@ class Application extends Container
      * Gets the storage path.
      *
      * @return string
-     *   The path to the storage folder.
      */
     public function storagePath($path = ''): string
     {
@@ -448,7 +475,6 @@ class Application extends Container
      * Gets the application path.
      *
      * @return string
-     *   The path to the application folder.
      */
     public function appPath(): string
     {
@@ -459,7 +485,6 @@ class Application extends Container
      * Gets the base path of the application.
      *
      * @return string
-     *   The base path of the application.
      */
     public function basePath(): string
     {
@@ -470,7 +495,6 @@ class Application extends Container
      * Gets the configuration path.
      *
      * @return string
-     *   The path to the configuration folder.
      */
     public function configPath($path = ''): string
     {
@@ -481,7 +505,6 @@ class Application extends Container
      * Determines if the application is running in the console.
      *
      * @return bool
-     *   True if running in the console, false otherwise.
      */
     public function runningInConsole(): bool
     {
@@ -496,7 +519,6 @@ class Application extends Container
      * Checks if the application has been bootstrapped.
      *
      * @return bool
-     *   True if bootstrapped, false otherwise.
      */
     public function hasBeenBootstrapped(): bool
     {
@@ -507,7 +529,6 @@ class Application extends Container
      * Checks if the application has booted.
      *
      * @return bool
-     *   True if booted, false otherwise.
      */
     public function isBooted(): bool
     {
@@ -531,6 +552,8 @@ class Application extends Container
 
     /**
      * Boots the application services.
+     *
+     * @return void
      */
     protected function bootServices(): void
     {
@@ -604,7 +627,7 @@ class Application extends Container
      * @param string $fallbackLocale
      * @return void
      */
-    public function setFallbackLocale($fallbackLocale)
+    public function setFallbackLocale($fallbackLocale): void
     {
         $this['config']->set('app.fallback_locale', $fallbackLocale);
 
@@ -624,6 +647,7 @@ class Application extends Container
 
     /**
      * Bind all the application core singleton classes
+     *
      * @return void
      */
     protected function bindSingletonClasses(): void
@@ -698,6 +722,7 @@ class Application extends Container
                 return $serviceProvider;
             }
         }
+
         return null;
     }
 
@@ -730,7 +755,7 @@ class Application extends Container
      * @param  string|null  $environment
      * @return string|bool
      */
-    public function environmentIs($environment = null)
+    public function environmentIs($environment = null): string|bool
     {
         if (is_null($environment)) {
             return $this['config']->get('app.env', 'production');
@@ -817,9 +842,11 @@ class Application extends Container
 
     /**
      * Dispatches the application request.
-     *
      * Resolves the request using the router and sends the response.
      * Handles any HTTP exceptions that may occur during the process.
+     *
+     * @param Request $request
+     * @return void
      */
     public function dispatch($request): void
     {

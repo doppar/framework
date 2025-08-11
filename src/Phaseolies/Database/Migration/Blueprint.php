@@ -384,10 +384,6 @@ class Blueprint
         return $this->addColumn('macAddress', $column);
     }
 
-    /*
-     * Spatial Type Methods
-     */
-
     /**
      * Create a GEOMETRY column (any type of spatial data)
      *
@@ -648,7 +644,9 @@ class Blueprint
     public function addColumn(string $type, string $name, array $parameters = []): ColumnDefinition
     {
         $column = new ColumnDefinition(array_merge(compact('type', 'name'), $parameters));
+
         $this->columns[] = $column;
+
         return $column;
     }
 

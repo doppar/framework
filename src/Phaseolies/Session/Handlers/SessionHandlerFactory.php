@@ -14,7 +14,6 @@ class SessionHandlerFactory
      * @param string $driver The name of the session driver (e.g., 'file', 'cookie').
      * @param array $config Configuration options to pass to the session handler.
      * @return SessionHandlerInterface The appropriate session handler instance.
-     *
      * @throws \RuntimeException if an unsupported driver is provided.
      */
     public static function create(string $driver, array $config): SessionHandlerInterface

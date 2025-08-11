@@ -67,44 +67,51 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected $timeStamps = true;
 
     /**
-     * @var array
      * Holds the loaded relationships
+     *
+     * @var array
      */
     protected $relations = [];
 
     /**
-     * @var string
      * The last relation type that was set
+     *
+     * @var string
      */
     protected $lastRelationType;
 
     /**
-     * @var string
      * The last related model that was set
+     *
+     * @var string
      */
     protected $lastRelatedModel;
 
     /**
-     * @var string
      * The last foreign key that was set
+     *
+     * @var string
      */
     protected $lastForeignKey;
 
     /**
-     * @var string
      * The last local key that was set
+     *
+     * @var string
      */
     protected $lastLocalKey;
 
     /**
-     * @var string
      * The last related key that was set (for many-to-many)
+     *
+     * @var string
      */
     protected $lastRelatedKey;
 
     /**
-     * @var string
      * The last pivot table that was set (for many-to-many)
+     *
+     * @var string
      */
     protected $lastPivotTable;
 
@@ -124,6 +131,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * The database connection name for the model.
+     *
+     * @var string|null
      */
     protected $connection = null;
 
@@ -160,6 +169,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * Register hooks defined in the model
+     *
+     * @return void
      */
     protected function registerHooks(): void
     {
@@ -282,8 +293,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         return strtolower($className);
     }
 
-    /**
+    /** 
      * Get the database connection for the model.
+     *
+     * @return PDO
      */
     public function getConnection(): PDO
     {
@@ -332,6 +345,13 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         }
     }
 
+    /**
+     * Set a single attribute value on the model.
+     *
+     * @param string $key The attribute name.
+     * @param mixed $value The value to assign to the attribute.
+     * @return void
+     */
     public function setAttribute($key, $value)
     {
         $value = $this->sanitize($value);
@@ -373,7 +393,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      *
      * @return string
      */
-    public function getKeyName()
+    public function getKeyName(): string
     {
         return $this->primaryKey;
     }
@@ -381,9 +401,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Get the value of the model's primary key.
      *
-     * @return mixed
+     * @return string
      */
-    public function getKey()
+    public function getKey(): string
     {
         return $this->{$this->getKeyName()};
     }
@@ -393,19 +413,22 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      *
      * @return array The visible attributes.
      */
-    public function makeVisible()
+    public function makeVisible(): array
     {
         $visibleAttributes = [];
+
         foreach ($this->attributes as $key => $value) {
             if (!in_array($key, $this->unexposable)) {
                 $visibleAttributes[$key] = $value;
             }
         }
+
         return $visibleAttributes;
     }
 
     /**
      * Get the data except unexposed attributes
+     *
      * @param array $attributes
      * @return self
      */
@@ -541,6 +564,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         $this->lastLocalKey = $localKey;
 
         $relatedInstance = app($related);
+
         return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
@@ -580,6 +604,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         $this->lastLocalKey = $localKey;
 
         $relatedInstance = app($related);
+
         return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
@@ -646,14 +671,18 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * Get the parent key value for relationships
+     *
+     * @return string
      */
-    public function getParentKey()
+    public function getParentKey(): string
     {
         return $this->{$this->getLastLocalKey()};
     }
 
     /**
      * Get the local key for relationships
+     *
+     * @return string
      */
     public function getLastLocalKey(): string
     {
@@ -669,6 +698,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function setRelation(string $relation, $value): self
     {
         $this->relations[$relation] = $value;
+
         return $this;
     }
 
@@ -756,6 +786,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
                                 $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
                             }
                             $this->setRelation($name, $grouped);
+
                             return $results;
                     }
                 }
@@ -776,7 +807,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Determine if the given relation is loaded.
      *
-     * @param  string  $key
+     * @param string $key
      * @return bool
      */
     public function relationLoaded(string $key): bool
@@ -797,7 +828,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Set the entire relations array on the model.
      *
-     * @param  array  $relations
+     * @param array $relations
      * @return $this
      */
     public function setRelations(array $relations): self
@@ -810,7 +841,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Get a specified relationship.
      *
-     * @param  string  $relation
+     * @param string $relation
      * @return mixed
      */
     public function getRelationValue(string $relation)
@@ -820,6 +851,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * Get the authentication key name used for identifying the user.
+     *
      * @return string
      */
     public function getAuthKeyName(): string
@@ -839,6 +871,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * Convert collection to array
+     *
      * @return array
      */
     public function toArray(): array

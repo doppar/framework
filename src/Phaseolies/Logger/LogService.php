@@ -6,10 +6,6 @@ use Phaseolies\Logger\Contracts\LogHandlerInterface;
 use Monolog\ResettableInterface;
 use Monolog\Logger;
 
-/**
- * Log class provides a mechanism to configure and handle logging using Monolog.
- * It implements the ResettableInterface to allow resetting the logger state.
- */
 class LogService implements ResettableInterface
 {
     /**

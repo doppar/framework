@@ -9,17 +9,19 @@ class MigrationRepository
 {
     /**
      * Name of the table used to store migration records
+     *
      * @var string
      */
     protected string $table = 'migrations';
 
     /**
      * Checks if the migrations table exists in the database
+     *
      * @return bool True if table exists, false otherwise
      */
     public function exists(): bool
     {
-        return DB::tableExists($this->table);
+        return (bool) DB::tableExists($this->table);
     }
 
     /**
@@ -55,11 +57,13 @@ class MigrationRepository
         );
 
         $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
         return $results ?: [];
     }
 
     /**
      * Logs a migration file as having been run
+     *
      * @param string $file The migration filename to log
      */
     public function log(string $file): void
@@ -74,6 +78,7 @@ class MigrationRepository
 
     /**
      * Gets the next batch number for new migrations
+     *
      * @return int The next batch number (increments the highest existing batch number)
      */
     protected function getNextBatchNumber(): int

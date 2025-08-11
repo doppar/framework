@@ -8,6 +8,8 @@ class Schema
 {
     /**
      * The database connection name
+     *
+     * @var string|null
      */
     protected ?string $connection = null;
 
@@ -76,7 +78,8 @@ class Schema
 
     /**
      * Disable foreign key constraints
-     * Useful for operations that might violate foreign key rules temporarily
+     *
+     * @return void
      */
     public function disableForeignKeyConstraints(): void
     {
@@ -85,7 +88,8 @@ class Schema
 
     /**
      * Enable foreign key constraints
-     * Should be called after disableForeignKeyConstraints() to re-enable checks
+     *
+     * @return void
      */
     public function enableForeignKeyConstraints(): void
     {

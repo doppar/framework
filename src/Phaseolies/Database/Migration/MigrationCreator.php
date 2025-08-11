@@ -25,7 +25,6 @@ class MigrationCreator
      * @param string $path The directory path to save the migration file
      * @param string|null $table The name of the table (optional)
      * @param bool $create Whether the migration is for creating a table
-     *
      * @return string The full path to the created migration file
      */
     public function create(string $name, string $path, ?string $table = null, bool $create = false): string

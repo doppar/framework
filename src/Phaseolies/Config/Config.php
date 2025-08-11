@@ -20,6 +20,7 @@ final class Config
 
     /**
      * Generate config cache key based on config files
+     *
      * @return string
      */
     protected static function getCacheKey(): string
@@ -36,6 +37,8 @@ final class Config
 
     /**
      * Static method to initialize cacheFile path.
+     *
+     * @return void
      */
     public static function initialize(): void
     {
@@ -55,6 +58,8 @@ final class Config
 
     /**
      * Load all configuration files from source.
+     *
+     * @return void
      */
     public static function loadAll(): void
     {
@@ -67,6 +72,8 @@ final class Config
 
     /**
      * Load configuration from the cache if available and valid.
+     *
+     * @return void
      */
     public static function loadFromCache(): void
     {
@@ -97,6 +104,8 @@ final class Config
 
     /**
      * Cache the configuration to a file.
+     *
+     * @return void
      */
     public static function cacheConfig(): void
     {
@@ -228,6 +237,8 @@ final class Config
 
     /**
      * Clear all cached configuration files.
+     *
+     * @return void
      */
     public static function clearCache(): void
     {
@@ -242,6 +253,7 @@ final class Config
 
     /**
      * Check if config cache is valid
+     *
      * @return bool
      */
     public static function isCacheValid(): bool

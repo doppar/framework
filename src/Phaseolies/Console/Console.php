@@ -12,6 +12,8 @@ class Console extends SymfonyApplication
 {
     /**
      * The application instance.
+     *
+     * @var Application
      */
     protected Application $app;
 
@@ -73,6 +75,8 @@ class Console extends SymfonyApplication
 
     /**
      * Bootstrap all registered commands.
+     *
+     * @return void
      */
     protected function bootstrapCommands(): void
     {

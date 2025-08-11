@@ -43,6 +43,7 @@ class ForeignKeyDefinition
     public function references(string $column): self
     {
         $this->references = $column;
+
         return $this;
     }
 
@@ -55,6 +56,7 @@ class ForeignKeyDefinition
     public function on(string $table): self
     {
         $this->on = $table;
+
         return $this;
     }
 
@@ -67,6 +69,7 @@ class ForeignKeyDefinition
     public function onDelete(string $action): self
     {
         $this->onDelete = strtoupper($action);
+
         return $this;
     }
 
@@ -79,6 +82,7 @@ class ForeignKeyDefinition
     public function onUpdate(string $action): self
     {
         $this->onUpdate = strtoupper($action);
+
         return $this;
     }
 

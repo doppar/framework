@@ -11,6 +11,7 @@ class Middleware
 {
     /**
      * Closure that handles the request processing.
+     *
      * @var Closure(Request, Closure): Response
      */
     public Closure $start;

@@ -7,6 +7,18 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class SchedulePool
 {
+    /**
+     * List of processes currently managed by the schedule pool.
+     *
+     * Each element is an associative array containing:
+     * - pid (int) Process ID.
+     * - start_time (int) UNIX timestamp indicating when the process started.
+     *
+     * This property is used to keep track of background processes initiated
+     * through the pool, allowing status checks and management.
+     *
+     * @var array<int, array{pid:int, start_time:int}>
+     */
     protected static $runningProcesses = [];
 
     /**
@@ -73,6 +85,8 @@ class SchedulePool
 
     /**
      * Get running processes
+     *
+     * @return array
      */
     public static function getRunningProcesses(): array
     {
@@ -81,14 +95,17 @@ class SchedulePool
 
     /**
      * Check if a process is running by PID
+     *
+     * @return bool
      */
     public static function isProcessRunning(int $pid): bool
     {
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $output = shell_exec("tasklist /FI \"PID eq $pid\"");
+
             return strpos($output, ' ' . $pid . ' ') !== false;
-        } else {
-            return file_exists("/proc/$pid");
         }
+
+        return file_exists("/proc/$pid");
     }
 }

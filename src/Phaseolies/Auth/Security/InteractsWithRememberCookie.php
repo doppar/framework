@@ -10,11 +10,15 @@ trait InteractsWithRememberCookie
 {
     /**
      * The cookie name prefix for remember me tokens
+     *
+     * @var string
      */
     protected string $rememberCookiePrefix = 'remember_doppar_';
 
     /**
      * Get the hashed cookie name for remember me functionality
+     *
+     * @return string
      */
     protected function getRememberCookieName(): string
     {
@@ -25,6 +29,7 @@ trait InteractsWithRememberCookie
      * Set the remember token for the user.
      *
      * @param Model $user
+     * @return void
      */
     private function setRememberToken(Model $user): void
     {

@@ -10,12 +10,18 @@ class Command extends Console
 {
     /**
      * The application instance.
+     *
+     * @var Application
      */
     protected Application $app;
 
+    /**
+     * @param Application $app
+     */
     public function __construct(Application $app)
     {
         parent::__construct($app);
+
         $this->app = $app;
     }
 
@@ -37,6 +43,7 @@ class Command extends Console
 
         $files = [];
         $userDefineCommandsDir = base_path('app/Schedule/Commands');
+
         if (\is_dir($userDefineCommandsDir)) {
             $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);
             $iterator = new RecursiveIteratorIterator($dirIterator);

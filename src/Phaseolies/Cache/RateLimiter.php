@@ -18,7 +18,7 @@ class RateLimiter
     /**
      * Create a new rate limiter instance.
      *
-     * @param  CacheInterface  $cache
+     * @param CacheInterface $cache
      * @return void
      */
     public function __construct(CacheInterface $cache)
@@ -29,9 +29,9 @@ class RateLimiter
     /**
      * Determine if the given key has been "accessed" too many times.
      *
-     * @param  string  $key
-     * @param  int  $maxAttempts
-     * @param  int  $decaySeconds
+     * @param string $key
+     * @param int $maxAttempts
+     * @param int $decaySeconds
      * @return \Phaseolies\Cache\RateLimit
      * @throws InvalidArgumentException
      */
@@ -68,8 +68,8 @@ class RateLimiter
     /**
      * Determine if the given key has been "accessed" too many times.
      *
-     * @param  string  $key
-     * @param  int  $maxAttempts
+     * @param string $key
+     * @param int $maxAttempts
      * @return bool
      * @throws InvalidArgumentException
      */
@@ -107,7 +107,7 @@ class RateLimiter
     /**
      * Get the expiration timestamp for the rate limit.
      *
-     * @param  int  $seconds
+     * @param int $seconds
      * @return int
      */
     public function availableAt(int $seconds): int
@@ -118,8 +118,8 @@ class RateLimiter
     /**
      * Increment the counter for a given key for a given decay time.
      *
-     * @param  string  $key
-     * @param  int  $decaySeconds
+     * @param string $key
+     * @param int $decaySeconds
      * @return int
      * @throws InvalidArgumentException
      */
@@ -146,7 +146,7 @@ class RateLimiter
     /**
      * Clear the hits and lockout timer for the given key.
      *
-     * @param  string  $key
+     * @param string $key
      * @return void
      * @throws InvalidArgumentException
      */
@@ -163,7 +163,7 @@ class RateLimiter
     /**
      * Get the number of attempts for the given key.
      *
-     * @param  string  $key
+     * @param string $key
      * @return int
      * @throws InvalidArgumentException
      */
@@ -179,7 +179,7 @@ class RateLimiter
     /**
      * Reset the number of attempts for the given key.
      *
-     * @param  string  $key
+     * @param string $key
      * @return void
      * @throws InvalidArgumentException
      */

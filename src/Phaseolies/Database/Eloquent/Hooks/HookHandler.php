@@ -7,7 +7,26 @@ use Phaseolies\Database\Eloquent\Model;
 class HookHandler
 {
     /**
-     * @var array Registered hooks
+     * Registry of all model hooks organized by model class and event name.
+     *
+     * Structure:
+     * [
+     *     'App\Models\User' => [
+     *         'before_updated' => [
+     *             [
+     *                 'handler' => callable|string, // The hook action to execute
+     *                 'when'    => bool|callable    // Condition to determine execution
+     *             ],
+     *             ...more hooks for this event
+     *         ],
+     *         'after_deleted' => [
+     *              ...hooks for this event
+     *         ],
+     *     ],
+     *      ...other model classes
+     * ]
+     *
+     * @var array<string, array<string, array<int, array{handler: callable|string, when: bool|callable}>>>
      */
     public static $hooks = [];
 
@@ -116,7 +135,7 @@ class HookHandler
         $hooks = self::$hooks[$modelClass][$event] ?? [];
 
         // Only set original attributes for before hooks
-        // if they're not already set
+        // If they're not already set
         if (str_starts_with($event, 'before_')) {
             if (empty($model->getOriginalAttributes())) {
                 $model->setOriginalAttributes($model->getAttributes());

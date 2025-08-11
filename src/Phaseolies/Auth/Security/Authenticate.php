@@ -18,6 +18,7 @@ class Authenticate
 
     /**
      * The current stateless user (for onceUsingId)
+     *
      * @var Model|null
      */
     private $statelessUser = null;
@@ -217,7 +218,16 @@ class Authenticate
     }
 
     /**
-     * Log the user out.
+     * Logs the currently authenticated user out of the application.
+     *
+     * This method:
+     * - Clears the user's `remember_token` to prevent future "remember me" logins.
+     * - Resets any stateless user data.
+     * - Removes relevant authentication and user-related data from the session.
+     * - Invalidates the current session and regenerates the CSRF token for security.
+     * - Deletes the "remember me" cookie if it exists.
+     *
+     * @return void
      */
     public function logout(): void
     {
@@ -303,6 +313,7 @@ class Authenticate
 
     /**
      * Get the authenticated user id
+     *
      * @return int|null
      */
     public function id(): ?int
@@ -318,7 +329,13 @@ class Authenticate
      */
     public function can(string $scope): bool
     {
-        return Cache::stash(
+        if (!class_exists(\Doppar\Authorizer\Support\Facades\Guard::class)) {
+            throw new \RuntimeException(
+                'Authorization failed: Doppar Guard class not found. Please install the "doppar/guard" package and ensure it is properly configured before using this feature.'
+            );
+        }
+
+        return (bool) Cache::stash(
             "auth_scope_{$scope}_" . $this->id(),
             3600,
             fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)

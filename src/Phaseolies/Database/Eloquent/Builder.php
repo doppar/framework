@@ -21,74 +21,86 @@ class Builder
     use QueryCollection, QueryProcessor, QueryUtils, Debuggable, InteractsWithTimeframe;
 
     /**
-     * @var PDO
      * Holds the PDO instance for database connectivity.
+     *
+     * @var PDO
      */
     protected PDO $pdo;
 
     /**
-     * @var string
      * The name of the database table to query.
+     *
+     * @var string
      */
     protected string $table;
 
     /**
-     * @var array
      * The fields to select in the query. Defaults to ['*'] which selects all columns.
+     *
+     * @var array
      */
     protected array $fields = ['*'];
 
     /**
-     * @var array
      * The conditions (WHERE clauses) to apply to the query.
+     *
+     * @var array
      */
     protected array $conditions = [];
 
     /**
-     * @var array
      * The ORDER BY clauses to sort the query results.
+     *
+     * @var array
      */
     protected array $orderBy = [];
 
     /**
-     * @var array
      * The GROUP BY clauses to group the query results.
+     *
+     * @var array
      */
     protected array $groupBy = [];
 
     /**
-     * @var int|null
      * The maximum number of records to return. Null means no limit.
+     *
+     * @var int|null
      */
     protected ?int $limit = null;
 
     /**
-     * @var int|null
      * The number of records to skip before starting to return records. Null means no offset.
+     *
+     * @var int|null
      */
     protected ?int $offset = null;
 
     /**
-     * @var string
      * The class name of the model associated with this query.
+     *
+     * @var string
      */
     protected string $modelClass;
 
     /**
-     * @var int
      * The number of rows to display per page for pagination.
+     *
+     * @var int
      */
     protected int $rowPerPage;
 
     /**
-     * @var array
      * Holds the relationships to be eager loaded
+     *
+     * @var array
      */
     protected array $eagerLoad = [];
 
     /**
-     * @var array
      * The join clauses for the query.
+     *
+     * @var array
      */
     protected array $joins = [];
 
@@ -116,9 +128,16 @@ class Builder
         $this->rowPerPage = $rowPerPage;
     }
 
+    /**
+     * Set the relationship info
+     *
+     * @param array $info
+     * @return self
+     */
     public function setRelationInfo(array $info): self
     {
         $this->relationInfo = $info;
+
         return $this;
     }
 
@@ -356,6 +375,7 @@ class Builder
         $tableName = $table ?? $this->table;
         $stmt = $this->pdo->query("DESCRIBE {$tableName}");
         $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
         return $columns;
     }
 
@@ -491,7 +511,9 @@ class Builder
 
     /**
      * Check if a value should be considered as having a value
-     * Returns false for: null, empty string, false, 0, empty array
+     *
+     * @param mixed $value
+     * @return bool false for: null, empty string, false, 0, empty array
      */
     protected function hasValue($value): bool
     {
@@ -757,7 +779,7 @@ class Builder
     protected function getEncryptedAttributes(): array
     {
         return $this->needsEncryption()
-            ? (new $this->modelClass)->getEncryptedProperties()
+            ? app($this->modelClass)->getEncryptedProperties()
             : [];
     }
 
@@ -837,6 +859,7 @@ class Builder
 
     /**
      * Get the db connection
+     *
      * @return \PDO
      */
     public function getConnection()
@@ -1024,8 +1047,10 @@ class Builder
 
     /**
      * Get the parent key value for the relationship
+     *
+     * @return string
      */
-    protected function getParentKey()
+    protected function getParentKey(): string
     {
         return $this->getModel()->getParentKey();
     }
@@ -1036,7 +1061,7 @@ class Builder
      * @param Collection $collection
      * @return void
      */
-    protected function eagerLoadRelations(Collection $collection)
+    protected function eagerLoadRelations(Collection $collection): void
     {
         foreach ($this->eagerLoad as $relation => $constraint) {
             if (str_contains($relation, '.')) {
@@ -1055,7 +1080,7 @@ class Builder
      * @param callable|null $constraint
      * @return void
      */
-    protected function loadNestedRelations(Collection $collection, string $nestedRelation, ?callable $constraint = null)
+    protected function loadNestedRelations(Collection $collection, string $nestedRelation, ?callable $constraint = null): void
     {
         $relations = explode('.', $nestedRelation);
         $primaryRelation = array_shift($relations);
@@ -1091,7 +1116,7 @@ class Builder
      * @param callable|null $constraint
      * @return void
      */
-    protected function loadNestedRelationsForCollection(Collection $collection, string $nestedPath, ?callable $constraint = null)
+    protected function loadNestedRelationsForCollection(Collection $collection, string $nestedPath, ?callable $constraint = null): void
     {
         if (str_contains($nestedPath, '.')) {
             $relations = explode('.', $nestedPath);
@@ -1124,7 +1149,7 @@ class Builder
      * @param callable|null $constraint
      * @return void
      */
-    protected function loadNestedRelationsForModel(Model $model, string $nestedPath, ?callable $constraint = null)
+    protected function loadNestedRelationsForModel(Model $model, string $nestedPath, ?callable $constraint = null): void
     {
         if (str_contains($nestedPath, '.')) {
             $relations = explode('.', $nestedPath);
@@ -1157,7 +1182,7 @@ class Builder
      * @param callable|null $callback
      * @return $this
      */
-    public function load($relations, ?callable $callback = null)
+    public function load($relations, ?callable $callback = null): self
     {
         if (is_string($relations)) {
             $relations = [$relations];
@@ -1186,9 +1211,9 @@ class Builder
      * Reload the current model instance with fresh attributes from the database.
      *
      * @param string|array $relations
-     * @return $this
+     * @return $this|null
      */
-    public function fresh($relations = [])
+    public function fresh($relations = []): ?self
     {
         $model = $this->first();
 
@@ -1318,6 +1343,8 @@ class Builder
     }
 
     /**
+     * Load many to many relations
+     *
      * @param Collection $collection
      * @param string $relation
      * @param null $constraint
@@ -1392,9 +1419,10 @@ class Builder
 
     /**
      * Get the model instance
+     *
      * @return \Phaseolies\Database\Eloquent\Model
      */
-    public function getModel()
+    public function getModel(): Model
     {
         return app($this->modelClass);
     }
@@ -1990,6 +2018,7 @@ class Builder
             }
 
             $stmt->execute();
+
             return $stmt->rowCount();
         } catch (PDOException $e) {
             if ($ignoreErrors) {
@@ -2159,7 +2188,9 @@ class Builder
     public function sum(string $column): float
     {
         $this->select(["SUM({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return (float) ($result->aggregate ?? 0);
     }
 
@@ -2172,7 +2203,9 @@ class Builder
     public function avg(string $column): float
     {
         $this->select(["AVG({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return (float) ($result->aggregate ?? 0);
     }
 
@@ -2185,7 +2218,9 @@ class Builder
     public function min(string $column)
     {
         $this->select(["MIN({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return $result->aggregate;
     }
 
@@ -2198,28 +2233,12 @@ class Builder
     public function max(string $column)
     {
         $this->select(["MAX({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return $result->aggregate;
     }
 
-    /**
-     * Retrieve one model per distinct value of the specified column
-     * 
-     * @param string $column The column to check for distinct values
-     * @return Collection Collection of models with one row per distinct column value
-     */
-    /**
-     * Retrieve one model per distinct value of the specified column
-     * 
-     * @param string $column The column to check for distinct values
-     * @return Collection Collection of models with one row per distinct column value
-     */
-    /**
-     * Retrieve one model per distinct value of the specified column
-     * 
-     * @param string $column The column to check for distinct values
-     * @return Collection Collection of models with one row per distinct column value
-     */
     /**
      * Retrieve distinct values for a column
      * 
@@ -2275,7 +2294,9 @@ class Builder
     public function groupConcat(string $column, string $separator = ','): string
     {
         $this->select(["GROUP_CONCAT({$column} SEPARATOR '{$separator}') as aggregate"]);
+
         $result = $this->first();
+
         return (string) ($result->aggregate ?? '');
     }
 
@@ -2288,7 +2309,9 @@ class Builder
     public function stdDev(string $column): float
     {
         $this->select(["STDDEV({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return (float) ($result->aggregate ?? 0);
     }
 
@@ -2301,7 +2324,9 @@ class Builder
     public function variance(string $column): float
     {
         $this->select(["VARIANCE({$column}) as aggregate"]);
+
         $result = $this->first();
+
         return (float) ($result->aggregate ?? 0);
     }
 
@@ -2492,6 +2517,7 @@ class Builder
             }
 
             $stmt->execute();
+
             return $stmt->rowCount();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());

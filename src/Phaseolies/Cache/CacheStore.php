@@ -4,8 +4,6 @@ namespace Phaseolies\Cache;
 
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Psr\SimpleCache\CacheInterface;
-use DateInterval;
-use Closure;
 
 class CacheStore implements CacheInterface
 {
@@ -83,7 +81,9 @@ class CacheStore implements CacheInterface
     public function delete($key): bool
     {
         $key = $this->prefixedKey($key);
+
         $this->validateKey($key);
+
         return $this->adapter->deleteItem($key);
     }
 
@@ -167,15 +167,17 @@ class CacheStore implements CacheInterface
     public function has($key): bool
     {
         $key = $this->prefixedKey($key);
+
         $this->validateKey($key);
+
         return $this->adapter->hasItem($key);
     }
 
     /**
      * Increment the value of an item in the cache.
      *
-     * @param  string  $key
-     * @param  int  $value
+     * @param string $key
+     * @param int $value
      * @return int|bool
      */
     public function increment($key, $value = 1): int|bool
@@ -204,8 +206,8 @@ class CacheStore implements CacheInterface
     /**
      * Decrement the value of an item in the cache.
      *
-     * @param  string  $key
-     * @param  int  $value
+     * @param string $key
+     * @param int $value
      * @return int|bool
      */
     public function decrement($key, $value = 1): int|bool
@@ -234,9 +236,9 @@ class CacheStore implements CacheInterface
     /**
      * Store an item in the cache if the key doesn't exist.
      *
-     * @param  string  $key
-     * @param  mixed  $value
-     * @param  null|int|DateInterval  $ttl
+     * @param string $key
+     * @param mixed $value
+     * @param  null|int|\DateInterval  $ttl
      * @return bool
      */
     public function add($key, $value, $ttl = null): bool
@@ -261,8 +263,8 @@ class CacheStore implements CacheInterface
     /**
      * Store an item in the cache indefinitely.
      *
-     * @param  string  $key
-     * @param  mixed  $value
+     * @param string $key
+     * @param mixed $value
      * @return bool
      */
     public function forever($key, $value): bool
@@ -280,7 +282,7 @@ class CacheStore implements CacheInterface
     /**
      * Remove an item from the cache.
      *
-     * @param  string  $key
+     * @param string $key
      * @return bool
      */
     public function forget($key): bool
@@ -298,10 +300,9 @@ class CacheStore implements CacheInterface
     /**
      * Validate a cache key.
      *
-     * @param  string  $key
+     * @param string $key
      * @return void
-     *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function validateKey($key): void
     {
@@ -340,7 +341,7 @@ class CacheStore implements CacheInterface
     /**
      * Convert TTL to seconds.
      *
-     * @param  null|int|DateInterval  $ttl
+     * @param  null|int|\DateInterval  $ttl
      * @return int|null
      */
     protected function convertTtlToSeconds($ttl): ?int
@@ -349,7 +350,7 @@ class CacheStore implements CacheInterface
             return null;
         }
 
-        if ($ttl instanceof DateInterval) {
+        if ($ttl instanceof \DateInterval) {
             $ttl = (new \DateTime('@0'))->add($ttl)->getTimestamp();
         }
 
@@ -371,10 +372,10 @@ class CacheStore implements CacheInterface
      *
      * @param string $key
      * @param int|DateInterval $ttl
-     * @param Closure $callback
+     * @param \Closure $callback
      * @return mixed
      */
-    public function stash(string $key, $ttl, Closure $callback): mixed
+    public function stash(string $key, $ttl, \Closure $callback): mixed
     {
         $value = $this->get($key);
 
@@ -393,10 +394,10 @@ class CacheStore implements CacheInterface
      * Get an item from the cache, or execute the callback and store the result forever.
      *
      * @param string $key
-     * @param Closure $callback
+     * @param \Closure $callback
      * @return mixed
      */
-    public function stashForever(string $key, Closure $callback): mixed
+    public function stashForever(string $key, \Closure $callback): mixed
     {
         $value = $this->get($key);
 
@@ -415,12 +416,12 @@ class CacheStore implements CacheInterface
      * Get an item from the cache, or execute the callback and store the result conditionally.
      *
      * @param string $key
-     * @param Closure $callback
+     * @param \Closure $callback
      * @param bool $condition Whether to cache the result
-     * @param int|DateInterval|null $ttl Time to live (optional)
+     * @param int|\DateInterval|null $ttl Time to live (optional)
      * @return mixed
      */
-    public function stashWhen(string $key, Closure $callback, bool $condition, $ttl = null): mixed
+    public function stashWhen(string $key, \Closure $callback, bool $condition, $ttl = null): mixed
     {
         if (!$condition) {
             return $callback();

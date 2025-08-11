@@ -43,7 +43,7 @@ abstract class Command extends SymfonyCommand
      *
      * @return void
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->parseSignature();
     }
@@ -120,8 +120,8 @@ abstract class Command extends SymfonyCommand
     /**
      * Execute the console command.
      *
-     * @param  InputInterface  $input
-     * @param  OutputInterface  $output
+     * @param InputInterface $input
+     * @param OutputInterface $output
      * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -142,7 +142,7 @@ abstract class Command extends SymfonyCommand
     /**
      * Get the value of a command argument.
      *
-     * @param  string|null  $key
+     * @param string|null $key
      * @return string|array|null
      */
     protected function argument($key = null)
@@ -157,7 +157,7 @@ abstract class Command extends SymfonyCommand
     /**
      * Get the value of a command option.
      *
-     * @param  string|null  $key
+     * @param string|null $key
      * @return string|array|bool|null
      */
     protected function option($key = null)
@@ -172,10 +172,10 @@ abstract class Command extends SymfonyCommand
     /**
      * Write a string as information output.
      *
-     * @param  string  $string
+     * @param string $string
      * @return void
      */
-    protected function info($string)
+    protected function info($string): void
     {
         $this->output->writeln("<info>{$string}</info>");
     }
@@ -183,10 +183,10 @@ abstract class Command extends SymfonyCommand
     /**
      * Write a string as error output.
      *
-     * @param  string  $string
+     * @param string $string
      * @return void
      */
-    protected function error($string)
+    protected function error($string): void
     {
         $this->output->writeln("<error>{$string}</error>");
     }
@@ -194,10 +194,10 @@ abstract class Command extends SymfonyCommand
     /**
      * Write a string as comment output.
      *
-     * @param  string  $string
+     * @param string $string
      * @return void
      */
-    protected function comment($string)
+    protected function comment($string): void
     {
         $this->output->writeln("<comment>{$string}</comment>");
     }

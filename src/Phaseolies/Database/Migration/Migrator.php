@@ -6,12 +6,14 @@ class Migrator
 {
     /**
      * Path to the directory containing migration files
+     *
      * @var string
      */
     protected string $migrationPath;
 
     /**
      * Migration repository instance for tracking run migrations
+     *
      * @var MigrationRepository
      */
     protected MigrationRepository $repository;
@@ -76,6 +78,8 @@ class Migrator
     /**
      * Ensure the migration tracking table exists in the database
      * Creates it if it doesn't exist
+     *
+     * @return void
      */
     protected function ensureMigrationTableExists(): void
     {
@@ -169,7 +173,6 @@ class Migrator
     /**
      * Convert a migration file name to a class name
      *
-     * (Note: This method appears unused in the current class implementation)
      * @param string $file Migration file name
      * @return string Class name
      */

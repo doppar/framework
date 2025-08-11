@@ -93,6 +93,7 @@ class Container implements ArrayAccess
         if (is_string($concrete) && class_exists($concrete)) {
             $concrete = fn() => new $concrete();
         }
+
         self::$bindings[$abstract] = $concrete;
 
         if ($singleton) {
@@ -294,6 +295,7 @@ class Container implements ArrayAccess
 
     /**
      * Set the instance
+     *
      * @param self $instance
      * @return void
      */

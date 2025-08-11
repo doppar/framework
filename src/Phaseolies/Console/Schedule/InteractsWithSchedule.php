@@ -7,9 +7,12 @@ use Phaseolies\Console\Schedule\ScheduledCommand;
 trait InteractsWithSchedule
 {
     /**
-     * Array to store scheduled commands
+     * Holds all scheduled commands registered with the scheduler.
      *
-     * @var array
+     * Each element in the array is an instance of {@see ScheduledCommand},
+     * representing a command that has been scheduled to run at a specified time.
+     *
+     * @var ScheduledCommand[]
      */
     private $commands = [];
 
@@ -44,10 +47,6 @@ trait InteractsWithSchedule
      */
     public function dueCommands(): array
     {
-        return array_filter($this->commands, function (
-            ScheduledCommand $command
-        ) {
-            return $command->isDue();
-        });
+        return array_filter($this->commands, fn(ScheduledCommand $command) => $command->isDue());
     }
 }

@@ -94,7 +94,9 @@ class ErrorHandler
 
                 $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
                 $languageClass = "language-$fileExtension";
-                ob_end_clean();
+                if (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
                 echo str_replace(
                     [
                         '{{ error_message }}',

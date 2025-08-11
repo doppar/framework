@@ -6,9 +6,6 @@ use Phaseolies\Logger\Contracts\LogHandlerInterface;
 use Phaseolies\Logger\Contracts\AbstractHandler;
 use Monolog\Logger;
 
-/**
- * Default log handler.
- */
 class SingleLogHandler extends AbstractHandler implements LogHandlerInterface
 {
     /**

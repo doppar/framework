@@ -57,6 +57,7 @@ trait Debuggable
         }
 
         dump($sql);
+
         return $this;
     }
 

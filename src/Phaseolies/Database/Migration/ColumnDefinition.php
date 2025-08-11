@@ -33,6 +33,7 @@ class ColumnDefinition
     public function nullable(): self
     {
         $this->attributes['nullable'] = true;
+
         return $this;
     }
 
@@ -46,6 +47,7 @@ class ColumnDefinition
     public function default($value): self
     {
         $this->attributes['default'] = $value === false ? 0 : $value;
+
         return $this;
     }
 
@@ -57,6 +59,7 @@ class ColumnDefinition
     public function unique(): self
     {
         $this->attributes['unique'] = true;
+
         return $this;
     }
 
@@ -68,6 +71,7 @@ class ColumnDefinition
     public function index(): self
     {
         $this->attributes['index'] = true;
+
         return $this;
     }
 
@@ -79,6 +83,7 @@ class ColumnDefinition
     public function primary(): self
     {
         $this->attributes['primary'] = true;
+
         return $this;
     }
 
@@ -91,6 +96,7 @@ class ColumnDefinition
     public function after(string $column): self
     {
         $this->attributes['after'] = $column;
+
         return $this;
     }
 

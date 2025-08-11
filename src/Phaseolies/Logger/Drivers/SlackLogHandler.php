@@ -8,9 +8,6 @@ use Monolog\Logger;
 use Monolog\Handler\SlackWebhookHandler;
 use Monolog\Formatter\LineFormatter;
 
-/**
- * Slack log handler.
- */
 class SlackLogHandler extends AbstractHandler implements LogHandlerInterface
 {
     /**

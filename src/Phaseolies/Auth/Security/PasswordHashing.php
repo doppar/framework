@@ -2,8 +2,6 @@
 
 namespace Phaseolies\Auth\Security;
 
-use RuntimeException;
-
 class PasswordHashing
 {
     /**
@@ -11,7 +9,7 @@ class PasswordHashing
      *
      * @param string $password
      * @return string
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function make($password)
     {
@@ -21,7 +19,7 @@ class PasswordHashing
             case 'bcrypt':
                 $rounds = config('hashing.bcrypt.rounds', 10);
                 if ($rounds < 4 || $rounds > 31) {
-                    throw new RuntimeException('Bcrypt rounds must be between 4 and 31.');
+                    throw new \RuntimeException('Bcrypt rounds must be between 4 and 31.');
                 }
                 return password_hash($password, PASSWORD_BCRYPT, ['cost' => $rounds]);
 
@@ -35,7 +33,7 @@ class PasswordHashing
                 return password_hash($password, PASSWORD_ARGON2ID, $options);
 
             default:
-                throw new RuntimeException("Unsupported hashing driver: {$driver}");
+                throw new \RuntimeException("Unsupported hashing driver: {$driver}");
         }
     }
 
@@ -76,7 +74,7 @@ class PasswordHashing
                 return password_needs_rehash($hashedPassword, PASSWORD_ARGON2ID, $options);
 
             default:
-                throw new RuntimeException("Unsupported hashing driver: {$driver}");
+                throw new \RuntimeException("Unsupported hashing driver: {$driver}");
         }
     }
 }

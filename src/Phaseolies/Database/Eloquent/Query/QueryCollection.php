@@ -8,11 +8,6 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Database\Database;
 
-/**
- * The QueryCollection trait provides methods for querying the database
- * and interacting with model collections. It is designed to be used
- * within Eloquent models to enable fluent query building and data retrieval.
- */
 trait QueryCollection
 {
     /**
@@ -362,6 +357,7 @@ trait QueryCollection
                 $creatableAttributes[$attribute] = $this->attributes[$attribute];
             }
         }
+
         return $creatableAttributes;
     }
 
@@ -457,7 +453,6 @@ trait QueryCollection
      * @param string $class The fully qualified class name.
      * @param string $attribute The property name to retrieve.
      * @return mixed The value of the specified property.
-     *
      * @throws \Exception If the property does not exist on the given class.
      */
     protected function getClassProperty(string $class, string $attribute): mixed
@@ -483,7 +478,6 @@ trait QueryCollection
      * @param string $attribute The property name to inspect.
      * @param string $attributeClass The attribute class to check for (e.g. CastToDate::class).
      * @return bool True if the attribute exists on the property, false otherwise.
-     *
      * @throws \Exception If the property does not exist on the given class.
      */
     protected function propertyHasAttribute(object|string $class, string $attribute, string $attributeClass): bool

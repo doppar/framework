@@ -555,6 +555,7 @@ class ScheduledCommand
         if (!isset($this->additionalConditions)) {
             $this->additionalConditions = [];
         }
+
         $this->additionalConditions[] = $condition;
     }
 
@@ -572,6 +573,7 @@ class ScheduledCommand
         }
 
         $this->timezone = $timezone;
+
         return $this;
     }
 
@@ -595,7 +597,9 @@ class ScheduledCommand
     public function noOverlap(int $minutes = 1440): self
     {
         $this->withoutOverlapping = true;
+
         $this->maxLockTime = $minutes;
+
         return $this;
     }
 
@@ -607,6 +611,7 @@ class ScheduledCommand
     public function inBackground(): self
     {
         $this->runInBackground = true;
+
         return $this;
     }
 
@@ -622,6 +627,7 @@ class ScheduledCommand
 
     /**
      * Add dates when the command should NOT run (e.g., holidays).
+     *
      * @param array|string $dates Format: "YYYY-MM-DD" or ["YYYY-MM-DD", ...]
      */
     public function exclude(array|string ...$dates): self
@@ -651,6 +657,7 @@ class ScheduledCommand
         }
 
         $this->rateLimit = $limit;
+
         return $this;
     }
 
@@ -725,11 +732,13 @@ class ScheduledCommand
 
     /**
      * Set a condition closure. Command runs only if it returns `true`.
+     *
      * @param callable $condition
      */
     public function when(callable $condition): self
     {
         $this->condition = $condition;
+
         return $this;
     }
 
@@ -742,6 +751,7 @@ class ScheduledCommand
     public function onSuccess(callable $callback): self
     {
         $this->onSuccessCallback = $callback;
+
         return $this;
     }
 
@@ -754,6 +764,7 @@ class ScheduledCommand
     public function onFailure(callable $callback): self
     {
         $this->onFailureCallback = $callback;
+
         return $this;
     }
 
@@ -872,6 +883,7 @@ class ScheduledCommand
     public function retry(int $retries, int $delaySeconds = 60): self
     {
         $this->maxRetries = $retries;
+
         $this->retryDelay = $delaySeconds;
 
         return $this;
@@ -999,22 +1011,27 @@ class ScheduledCommand
 
         // Create new lock with process ID
         $this->lock();
+
         file_put_contents($pidFile, json_encode(['pid' => getmypid()]));
 
         if ($this->onSuccessCallback) {
             call_user_func($this->onSuccessCallback, 'Lock acquired, command can run');
         }
+
         return true;
     }
 
     /**
      * Clean up all lock files, including those from background processes.
+     *
+     * @return void
      */
     public function cleanup(): void
     {
         $this->releaseLock();
 
         $throttleFile = $this->lastRunFile . '_throttle.log';
+
         if (file_exists($throttleFile)) {
             unlink($throttleFile);
         }
@@ -1034,6 +1051,7 @@ class ScheduledCommand
 
         try {
             $output = shell_exec(sprintf("ps -p %d -o pid=", $pid));
+
             return !empty($output);
         } catch (\Throwable $e) {
             return false;
@@ -1055,6 +1073,7 @@ class ScheduledCommand
         }
 
         $lockTime = file_get_contents($this->lockFile);
+
         return time() - (int) $lockTime < $this->maxLockTime * 60;
     }
 
@@ -1082,6 +1101,7 @@ class ScheduledCommand
         }
 
         $pidFile = $this->lockFile . '.pid';
+
         if (file_exists($pidFile)) {
             unlink($pidFile);
         }

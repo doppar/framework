@@ -80,6 +80,8 @@ class Database
 
     /**
      * Get the PDO instance for this connection
+     *
+     * @return PDO
      */
     protected function getPdo(): PDO
     {
@@ -151,8 +153,8 @@ class Database
     /**
      * Execute a Closure within a transaction
      *
-     * @param  \Closure  $callback
-     * @param  int  $attempts
+     * @param \Closure $callback
+     * @param int $attempts
      * @return mixed
      * @throws \Throwable
      */
@@ -203,6 +205,7 @@ class Database
 
         try {
             $stmt = $this->getPdo()->query("DESCRIBE {$table}");
+
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             throw new PDOException("Failed to get table columns: " . $e->getMessage());
@@ -232,6 +235,7 @@ class Database
     {
         try {
             $result = $this->getPdo()->query("SELECT 1 FROM {$table} LIMIT 1");
+
             return $result !== false;
         } catch (PDOException $e) {
             return false;
@@ -378,6 +382,7 @@ class Database
     public function execute(string $sql, array $params = []): int
     {
         $stmt = $this->getPdo()->prepare($sql);
+
         $stmt->execute($params);
 
         return $stmt->rowCount();

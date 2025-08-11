@@ -33,9 +33,7 @@ class MessageBag
      * Retrieves the old input data that was previously stored in the session..
      *
      * @param string|null $key
-     *
      * @return string|null
-     *
      */
     public static function old(?string $key = null): ?string
     {
@@ -54,7 +52,6 @@ class MessageBag
      * Checks if old input data exists for a specific key.
      *
      * @param string $key The key for the input value.
-     *
      * @return bool True if the input exists, false otherwise.
      */
     public static function has(string $key): bool
