@@ -65,7 +65,7 @@ class Database
                 static::$connections[$connection] = ConnectionFactory::make($config);
             } catch (PDOException $e) {
                 throw new \PDOException(
-                    "Failed to connect to database [{$connection}]: ",
+                    "Failed to connect to database [{$connection}]: " . $e->getMessage(),
                     (int) $e->getCode()
                 );
             } catch (\RuntimeException $e) {
