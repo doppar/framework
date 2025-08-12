@@ -12,14 +12,14 @@ class MakePolicyCommand extends Command
      *
      * @var string
      */
-    protected $name = 'make:policy {name} {--m|model=}';
+    protected $name = 'make:authorizer {name} {--m=} {--model=}';
 
     /**
      * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Create a new policy class';
+    protected $description = 'Creates a new authorizer class.';
 
     /**
      * Execute the console command.
@@ -35,11 +35,11 @@ class MakePolicyCommand extends Command
             $parts = explode('/', $name);
             $className = array_pop($parts);
 
-            $namespace = 'App\\Policies' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Policies/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $namespace = 'App\\Authorizers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Authorizers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
 
             if (file_exists($filePath)) {
-                $this->displayError('Policy already exists at:');
+                $this->displayError('Authorizer already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
                 return 1;
             }
@@ -52,7 +52,7 @@ class MakePolicyCommand extends Command
             $content = $this->generateAuthorizerContent($namespace, $className, $model);
             file_put_contents($filePath, $content);
 
-            $this->displaySuccess('Policy created successfully');
+            $this->displaySuccess('Authorizer created successfully');
             $this->line('<fg=yellow>🛡️ File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');

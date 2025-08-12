@@ -3,7 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Auth\Security\PasswordHashing;
+use Phaseolies\Support\Facades\Hash;
 
 class MakePasswordCommand extends Command
 {
@@ -57,7 +57,6 @@ class MakePasswordCommand extends Command
      */
     public static function hash(string $password): string
     {
-        $hashing = new PasswordHashing();
-        return $hashing->make($password);
+        return (string) Hash::make($password);
     }
 }
