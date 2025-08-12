@@ -27,12 +27,9 @@ class PaginationPublishCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
+        return $this->executeWithTiming(function() {
+            $paginationPath = resource_path('views/vendor/pagination');
 
-        $paginationPath = resource_path('views/vendor/pagination');
-
-        try {
             if (!is_dir($paginationPath)) {
                 if (!mkdir($paginationPath, 0755, true)) {
                     throw new \RuntimeException("Failed to create directory: {$paginationPath}");
@@ -68,27 +65,13 @@ class PaginationPublishCommand extends Command
 
             $this->newLine();
             if ($createdCount > 0) {
-                $this->line('<bg=green;options=bold> SUCCESS </> Pagination views published successfully.');
+                $this->displaySuccess('Pagination views published successfully.');
             } else {
-                $this->line('<bg=yellow;options=bold> NOTE </> All pagination views already exist.');
+                $this->displayInfo('All pagination views already exist.');
             }
-        } catch (\Exception $e) {
-            $this->newLine();
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
 
-        $executionTime = microtime(true) - $startTime;
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+            return 0;
+        });
     }
 
     /**

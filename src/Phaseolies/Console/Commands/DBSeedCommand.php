@@ -28,39 +28,26 @@ class DBSeedCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
+        return $this->executeWithTiming(function() {
+            $seedName = $this->argument('seed');
 
-        $seedName = $this->argument('seed');
+            if ($seedName) {
+                $seederClass = 'Database\\Seeders\\' . $seedName;
 
-        if ($seedName) {
-            $seederClass = 'Database\\Seeders\\' . $seedName;
+                if (!class_exists($seederClass)) {
+                    $this->displayError('Seeder not found: ' . $seedName);
+                    return 1;
+                }
 
-            if (!class_exists($seederClass)) {
-                $this->line('<bg=red;options=bold> ERROR </> Seeder not found: ' . $seedName);
-                $this->newLine();
-                return 1;
+                $seeder = new $seederClass();
+                $seeder->run();
+            } else {
+                $databaseSeeder = new DatabaseSeeder();
+                $databaseSeeder->run();
             }
 
-            $seeder = new $seederClass();
-            $seeder->run();
-        } else {
-            $databaseSeeder = new DatabaseSeeder();
-            $databaseSeeder->run();
-        }
-
-        $this->line('<bg=green;options=bold> SUCCESS </> Seeds executed successfully');
-
-        $executionTime = microtime(true) - $startTime;
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-
-        $this->newLine();
-
-        return 0;
+            $this->displaySuccess('Seeds executed successfully');
+            return 0;
+        });
     }
 }

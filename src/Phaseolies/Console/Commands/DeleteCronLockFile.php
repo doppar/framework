@@ -2,29 +2,42 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
 
 class DeleteCronLockFile extends Command
 {
-    protected static $defaultName = 'cron:clear';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'cron:clear';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Delete cron files from storage/schedule directory';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('cron:clear')
-            ->setDescription('Delete cron files from storage/schedule directory.');
-    }
+        return $this->withTiming(function() {
+            $cacheDir = base_path() . '/storage/schedule';
+            
+            if (!is_dir($cacheDir)) {
+                $this->displayInfo('No cron files directory found.');
+                return 0;
+            }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $cacheDir = base_path() . '/storage/schedule';
-
-        $this->deleteDirectoryContents($cacheDir);
-
-        $output->writeln('<info>Cron file deleted successfully</info>');
-        return Command::SUCCESS;
+            $this->deleteDirectoryContents($cacheDir);
+            return 0;
+        }, 'Cron files deleted successfully');
     }
 
     /**

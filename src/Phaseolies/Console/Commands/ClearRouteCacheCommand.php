@@ -28,23 +28,9 @@ class ClearRouteCacheCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-
-        $this->newLine();
-
-        Route::clearRouteCache();
-
-        $executionTime = microtime(true) - $startTime;
-
-        $this->newLine();
-        $this->line('<bg=green;options=bold> SUCCESS </> Route cache has been gracefully cleared.');
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-        return 0;
+        return $this->withTiming(function() {
+            Route::clearRouteCache();
+            return 0;
+        }, 'Route cache has been gracefully cleared.');
     }
 }

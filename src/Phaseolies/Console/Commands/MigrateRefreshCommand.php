@@ -48,15 +48,11 @@ class MigrateRefreshCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
-
-        try {
-
+        return $this->executeWithTiming(function() {
             $allConnections = config('database.connections');
 
             // Show warning message
-            $this->line('<bg=yellow;options=bold> WARNING </> This will drop all database tables from database connection:');
+            $this->displayWarning('This will drop all database tables from database connection:');
             foreach (array_keys($allConnections) as $name) {
                 $this->line('- <fg=white>' . $name . '</>');
             }
@@ -67,8 +63,7 @@ class MigrateRefreshCommand extends Command
             $response = trim(fgets(STDIN));
 
             if (strtolower($response) !== 'yes') {
-                $this->line('<bg=blue;options=bold> INFO </> Command cancelled');
-                $this->newLine();
+                $this->displayInfo('Command cancelled');
                 return 0;
             }
 
@@ -89,31 +84,15 @@ class MigrateRefreshCommand extends Command
             $this->line('<fg=yellow>🔁 Running migrations</>');
             $status = $this->migrator->run();
 
-            $this->line('<bg=green;options=bold> SUCCESS </> Database refresh completed');
-            $this->newLine();
+            $this->displaySuccess('Database refresh completed');
             $this->line('<fg=yellow>📊 Migrations Executed:</>');
             foreach ($status as $migration) {
                 $this->line('- <fg=white>' . $migration . '</>');
             }
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            $this->line('<fg=red>✖ ERROR: ' . $e->getMessage() . '</>');
-            $this->line('<fg=yellow>📁 FILE: ' . $e->getFile() . '</>');
-            $this->line('<fg=yellow>📍 LINE: ' . $e->getLine() . '</>');
-            $this->newLine();
-            return 1;
-        }
+        });
     }
+
+
 }

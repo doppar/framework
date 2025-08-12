@@ -27,32 +27,18 @@ class ClearSessionCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
+        return $this->withTiming(function() {
+            $sessionDir = base_path('storage/framework/sessions');
 
-        $this->newLine();
-
-        $sessionDir = base_path('storage/framework/sessions');
-
-        $files = glob($sessionDir . '/*');
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                @unlink($file);
+            $files = glob($sessionDir . '/*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    @unlink($file);
+                }
             }
-        }
 
-        session()->flush();
-
-        $executionTime = microtime(true) - $startTime;
-
-        $this->newLine();
-        $this->line('<bg=green;options=bold> SUCCESS </> Application sessions have been gracefully cleared.');
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-        return 0;
+            session()->flush();
+            return 0;
+        }, 'Application sessions have been gracefully cleared.');
     }
 }

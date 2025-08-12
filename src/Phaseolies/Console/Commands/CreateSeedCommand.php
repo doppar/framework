@@ -27,35 +27,22 @@ class CreateSeedCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
+        return $this->executeWithTiming(function() {
+            $name = $this->argument('name');
+            $filePath = base_path('database/seeders/' . $name . '.php');
 
-        $name = $this->argument('name');
-        $filePath = base_path('database/seeders/' . $name . '.php');
+            if (file_exists($filePath)) {
+                $this->displayError('Seed file already exists!');
+                return 1;
+            }
 
-        if (file_exists($filePath)) {
-            $this->line('<bg=red;options=bold> ERROR </> Seed file already exists!');
-            $this->newLine();
-            return 1;
-        }
+            $content = $this->generateSeedContent($name);
+            file_put_contents($filePath, $content);
 
-        $content = $this->generateSeedContent($name);
-        file_put_contents($filePath, $content);
-
-        $this->line('<bg=green;options=bold> SUCCESS </> Seed file created successfully');
-        $this->newLine();
-        $this->line("<fg=yellow>📁 File:</> <fg=white>{$filePath}</>");
-
-        $executionTime = microtime(true) - $startTime;
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+            $this->displaySuccess('Seed file created successfully');
+            $this->line("<fg=yellow>📁 File:</> <fg=white>{$filePath}</>");
+            return 0;
+        });
     }
 
     /**

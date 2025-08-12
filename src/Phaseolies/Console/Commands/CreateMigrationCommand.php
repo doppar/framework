@@ -48,40 +48,27 @@ class CreateMigrationCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
+        return $this->executeWithTiming(function() {
+            $name = $this->argument('name');
+            $table = $this->option('table');
+            $create = $this->option('create') ?: false;
 
-        $this->newLine();
+            if (!$table && is_string($create)) {
+                $table = $create;
+                $create = true;
+            }
 
-        $name = $this->argument('name');
-        $table = $this->option('table');
-        $create = $this->option('create') ?: false;
+            $file = $this->creator->create(
+                $name,
+                $this->getMigrationPath(),
+                $table,
+                $create
+            );
 
-        if (!$table && is_string($create)) {
-            $table = $create;
-            $create = true;
-        }
-
-        $file = $this->creator->create(
-            $name,
-            $this->getMigrationPath(),
-            $table,
-            $create
-        );
-
-        $this->line('<bg=green;options=bold> SUCCESS </> Migration created successfully.');
-        $this->newLine();
-        $this->line("<fg=yellow>📁 File:</> <fg=white>{$file}</>");
-
-        $executionTime = microtime(true) - $startTime;
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+            $this->displaySuccess('Migration created successfully.');
+            $this->line("<fg=yellow>📁 File:</> <fg=white>{$file}</>");
+            return 0;
+        });
     }
 
     /**

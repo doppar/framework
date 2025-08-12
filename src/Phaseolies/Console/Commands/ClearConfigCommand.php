@@ -27,24 +27,9 @@ class ClearConfigCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-
-        $this->newLine();
-
-        app('config')->clearCache();
-
-        $executionTime = microtime(true) - $startTime;
-
-        $this->newLine();
-        $this->line('<bg=green;options=bold> SUCCESS </> Configuration cache has been gracefully cleared.');
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+        return $this->withTiming(function() {
+            app('config')->clearCache();
+            return 0;
+        }, 'Configuration cache has been gracefully cleared.');
     }
 }

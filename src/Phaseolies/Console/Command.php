@@ -28,23 +28,33 @@ class Command extends Console
     /**
      * Register all the application commands
      *
-     * @param Console $consol
+     * @param Console $console
      * @return void
      */
     public function registerCommands(Console $console): void
     {
         $commandsDir = __DIR__ . '/Commands';
-        $commandFiles = glob($commandsDir . '/*.php');
+        $commandFiles = [];
 
-        $commandClasses = array_map(
-            fn($file) => 'Phaseolies\\Console\\Commands\\' . basename($file, '.php'),
-            $commandFiles
-        );
+        if (is_dir($commandsDir)) {
+            $dirIterator = new RecursiveDirectoryIterator($commandsDir);
+            $iterator = new RecursiveIteratorIterator($dirIterator);
 
-        $files = [];
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $commandFiles[] = $file->getPathname();
+                }
+            }
+        }
+
+        $commandClasses = array_map(function ($file) use ($commandsDir) {
+            $relativePath = str_replace([$commandsDir, '.php', '/'], ['', '', '\\'], $file);
+            return 'Phaseolies\\Console\\Commands' . $relativePath;
+        }, $commandFiles);
+
         $userDefineCommandsDir = base_path('app/Schedule/Commands');
-
-        if (\is_dir($userDefineCommandsDir)) {
+        if (is_dir($userDefineCommandsDir)) {
+            $files = [];
             $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);
             $iterator = new RecursiveIteratorIterator($dirIterator);
 
@@ -54,12 +64,12 @@ class Command extends Console
                 }
             }
 
-            $files = array_map(function ($file) use ($userDefineCommandsDir) {
+            $userCommands = array_map(function ($file) use ($userDefineCommandsDir) {
                 $relativePath = str_replace([$userDefineCommandsDir, '.php', '/'], ['', '', '\\'], $file);
                 return 'App\\Schedule\\Commands' . $relativePath;
             }, $files);
 
-            $commandClasses = array_merge($files, $commandClasses);
+            $commandClasses = array_merge($commandClasses, $userCommands);
         }
 
         $commands = [];

@@ -28,26 +28,11 @@ class ConfigCacheCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-
-        $this->newLine();
-
-        Config::clearCache();
-        Config::loadAll();
-        Config::cacheConfig();
-
-        $executionTime = microtime(true) - $startTime;
-
-        $this->newLine();
-        $this->line('<bg=green;options=bold> SUCCESS </> Application configuration cached successfully.');
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+        return $this->withTiming(function() {
+            Config::clearCache();
+            Config::loadAll();
+            Config::cacheConfig();
+            return 0;
+        }, 'Application configuration cached successfully.');
     }
 }

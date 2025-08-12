@@ -29,20 +29,17 @@ class AppBoostCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
+        return $this->executeWithTiming(function() {
+            $commands = [
+                'cache:clear',        // Clear application cache
+                'route:clear',        // Clear route cache
+                'route:cache',        // Rebuild route cache
+                'config:clear',       // Clear configuration cache
+                'config:cache',       // Rebuild configuration cache
+                'view:clear',         // Clear compiled views
+                'view:cache',         // Recompile views
+            ];
 
-        $commands = [
-            'cache:clear',        // Clear application cache
-            'route:clear',        // Clear route cache
-            'route:cache',        // Rebuild route cache
-            'config:clear',       // Clear configuration cache
-            'config:cache',       // Rebuild configuration cache
-            'view:clear',         // Clear compiled views
-            'view:cache',         // Recompile views
-        ];
-
-        try {
             $this->line('<fg=yellow>⚡ Running application optimization commands:</>');
             $this->newLine();
 
@@ -50,23 +47,9 @@ class AppBoostCommand extends Command
                 $this->runCommand($command);
             }
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line('<bg=green;options=bold> SUCCESS </> Application optimization completed successfully');
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
+            $this->displaySuccess('Application optimization completed successfully');
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
+        });
     }
 
     /**
