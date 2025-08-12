@@ -36,7 +36,6 @@ class Command extends Console
         $commandsDir = __DIR__ . '/Commands';
         $commandFiles = [];
 
-        // Récupérer tous les fichiers PHP dans Commands et ses sous-dossiers
         if (is_dir($commandsDir)) {
             $dirIterator = new RecursiveDirectoryIterator($commandsDir);
             $iterator = new RecursiveIteratorIterator($dirIterator);
@@ -48,14 +47,11 @@ class Command extends Console
             }
         }
 
-        // Construire les classes en respectant la structure des sous-dossiers
         $commandClasses = array_map(function ($file) use ($commandsDir) {
             $relativePath = str_replace([$commandsDir, '.php', '/'], ['', '', '\\'], $file);
-            // Namespace de base pour ces commandes
             return 'Phaseolies\\Console\\Commands' . $relativePath;
         }, $commandFiles);
 
-        // Même traitement pour les commandes définies par l'utilisateur
         $userDefineCommandsDir = base_path('app/Schedule/Commands');
         if (is_dir($userDefineCommandsDir)) {
             $files = [];
