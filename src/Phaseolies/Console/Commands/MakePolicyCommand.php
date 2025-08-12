@@ -30,7 +30,7 @@ class MakePolicyCommand extends Command
     {
         return $this->executeWithTiming(function() {
             $name = $this->argument('name');
-            $model = $this->option('model');
+            $model = $this->option('model') ?? $this->option('m');
 
             $parts = explode('/', $name);
             $className = array_pop($parts);
