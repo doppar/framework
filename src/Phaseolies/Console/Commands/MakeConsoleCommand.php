@@ -28,10 +28,7 @@ class MakeConsoleCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
-
-        try {
+        return $this->executeWithTiming(function() {
             $name = $this->argument('name');
             $parts = explode('/', $name);
             $className = array_pop($parts);
@@ -39,10 +36,8 @@ class MakeConsoleCommand extends Command
             $filePath = base_path('app/Schedule/Commands/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
 
             if (file_exists($filePath)) {
-                $this->line('<bg=red;options=bold> ERROR </> Command already exists at:');
-                $this->newLine();
+                $this->displayError('Command already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                $this->newLine();
                 return 1;
             }
 
@@ -54,27 +49,13 @@ class MakeConsoleCommand extends Command
             $content = $this->generateCommandContent($namespace, $className);
             file_put_contents($filePath, $content);
 
-            $this->line('<bg=green;options=bold> SUCCESS </> Command created successfully');
-            $this->newLine();
+            $this->displaySuccess('Command created successfully');
             $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Command Name:</> <fg=white>doppar:' . $this->convertToKebabCase($className) . '</>');
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
+        });
     }
 
     /**

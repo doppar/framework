@@ -2,55 +2,66 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
+use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakePolicyCommand extends Command
 {
-    protected static $defaultName = 'make:authorizer';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:policy {name} {--m|model=}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new policy class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('make:authorizer')
-            ->setDescription('Creates a new authorizer class.')
-            ->addArgument('name', InputArgument::REQUIRED, 'The name of the authorizer class.')
-            ->addOption('model', 'm', InputOption::VALUE_REQUIRED, 'The model that the authorizer applies to.');
-    }
+        return $this->executeWithTiming(function() {
+            $name = $this->argument('name');
+            $model = $this->option('model');
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $name = $input->getArgument('name');
-        $model = $input->getOption('model');
+            $parts = explode('/', $name);
+            $className = array_pop($parts);
 
+            $namespace = 'App\\Policies' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Policies/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
 
-        $parts = explode('/', $name);
-        $className = array_pop($parts);
+            if (file_exists($filePath)) {
+                $this->displayError('Policy already exists at:');
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                return 1;
+            }
 
-        $namespace = 'App\\Authorizers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
 
-        $filePath = base_path() . '/app/Authorizers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php';
+            $content = $this->generateAuthorizerContent($namespace, $className, $model);
+            file_put_contents($filePath, $content);
 
-        if (file_exists($filePath)) {
-            $output->writeln('<error>Authorizer already exists!</error>');
-            return Command::FAILURE;
-        }
+            $this->displaySuccess('Policy created successfully');
+            $this->line('<fg=yellow>🛡️ File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+            $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
+            if ($model) {
+                $this->line('<fg=yellow>🏷️ Model:</> <fg=white>' . $model . '</>');
+            }
 
-        $directoryPath = dirname($filePath);
-        if (!is_dir($directoryPath)) {
-            mkdir($directoryPath, 0755, true);
-        }
-
-        $content = $this->generateAuthorizerContent($namespace, $className, $model);
-
-        file_put_contents($filePath, $content);
-
-        $output->writeln('<info>Authorizer created successfully.</info>');
-
-        return Command::SUCCESS;
+            return 0;
+        });
     }
 
     protected function generateAuthorizerContent(string $namespace, string $className, ?string $model): string

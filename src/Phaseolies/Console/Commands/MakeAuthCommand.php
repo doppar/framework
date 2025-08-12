@@ -28,47 +28,29 @@ class MakeAuthCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
 
-        try {
-
+        return $this->executeWithTiming(function() {
             if ($this->authFilesExist()) {
-                $this->line('<bg=yellow;options=bold> WARNING </> Authentication files already exist!');
-                $this->newLine();
+                $this->displayWarning('Authentication files already exist!');
                 $this->line('If you want to regenerate them, please delete these files first:');
                 $this->newLine();
                 $this->listExistingAuthFiles();
                 return 1;
             }
-
+            
             $this->createDirectories();
             $this->generateControllers();
             $this->generateViews();
             $this->appendRoutes();
 
-            $this->line('<bg=green;options=bold> SUCCESS </> Authentication scaffolding generated successfully');
-            $this->newLine();
-            $this->line('<fg=yellow>🎉 Generated Files:</>');
+            $this->displaySuccess('Authentication scaffolding generated successfully');
+            $this->displayInfo('🎉 Generated Files:');
             $this->line('- Controllers: Login, Register, Home, Profile, 2FA');
             $this->line('- Views: Login, Register, Home, Profile, Layout, 2FA');
             $this->line('- Routes: Added to web.php');
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
 
-        $executionTime = microtime(true) - $startTime;
-        $this->newLine();
-        $this->line(sprintf(
-            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-            $executionTime,
-            (int) ($executionTime * 1000000)
-        ));
-        $this->newLine();
-
-        return 0;
+            return 0;
+        });
     }
 
     /**

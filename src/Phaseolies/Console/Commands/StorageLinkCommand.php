@@ -29,15 +29,11 @@ class StorageLinkCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
-
-        try {
+        return $this->executeWithTiming(function() {
             $links = config('filesystem.links');
 
             if (empty($links)) {
-                $this->line('<bg=red;options=bold> ERROR </> No symbolic links configured in config/filesystems.php');
-                $this->newLine();
+                $this->displayError('No symbolic links configured in config/filesystems.php');
                 return 1;
             }
 
@@ -45,21 +41,8 @@ class StorageLinkCommand extends Command
                 $this->processLink($link, $target);
             }
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
+        });
     }
 
     /**

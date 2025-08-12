@@ -29,41 +29,20 @@ class RouteCacheCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
-
-        try {
+        return $this->executeWithTiming(function() {
             $cacheDir = base_path('storage/framework/cache');
 
             if (!is_dir($cacheDir)) {
-                $this->line('<bg=red;options=bold> ERROR </> Cache directory does not exist:');
-                $this->newLine();
+                $this->displayError('Cache directory does not exist:');
                 $this->line('<fg=white>' . $cacheDir . '</>');
-                $this->newLine();
                 return 1;
             }
 
             $this->line('<fg=yellow>⏳ Caching routes...</>');
             Route::cacheRoutes();
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line('<bg=green;options=bold> SUCCESS </> Routes cached successfully');
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
+            $this->displaySuccess('Routes cached successfully');
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            $this->line('<fg=red>✖ ERROR: ' . $e->getMessage() . '</>');
-            $this->newLine();
-            return 1;
-        }
+        });
     }
 }

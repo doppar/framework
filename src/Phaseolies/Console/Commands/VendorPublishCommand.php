@@ -2,10 +2,7 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputOption;
+use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Application;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
@@ -13,7 +10,19 @@ use FilesystemIterator;
 
 class VendorPublishCommand extends Command
 {
-    protected static $defaultName = 'vendor:publish';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'vendor:publish {--provider=} {--tag=} {--force}';
+
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Publish any publishable assets from vendor packages';
 
     protected Application $app;
 
@@ -23,66 +32,48 @@ class VendorPublishCommand extends Command
         $this->app = app();
     }
 
-    protected function configure()
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this->setName('vendor:publish')
-            ->setDescription('Publish any publishable assets from vendor packages')
-            ->addOption(
-                'provider',
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'The service provider that has assets you want to publish'
-            )
-            ->addOption(
-                'tag',
-                null,
-                InputOption::VALUE_OPTIONAL,
-                'One or many tags that have assets you want to publish'
-            )
-            ->addOption(
-                'force',
-                null,
-                InputOption::VALUE_NONE,
-                'Overwrite any existing files'
-            );
+        return $this->executeWithTiming(function() {
+            $provider = $this->option('provider');
+            $tag = $this->option('tag');
+            $force = $this->option('force');
+
+            if ($provider) {
+                $this->publishProvider($provider, $force);
+                return 0;
+            }
+
+            if ($tag) {
+                $this->publishTag($tag, $force);
+                return 0;
+            }
+
+            $this->publishAll($force);
+            return 0;
+        });
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $provider = $input->getOption('provider');
-        $tag = $input->getOption('tag');
-        $force = $input->getOption('force');
-
-        if ($provider) {
-            $this->publishProvider($provider, $output, $force);
-            return Command::SUCCESS;
-        }
-
-        if ($tag) {
-            $this->publishTag($tag, $output, $force);
-            return Command::SUCCESS;
-        }
-
-        $this->publishAll($output, $force);
-
-        return Command::SUCCESS;
-    }
-
-    protected function publishProvider(string $provider, OutputInterface $output, bool $force = false)
+    protected function publishProvider(string $provider, bool $force = false)
     {
         $providerClass = $this->app->getProvider($provider);
 
         if (!$providerClass) {
-            $output->writeln("<error>Unable to locate provider: {$provider}</error>");
+            $this->displayError("Unable to locate provider: {$provider}");
             return;
         }
 
         $paths = $providerClass->pathsToPublish($provider);
-
-        $this->publishPaths($paths, $output, $force);
+        $this->publishPaths($paths, $force);
+        $this->displaySuccess("Published assets for provider: {$provider}");
     }
 
-    protected function publishTag(string $tag, OutputInterface $output, bool $force = false)
+    protected function publishTag(string $tag, bool $force = false)
     {
         $paths = [];
 
@@ -94,35 +85,41 @@ class VendorPublishCommand extends Command
         }
 
         if (empty($paths)) {
-            $output->writeln("<error>Unable to locate tag: {$tag}</error>");
+            $this->displayError("Unable to locate tag: {$tag}");
             return;
         }
 
-        $this->publishPaths($paths, $output, $force);
+        $this->publishPaths($paths, $force);
+        $this->displaySuccess("Published assets for tag: {$tag}");
     }
 
-    protected function publishAll(OutputInterface $output, bool $force = false)
+    protected function publishAll(bool $force = false)
     {
+        $publishedCount = 0;
         foreach ($this->app->getProviders() as $provider) {
             $paths = $provider->pathsToPublish();
-            $this->publishPaths($paths, $output, $force);
+            if (!empty($paths)) {
+                $this->publishPaths($paths, $force);
+                $publishedCount++;
+            }
         }
+        $this->displaySuccess("Published assets from {$publishedCount} providers");
     }
 
-    protected function publishPaths(array $paths, OutputInterface $output, bool $force = false)
+    protected function publishPaths(array $paths, bool $force = false)
     {
         foreach ($paths as $item) {
             foreach ($item as $from => $to) {
                 if (is_dir($from)) {
-                    $this->publishDirectory($from, $to, $output, $force);
+                    $this->publishDirectory($from, $to, $force);
                 } else {
-                    $this->publishFile($from, $to, $output, $force);
+                    $this->publishFile($from, $to, $force);
                 }
             }
         }
     }
 
-    protected function publishDirectory(string $from, string $to, OutputInterface $output, bool $force = false)
+    protected function publishDirectory(string $from, string $to, bool $force = false)
     {
         if (!is_dir($to)) {
             mkdir($to, 0755, true);
@@ -141,15 +138,15 @@ class VendorPublishCommand extends Command
                     mkdir($target, 0755);
                 }
             } else {
-                $this->publishFile($item->getPathname(), $target, $output, $force);
+                $this->publishFile($item->getPathname(), $target, $force);
             }
         }
     }
 
-    protected function publishFile(string $from, string $to, OutputInterface $output, bool $force = false)
+    protected function publishFile(string $from, string $to, bool $force = false)
     {
         if (file_exists($to) && !$force) {
-            $output->writeln("<error>Skipping: File already exists </error>");
+            $this->displayWarning("Skipping: File already exists at {$to}");
             return;
         }
 
@@ -159,6 +156,6 @@ class VendorPublishCommand extends Command
         }
 
         copy($from, $to);
-        $output->writeln("<info>Copied:</info> {$from} <info>to</info> {$to}");
+        $this->line("<info>Copied:</info> {$from} <info>to</info> {$to}");
     }
 }

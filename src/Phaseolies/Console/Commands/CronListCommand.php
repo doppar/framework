@@ -3,51 +3,61 @@
 namespace Phaseolies\Console\Commands;
 
 use App\Schedule\Schedule;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Command\Command;
+use Phaseolies\Console\Schedule\Command;
 use Symfony\Component\Console\Helper\Table;
 
 class CronListCommand extends Command
 {
-    protected static $defaultName = 'cron:list';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'cron:list';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'List all registered scheduled commands';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('cron:list')
-            ->setDescription('List all registered scheduled commands');
-    }
+        return $this->executeWithTiming(function() {
+            $schedule = new Schedule();
+            $schedule->schedule($schedule);
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $schedule = new Schedule();
-        $schedule->schedule($schedule);
+            $commands = $schedule->getCommands();
 
-        $commands = $schedule->getCommands();
+            if (empty($commands)) {
+                $this->displayInfo('No scheduled commands are registered.');
+                return 0;
+            }
 
-        if (empty($commands)) {
-            $output->writeln('<info>No scheduled commands are registered.</info>');
-            return Command::SUCCESS;
-        }
-
-        $table = new Table($output);
-        $table->setHeaders([
-            'Command',
-            'Runs In',
-            'Without Overlapping'
-        ]);
-
-        foreach ($commands as $command) {
-            $table->addRow([
-                $command->getCommand(),
-                $command->shouldRunInBackground() ? 'Background' : 'Foreground',
-                $command->withoutOverlapping ? 'Yes' : 'No'
+            $table = new Table($this->output);
+            $table->setHeaders([
+                'Command',
+                'Runs In',
+                'Without Overlapping'
             ]);
-        }
 
-        $table->render();
+            foreach ($commands as $command) {
+                $table->addRow([
+                    $command->getCommand(),
+                    $command->shouldRunInBackground() ? 'Background' : 'Foreground',
+                    $command->withoutOverlapping ? 'Yes' : 'No'
+                ]);
+            }
 
-        return Command::SUCCESS;
+            $table->render();
+            $this->displaySuccess('Listed ' . count($commands) . ' scheduled commands');
+            return 0;
+        });
     }
 }

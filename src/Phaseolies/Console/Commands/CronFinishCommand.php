@@ -2,50 +2,62 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Command\Command;
+use Phaseolies\Console\Schedule\Command;
 
 class CronFinishCommand extends Command
 {
-    protected static $defaultName = 'cron:finish';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'cron:finish {finish_id} {release_lock} {exit_code}';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Handle completion of scheduled commands';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('cron:finish')
-            ->setDescription('Handle completion of scheduled commands')
-            ->addArgument('finish_id', InputArgument::REQUIRED, 'The finish identifier')
-            ->addArgument('release_lock', InputArgument::REQUIRED, 'Whether to release lock')
-            ->addArgument('exit_code', InputArgument::REQUIRED, 'The exit code of the command');
-    }
+        return $this->executeWithTiming(function() {
+            $finishId = $this->argument('finish_id');
+            $shouldReleaseLock = (bool)$this->argument('release_lock');
+            $exitCode = (int)$this->argument('exit_code');
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $finishId = $input->getArgument('finish_id');
-        $shouldReleaseLock = (bool)$input->getArgument('release_lock');
-        $exitCode = (int)$input->getArgument('exit_code');
+            // Find and clean up the process
+            $pidFiles = glob(sys_get_temp_dir() . "/doppar_cron_lock_*.pid");
 
-        // Find and clean up the process
-        $pidFiles = glob(sys_get_temp_dir() . "/doppar_cron_lock_*.pid");
+            foreach ($pidFiles as $pidFile) {
+                $processInfo = json_decode(file_get_contents($pidFile), true);
 
-        foreach ($pidFiles as $pidFile) {
-            $processInfo = json_decode(file_get_contents($pidFile), true);
-
-            if ($processInfo['finish_id'] === $finishId) {
-                if ($shouldReleaseLock) {
-                    $lockFile = str_replace('.pid', '', $pidFile);
-                    if (file_exists($lockFile)) {
-                        unlink($lockFile);
+                if ($processInfo['finish_id'] === $finishId) {
+                    if ($shouldReleaseLock) {
+                        $lockFile = str_replace('.pid', '', $pidFile);
+                        if (file_exists($lockFile)) {
+                            unlink($lockFile);
+                        }
                     }
+
+                    unlink($pidFile);
+                    break;
                 }
-
-                unlink($pidFile);
-                break;
             }
-        }
 
-        return $exitCode === 0 ? Command::SUCCESS : Command::FAILURE;
+            if ($exitCode === 0) {
+                $this->displaySuccess('Cron task completed successfully');
+                return 0;
+            } else {
+                $this->displayError('Cron task failed with exit code: ' . $exitCode);
+                return $exitCode;
+            }
+        });
     }
 }

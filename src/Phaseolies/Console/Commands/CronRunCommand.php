@@ -3,53 +3,64 @@
 namespace Phaseolies\Console\Commands;
 
 use App\Schedule\Schedule;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Command\Command;
+use Phaseolies\Console\Schedule\Command;
 use Symfony\Component\Process\Process;
 
 class CronRunCommand extends Command
 {
-    protected static $defaultName = 'cron:run';
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'cron:run';
 
-    protected function configure()
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Run the scheduled commands';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
     {
-        $this
-            ->setName('cron:run')
-            ->setDescription('Run the scheduled commands');
-    }
+        return $this->executeWithTiming(function() {
+            $schedule = new Schedule();
+            $schedule->schedule($schedule);
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
-    {
-        $schedule = new Schedule();
-        $schedule->schedule($schedule);
+            $commandsToRun = $schedule->dueCommands();
 
-        $commandsToRun = $schedule->dueCommands();
-
-        if (empty($commandsToRun)) {
-            $output->writeln('<info>No scheduled commands are ready to run.</info>');
-            return Command::SUCCESS;
-        }
-
-        foreach ($commandsToRun as $command) {
-            $output->writeln('<comment>Running:</comment> ' . $command->getCommand());
-
-            $env = array_merge(getenv(), [
-                'APP_RUNNING_IN_CONSOLE' => true,
-                'APP_SCHEDULE_RUNNING' => true
-            ]);
-
-            if ($command->shouldRunInBackground()) {
-                $this->runInBackground($command, $output, $env);
-            } else {
-                $this->runInForeground($command, $output, $env);
+            if (empty($commandsToRun)) {
+                $this->displayInfo('No scheduled commands are ready to run.');
+                return 0;
             }
-        }
 
-        return Command::SUCCESS;
+            foreach ($commandsToRun as $command) {
+                $this->line('<comment>Running:</comment> ' . $command->getCommand());
+
+                $env = array_merge(getenv(), [
+                    'APP_RUNNING_IN_CONSOLE' => true,
+                    'APP_SCHEDULE_RUNNING' => true
+                ]);
+
+                if ($command->shouldRunInBackground()) {
+                    $this->runInBackground($command, $env);
+                } else {
+                    $this->runInForeground($command, $env);
+                }
+            }
+
+            $this->displaySuccess('Executed ' . count($commandsToRun) . ' scheduled commands');
+            return 0;
+        });
     }
 
-    protected function runInBackground($command, $output, $env): void
+    protected function runInBackground($command, $env): void
     {
         $phpBinary = PHP_BINARY;
         $poolScript = 'pool';
@@ -85,7 +96,7 @@ class CronRunCommand extends Command
             escapeshellarg($logFile)
         );
 
-        $output->writeln('<comment>Executing command:</comment> ' . $commandString);
+        $this->line('<comment>Executing command:</comment> ' . $commandString);
 
         $pid = (int) shell_exec($commandString);
 
@@ -123,7 +134,7 @@ class CronRunCommand extends Command
                 }
             } catch (\Exception $e) {
                 if ($attempt === $maxRetries) {
-                    $output->writeln('<error>Failed to write process info after ' . $maxRetries . ' attempts: ' . $e->getMessage() . '</error>');
+                    $this->displayError('Failed to write process info after ' . $maxRetries . ' attempts: ' . $e->getMessage());
                     return;
                 }
                 usleep($retryDelay);
@@ -142,15 +153,15 @@ class CronRunCommand extends Command
             FILE_APPEND
         );
 
-        $output->writeln(sprintf(
-            '<info>Background process started (PID: %d, Log: %s, Lock: %s)</info>',
+        $this->displayInfo(sprintf(
+            'Background process started (PID: %d, Log: %s, Lock: %s)',
             $pid,
             $logFile,
             $lockFile
         ));
     }
 
-    protected function runInForeground($command, $output, $env): void
+    protected function runInForeground($command, $env): void
     {
         if ($command->withoutOverlapping) {
             $command->lock();
@@ -161,10 +172,10 @@ class CronRunCommand extends Command
         $process->run();
 
         if ($process->isSuccessful()) {
-            $output->writeln('<info>Success:</info> ' . $command->getCommand());
+            $this->displayInfo('Success: ' . $command->getCommand());
         } else {
-            $output->writeln('<error>Error:</error> ' . $command->getCommand());
-            $output->writeln('<error>Output:</error> ' . $process->getErrorOutput());
+            $this->displayError('Error: ' . $command->getCommand());
+            $this->displayError('Output: ' . $process->getErrorOutput());
         }
 
         if ($command->withoutOverlapping) {

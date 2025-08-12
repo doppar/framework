@@ -46,10 +46,7 @@ class MigrateCommand extends Command
      */
     protected function handle(): int
     {
-        $startTime = microtime(true);
-        $this->newLine();
-
-        try {
+        return $this->executeWithTiming(function() {
             $path = $this->option('path');
 
             if ($path) {
@@ -59,30 +56,16 @@ class MigrateCommand extends Command
             }
 
             if (empty($status)) {
-                $this->line('<bg=blue;options=bold> INFO </> Nothing to migrate');
+                $this->displayInfo('Nothing to migrate');
             } else {
-                $this->line('<bg=green;options=bold> SUCCESS </> Database migrated successfully');
-                $this->newLine();
+                $this->displaySuccess('Database migrated successfully');
                 $this->line('<fg=yellow>📊 Migrations Executed:</>');
                 foreach ($status as $migration) {
                     $this->line('- <fg=white>' . $migration . '</>');
                 }
             }
 
-            $executionTime = microtime(true) - $startTime;
-            $this->newLine();
-            $this->line(sprintf(
-                "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
-                $executionTime,
-                (int) ($executionTime * 1000000)
-            ));
-            $this->newLine();
-
             return 0;
-        } catch (RuntimeException $e) {
-            $this->line('<bg=red;options=bold> ERROR </> ' . $e->getMessage());
-            $this->newLine();
-            return 1;
-        }
+        });
     }
 }

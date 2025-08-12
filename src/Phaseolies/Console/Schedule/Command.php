@@ -226,4 +226,109 @@ abstract class Command extends SymfonyCommand
     {
         $this->output->write(str_repeat(PHP_EOL, $count));
     }
+
+    /**
+     * Execute command with timing and error handling.
+     *
+     * @param callable $callback
+     * @return int
+     */
+    protected function executeWithTiming(callable $callback): int
+    {
+        $startTime = microtime(true);
+        $this->newLine();
+        
+        try {
+            $result = $callback();
+            $this->displayExecutionTime($startTime);
+            return $result ?? 0;
+        } catch (\RuntimeException $e) {
+            $this->displayError($e->getMessage());
+            $this->displayExecutionTime($startTime);
+            return 1;
+        }
+    }
+
+    /**
+     * Display a success message with standard formatting.
+     *
+     * @param string $message
+     * @return void
+     */
+    protected function displaySuccess(string $message): void
+    {
+        $this->line("<bg=green;options=bold> SUCCESS </> {$message}");
+        $this->newLine();
+    }
+
+    /**
+     * Display an error message with standard formatting.
+     *
+     * @param string $message
+     * @return void
+     */
+    protected function displayError(string $message): void
+    {
+        $this->line("<bg=red;options=bold> ERROR </> {$message}");
+        $this->newLine();
+    }
+
+    /**
+     * Display an warning message with standard formatting.
+     *
+     * @param string $message
+     * @return void
+     */
+    protected function displayWarning(string $message): void
+    {
+        $this->line("<bg=yellow;options=bold> WARNING </> {$message}");
+        $this->newLine();
+    }
+    /**
+     * Display an info message with standard formatting.
+     *
+     * @param string $message
+     * @return void
+     */
+    protected function displayInfo(string $message): void
+    {
+        $this->line("<fg=yellow> {$message}</>");
+        $this->newLine();
+    }
+
+    /**
+     * Display execution time with standard formatting.
+     *
+     * @param float $startTime
+     * @return void
+     */
+    protected function displayExecutionTime(float $startTime): void
+    {
+        $executionTime = microtime(true) - $startTime;
+        $this->newLine();
+        $this->line(sprintf(
+            "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
+            $executionTime,
+            (int) ($executionTime * 1000000)
+        ));
+        $this->newLine();
+    }
+
+    /**
+     * Execute operation with timing and optional success message.
+     *
+     * @param callable $operation
+     * @param string|null $successMessage
+     * @return int
+     */
+    protected function withTiming(callable $operation, ?string $successMessage = null): int
+    {
+        return $this->executeWithTiming(function() use ($operation, $successMessage) {
+            $result = $operation();
+            if ($successMessage) {
+                $this->displaySuccess($successMessage);
+            }
+            return $result;
+        });
+    }
 }
