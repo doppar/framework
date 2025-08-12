@@ -3,24 +3,26 @@
 namespace Phaseolies\Support\Facades;
 
 /**
- * @method static \Phaseolies\Database\Database getPdoInstance(): PDO
- * @method static \Phaseolies\Database\Database beginTransaction(): void
- * @method static \Phaseolies\Database\Database commit(): void
- * @method static \Phaseolies\Database\Database rollBack(): void
- * @method static \Phaseolies\Database\Database transaction(\Closure $callback, int $attempts = 1)
- * @method static \Phaseolies\Database\Database transactionLevel(): int
- * @method static \Phaseolies\Database\Database getTableColumns(?string $table = null): array
- * @method static \Phaseolies\Database\Database dropAllTables(): int
- * @method static \Phaseolies\Database\Database table(string $table): Builder
- * @method static \Phaseolies\Database\Database getTables(): array
- * @method static \Phaseolies\Database\Database tableExists(string $table): bool
- * @method static \Phaseolies\Database\Database getTable(Model $model): string
- * @method static \Phaseolies\Database\Database getConnection(): PDO
- * @method static \Phaseolies\Database\Database procedure(string $procedureName,array $params = [],array $outputParams = []): \Phaseolies\Support\Collection
- * @method static \Phaseolies\Database\Database view(string $viewName, array $where = [], array $params = []): array
- * @method static \Phaseolies\Database\Database query(string $sql, array $params = []): \Phaseolies\Support\Collection
- * @method static \Phaseolies\Database\Database execute(string $sql, array $params = []): int
- * @method static \Phaseolies\Database\Database statement(string $sql, array $params = []): \PDOStatement
+ * @method static  getPdoInstance(): PDO
+ * @method static  beginTransaction(): void
+ * @method static  commit(): void
+ * @method static  rollBack(): void
+ * @method static  transaction(\Closure $callback, int $attempts = 1)
+ * @method static  transactionLevel(): int
+ * @method static  getTableColumns(?string $table = null): array
+ * @method static  dropAllTables(): int
+ * @method static  table(string $table): Builder
+ * @method static  getTables(): array
+ * @method static  tableExists(string $table): bool
+ * @method static  getTable(Model $model): string
+ * @method static  getConnection(): PDO
+ * @method static  procedure(string $procedureName,array $params = [],array $outputParams = []): \Phaseolies\Support\Collection
+ * @method static  view(string $viewName, array $where = [], array $params = []): array
+ * @method static  query(string $sql, array $params = []): \Phaseolies\Support\Collection
+ * @method static  execute(string $sql, array $params = []): int
+ * @method static  statement(string $sql, array $params = []): \PDOStatement
+ * @method static  connection(?string $name = null): self
+ *
  * @see \Phaseolies\Database\Database
  */
 

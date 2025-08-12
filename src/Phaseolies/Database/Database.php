@@ -436,7 +436,7 @@ class Database
      */
     public function table(string $table): Builder
     {
-        return new Builder($table);
+        return new Builder($table, $this->getPdo());
     }
 
     /**
