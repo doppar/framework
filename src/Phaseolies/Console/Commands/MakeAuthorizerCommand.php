@@ -3,9 +3,8 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
-use RuntimeException;
 
-class MakePolicyCommand extends Command
+class MakeAuthorizerCommand extends Command
 {
     /**
      * The name and signature of the console command.

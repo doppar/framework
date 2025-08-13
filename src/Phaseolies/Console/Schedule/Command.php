@@ -82,9 +82,7 @@ abstract class Command extends SymfonyCommand
                     !empty($m[2]) ? InputArgument::OPTIONAL : InputArgument::REQUIRED,
                     $description
                 );
-            }
-
-            elseif (preg_match('/^(?:-([a-zA-Z])\|)?--(\w+)(?:=(.*))?$/', $definition, $m)) {
+            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--(\w+)(?:=(.*))?$/', $definition, $m)) {
                 $shortcut = $m[1] ?? null;
                 $name = $m[2];
                 $default = $m[3] ?? null;
@@ -237,7 +235,7 @@ abstract class Command extends SymfonyCommand
     {
         $startTime = microtime(true);
         $this->newLine();
-        
+
         try {
             $result = $callback();
             $this->displayExecutionTime($startTime);
@@ -258,6 +256,7 @@ abstract class Command extends SymfonyCommand
     protected function displaySuccess(string $message): void
     {
         $this->line("<bg=green;options=bold> SUCCESS </> {$message}");
+
         $this->newLine();
     }
 
@@ -270,6 +269,7 @@ abstract class Command extends SymfonyCommand
     protected function displayError(string $message): void
     {
         $this->line("<bg=red;options=bold> ERROR </> {$message}");
+
         $this->newLine();
     }
 
@@ -282,6 +282,7 @@ abstract class Command extends SymfonyCommand
     protected function displayWarning(string $message): void
     {
         $this->line("<bg=yellow;options=bold> WARNING </> {$message}");
+
         $this->newLine();
     }
     /**
@@ -293,6 +294,7 @@ abstract class Command extends SymfonyCommand
     protected function displayInfo(string $message): void
     {
         $this->line("<fg=yellow> {$message}</>");
+
         $this->newLine();
     }
 
@@ -305,12 +307,15 @@ abstract class Command extends SymfonyCommand
     protected function displayExecutionTime(float $startTime): void
     {
         $executionTime = microtime(true) - $startTime;
+
         $this->newLine();
+
         $this->line(sprintf(
             "<fg=yellow>⏱ Time:</> <fg=white>%.4fs</> <fg=#6C7280>(%d μs)</>",
             $executionTime,
             (int) ($executionTime * 1000000)
         ));
+
         $this->newLine();
     }
 
@@ -323,11 +328,13 @@ abstract class Command extends SymfonyCommand
      */
     protected function withTiming(callable $operation, ?string $successMessage = null): int
     {
-        return $this->executeWithTiming(function() use ($operation, $successMessage) {
+        return $this->executeWithTiming(function () use ($operation, $successMessage) {
             $result = $operation();
+
             if ($successMessage) {
                 $this->displaySuccess($successMessage);
             }
+
             return $result;
         });
     }

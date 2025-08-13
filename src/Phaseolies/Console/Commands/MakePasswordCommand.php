@@ -28,7 +28,7 @@ class MakePasswordCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $password = $this->argument('password');
 
             if (empty($password)) {
@@ -39,12 +39,12 @@ class MakePasswordCommand extends Command
                 $this->displayError('Password must be a string');
                 return 1;
             }
-            
+
             $hashedPassword = self::hash($password);
 
             $this->displaySuccess('Password hashed successfully');
             $this->line("<fg=yellow>🔑 Key:</> <fg=white>$hashedPassword</>");
-            
+
             return 0;
         });
     }

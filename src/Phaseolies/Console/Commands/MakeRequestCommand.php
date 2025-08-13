@@ -3,7 +3,6 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
-use RuntimeException;
 
 class MakeRequestCommand extends Command
 {

@@ -39,7 +39,7 @@ class VendorPublishCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $provider = $this->option('provider');
             $tag = $this->option('tag');
             $force = $this->option('force');
@@ -70,6 +70,8 @@ class VendorPublishCommand extends Command
 
         $paths = $providerClass->pathsToPublish($provider);
         $this->publishPaths($paths, $force);
+
+        $this->newLine();
         $this->displaySuccess("Published assets for provider: {$provider}");
     }
 
@@ -90,6 +92,8 @@ class VendorPublishCommand extends Command
         }
 
         $this->publishPaths($paths, $force);
+
+        $this->newLine();
         $this->displaySuccess("Published assets for tag: {$tag}");
     }
 
@@ -103,18 +107,19 @@ class VendorPublishCommand extends Command
                 $publishedCount++;
             }
         }
+
+        $this->newLine();
         $this->displaySuccess("Published assets from {$publishedCount} providers");
     }
 
     protected function publishPaths(array $paths, bool $force = false)
     {
-        foreach ($paths as $item) {
-            foreach ($item as $from => $to) {
-                if (is_dir($from)) {
-                    $this->publishDirectory($from, $to, $force);
-                } else {
-                    $this->publishFile($from, $to, $force);
-                }
+        foreach ($paths as $key => $item) {
+            $mappings = is_array($item) ? $item : [$key => $item];
+
+            foreach ($mappings as $from => $to) {
+                $method = is_dir($from) ? 'publishDirectory' : 'publishFile';
+                $this->{$method}($from, $to, $force);
             }
         }
     }
@@ -141,6 +146,7 @@ class VendorPublishCommand extends Command
                 $this->publishFile($item->getPathname(), $target, $force);
             }
         }
+        $this->newLine();
     }
 
     protected function publishFile(string $from, string $to, bool $force = false)
@@ -156,6 +162,6 @@ class VendorPublishCommand extends Command
         }
 
         copy($from, $to);
-        $this->line("<info>Copied:</info> {$from} <info>to</info> {$to}");
+        $this->line("→ {$to}");
     }
 }

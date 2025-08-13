@@ -27,15 +27,16 @@ class DeleteCronLockFile extends Command
      */
     protected function handle(): int
     {
-        return $this->withTiming(function() {
+        return $this->withTiming(function () {
             $cacheDir = base_path() . '/storage/schedule';
-            
+
             if (!is_dir($cacheDir)) {
                 $this->displayInfo('No cron files directory found.');
                 return 0;
             }
 
             $this->deleteDirectoryContents($cacheDir);
+
             return 0;
         }, 'Cron files deleted successfully');
     }

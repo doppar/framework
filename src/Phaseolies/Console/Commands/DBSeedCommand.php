@@ -47,6 +47,7 @@ class DBSeedCommand extends Command
             }
 
             $this->displaySuccess('Seeds executed successfully');
+
             return 0;
         });
     }

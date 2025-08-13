@@ -4,7 +4,6 @@ namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Support\Facades\Route;
-use RuntimeException;
 
 class RouteCacheCommand extends Command
 {

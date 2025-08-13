@@ -4,7 +4,6 @@ namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Database\Migration\Migrator;
-use RuntimeException;
 
 class MigrateCommand extends Command
 {

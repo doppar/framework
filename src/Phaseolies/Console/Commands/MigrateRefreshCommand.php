@@ -6,7 +6,6 @@ use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Support\Facades\Schema;
 use Phaseolies\Support\Facades\DB;
 use Phaseolies\Database\Migration\Migrator;
-use RuntimeException;
 
 class MigrateRefreshCommand extends Command
 {
@@ -73,7 +72,12 @@ class MigrateRefreshCommand extends Command
                 $this->line("<fg=yellow>♻️  Refreshing database on connection: {$name}</>");
 
                 Schema::connection($name)->disableForeignKeyConstraints();
+
+                /**
+                 * @var int $tablesDropped
+                 */
                 $tablesDropped = DB::connection($name)->dropAllTables();
+
                 Schema::connection($name)->enableForeignKeyConstraints();
 
                 $totalTablesDropped += $tablesDropped;
@@ -93,6 +97,4 @@ class MigrateRefreshCommand extends Command
             return 0;
         });
     }
-
-
 }

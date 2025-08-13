@@ -28,8 +28,7 @@ class MakeAuthCommand extends Command
      */
     protected function handle(): int
     {
-
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             if ($this->authFilesExist()) {
                 $this->displayWarning('Authentication files already exist!');
                 $this->line('If you want to regenerate them, please delete these files first:');
@@ -37,7 +36,7 @@ class MakeAuthCommand extends Command
                 $this->listExistingAuthFiles();
                 return 1;
             }
-            
+
             $this->createDirectories();
             $this->generateControllers();
             $this->generateViews();

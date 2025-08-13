@@ -47,6 +47,7 @@ class AppBoostCommand extends Command
                 $this->runCommand($command);
             }
 
+            $this->newLine();
             $this->displaySuccess('Application optimization completed successfully');
             return 0;
         });

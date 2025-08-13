@@ -22,6 +22,7 @@ class ServerStartCommand extends Command
     protected $description = 'Start the development server';
 
     protected const DEFAULT_PORT = 8000;
+
     protected const MAX_PORT_ATTEMPTS = 10;
 
     /**
@@ -31,19 +32,20 @@ class ServerStartCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $port = $this->argument('port');
 
             $background = $this->option('background') || $this->option('bg');
 
-           if(!self::isPortOk($port)) {
+            if (!self::isPortOk($port)) {
                 $port = self::DEFAULT_PORT;
             }
 
             $port = self::determineAvailablePort($port);
 
             $this->displaySuccess("Server started on <fg=green>http://localhost:$port</>");
-            self::startServer($port, $background);            
+            self::startServer($port, $background);
+
             return 0;
         });
     }
@@ -107,15 +109,20 @@ class ServerStartCommand extends Command
                 // Linux / macOS
                 $command = "nohup php -S localhost:$port -t public server.php > /dev/null 2>&1 &";
             }
-    
+
             $process = Process::fromShellCommandline($command);
             $process->run();
             return;
         }
-    
+
         // Foreground mode
         $process = new Process([
-            'php', '-S', "localhost:$port", '-t', 'public', 'server.php'
+            'php',
+            '-S',
+            "localhost:$port",
+            '-t',
+            'public',
+            'server.php'
         ]);
         $process->setTimeout(null);
         $process->start();

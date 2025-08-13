@@ -27,7 +27,7 @@ class ClearConfigCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->withTiming(function() {
+        return $this->withTiming(function () {
             app('config')->clearCache();
             return 0;
         }, 'Configuration cache has been gracefully cleared.');

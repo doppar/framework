@@ -56,5 +56,6 @@ class ViewClearCommand extends Command
         }
 
         $this->line('<fg=yellow>🗑️  Cleared:</> <fg=white>' . $count . ' compiled view files</>');
+        $this->newLine();
     }
 }
