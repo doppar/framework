@@ -151,13 +151,16 @@ class PresenterBundle implements JsonSerializable
      * @param array $fields
      * @return self
      */
-    public function except(array $fields): self
+    public function except(array|string ...$fields): self
     {
-        $this->except = array_merge($this->except, $fields);
+        $fields = count($fields) === 1 && is_array($fields[0])
+            ? $fields[0]
+            : $fields;
+
+        $this->except = [...$this->except, ...$fields];
 
         return $this;
     }
-
 
     /**
      * Set fields to include in each resource's output
@@ -165,9 +168,13 @@ class PresenterBundle implements JsonSerializable
      * @param array $fields
      * @return self
      */
-    public function only(array $fields): self
+    public function only(array|string ...$fields): self
     {
-        $this->only = array_merge($this->only, $fields);
+        $fields = count($fields) === 1 && is_array($fields[0])
+            ? $fields[0]
+            : $fields;
+
+        $this->only = [...$this->only, ...$fields];
 
         return $this;
     }

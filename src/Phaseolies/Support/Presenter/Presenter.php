@@ -51,11 +51,11 @@ abstract class Presenter implements JsonSerializable
      * @param string|array ...$fields
      * @return self
      */
-    public function except(...$fields): self
+    public function except(array|string ...$fields): self
     {
-        if (is_string($fields)) {
-            $fields = [$fields];
-        }
+        $fields = count($fields) === 1 && is_array($fields[0])
+            ? $fields[0]
+            : $fields;
 
         $this->except = [...$this->except, ...$fields];
 
@@ -68,11 +68,11 @@ abstract class Presenter implements JsonSerializable
      * @param string|array ...$fields
      * @return self
      */
-    public function only(...$fields): self
+    public function only(array|string ...$fields): self
     {
-        if (is_string($fields)) {
-            $fields = [$fields];
-        }
+        $fields = count($fields) === 1 && is_array($fields[0])
+            ? $fields[0]
+            : $fields;
 
         $this->only = [...$this->only, ...$fields];
 
