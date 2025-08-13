@@ -1578,6 +1578,11 @@ class Builder
                 }
             }
 
+            if (!empty($this->eagerLoad)) {
+                $collection = new Collection($this->modelClass, [$model]);
+                $this->eagerLoadRelations($collection);
+            }
+
             return $model;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
