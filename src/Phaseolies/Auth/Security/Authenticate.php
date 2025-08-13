@@ -148,8 +148,8 @@ class Authenticate
             return $this->statelessUser;
         }
 
-        if (session()->has('user_cache')) {
-            $cache = session('user_cache');
+        if (session()->has('cache_auth_user')) {
+            $cache = session('cache_auth_user');
 
             if ($this->isUserCacheValid($cache)) {
                 return $cache['user'];
@@ -157,7 +157,7 @@ class Authenticate
         }
 
         if (session()->has('user')) {
-            $user = $authModel::find(session('user')->id);
+            $user = $authModel::find(session('user'));
 
             if ($user) {
                 $this->cacheUser($user);
@@ -166,10 +166,16 @@ class Authenticate
         }
 
         if (cookie()->has($this->getRememberCookieName())) {
-            /**
-             * @var string
-             */
-            $rememberToken = Crypt::decrypt(cookie()->get($this->getRememberCookieName()));
+            try {
+                /**
+                 * @var string
+                 */
+                $rememberToken = Crypt::decrypt(cookie()->get($this->getRememberCookieName()));
+            } catch (\Exception $e) {
+                $this->expireRememberCookie();
+                return null;
+            }
+
             $segments = explode('|', $rememberToken);
 
             if (count($segments) !== 3) {
@@ -192,6 +198,9 @@ class Authenticate
             }
 
             if (Hash::check($token, $user->remember_token)) {
+                session()->put('2fa_user_id', $user->id);
+                session()->put('2fa_remember', true);
+
                 $this->setUser($user);
                 // Rotating the token for security
                 $this->setRememberToken($user);
@@ -243,7 +252,7 @@ class Authenticate
 
         session()->forget('user');
         session()->forget('auth_via_remember');
-        session()->forget('user_cache');
+        session()->forget('cache_auth_user');
 
         session()->invalidate();
         session()->regenerateToken();
@@ -260,7 +269,7 @@ class Authenticate
      */
     private function setUser(Model $user): void
     {
-        session()->put('user', $user);
+        session()->put('user', $user->id);
 
         $this->cacheUser($user);
     }
@@ -273,7 +282,7 @@ class Authenticate
      */
     private function cacheUser(Model $user): void
     {
-        session()->put('user_cache', [
+        session()->put('cache_auth_user', [
             'user' => $user,
             'version' => $user?->updated_at,
             'expires_at' => now()->addMinutes(30)->timestamp
