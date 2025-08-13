@@ -1,5 +1,18 @@
 # Release Notes
 
+## v2.8.9.2 - 2025-08-13
+
+### What's Changed
+
+* fix: output the error message when PDOException by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/9
+* fix/feat: Refactor commands by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/7
+
+### New Contributors
+
+* [@rrr63](https://github.com/rrr63) made their first contribution in https://github.com/doppar/framework/pull/9
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v2.8.9.1...v2.8.9.2
+
 ## v2.8.9.1 - 2025-08-11
 
 **Full Changelog**: https://github.com/doppar/framework/compare/v2.8.9.0...v2.8.9.1
