@@ -366,6 +366,26 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
+     * Determine if the collection is empty.
+     *
+     * @return bool
+     */
+    public function isEmpty(): bool
+    {
+        return empty($this->data);
+    }
+
+    /**
+     * Determine if the collection is not empty.
+     *
+     * @return bool
+     */
+    public function isNotEmpty(): bool
+    {
+        return !empty($this->data);
+    }
+
+    /**
      * Output or return memory usage stats related to the current collection.
      *
      * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.

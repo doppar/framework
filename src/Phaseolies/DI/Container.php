@@ -131,14 +131,16 @@ class Container implements ArrayAccess
     /**
      * Resolve a service from the container.
      *
-     * @param string $abstract The service name or class name.
-     * @param array $parameters Additional parameters for the constructor.
-     * @return mixed
+     * @template T of object
+     * @param class-string<T> $abstract The service name or class name
+     * @param array $parameters Additional parameters for the constructor
+     * @return T|string
+     * @throws RuntimeException
      */
-    public function get(string $abstract, array $parameters = [])
+    public function get(string $abstract, array $parameters = []): object|string
     {
         if (class_exists($abstract)) {
-            foreach (self::$instances as $key => $instance) {
+            foreach (self::$instances as $instance) {
                 if ($instance instanceof $abstract) {
                     return $instance;
                 }
@@ -172,11 +174,12 @@ class Container implements ArrayAccess
     /**
      * Resolve a class with its dependencies
      *
-     * @param string $abstract
-     * @param array $parameters
-     * @return mixed
+     * @template T of object
+     * @param class-string<T> $abstract The class or interface name
+     * @param array $parameters Constructor parameters
+     * @return T|string
      */
-    public function make(string $abstract, array $parameters = [])
+    public function make(string $abstract, array $parameters = []): object|string
     {
         return $this->resolve($abstract, $parameters);
     }
@@ -184,11 +187,13 @@ class Container implements ArrayAccess
     /**
      * Resolve a class and its dependencies recursively
      *
-     * @param string $abstract
-     * @param array $parameters
-     * @return mixed
+     * @template T of object
+     * @param class-string<T> $abstract The class or interface name
+     * @param array $parameters Constructor parameters
+     * @return T|string
+     * @throws RuntimeException
      */
-    protected function resolve(string $abstract, array $parameters = [])
+    protected function resolve(string $abstract, array $parameters = []): object|string
     {
         if ($this->has($abstract)) {
             return $this->get($abstract, $parameters);
@@ -208,11 +213,13 @@ class Container implements ArrayAccess
     /**
      * Build a concrete instance with dependency injection
      *
-     * @param string $concrete
-     * @param array $parameters
-     * @return mixed
+     * @template T of object
+     * @param class-string<T> $concrete The class name
+     * @param array $parameters Constructor parameters
+     * @return T|string
+     * @throws RuntimeException
      */
-    protected function build(string $concrete, array $parameters = [])
+    protected function build(string $concrete, array $parameters = []): object|string
     {
         $reflector = new \ReflectionClass($concrete);
 

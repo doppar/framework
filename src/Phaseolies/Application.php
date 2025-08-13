@@ -8,8 +8,6 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
-use Phaseolies\Database\Migration\Migrator;
-use Phaseolies\Database\Migration\MigrationRepository;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\ApplicationBuilder;
@@ -266,10 +264,7 @@ class Application extends Container
      */
     protected function registerCoreProviders(): self
     {
-        $providers = array_merge(
-            $this->loadCoreProviders() ?? [],
-            config('app.providers')
-        );
+        $providers = [...($this->loadCoreProviders()), ...(config('app.providers'))];
 
         $this->registerProviders($providers);
 
@@ -563,13 +558,14 @@ class Application extends Container
     }
 
     /**
-     * Resolves a service from the container.
+     * Resolve a class with its dependencies
      *
-     * @param string $abstract
+     * @template T of object
+     * @param class-string<T> $abstract
      * @param array $parameters
-     * @return mixed
+     * @return T|string
      */
-    public function make($abstract, array $parameters = [])
+    public function make($abstract, array $parameters = []): object|string
     {
         $object = parent::make($abstract, $parameters);
 
@@ -673,12 +669,14 @@ class Application extends Container
         );
 
         $this->singleton('view', \Phaseolies\Support\View\Factory::class);
-        $this->singleton('migrator', function () {
-            return new Migrator(
-                new MigrationRepository(),
-                \database_path('migrations')
-            );
-        });
+        $this->singleton(
+            'migrator',
+            fn() =>
+            new \Phaseolies\Database\Migration\Migrator(
+                new \Phaseolies\Database\Migration\MigrationRepository(),
+                database_path('migrations')
+            )
+        );
     }
 
     /**
