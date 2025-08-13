@@ -337,6 +337,33 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         return $data;
     }
 
+    /**
+     * Pluck an array of values from a given key.
+     *
+     * @param string $value The key to pluck values from
+     * @param string|null $key Optional key to use as array keys in the result
+     * @return array
+     */
+    public function pluck(string $value, ?string $key = null): array
+    {
+        $results = [];
+
+        foreach ($this->data as $item) {
+            $itemValue = is_array($item) ? ($item[$value] ?? null) : ($item->$value ?? null);
+
+            if ($key === null) {
+                $results[] = $itemValue;
+            } else {
+                $itemKey = is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null);
+                if ($itemKey !== null) {
+                    $results[$itemKey] = $itemValue;
+                }
+            }
+        }
+
+        return $results;
+    }
+
     public function __get($name)
     {
         return $this->data[$name] ?? null;
