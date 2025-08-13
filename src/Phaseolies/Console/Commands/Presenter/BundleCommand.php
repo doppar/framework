@@ -1,0 +1,87 @@
+<?php
+
+namespace Phaseolies\Console\Commands\Presenter;
+
+use Phaseolies\Console\Schedule\Command;
+
+class BundleCommand extends Command
+{
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $name = 'make:bundle {name}';
+
+    /**
+     * The description of the console command.
+     *
+     * @var string
+     */
+    protected $description = 'Create a new presenter bundle class';
+
+    /**
+     * Execute the console command.
+     *
+     * @return int
+     */
+    protected function handle(): int
+    {
+        return $this->executeWithTiming(function () {
+            $name = $this->argument('name');
+
+            $parts = explode('/', $name);
+            $className = array_pop($parts);
+            $namespace = 'App\\Http\\Presenters' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = base_path('app/Http/Presenters/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+
+            if (file_exists($filePath)) {
+                $this->displayError('Bundle class already exists at:');
+                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                return 1;
+            }
+
+            $directoryPath = dirname($filePath);
+            if (!is_dir($directoryPath)) {
+                mkdir($directoryPath, 0755, true);
+            }
+
+            $content = $this->generatePresentersContent($namespace, $className);
+            file_put_contents($filePath, $content);
+
+            $this->displaySuccess("Bundle class created successfully");
+            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->newLine();
+
+            return 0;
+        });
+    }
+
+    /**
+     * Generate controller content based on type.
+     */
+    protected function generatePresentersContent(string $namespace, string $className): string
+    {
+        return $this->generateRegularPresentersContent($namespace, $className);
+    }
+
+    /**
+     * Generate standard controller content.
+     */
+    protected function generateRegularPresentersContent(string $namespace, string $className): string
+    {
+        return <<<EOT
+<?php
+
+namespace {$namespace};
+
+use Phaseolies\Support\Presenter\PresenterBundle;
+
+class {$className} extends PresenterBundle
+{
+    // No additional logic needed here — everything is handled by PresenterBundle
+}
+
+EOT;
+    }
+}
