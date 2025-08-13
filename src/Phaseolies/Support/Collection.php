@@ -28,7 +28,34 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function __construct(string $model, ?array $data = [])
     {
         $this->model = $model;
+
         $this->data = $data;
+    }
+
+
+    /**
+     * Access collection data properties directly.
+     * This allows accessing collection items as object properties.
+     *
+     * Example: $collection->someProperty instead of $collection['someProperty']
+     *
+     * @param string $name The property name to access
+     * @return mixed|null The value if exists, null otherwise
+     */
+    public function __get($name)
+    {
+        return $this->data[$name] ?? null;
+    }
+
+    /**
+     * Check if a property exists in the collection data
+     *
+     * @param string $name The property name to check
+     * @return bool True if property exists, false otherwise
+     */
+    public function __isset($name)
+    {
+        return isset($this->data[$name]);
     }
 
     /**
@@ -309,35 +336,6 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
-     * Output or return memory usage stats related to the current collection.
-     *
-     * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
-     * @return string|array
-     */
-    public function withMemoryUsage(bool $asString = true): string|array
-    {
-        $usage = memory_get_usage(true);
-        $peak  = memory_get_peak_usage(true);
-
-        $data = [
-            'current_usage_bytes' => $usage,
-            'peak_usage_bytes'    => $peak,
-            'current_usage_mb'    => round($usage / 1024 / 1024, 2) . ' MB',
-            'peak_usage_mb'       => round($peak / 1024 / 1024, 2) . ' MB',
-        ];
-
-        if ($asString) {
-            return sprintf(
-                "Memory usage: %s, Peak: %s",
-                $data['current_usage_mb'],
-                $data['peak_usage_mb']
-            );
-        }
-
-        return $data;
-    }
-
-    /**
      * Pluck an array of values from a given key.
      *
      * @param string $value The key to pluck values from
@@ -367,13 +365,32 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         return new static($this->model, $results);
     }
 
-    public function __get($name)
+    /**
+     * Output or return memory usage stats related to the current collection.
+     *
+     * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
+     * @return string|array
+     */
+    public function withMemoryUsage(bool $asString = true): string|array
     {
-        return $this->data[$name] ?? null;
-    }
+        $usage = memory_get_usage(true);
+        $peak  = memory_get_peak_usage(true);
 
-    public function __isset($name)
-    {
-        return isset($this->data[$name]);
+        $data = [
+            'current_usage_bytes' => $usage,
+            'peak_usage_bytes'    => $peak,
+            'current_usage_mb'    => round($usage / 1024 / 1024, 2) . ' MB',
+            'peak_usage_mb'       => round($peak / 1024 / 1024, 2) . ' MB',
+        ];
+
+        if ($asString) {
+            return sprintf(
+                "Memory usage: %s, Peak: %s",
+                $data['current_usage_mb'],
+                $data['peak_usage_mb']
+            );
+        }
+
+        return $data;
     }
 }
