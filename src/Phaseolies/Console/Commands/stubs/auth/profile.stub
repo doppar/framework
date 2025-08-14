@@ -21,14 +21,14 @@
                         <form action="{{ route('profile') }}" method="post">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Name</label>
+                                <label class="form-label">Name</label>
                                 <input type="text" name="name" class="form-control" value="{{ Auth::user()->name }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Email</label>
+                                <label class="form-label">Email</label>
                                 <input type="email" name="email" class="form-control" value="{{ Auth::user()->email }}">
                             </div>
-                            <button type="submit" class="btn btn-dark fw-semibold">Update Profile</button>
+                            <button type="submit" class="btn btn-dark">Update Profile</button>
                         </form>
                     </div>
                 </div>
@@ -49,18 +49,18 @@
                         <form action="{{ route('password.update') }}" method="post">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Current Password</label>
+                                <label class="form-label">Current Password</label>
                                 <input type="password" name="old_password" class="form-control">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">New Password</label>
+                                <label class="form-label">New Password</label>
                                 <input type="password" name="new_password" class="form-control">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Confirm Password</label>
+                                <label class="form-label">Confirm Password</label>
                                 <input type="password" name="confirm_password" class="form-control">
                             </div>
-                            <button type="submit" class="btn btn-dark fw-semibold">Update Password</button>
+                            <button type="submit" class="btn btn-dark">Update Password</button>
                         </form>
                     </div>
                 </div>
@@ -98,7 +98,7 @@
                                     <input type="hidden" name="is_enabled_request"
                                         value="{{ Auth::user()->two_factor_secret ? 0 : 1 }}">
                                     <button type="submit"
-                                        class="btn btn-{{ Auth::user()->two_factor_secret ? 'danger' : 'dark' }} fw-semibold">
+                                        class="btn btn-{{ Auth::user()->two_factor_secret ? 'danger' : 'dark' }}">
                                         {{ Auth::user()->two_factor_secret ? 'Disable 2FA' : 'Enable 2FA' }}
                                     </button>
                                 </form>
