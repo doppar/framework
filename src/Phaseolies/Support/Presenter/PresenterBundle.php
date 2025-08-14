@@ -148,7 +148,7 @@ class PresenterBundle implements JsonSerializable
     /**
      * Set fields to exclude from each resource's output
      *
-     * @param array $fields
+     * @param string|array ...$fields
      * @return self
      */
     public function except(array|string ...$fields): self
@@ -165,7 +165,7 @@ class PresenterBundle implements JsonSerializable
     /**
      * Set fields to include in each resource's output
      *
-     * @param array $fields
+     * @param string|array ...$fields
      * @return self
      */
     public function only(array|string ...$fields): self
