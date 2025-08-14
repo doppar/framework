@@ -46,6 +46,17 @@ abstract class Presenter implements JsonSerializable
     }
 
     /**
+     * Access the presenter's attributes.
+     *
+     * @param string $key
+     * @return mixed
+     */
+    public function __get(string $key)
+    {
+        return $this->presenter->{$key};
+    }
+
+    /**
      * Specify fields to exclude from the output
      *
      * @param string|array ...$fields
@@ -75,19 +86,6 @@ abstract class Presenter implements JsonSerializable
             : $fields;
 
         $this->only = [...$this->only, ...$fields];
-
-        return $this;
-    }
-
-    /**
-     * Enable or disable lazy mode
-     *
-     * @param bool $lazy
-     * @return self
-     */
-    public function lazy(bool $lazy = true): self
-    {
-        $this->lazy = $lazy;
 
         return $this;
     }

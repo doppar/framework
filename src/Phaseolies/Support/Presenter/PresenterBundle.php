@@ -19,7 +19,7 @@ class PresenterBundle implements JsonSerializable
      *
      * @var string
      */
-    protected string $bundleClass;
+    protected string $presenter;
 
     /**
      * Fields to exclude from each resource
@@ -60,17 +60,17 @@ class PresenterBundle implements JsonSerializable
      * Create a new PresenterBundle instance
      *
      * @param array|Collection $collection  The data source (array or Collection)
-     * @param string $bundleClass Class name of the bundle
+     * @param string $presenter Class name of the bundle
      * @throws \InvalidArgumentException If $collection is not a supported type
      */
-    public function __construct($collection, string $bundleClass)
+    public function __construct($collection, string $presenter)
     {
         if (is_array($collection)) {
             if (isset($collection['data']) && $this->isPaginatedArray($collection)) {
                 $this->paginationMeta = $this->extractPaginationMeta($collection);
-                $this->collection = new Collection($bundleClass, $collection['data']);
+                $this->collection = new Collection($presenter, $collection['data']);
             } else {
-                $this->collection = new Collection($bundleClass, $collection);
+                $this->collection = new Collection($presenter, $collection);
             }
         } elseif ($collection instanceof Collection) {
             $this->collection = $collection;
@@ -78,7 +78,7 @@ class PresenterBundle implements JsonSerializable
             throw new \InvalidArgumentException('Invalid collection type provided');
         }
 
-        $this->bundleClass = $bundleClass;
+        $this->presenter = $presenter;
     }
 
     /**
@@ -229,7 +229,7 @@ class PresenterBundle implements JsonSerializable
         $data = [];
 
         foreach ($this->collection as $key => $item) {
-            $resource = new $this->bundleClass($item);
+            $resource = new $this->presenter($item);
 
             if (!empty($this->only)) {
                 $resource->only($this->only);
@@ -258,7 +258,7 @@ class PresenterBundle implements JsonSerializable
     {
         $generator = function () {
             foreach ($this->collection as $key => $item) {
-                $resource = new $this->bundleClass($item);
+                $resource = new $this->presenter($item);
 
                 if (!empty($this->only)) {
                     $resource->only($this->only);
