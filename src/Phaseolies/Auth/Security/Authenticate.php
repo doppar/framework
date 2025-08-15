@@ -78,7 +78,7 @@ class Authenticate
             );
         }
 
-        if ($this->hasTwoFactorEnabled($user)) {
+        if ($this->hasTwoFactorEnabled($user) && !request()->is('/api/*')) {
             session()->put('2fa_user_id', $user->id);
             session()->put('2fa_remember', $remember);
 

@@ -91,7 +91,7 @@ trait InteractsWithResourceRouter
     {
         $options['except'] = ['create', 'edit'];
 
-        $this->resource($baseUri, $controller, $options);
+        $this->bundle($baseUri, $controller, $options);
     }
 
     /**
@@ -107,6 +107,6 @@ trait InteractsWithResourceRouter
     {
         $baseUri = trim("{$parent}/{{$parent}}/{$child}", '/');
 
-        $this->resource($baseUri, $controller, $options);
+        $this->bundle($baseUri, $controller, $options);
     }
 }
