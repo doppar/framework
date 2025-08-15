@@ -78,6 +78,10 @@ class Authenticate
             );
         }
 
+        if ($remember) {
+            $this->setRememberToken($user);
+        }
+
         if ($this->hasTwoFactorEnabled($user)) {
             session()->put('2fa_user_id', $user->id);
             session()->put('2fa_remember', $remember);
@@ -86,10 +90,6 @@ class Authenticate
         }
 
         $this->setUser($user);
-
-        if ($remember) {
-            $this->setRememberToken($user);
-        }
 
         return true;
     }
@@ -198,13 +198,20 @@ class Authenticate
             }
 
             if (Hash::check($token, $user->remember_token)) {
-                session()->put('2fa_user_id', $user->id);
-                session()->put('2fa_remember', true);
+                if ($this->hasTwoFactorEnabled($user)) {
+                    if (!session()->has('2fa_user_id')) {
+                        session()->put('2fa_user_id', $user->id);
+                        session()->put('2fa_remember', true);
 
-                $this->setUser($user);
-                // Rotating the token for security
-                $this->setRememberToken($user);
-                return $user;
+                        return null;
+                    }
+                } else {
+                    $this->setUser($user);
+
+                    // Rotating the token for security
+                    $this->setRememberToken($user);
+                    return $user;
+                }
             }
 
             // Token didn't match - possible theft attempt
