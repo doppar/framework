@@ -78,10 +78,6 @@ class Authenticate
             );
         }
 
-        if ($remember) {
-            $this->setRememberToken($user);
-        }
-
         if ($this->hasTwoFactorEnabled($user)) {
             session()->put('2fa_user_id', $user->id);
             session()->put('2fa_remember', $remember);
@@ -90,6 +86,10 @@ class Authenticate
         }
 
         $this->setUser($user);
+
+        if ($remember) {
+            $this->setRememberToken($user);
+        }
 
         return true;
     }
@@ -161,6 +161,7 @@ class Authenticate
 
             if ($user) {
                 $this->cacheUser($user);
+
                 return $user;
             }
         }
@@ -207,6 +208,7 @@ class Authenticate
 
                 // Rotating the token for security
                 $this->setRememberToken($user);
+
                 return $user;
             }
 
