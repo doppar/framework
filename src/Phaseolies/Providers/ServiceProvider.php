@@ -104,6 +104,10 @@ abstract class ServiceProvider
 
     /**
      * Register views from the given path with the specified namespace.
+     *
+     * @param string $path
+     * @param string $namespace
+     * @return void
      */
     public function loadViews(string $path, string $namespace): void
     {
@@ -128,6 +132,10 @@ abstract class ServiceProvider
 
     /**
      * Register paths to be published by the publish command.
+     *
+     * @param array $paths
+     * @param mixed|null $groups
+     * @return void
      */
     public function publishes(array $paths, mixed $groups = null): void
     {
@@ -151,6 +159,8 @@ abstract class ServiceProvider
 
     /**
      * Ensure the publishes array is initialized.
+     *
+     * @return void
      */
     protected function ensurePublishArrayInitialized(): void
     {
@@ -165,6 +175,10 @@ abstract class ServiceProvider
 
     /**
      * Register package's migration paths to be published.
+     *
+     * @param array|string $paths
+     * @param string $groupSuffix
+     * @return void
      */
     public function publishesMigrations(array|string $paths, string $groupSuffix = 'migrations'): void
     {
@@ -173,6 +187,10 @@ abstract class ServiceProvider
 
     /**
      * Get the paths to publish.
+     *
+     * @param string|null|null $provider
+     * @param string|null|null $group
+     * @return array
      */
     public function pathsToPublish(string|null $provider = null, string|null $group = null): array
     {
@@ -185,6 +203,10 @@ abstract class ServiceProvider
 
     /**
      * Get the paths for the provider or group.
+     *
+     * @param string|null $provider
+     * @param string|null $group
+     * @return array|null
      */
     protected function pathsForProviderOrGroup(string|null $provider, string|null $group): ?array
     {
@@ -201,6 +223,9 @@ abstract class ServiceProvider
 
     /**
      * Register the package's custom pool commands.
+     *
+     * @param array|string $commands
+     * @return void
      */
     public function commands(array|string $commands): void
     {
