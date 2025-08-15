@@ -3,6 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
+use RuntimeException;
 
 class MakeControllerCommand extends Command
 {
@@ -11,7 +12,7 @@ class MakeControllerCommand extends Command
      *
      * @var string
      */
-    protected $name = 'make:controller {name} {--i}';
+    protected $name = 'make:controller {name} {--invokable} {--bundle} {--api}';
 
     /**
      * The description of the console command.
@@ -27,14 +28,36 @@ class MakeControllerCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $name = $this->argument('name');
-            $isInvokable = $this->option('i');
+            $isInvokable = $this->option('invokable');
+            $isResource = $this->option('bundle');
+            $isApi = $this->option('api');
+
+            // Validate options
+            if ($isInvokable && ($isResource || $isApi)) {
+                $this->displayError('A controller cannot be both invokable and bundle/api.');
+                return 1;
+            }
+
+            if ($isResource && $isApi) {
+                $this->displayError('A controller cannot be both bundle and API.');
+                return 1;
+            }
 
             $parts = explode('/', $name);
             $className = array_pop($parts);
-            $namespace = 'App\\Http\\Controllers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Http/Controllers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $baseNamespace = 'App\\Http\\Controllers';
+
+            if ($isApi) {
+                $baseNamespace .= '\\API';
+            }
+
+            $namespace = $baseNamespace . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+
+            $filePath = base_path('app/Http/Controllers/' .
+                ($isApi ? 'API/' : '') .
+                str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
 
             if (file_exists($filePath)) {
                 $this->displayError('Controller already exists at:');
@@ -47,72 +70,58 @@ class MakeControllerCommand extends Command
                 mkdir($directoryPath, 0755, true);
             }
 
-            $content = $this->generateControllerContent($namespace, $className, $isInvokable);
+            $stub = $this->getStub($isInvokable, $isResource, $isApi);
+            $content = $this->replacePlaceholders($stub, $namespace, $className);
+
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Controller created successfully');
             $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
             $this->newLine();
-            $this->line('<fg=yellow>📌 Type:</> <fg=white>' . ($isInvokable ? 'Invokable' : 'Standard') . ' controller</>');
+
+            $type = match (true) {
+                $isInvokable => 'Invokable',
+                $isResource => 'Resource',
+                $isApi => 'API Resource',
+                default => 'Standard'
+            };
+
+            $this->line('<fg=yellow>📌 Type:</> <fg=white>' . $type . ' controller</>');
 
             return 0;
         });
     }
 
     /**
-     * Generate controller content based on type.
+     * Get the appropriate stub content.
      */
-    protected function generateControllerContent(string $namespace, string $className, bool $isInvokable): string
+    protected function getStub(bool $isInvokable, bool $isResource, bool $isApi): string
     {
-        return $isInvokable
-            ? $this->generateInvokableControllerContent($namespace, $className)
-            : $this->generateRegularControllerContent($namespace, $className);
+        $stubName = match (true) {
+            $isInvokable => 'invokable.stub',
+            $isResource => 'resource.stub',
+            $isApi => 'api.stub',
+            default => 'plain.stub'
+        };
+
+        $stubPath = __DIR__ . '/stubs/controller/' . $stubName;
+
+        if (!file_exists($stubPath)) {
+            throw new RuntimeException("Stub file not found: {$stubPath}");
+        }
+
+        return file_get_contents($stubPath);
     }
 
     /**
-     * Generate standard controller content.
+     * Replace placeholders in the stub.
      */
-    protected function generateRegularControllerContent(string $namespace, string $className): string
+    protected function replacePlaceholders(string $stub, string $namespace, string $className): string
     {
-        return <<<EOT
-<?php
-
-namespace {$namespace};
-
-use App\Http\Controllers\Controller;
-
-class {$className} extends Controller
-{
-    //
-}
-
-EOT;
-    }
-
-    /**
-     * Generate invokable controller content.
-     */
-    protected function generateInvokableControllerContent(string $namespace, string $className): string
-    {
-        return <<<EOT
-<?php
-
-namespace {$namespace};
-
-use Phaseolies\Http\Request;
-use App\Http\Controllers\Controller;
-
-class {$className} extends Controller
-{
-    /**
-     * Handle the incoming request.
-     */
-    public function __invoke(Request \$request)
-    {
-        //
-    }
-}
-
-EOT;
+        return str_replace(
+            ['{{ namespace }}', '{{ class }}'],
+            [$namespace, $className],
+            $stub
+        );
     }
 }

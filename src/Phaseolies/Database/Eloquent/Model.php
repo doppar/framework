@@ -252,6 +252,16 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
+     * Get the route key name
+     *
+     * @return string
+     */
+    public function getRouteKeyName(): string
+    {
+        return $this->primaryKey;
+    }
+
+    /**
      * Check the attribute is dirty or not
      *
      * @param string $key
@@ -866,7 +876,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function usesTimestamps(): bool
     {
-       return $this->timeStamps;
+        return $this->timeStamps;
     }
 
     /**

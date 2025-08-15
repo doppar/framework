@@ -4,6 +4,8 @@ namespace Phaseolies\Support;
 
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
+use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Support\Router\InteractsWithResourceRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
@@ -12,10 +14,11 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Application;
 use App\Http\Kernel;
-use Phaseolies\Utilities\Attributes\Middleware;
 
 class Router extends Kernel
 {
+    use InteractsWithResourceRouter;
+
     /**
      * Holds the registered routes.
      *

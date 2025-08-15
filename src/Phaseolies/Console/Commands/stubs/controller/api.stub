@@ -1,0 +1,65 @@
+<?php
+
+namespace {{ namespace }};
+
+use Phaseolies\Http\Request;
+use App\Http\Controllers\Controller;
+
+class {{ class }} extends Controller
+{
+    /**
+     * Display a listing of the items
+     *
+     * @return \Phaseolies\Http\Response\JsonResponse
+     */
+    public function index()
+    {
+        //
+    }
+
+    /**
+     * Create new item
+     *
+     * @param Request $request
+     * @return \Phaseolies\Http\Response\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        //
+    }
+
+
+    /**
+     * Display the specified item.
+     *
+     * @param int $id
+     * @return \Phaseolies\Http\Response\JsonResponse
+     */
+    public function show(int $id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified item in storage.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Phaseolies\Http\Response\JsonResponse
+     */
+    public function update(Request $request, int $id)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified item from storage.
+     *
+     * @param int $id
+     * @return \Phaseolies\Http\Response\JsonResponse
+     */
+    public function delete(int $id)
+    {
+        //
+    }
+}

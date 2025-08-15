@@ -1,0 +1,112 @@
+<?php
+
+namespace Phaseolies\Support\Router;
+
+trait InteractsWithResourceRouter
+{
+    /**
+     * Register a bundle route to the controller.
+     *
+     * @param string $baseUri
+     * @param string $controller
+     * @param array $options
+     * @return void
+     */
+    public function bundle(string $baseUri, string $controller, array $options = []): void
+    {
+        $baseUri = trim($baseUri, '/');
+        $name = $options['as'] ?? str_replace('/', '.', $baseUri);
+        $only = $options['only'] ?? null;
+        $except = $options['except'] ?? null;
+        $names = $options['names'] ?? [];
+
+        $routes = [
+            'index' => ['GET', "/{$baseUri}", 'index'],
+            'create' => ['GET', "/{$baseUri}/create", 'create'],
+            'store' => ['POST', "/{$baseUri}", 'store'],
+            'show' => ['GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'show'],
+            'edit' => ['GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/edit", 'edit'],
+            'update' => ['PUT', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'update'],
+            'delete' => ['DELETE', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'delete'],
+        ];
+
+        foreach ($routes as $methodName => $route) {
+            if ($this->shouldRegisterRoute($methodName, $only, $except)) {
+                [$httpMethod, $uri, $action] = $route;
+
+                $routeName = $names[$methodName] ?? "{$name}.{$methodName}";
+
+                $this->{$httpMethod}($uri, [$controller, $action])->name($routeName);
+            }
+        }
+    }
+
+    /**
+     * Get the route key for the bundle
+     *
+     * @param string $controller
+     * @return string
+     */
+    protected function getBundleRouteKey(string $controller): string
+    {
+        $modelName = str_replace('Controller', '', class_basename($controller));
+
+        if (class_exists($modelClass = "App\\Models\\{$modelName}")) {
+            return app($modelClass)->getRouteKeyName();
+        }
+
+        return 'id';
+    }
+
+    /**
+     * Determine if a route should be registered based on only/except options
+     *
+     * @param string $method
+     * @param array|null $only
+     * @param array|null $except
+     * @return bool
+     */
+    protected function shouldRegisterRoute(string $method, ?array $only, ?array $except): bool
+    {
+        if ($only !== null) {
+            return in_array($method, $only);
+        }
+
+        if ($except !== null) {
+            return !in_array($method, $except);
+        }
+
+        return true;
+    }
+
+    /**
+     * Register an API bundle route (excludes create/edit routes)
+     *
+     * @param string $baseUri
+     * @param string $controller
+     * @param array $options
+     * @return void
+     */
+    public function apiBundle(string $baseUri, string $controller, array $options = []): void
+    {
+        $options['except'] = ['create', 'edit'];
+
+        $this->resource($baseUri, $controller, $options);
+    }
+
+    /**
+     * Nested bunde route
+     *
+     * @param string $parent
+     * @param string $child
+     * @param string $controller
+     * @param array $options
+     * @return void
+     */
+    public function nestedBundle(string $parent, string $child, string $controller, array $options = []): void
+    {
+        $baseUri = trim("{$parent}/{{$parent}}/{$child}", '/');
+
+        $this->resource($baseUri, $controller, $options);
+    }
+}

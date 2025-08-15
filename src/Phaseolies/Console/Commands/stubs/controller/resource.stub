@@ -1,0 +1,86 @@
+<?php
+
+namespace {{ namespace }};
+
+use Phaseolies\Http\Request;
+use App\Http\Controllers\Controller;
+
+class {{ class }} extends Controller
+{
+    /**
+     * Display a listing of the items
+     *
+     * @return \Phaseolies\Http\Response
+     */
+    public function index()
+    {
+        //
+    }
+
+    /**
+     * Show the form for creating a new item
+     *
+     * @return \Phaseolies\Http\Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Create new item
+     *
+     * @param Request $request
+     * @return \Phaseolies\Http\Response\RedirectResponse
+     */
+    public function store(Request $request)
+    {
+        //
+    }
+
+
+    /**
+     * Display the specified item.
+     *
+     * @param int $id
+     * @return \Phaseolies\Http\Response
+     */
+    public function show(int $id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified item.
+     *
+     * @param int $id
+     * @return \Phaseolies\Http\Response
+     */
+    public function edit(int $id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified item in storage.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Phaseolies\Http\Response\RedirectResponse
+     */
+    public function update(Request $request, int $id)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified item from storage.
+     *
+     * @param int $id
+     * @return \Phaseolies\Http\Response\RedirectResponse
+     */
+    public function delete(int $id)
+    {
+        //
+    }
+}
