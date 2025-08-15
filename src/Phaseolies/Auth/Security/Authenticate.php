@@ -198,10 +198,13 @@ class Authenticate
             }
 
             if (Hash::check($token, $user->remember_token)) {
-                session()->put('2fa_user_id', $user->id);
-                session()->put('2fa_remember', true);
+                if ($this->hasTwoFactorEnabled($user)) {
+                    session()->put('2fa_user_id', $user->id);
+                    session()->put('2fa_remember', true);
+                }
 
                 $this->setUser($user);
+
                 // Rotating the token for security
                 $this->setRememberToken($user);
                 return $user;
