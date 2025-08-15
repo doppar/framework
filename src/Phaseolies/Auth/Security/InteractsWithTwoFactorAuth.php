@@ -207,7 +207,9 @@ trait InteractsWithTwoFactorAuth
         session()->forget('2fa_remember');
 
         if ($remember) {
-            $this->setRememberToken($user);
+            if (!$this->viaRemember()) {
+                $this->setRememberToken($user);
+            }
         }
 
         return true;

@@ -198,20 +198,13 @@ class Authenticate
             }
 
             if (Hash::check($token, $user->remember_token)) {
-                if ($this->hasTwoFactorEnabled($user)) {
-                    if (!session()->has('2fa_user_id')) {
-                        session()->put('2fa_user_id', $user->id);
-                        session()->put('2fa_remember', true);
+                session()->put('2fa_user_id', $user->id);
+                session()->put('2fa_remember', true);
 
-                        return null;
-                    }
-                } else {
-                    $this->setUser($user);
-
-                    // Rotating the token for security
-                    $this->setRememberToken($user);
-                    return $user;
-                }
+                $this->setUser($user);
+                // Rotating the token for security
+                $this->setRememberToken($user);
+                return $user;
             }
 
             // Token didn't match - possible theft attempt
