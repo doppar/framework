@@ -4,6 +4,7 @@ namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Support\Facades\Route;
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Config\Config;
 
 class ClearRouteCacheCommand extends Command
 {
@@ -30,6 +31,9 @@ class ClearRouteCacheCommand extends Command
     {
         return $this->withTiming(function() {
             Route::clearRouteCache();
+            Config::clearCache();
+            Config::loadAll();
+            Config::cacheConfig();
             return 0;
         }, 'Route cache has been gracefully cleared.');
     }

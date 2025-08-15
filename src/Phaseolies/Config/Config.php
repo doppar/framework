@@ -2,209 +2,234 @@
 
 namespace Phaseolies\Config;
 
+use RuntimeException;
+
 final class Config
 {
     /**
-     * Stores loaded configuration data.
+     * Loaded configuration data.
      *
      * @var array<string, mixed>
      */
     protected static array $config = [];
 
     /**
-     * Cache file path.
+     * Path to the configuration cache file.
      *
-     * @var string
+     * @var string|null
      */
-    protected static string $cacheFile;
+    protected static ?string $cacheFile = null;
 
     /**
-     * Generate config cache key based on config files
+     * Flag indicating if the configuration was loaded from cache.
      *
-     * @return string
+     * @var bool
      */
-    protected static function getCacheKey(): string
-    {
-        $files = glob(base_path() . '/config/*.php');
-        $fileHashes = [];
-
-        foreach ($files as $file) {
-            $fileHashes[] = md5_file($file);
-        }
-
-        return 'config_cache_' . md5(implode('', $fileHashes));
-    }
+    protected static bool $loadedFromCache = false;
 
     /**
-     * Static method to initialize cacheFile path.
+     * Stores hashes of configuration files used to detect changes.
+     *
+     * @var array<string, string>
+     */
+    protected static array $fileHashes = [];
+
+    /**
+     * Initialize the configuration system.
+     * Loads the configuration from cache if available, otherwise loads from source files.
      *
      * @return void
      */
     public static function initialize(): void
     {
-        self::$cacheFile = storage_path('framework/cache/configs_' . self::getCacheKey() . '.php');
+        if (self::$cacheFile === null) {
+            self::$cacheFile = storage_path('framework/cache/config.php');
+            self::loadFromCache();
+        }
     }
 
     /**
-     * Dynamically get a configuration value or return null if not found.
+     * Generate a unique cache key based on all configuration files.
+     * Includes both file content (md5) and last modification time.
      *
-     * @param string $name
-     * @return mixed|null
+     * @return string
      */
-    public function __get(string $name): mixed
+    protected static function getCacheKey(): string
     {
-        return self::get($name);
+        static $cacheKey = null;
+
+        if ($cacheKey === null) {
+            $files = glob(base_path('config/*.php'));
+            $hashes = [];
+            foreach ($files as $file) {
+                $hashes[] = md5_file($file) . '|' . filemtime($file);
+            }
+            $cacheKey = 'config_' . md5(implode('', $hashes));
+        }
+
+        return $cacheKey;
     }
 
     /**
-     * Load all configuration files from source.
+     * Load all configuration files from the source directory.
+     * Automatically caches the loaded configuration.
      *
      * @return void
      */
     public static function loadAll(): void
     {
         self::$config = [];
-        foreach (glob(base_path() . '/config/*.php') as $file) {
-            $fileName = basename($file, '.php');
-            self::$config[$fileName] = include $file;
+
+        foreach (glob(base_path('config/*.php')) as $file) {
+            $key = basename($file, '.php');
+            self::$config[$key] = include $file;
         }
+
+        self::cacheConfig();
     }
 
     /**
-     * Load configuration from the cache if available and valid.
+     * Load configuration from the cache if valid; otherwise, reload from source.
      *
      * @return void
      */
     public static function loadFromCache(): void
     {
-        $files = glob(storage_path('framework/cache/configs_*.php'));
-
-        if (empty($files)) {
+        if (!file_exists(self::$cacheFile) || !self::isCacheValid()) {
+            self::$loadedFromCache = false;
             self::loadAll();
-            self::cacheConfig();
             return;
         }
 
-        $cachePath = end($files);
-
-        if (file_exists($cachePath)) {
-            $cached = include $cachePath;
-
-            if (strpos(basename($cachePath), self::getCacheKey()) !== false) {
-                self::$config = $cached;
-                return;
-            }
-
-            @unlink($cachePath);
-        }
-
-        self::loadAll();
-        self::cacheConfig();
+        $cached = include self::$cacheFile;
+        self::$config = $cached['data'] ?? [];
+        self::$fileHashes = $cached['_meta']['file_hashes'] ?? [];
+        self::$loadedFromCache = true;
     }
 
     /**
-     * Cache the configuration to a file.
+     * Write the current configuration to cache.
+     * Uses a temporary file and rename to avoid race conditions.
      *
      * @return void
      */
     public static function cacheConfig(): void
     {
-        $oldFiles = glob(storage_path('framework/cache/configs_*.php'));
-
-        foreach ($oldFiles as $file) {
-            if (file_exists($file)) {
-                try {
-                    @unlink($file);
-                } catch (\Throwable $e) {
-                    if (file_exists($file)) {
-                        throw new \RuntimeException("Failed to unlink old config cache file: {$file}", 0, $e);
-                    }
-                }
-            }
+        if (self::$loadedFromCache && !self::configWasModified()) {
+            return;
         }
 
         $cacheDir = dirname(self::$cacheFile);
-        if (!is_dir($cacheDir)) {
-            if (!mkdir($cacheDir, 0755, true) && !is_dir($cacheDir)) {
-                throw new \RuntimeException(sprintf('Directory "%s" was not created', $cacheDir));
-            }
+        if (!is_dir($cacheDir) && !mkdir($cacheDir, 0755, true) && !is_dir($cacheDir)) {
+            throw new RuntimeException("Failed to create cache directory: {$cacheDir}");
         }
 
-        file_put_contents(self::$cacheFile, '<?php return ' . var_export(self::$config, true) . ';');
+        $files = glob(base_path('config/*.php'));
+
+        $hashes = [];
+        foreach ($files as $file) {
+            $hashes[basename($file)] = md5_file($file) . '|' . filemtime($file);
+        }
+
+        $cacheContent = [
+            '_meta' => [
+                'cache_key' => self::getCacheKey(),
+                'file_hashes' => $hashes,
+                'created_at' => time(),
+            ],
+            'data' => self::$config,
+        ];
+
+        $tempFile = self::$cacheFile . '.tmp';
+        file_put_contents($tempFile, '<?php return ' . var_export($cacheContent, true) . ';', LOCK_EX);
+        rename($tempFile, self::$cacheFile);
+
+        self::$loadedFromCache = true;
+        self::$fileHashes = $hashes;
     }
 
     /**
-     * Get a configuration value by key.
+     * Check if the configuration data has been modified compared to cache.
      *
-     * @param string $key The key to retrieve (dot notation).
-     * @return mixed|null The configuration value or null if not found.
+     * @return bool
+     */
+    protected static function configWasModified(): bool
+    {
+        if (!file_exists(self::$cacheFile)) return true;
+
+        $cached = include self::$cacheFile;
+
+        return $cached['data'] !== self::$config;
+    }
+
+    /**
+     * Get a configuration value using dot notation.
+     *
+     * @param string $key Dot notation key
+     * @param mixed $default Default value if key not found
+     * @return mixed
      */
     public static function get(string $key, mixed $default = null): mixed
     {
+        self::initialize();
+
         $keys = explode('.', $key);
         $file = array_shift($keys);
 
-        if (!isset(self::$config[$file])) {
-            self::loadFromCache();
-        }
+        if (!isset(self::$config[$file])) return $default;
 
-        $value = self::$config[$file] ?? null;
-        foreach ($keys as $keyPart) {
-            if (!is_array($value) || !array_key_exists($keyPart, $value)) {
-                return $default;
-            }
-            $value = $value[$keyPart];
+        $value = self::$config[$file];
+
+        foreach ($keys as $part) {
+            if (!is_array($value) || !array_key_exists($part, $value)) return $default;
+            $value = $value[$part];
         }
 
         return $value ?? $default;
     }
 
     /**
-     * Set a configuration value.
+     * Set a configuration value using dot notation.
      *
-     * @param string $key The key to set (dot notation).
-     * @param mixed $value The value to set.
+     * @param string $key Dot notation key
+     * @param mixed $value Value to set
+     * @return void
      */
     public static function set(string $key, mixed $value): void
     {
-        try {
-            $keys = explode('.', $key);
-            $file = array_shift($keys);
+        self::initialize();
 
-            if (!isset(self::$config[$file])) {
-                self::$config[$file] = [];
+        $keys = explode('.', $key);
+        $file = array_shift($keys);
+
+        if (!isset(self::$config[$file])) self::$config[$file] = [];
+
+        $current = &self::$config[$file];
+
+        foreach ($keys as $part) {
+            if (!isset($current[$part]) || !is_array($current[$part])) {
+                $current[$part] = [];
             }
-
-            $current = &self::$config[$file];
-            foreach ($keys as $keyPart) {
-                if (!isset($current[$keyPart]) || !is_array($current[$keyPart])) {
-                    $current[$keyPart] = [];
-                }
-                $current = &$current[$keyPart];
-            }
-
-            if (is_array($current) && is_array($value)) {
-                $current = array_merge($current, $value);
-            } else {
-                $current = $value;
-            }
-
-            self::cacheConfig();
-        } catch (\Throwable $th) {
-            throw new \RuntimeException($th->getMessage());
+            $current = &$current[$part];
         }
+
+        if (is_array($current) && is_array($value)) {
+            $current = array_replace_recursive($current, $value);
+        } else {
+            $current = $value;
+        }
+
+        self::cacheConfig();
     }
 
     /**
-     * Get all the configuration settings.
+     * Get all loaded configuration data.
      *
-     * @return array<string, mixed> All configurations.
+     * @return array<string, mixed>
      */
     public static function all(): array
     {
-        if (empty(self::$config)) {
-            self::loadFromCache();
-        }
+        if (empty(self::$config)) self::loadFromCache();
 
         return self::$config;
     }
@@ -212,59 +237,47 @@ final class Config
     /**
      * Check if a configuration key exists.
      *
-     * @param string $key The key to check (dot notation).
+     * @param string $key
      * @return bool
      */
     public static function has(string $key): bool
     {
-        $keys = explode('.', $key);
-        $file = array_shift($keys);
-
-        if (!isset(self::$config[$file])) {
-            self::loadFromCache();
-        }
-
-        $value = self::$config[$file] ?? null;
-        foreach ($keys as $keyPart) {
-            if (!is_array($value) || !array_key_exists($keyPart, $value)) {
-                return false;
-            }
-            $value = $value[$keyPart];
-        }
-
-        return $value !== null;
+        return self::get($key, null) !== null;
     }
 
     /**
-     * Clear all cached configuration files.
+     * Clear the configuration cache and reset in-memory config.
      *
      * @return void
      */
     public static function clearCache(): void
     {
-        $files = glob(storage_path('framework/cache/configs_*.php'));
-        foreach ($files as $file) {
-            if (file_exists($file)) {
-                @unlink($file);
-            }
-        }
+        if (file_exists(self::$cacheFile)) @unlink(self::$cacheFile);
+
         self::$config = [];
+
+        self::$fileHashes = [];
     }
 
     /**
-     * Check if config cache is valid
+     * Check if the cached configuration is valid.
      *
      * @return bool
      */
     public static function isCacheValid(): bool
     {
-        $files = glob(storage_path('framework/cache/configs_*.php'));
-        if (empty($files)) {
-            return false;
+        static $cacheValid = null;
+
+        if ($cacheValid === null) {
+            if (!file_exists(self::$cacheFile)) {
+                $cacheValid = false;
+            } else {
+                $cached = include self::$cacheFile;
+                $cacheValid = isset($cached['_meta']['cache_key']) &&
+                    $cached['_meta']['cache_key'] === self::getCacheKey();
+            }
         }
 
-        $cachePath = end($files);
-
-        return strpos(basename($cachePath), self::getCacheKey()) !== false;
+        return $cacheValid;
     }
 }

@@ -22,7 +22,9 @@ trait InteractsWithRememberCookie
      */
     protected function getRememberCookieName(): string
     {
-        return $this->rememberCookiePrefix . sha1('doppar');
+        $appName = strtolower(str_replace(' ', '_', config('app.name', 'doppar')));
+
+        return $this->rememberCookiePrefix . sha1($appName);
     }
 
     /**
