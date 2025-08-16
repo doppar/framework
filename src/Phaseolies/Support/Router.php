@@ -5,7 +5,7 @@ namespace Phaseolies\Support;
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Utilities\Attributes\Middleware;
-use Phaseolies\Support\Router\InteractsWithResourceRouter;
+use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
@@ -17,7 +17,7 @@ use App\Http\Kernel;
 
 class Router extends Kernel
 {
-    use InteractsWithResourceRouter;
+    use InteractsWithBundleRouter;
 
     /**
      * Holds the registered routes.

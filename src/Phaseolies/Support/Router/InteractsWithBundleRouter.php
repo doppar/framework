@@ -2,19 +2,19 @@
 
 namespace Phaseolies\Support\Router;
 
-trait InteractsWithResourceRouter
+trait InteractsWithBundleRouter
 {
     /**
      * Register a bundle route to the controller.
      *
-     * @param string $baseUri
+     * @param string $uri
      * @param string $controller
      * @param array $options
      * @return void
      */
-    public function bundle(string $baseUri, string $controller, array $options = []): void
+    public function bundle(string $uri, string $controller, array $options = []): void
     {
-        $baseUri = trim($baseUri, '/');
+        $baseUri = trim($uri, '/');
         $name = $options['as'] ?? str_replace('/', '.', $baseUri);
         $only = $options['only'] ?? null;
         $except = $options['except'] ?? null;
@@ -49,9 +49,23 @@ trait InteractsWithResourceRouter
      */
     protected function getBundleRouteKey(string $controller): string
     {
-        $modelName = str_replace('Controller', '', class_basename($controller));
+        $baseName = str_replace('Controller', '', class_basename($controller));
 
-        if (class_exists($modelClass = "App\\Models\\{$modelName}")) {
+        // Add space before uppercase letters in camelCase 
+        // (e.g. productDetails → product Details)
+        $normalized = preg_replace('/(?<!^)[A-Z]/', ' $0', $baseName);
+
+        // Replace underscores with spaces
+        $normalized = str_replace('_', ' ', $normalized);
+
+        // Lowercase everything
+        // then uppercase first letter of each word, then remove spaces
+        $modelName = str_replace(' ', '', ucwords(strtolower($normalized)));
+
+        // Build fully-qualified model class name
+        $modelClass = "App\\Models\\{$modelName}";
+
+        if (class_exists($modelClass)) {
             return app($modelClass)->getRouteKeyName();
         }
 
