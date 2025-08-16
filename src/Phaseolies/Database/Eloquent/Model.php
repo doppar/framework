@@ -254,9 +254,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Get the route key name
      *
-     * @return string
+     * @return int|string
      */
-    public function getRouteKeyName(): string
+    public function getRouteKeyName(): int|string
     {
         return $this->primaryKey;
     }

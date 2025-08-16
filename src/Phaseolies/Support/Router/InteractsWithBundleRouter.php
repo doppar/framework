@@ -50,19 +50,10 @@ trait InteractsWithBundleRouter
     protected function getBundleRouteKey(string $controller): string
     {
         $baseName = str_replace('Controller', '', class_basename($controller));
-
-        // Add space before uppercase letters in camelCase 
-        // (e.g. productDetails → product Details)
         $normalized = preg_replace('/(?<!^)[A-Z]/', ' $0', $baseName);
-
-        // Replace underscores with spaces
         $normalized = str_replace('_', ' ', $normalized);
-
-        // Lowercase everything
-        // then uppercase first letter of each word, then remove spaces
         $modelName = str_replace(' ', '', ucwords(strtolower($normalized)));
 
-        // Build fully-qualified model class name
         $modelClass = "App\\Models\\{$modelName}";
 
         if (class_exists($modelClass)) {
