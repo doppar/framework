@@ -19,26 +19,51 @@ trait InteractsWithBundleRouter
         $only = $options['only'] ?? null;
         $except = $options['except'] ?? null;
         $names = $options['names'] ?? [];
+        $methods = $options['methods'] ?? [];
 
         $routes = [
-            'index' => ['GET', "/{$baseUri}", 'index'],
-            'create' => ['GET', "/{$baseUri}/create", 'create'],
-            'store' => ['POST', "/{$baseUri}", 'store'],
-            'show' => ['GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'show'],
-            'edit' => ['GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/edit", 'edit'],
-            'update' => ['PUT', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'update'],
-            'delete' => ['DELETE', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}", 'delete'],
+            'index' => [$methods['index'] ?? 'GET', "/{$baseUri}", 'index'],
+            'create' => [$methods['create'] ?? 'GET', "/{$baseUri}/create", 'create'],
+            'store' => [$methods['store'] ?? 'POST', "/{$baseUri}", 'store'],
+            'show' => [$methods['show'] ?? 'GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/show", 'show'],
+            'edit' => [$methods['edit'] ?? 'GET', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/edit", 'edit'],
+            'update' => [$methods['update'] ?? 'PUT', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/update", 'update'],
+            'delete' => [$methods['delete'] ?? 'DELETE', "/{$baseUri}/{{$this->getBundleRouteKey($controller)}}/delete", 'delete'],
         ];
 
         foreach ($routes as $methodName => $route) {
             if ($this->shouldRegisterRoute($methodName, $only, $except)) {
                 [$httpMethod, $uri, $action] = $route;
 
+                if (!$this->isValidHttpMethod($httpMethod)) {
+                    throw new \InvalidArgumentException("Invalid HTTP method '{$httpMethod}' for route '{$methodName}'");
+                }
+
                 $routeName = $names[$methodName] ?? "{$name}.{$methodName}";
 
                 $this->{$httpMethod}($uri, [$controller, $action])->name($routeName);
             }
         }
+    }
+
+    /**
+     * Check is the method is valid HTTP method
+     *
+     * @param string $method
+     * @return bool
+     */
+    protected function isValidHttpMethod(string $method): bool
+    {
+        return in_array(strtoupper($method), [
+            'GET',
+            'HEAD',
+            'POST',
+            'PUT',
+            'PATCH',
+            'DELETE',
+            'OPTIONS',
+            'ANY'
+        ], true);
     }
 
     /**

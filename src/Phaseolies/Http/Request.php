@@ -194,6 +194,7 @@ class Request
             in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
         ) {
             $rawContent = $this->getContent();
+
             if ($rawContent !== false) {
                 $jsonData = json_decode($rawContent, true);
                 if (json_last_error() === JSON_ERROR_NONE) {
@@ -215,6 +216,16 @@ class Request
             } else {
                 throw new \RuntimeException("Unable to retrieve request content.");
             }
+        } elseif (
+            str_starts_with($contentType, "multipart/form-data") &&
+            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
+        ) {
+            $rawContent = $this->getContent();
+            if ($rawContent !== false) {
+                $request = array_merge($request, $this->parseMultipartFormData());
+            } else {
+                throw new \RuntimeException("Unable to retrieve request content.");
+            }
         }
 
         if (!$this->isValidRequest()) {
@@ -222,6 +233,124 @@ class Request
         }
 
         return $request;
+    }
+
+    /**
+     * Parses a raw multipart/form-data request body into an associative array.
+     *
+     * This method extracts the boundary from the Content-Type header, splits the body
+     * into individual parts, parses each part's headers, and collects the form field
+     * values.
+     *
+     * @return array Associative array of form fields and their values
+     */
+    protected function parseMultipartFormData(): array
+    {
+        $rawContent = $this->getContent();
+        if ($rawContent === false || empty($rawContent)) {
+            return [];
+        }
+
+        $data = [];
+        $boundary = $this->extractBoundary($this->headers->get('CONTENT_TYPE'));
+
+        if (!$boundary) {
+            return [];
+        }
+
+        $parts = preg_split('/\R?-+' . preg_quote($boundary, '/') . '/', $rawContent);
+        array_pop($parts);
+
+        foreach ($parts as $part) {
+            if (empty(trim($part))) {
+                continue;
+            }
+
+            [$headers, $value] = explode("\r\n\r\n", $part, 2);
+            $headers = $this->parsePartHeaders($headers);
+
+            if (isset($headers['content-disposition']['name'])) {
+                $name = $headers['content-disposition']['name'];
+                $data[$name] = trim($value);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Parses a block of headers (as a string) into an associative array.
+     *
+     * @param string $headers The raw headers string, each header separated by CRLF (\r\n)
+     * @return array An associative array of headers. If a header is "Content-Disposition", 
+     *               its value is parsed into an array with type and parameters.
+     */
+    protected function parsePartHeaders(string $headers): array
+    {
+        $result = [];
+        $headerLines = explode("\r\n", $headers);
+
+        foreach ($headerLines as $headerLine) {
+            if (preg_match('/^([^:]+):\s*(.*)$/', $headerLine, $matches)) {
+                $name = strtolower($matches[1]);
+                $value = $matches[2];
+
+                if ($name === 'content-disposition') {
+                    $result[$name] = $this->parseContentDisposition($value);
+                } else {
+                    $result[$name] = $value;
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Parses a Content-Disposition header value into its type and parameters.
+     *
+     * Example input: 'form-data; name="file"; filename="example.txt"'
+     * Output:
+     * [
+     *     'type' => 'form-data',
+     *     'name' => 'file',
+     *     'filename' => 'example.txt'
+     * ]
+     *
+     * @param string $value The Content-Disposition header value
+     * @return array Associative array with 'type' and any additional parameters
+     */
+    protected function parseContentDisposition(string $value): array
+    {
+        $result = [];
+        $parts = explode(';', $value);
+        $result['type'] = trim(array_shift($parts));
+
+        foreach ($parts as $part) {
+            if (preg_match('/^\s*([^=]+)="?([^"]+)"?$/', trim($part), $matches)) {
+                $result[$matches[1]] = $matches[2];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Extracts the boundary string from a Content-Type header.
+     *
+     * Example input: 'multipart/form-data; boundary="----WebKitFormBoundaryxyz"'
+     * Output: '----WebKitFormBoundaryxyz'
+     *
+     * @param string $contentType The Content-Type header value
+     * @return string|null The boundary string if found, null otherwise
+     */
+    protected function extractBoundary(string $contentType): ?string
+    {
+        if (preg_match('/boundary=(.*)$/', $contentType, $matches)) {
+            return trim($matches[1], '"');
+        }
+
+        return null;
     }
 
     /**
