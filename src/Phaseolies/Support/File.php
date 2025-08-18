@@ -108,16 +108,23 @@ class File extends \SplFileInfo
     }
 
     /**
-     * Generate a unique name for the uploaded file.
+     * Generate a unique name for an uploaded file.
      *
-     * @param string|null $extension Optional extension to use. If null, the original extension is used.
+     * @param string|null $originalName The original filename (optional).
      * @return string The unique filename.
+     * @throws Exception If secure random bytes cannot be generated.
      */
-    public function generateUniqueName(?string $extension = null): string
+    public function generateUniqueName(?string $originalName = null): string
     {
-        $extension = $extension ?? $this->getClientOriginalExtension();
+        $uniqueId = bin2hex(random_bytes(16));
 
-        return uniqid() . '.' . $extension;
+        $uniqueId .= '_' . time();
+
+        $extension = $originalName ? pathinfo($originalName, PATHINFO_EXTENSION) : '';
+
+        return $extension
+            ? $uniqueId . '.' . strtolower($extension)
+            : $uniqueId;
     }
 
     /**
