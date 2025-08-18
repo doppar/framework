@@ -30,8 +30,27 @@ class File extends \SplFileInfo
                 'size' => filesize($file),
             ];
             parent::__construct($file);
+        } elseif (is_array($file)) {
+            $this->file = array_merge([
+                'name' => '',
+                'type' => '',
+                'tmp_name' => '',
+                'error' => UPLOAD_ERR_NO_FILE,
+                'size' => 0
+            ], $file);
+
+            if (!empty($this->file['tmp_name']) && is_string($this->file['tmp_name'])) {
+                parent::__construct($this->file['tmp_name']);
+            }
         } else {
-            $this->file = $file;
+            $this->file = [
+                'name' => $file->getFilename(),
+                'type' => mime_content_type($file->getPathname()),
+                'tmp_name' => $file->getPathname(),
+                'error' => UPLOAD_ERR_OK,
+                'size' => $file->getSize(),
+            ];
+            parent::__construct($file->getPathname());
         }
     }
 

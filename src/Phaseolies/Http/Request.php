@@ -1569,17 +1569,37 @@ class Request
     }
 
     /**
-     * Retrieves a specific file's information from the request.
+     * Retrieves file(s) from the request.
      *
      * @param string $param The file parameter name.
-     * @return File|null The File object or null if the file doesn't exist.
+     * @return File|File[]|null Returns:
+     *   - A single File object for single file upload
+     *   - An array of File objects for multiple file upload
+     *   - Null if no files were uploaded
      */
-    public function file(string $param): ?File
+    public function file(string $param)
     {
-        if (isset($this->files[$param])) {
-            return new File($this->files[$param]);
+        if (!isset($this->files[$param])) {
+            return null;
         }
-        return null;
+
+        // Handle multiple file upload
+        if (is_array($this->files[$param]['name'])) {
+            $files = [];
+            foreach (array_keys($this->files[$param]['name']) as $key) {
+                $fileData = [
+                    'name' => $this->files[$param]['name'][$key],
+                    'type' => $this->files[$param]['type'][$key],
+                    'tmp_name' => $this->files[$param]['tmp_name'][$key],
+                    'error' => $this->files[$param]['error'][$key],
+                    'size' => $this->files[$param]['size'][$key]
+                ];
+                $files[] = new File($fileData);
+            }
+            return $files;
+        }
+
+        return new File($this->files[$param]);
     }
 
     /**
