@@ -85,7 +85,7 @@ class UrlGenerator
      *
      * @return string
      */
-    protected function determineBaseUrl()
+    protected function determineBaseUrl(): string
     {
         return \base_url();
     }
@@ -97,7 +97,7 @@ class UrlGenerator
      * @param bool|null $secure Whether to force HTTPS
      * @return string
      */
-    public function enqueue(string $path = '/', ?bool $secure = null)
+    public function enqueue(string $path = '/', ?bool $secure = null): string
     {
         return $this->to($path, [], $secure ?? $this->secure)->make();
     }
@@ -107,7 +107,7 @@ class UrlGenerator
      *
      * @return string
      */
-    public function full()
+    public function full(): string
     {
         return request()->fullUrl();
     }
@@ -117,7 +117,7 @@ class UrlGenerator
      *
      * @return string
      */
-    public function current()
+    public function current(): string
     {
         return $this->to(request()->uri())->make();
     }
@@ -130,7 +130,7 @@ class UrlGenerator
      * @param bool|null $secure Whether to force HTTPS
      * @return string
      */
-    public function route(string $name, array|string|int $parameters = [], ?bool $secure = null)
+    public function route(string $name, array|string|int $parameters = [], ?bool $secure = null): string
     {
         $path = app('route')->route($name, $parameters);
 
@@ -149,7 +149,7 @@ class UrlGenerator
      * @param bool|null $secure
      * @return $this
      */
-    public function to(string $path = '/', array|string|int $parameters = [], ?bool $secure = null)
+    public function to(string $path = '/', array|string|int $parameters = [], ?bool $secure = null): self
     {
         $this->path = ltrim($path, '/');
 
@@ -170,7 +170,7 @@ class UrlGenerator
      * @param string|array $query
      * @return $this
      */
-    public function withQuery(array|string $query = [])
+    public function withQuery(array|string $query = []): self
     {
         if (is_string($query)) {
             parse_str($query, $parsedQuery);
@@ -188,7 +188,7 @@ class UrlGenerator
      * @param int $expiration
      * @return $this
      */
-    public function withSignature(int $expiration = 3600)
+    public function withSignature(int $expiration = 3600): self
     {
         $this->expiration = $expiration;
 
@@ -201,7 +201,7 @@ class UrlGenerator
      * @param string $fragment
      * @return $this
      */
-    public function withFragment(string $fragment = '')
+    public function withFragment(string $fragment = ''): self
     {
         $this->fragment = ltrim($fragment, '#');
 
@@ -213,7 +213,7 @@ class UrlGenerator
      *
      * @return string
      */
-    public function make()
+    public function make(): string
     {
         $scheme = $this->secure ? 'https://' : 'http://';
         $baseUrl = preg_replace('#^https?://#', '', $this->baseUrl);
@@ -253,7 +253,7 @@ class UrlGenerator
      * @param bool|null $secure
      * @return string
      */
-    public function signed(string $path = '/', array|string|int $parameters = [], int $expiration = 3600, ?bool $secure = null)
+    public function signed(string $path = '/', array|string|int $parameters = [], int $expiration = 3600, ?bool $secure = null): string
     {
         return $this->to($path, $parameters, $secure)
             ->withSignature($expiration)
@@ -266,22 +266,25 @@ class UrlGenerator
      * @param array $parameters
      * @return string
      */
-    protected function createSignature(array $parameters)
+    protected function createSignature(array $parameters): string
     {
         $secret = config('app.key');
 
-        return hash_hmac('sha256', http_build_query($parameters), $secret);
-    }
+        ksort($parameters);
 
+        $original = $this->determineBaseUrl() . '/' . $this->path . '?' . http_build_query($parameters);
+
+        return hash_hmac('sha256', $original, $secret);
+    }
 
     /**
      * This method is taken from PHP Laravel framework
      * Determine if the given path is a valid URL.
      *
-     * @param  string  $path
+     * @param string $path
      * @return bool
      */
-    public function isValid($path)
+    public function isValid($path): bool
     {
         if (! preg_match('~^(#|//|https?://|(mailto|tel|sms):)~', $path)) {
             return filter_var($path, FILTER_VALIDATE_URL) !== false;
@@ -296,7 +299,7 @@ class UrlGenerator
      *
      * @return string
      */
-    public function base()
+    public function base(): string
     {
         return $this->baseUrl;
     }
@@ -307,7 +310,7 @@ class UrlGenerator
      * @param bool $secure
      * @return $this
      */
-    public function setSecure(bool $secure)
+    public function setSecure(bool $secure): self
     {
         $this->secure = $secure;
 

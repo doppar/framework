@@ -1746,4 +1746,29 @@ class Request
     {
         return ! is_null($this->cookies->get($key));
     }
+
+    /**
+     * Check the requested URL has a valid signaure
+     *
+     * @return bool
+     */
+    public function hasValidSignature(): bool
+    {
+        $expires = $this->query('expires');
+        if ($expires && time() > (int) $expires) {
+            return false;
+        }
+
+        $queryParams = $this->query();
+
+        ksort($queryParams);
+
+        $original = rtrim($this->url() . '?' . http_build_query(
+            array_diff_key($queryParams, ['signature' => ''])
+        ), '?');
+
+        $signature = hash_hmac('sha256', $original, config('app.key'));
+
+        return (bool) hash_equals($signature, (string) $this->query('signature', ''));
+    }
 }
