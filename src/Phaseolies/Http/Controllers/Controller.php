@@ -3,12 +3,13 @@
 namespace Phaseolies\Http\Controllers;
 
 use RuntimeException;
-use Countable;
 use Phaseolies\Support\View\View;
 use Phaseolies\Support\Cache\Cache;
-use Phaseolies\Support\Blade\BladeCompiler;
-use Phaseolies\Support\Blade\BladeCondition;
 use Phaseolies\Support\Blade\Directives;
+use Phaseolies\Support\Blade\BladeCondition;
+use Phaseolies\Support\Blade\BladeCompiler;
+use Phaseolies\Http\Exceptions\NotFoundHttpException;
+use Countable;
 
 class Controller extends View
 {
@@ -167,7 +168,7 @@ class Controller extends View
                 }
             }
 
-            throw new \RuntimeException("View [{$view}] not found in namespace [{$namespace}]");
+            throw new NotFoundHttpException("View [{$view}] not found in namespace [{$namespace}]");
         }
 
         // Handle non-namespaced views
@@ -176,7 +177,7 @@ class Controller extends View
             $viewPath . $this->fileExtension;
 
         if (!file_exists($fullPath)) {
-            throw new \RuntimeException("View [{$view}] not found");
+            throw new NotFoundHttpException("View [{$view}] not found");
         }
 
         return $fullPath;
