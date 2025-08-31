@@ -3,7 +3,7 @@
 namespace Phaseolies\Support\Facades;
 
 /**
- * @method static  getPdoInstance(): PDO
+ * @method static  getPdoInstance(?string $connection = null): PDO
  * @method static  beginTransaction(): void
  * @method static  commit(): void
  * @method static  rollBack(): void
