@@ -50,10 +50,10 @@ class FileSystem
     /**
      * Undocumented function
      *
-     * @param [Phaseolies/Support/File] $file
+     * @param File $file
      * @return string
      */
-    public function getFileName($file): string
+    public function getFileName(File $file): string
     {
         if (is_null($this->fileName) || empty($this->fileName)) {
             return $file->getClientOriginalName();
