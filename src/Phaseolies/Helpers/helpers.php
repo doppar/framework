@@ -715,3 +715,40 @@ function decrypt($string)
 {
     return Crypt::decrypt($string);
 }
+
+/**
+ * Tap the model and return the value.
+ *
+ * @param  mixed  $value
+ * @param  callable|null  $callback
+ * @return mixed
+ */
+function tap($value, $callback = null)
+{
+    if (is_null($callback)) {
+        return new class($value) {
+            protected $value;
+
+            public function __construct($value)
+            {
+                $this->value = $value;
+            }
+
+            public function __call($method, $parameters)
+            {
+                $this->value->{$method}(...$parameters);
+
+                return $this;
+            }
+
+            public function get()
+            {
+                return $this->value;
+            }
+        };
+    }
+
+    $callback($value);
+
+    return $value;
+}

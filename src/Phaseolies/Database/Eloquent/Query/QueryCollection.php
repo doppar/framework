@@ -307,7 +307,7 @@ trait QueryCollection
      *
      * @param array $attributes The attributes to match against (for finding existing record)
      * @param array $values The values to update or insert
-     * @return Model The updated or newly created model instance
+     * @return Model
      */
     public static function updateOrCreate(array $attributes, array $values = []): Model
     {
@@ -324,6 +324,55 @@ trait QueryCollection
             $model->save();
         } else {
             $model = static::create(array_merge($attributes, $values));
+        }
+
+        return $model;
+    }
+
+    /**
+     * Retrieve the first model matching the attributes, or create it if not found.
+     *
+     * @param array  $attributes  Key-value pairs to match against existing records
+     * @param array  $values Additional values to use when creating a new record
+     * @return Model
+     */
+    public static function firstOrCreate(array $attributes, array $values = []): Model
+    {
+        $query = static::query();
+
+        foreach ($attributes as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        $model = $query->first();
+
+        if (! $model) {
+            $model = static::create(array_merge($attributes, $values));
+        }
+
+        return $model;
+    }
+
+    /**
+     * Update an existing record or ignore
+     *
+     * @param array $attributes The attributes to match against (for finding existing record)
+     * @param array $values The values to update or insert
+     * @return Model|null
+     */
+    public static function updateOrIgnore(array $attributes, array $values = []): ?Model
+    {
+        $query = static::query();
+
+        foreach ($attributes as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        $model = $query->first();
+
+        if ($model) {
+            $model->fill($values);
+            $model->save();
         }
 
         return $model;
