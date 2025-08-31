@@ -250,43 +250,59 @@ class File extends \SplFileInfo
      * Store image in public or private file system
      *
      * @param string $path
-     * @param string $options
+     * @param string $disk
      * @return boolean
      */
-    public function store(string $path, string $options = ''): bool
+    public function store(string $path, string $disk = 'public'): bool
     {
-        if (is_null($options) || empty($options)) {
-            $options = 'public';
+        if (is_null($disk) || empty($disk)) {
+            $disk = 'public';
         }
 
-        $relativePath = Storage::getDiskPath($options);
-
-        return app(PublicFileSystem::class, [$relativePath])->store($path, $this);
+        return $this->storeAs($path, $this->generateUniqueName($this->getClientOriginalName()), $disk);
     }
 
     /**
-     * StoreAs function store the file with filename
+     * Store the file with filename
      *
-     * @param string $path
-     * @param string $fileName
-     * @param callable $callback
-     * @return bool
+     * @param string $path The directory path to store the file
+     * @param string $fileName The filename to use
+     * @param string $disk The storage disk to use (default: 'public')
+     * @param callable|null $callback Optional validation callback
+     * @return string|false The stored file path or false on failure
      */
-    public function storeAs(string $path, string $fileName = '', ?callable $callback = null): bool
+    public function storeAs(string $path, string $fileName = '', string $disk = 'public', ?callable $callback = null): string|false
     {
-        if (! is_callable($callback)) {
+        if (!$this->isValid()) {
             return false;
         }
 
-        $shouldStore = $callback($this);
-
-        if (! $shouldStore) {
-            return false;
+        // Execute callback validation if provided
+        if (is_callable($callback)) {
+            $shouldStore = $callback($this);
+            if (!$shouldStore) {
+                return false;
+            }
         }
 
-        $relativePath = Storage::getDiskPath('public');
+        $fileName = $fileName ?: $this->generateUniqueName($this->getClientOriginalName());
 
-        return app(PublicFileSystem::class, [$relativePath, $fileName])->store($path, $this);
+        $path = trim($path, '/');
+        $fileName = trim($fileName, '/');
+
+        $storagePath = Storage::getDiskPath($disk);
+        $fullPath = $storagePath . '/' . $path . '/' . $fileName;
+
+        $directory = dirname($fullPath);
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+
+        if (move_uploaded_file($this->getClientOriginalPath(), $fullPath)) {
+            return $path . '/' . $fileName;
+        }
+
+        return false;
     }
 
     /**

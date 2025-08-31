@@ -1603,6 +1603,63 @@ class Request
     }
 
     /**
+     * Checks if the request contains a file with the given name.
+     *
+     * @param string $name The file input name
+     * @return bool True if the file exists and was uploaded successfully, false otherwise
+     */
+    public function hasFile(string $name): bool
+    {
+        if (!isset($this->files[$name])) {
+            return false;
+        }
+
+        $file = $this->files[$name];
+
+        // Handle single file upload
+        if (!is_array($file['name'])) {
+            return $file['error'] !== UPLOAD_ERR_NO_FILE && $file['error'] === UPLOAD_ERR_OK;
+        }
+
+        // Handle multiple file upload
+        foreach ($file['error'] as $error) {
+            if ($error !== UPLOAD_ERR_NO_FILE && $error === UPLOAD_ERR_OK) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if any files were uploaded in the request.
+     *
+     * @return bool True if any files were uploaded, false otherwise
+     */
+    public function hasFiles(): bool
+    {
+        if (empty($this->files)) {
+            return false;
+        }
+
+        foreach ($this->files as $file) {
+            if (!is_array($file['name'])) {
+                if ($file['error'] !== UPLOAD_ERR_NO_FILE && $file['error'] === UPLOAD_ERR_OK) {
+                    return true;
+                }
+            } else {
+                foreach ($file['error'] as $error) {
+                    if ($error !== UPLOAD_ERR_NO_FILE && $error === UPLOAD_ERR_OK) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get the session instance.
      *
      * @return Session
