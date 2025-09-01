@@ -12,9 +12,11 @@ class RequestAbortion
      *
      * @param int $code The HTTP status code.
      * @param string $message The optional error message.
+     * @param array $headers
+     * @return void
      * @throws HttpException
      */
-    public function abort($code, $message = '', array $headers = []): void
+    public function abort(int $code, string $message = '', array $headers = []): void
     {
         $shouldJsonResponse = request()->isAjax() || request()->is('/api/*');
 
@@ -25,15 +27,17 @@ class RequestAbortion
             $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
 
             if ($viewPath) {
-                ob_get_clean();
+                if (ob_get_level() > 0) {
+                    ob_get_clean();
+                }
                 http_response_code($code);
                 include $viewPath;
-                return;
+                exit;
             }
         }
 
         if ($shouldJsonResponse) {
-            throw new HttpResponseException($message, $code, null, $headers);
+            throw new HttpResponseException($message, $code, null);
         }
 
         throw HttpException::fromStatusCode($code, $message, null, $headers);
@@ -45,9 +49,11 @@ class RequestAbortion
      * @param bool $condition The condition to check.
      * @param int $code The HTTP status code.
      * @param string $message The optional error message.
+     * @param array $headers
+     * @return void
      * @throws HttpException
      */
-    public function abortIf($condition, $code, $message = '', array $headers = []): void
+    public function abortIf($condition, int $code, string $message = '', array $headers = []): void
     {
         if ($condition) {
             $this->abort($code, $message, $headers);
