@@ -79,7 +79,7 @@ use Phaseolies\Support\Presenter\PresenterBundle;
 
 class {$className} extends PresenterBundle
 {
-    // No additional logic needed here — everything is handled by PresenterBundle
+    // No additional logic needed here
 }
 
 EOT;

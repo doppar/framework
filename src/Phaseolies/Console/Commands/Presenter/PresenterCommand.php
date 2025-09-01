@@ -82,7 +82,7 @@ class {$className} extends Presenter
     /**
      * Transform the underlying model instance into an array
      *
-     * @return array
+     * @return array<string, mixed>
      */
     protected function toArray(): array
     {
