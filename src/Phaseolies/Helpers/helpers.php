@@ -495,7 +495,7 @@ function abort($code, $message = '', array $headers = []): void
 /**
  * Abort the request if a condition is true.
  *
- * @param bool
+ * @param bool $condition
  * @param int $code
  * @param string $message
  * @param array $headers

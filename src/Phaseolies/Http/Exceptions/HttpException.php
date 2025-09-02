@@ -62,6 +62,7 @@ class HttpException extends \RuntimeException implements HttpExceptionInterface
             415 => new UnsupportedMediaTypeHttpException($message, $previous, 0, $headers),
             422 => new UnprocessableEntityHttpException($message, $previous, 0, $headers),
             429 => new TooManyRequestsHttpException(null, $message, $previous, 0, $headers),
+            500 => new InternalServerErrorHttpException($message, $previous, 0, $headers),
             503 => new ServiceUnavailableHttpException(null, $message, $previous, 0, $headers),
             default => new static($statusCode, $message, $previous, $headers, 0),
         };

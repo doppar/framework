@@ -206,9 +206,6 @@ class Authenticate
 
                 $this->setUser($user);
 
-                // Rotating the token for security
-                $this->setRememberToken($user);
-
                 return $user;
             }
 

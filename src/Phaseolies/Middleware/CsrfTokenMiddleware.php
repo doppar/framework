@@ -3,7 +3,6 @@
 namespace Phaseolies\Middleware;
 
 use Phaseolies\Support\Facades\Str;
-use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Middleware\Contracts\Middleware;
 use Phaseolies\Http\Response\Cookie;
 use Phaseolies\Http\Response;
@@ -121,14 +120,9 @@ class CsrfTokenMiddleware implements Middleware
      */
     protected function addCookie($request, $config): Cookie
     {
-        /**
-         * @var string $token
-         */
-        $token = Crypt::encrypt($request->session()->token());
-
         return new Cookie(
             'XSRF-TOKEN',
-            $token,
+            $request->session()->token(),
             time() + 60 * $config['lifetime'],
             $config['path'],
             $config['domain'],
