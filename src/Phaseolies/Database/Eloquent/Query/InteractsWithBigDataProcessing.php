@@ -7,7 +7,7 @@ use Generator;
 use RuntimeException;
 use Phaseolies\Support\Collection;
 
-trait QueryProcessor
+trait InteractsWithBigDataProcessing
 {
     /**
      * Process records in chunks to reduce memory usage for large datasets.

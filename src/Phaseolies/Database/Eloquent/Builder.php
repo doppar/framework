@@ -7,8 +7,8 @@ use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Eloquent\Query\QueryUtils;
-use Phaseolies\Database\Eloquent\Query\QueryProcessor;
-use Phaseolies\Database\Eloquent\Query\QueryCollection;
+use Phaseolies\Database\Eloquent\Query\InteractsWithBigDataProcessing;
+use Phaseolies\Database\Eloquent\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Eloquent\Model;
 use PDOStatement;
 use PDOException;
@@ -18,7 +18,7 @@ use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
-    use QueryCollection, QueryProcessor, QueryUtils, Debuggable, InteractsWithTimeframe;
+    use InteractsWithModelQueryProcessing, InteractsWithBigDataProcessing, QueryUtils, Debuggable, InteractsWithTimeframe;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -1221,8 +1221,8 @@ class Builder
             return null;
         }
 
-        $freshModel = $this->getModel()->query()
-            ->where($model->getKeyName(), '=', $model->getKey())
+        $freshModel = $this->getModel()->newQuery()
+            ->where($model->getKeyName(), $model->getKey())
             ->embed($relations)
             ->first();
 

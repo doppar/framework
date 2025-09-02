@@ -8,7 +8,7 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\Database\Database;
 
-trait QueryCollection
+trait InteractsWithModelQueryProcessing
 {
     /**
      * @var bool
