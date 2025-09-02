@@ -4,7 +4,7 @@ namespace Phaseolies\Database\Eloquent;
 
 use Stringable;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Query\QueryCollection;
+use Phaseolies\Database\Eloquent\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Eloquent\Hooks\HookHandler;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
@@ -14,7 +14,7 @@ use ArrayAccess;
 
 abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsonable
 {
-    use QueryCollection;
+    use InteractsWithModelQueryProcessing;
 
     /**
      * The name of the database table associated with the model.
