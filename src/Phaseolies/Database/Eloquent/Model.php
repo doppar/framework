@@ -376,14 +376,22 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
-     * Sanitizes a value before assigning it to an attribute.
-     * Override this method to implement custom sanitization logic.
+     * The sanitize method should be used for data normalization
+     * Override this method to implement custom normalization logic.
      *
      * @param mixed $value The value to sanitize.
      * @return mixed The sanitized value.
      */
     protected function sanitize($value)
     {
+        if (is_string($value)) {
+            $value = trim($value);
+
+            if ($value === '') {
+                $value = null;
+            }
+        }
+
         return $value;
     }
 
