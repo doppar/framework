@@ -421,23 +421,17 @@ trait InteractsWithModelQueryProcessing
         $query = static::query();
 
         if (is_callable($filters)) {
-            // Handle callback filter
             $filters($query);
         } else {
-            // Handle array of filters
             foreach ($filters as $field => $value) {
                 if (is_array($value)) {
-                    // Handle array conditions (whereIn, etc.)
                     $query->whereIn($field, $value);
                 } elseif ($value === null) {
-                    // Handle NULL values
                     $query->whereNull($field);
                 } elseif ($value instanceof \Closure) {
-                    // Handle closure conditions
                     $value($query);
                 } else {
-                    // Standard equality check
-                    $query->where($field, '=', $value);
+                    $query->where($field, $value);
                 }
             }
         }
@@ -557,5 +551,31 @@ trait InteractsWithModelQueryProcessing
         }
 
         return static::query()->$method(...$parameters);
+    }
+
+    /**
+     * Create a copy of the model instance without the primary key
+     *
+     * @param array|null $except Attributes to exclude from replication
+     * @return static
+     */
+    public function fork(?array $except = null): static
+    {
+        $defaults = [$this->primaryKey];
+
+        $except = array_merge($defaults, (array) $except);
+
+        $attributes = array_diff_key($this->attributes, array_flip($except));
+
+        $replica = new static();
+        $replica->fill($attributes);
+
+        foreach ($this->relations as $key => $relation) {
+            $replica->setRelation($key, $relation);
+        }
+
+        $replica->originalAttributes = array_diff_key($this->originalAttributes, array_flip($except));
+
+        return $replica;
     }
 }
