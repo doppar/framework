@@ -35,15 +35,58 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
     /**
      * Access collection data properties directly.
-     * This allows accessing collection items as object properties.
-     *
-     * Example: $collection->someProperty instead of $collection['someProperty']
      *
      * @param string $name The property name to access
      * @return mixed|null The value if exists, null otherwise
      */
     public function __get($name)
     {
+        if ($name === 'map') {
+            return new class($this) {
+                protected $collection;
+
+                public function __construct($collection)
+                {
+                    $this->collection = $collection;
+                }
+
+                public function __get($property)
+                {
+                    return $this->collection->map(function ($item) use ($property) {
+                        if ($item === null) {
+                            return null;
+                        }
+                        if (is_array($item)) {
+                            return $item[$property] ?? null;
+                        } elseif (is_object($item)) {
+                            return $item->{$property} ?? null;
+                        }
+                        return null;
+                    });
+                }
+            };
+        }
+
+        if ($name === 'each') {
+            return new class($this) {
+                protected $collection;
+
+                public function __construct($collection)
+                {
+                    $this->collection = $collection;
+                }
+
+                public function __call($method, $parameters)
+                {
+                    return $this->collection->each(function ($item) use ($method, $parameters) {
+                        if ($item !== null && method_exists($item, $method)) {
+                            $item->{$method}(...$parameters);
+                        }
+                    });
+                }
+            };
+        }
+
         return $this->data[$name] ?? null;
     }
 
