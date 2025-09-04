@@ -39,11 +39,14 @@ class RegisterController extends Controller
             'confirm_password' => 'required|same_as:password',
         ]);
 
-        User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password)
-        ]);
+        $payload = $request
+            ->pipeInputs([
+                'email' => fn($input) => strtolower(trim($input)),
+                'password' => fn($input) => bcrypt($input)
+            ])
+            ->only('name', 'email', 'password');
+
+        User::create($payload);
 
         return back()->withSuccess('User created successfully');
     }
