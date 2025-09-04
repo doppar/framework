@@ -147,6 +147,9 @@ class ErrorHandler
             if (strpos($message, 'fsockopen():') === 0) {
                 return false;
             }
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             throw new \ErrorException($message, 0, $severity, $file, $line);
         });
     }
@@ -163,6 +166,9 @@ class ErrorHandler
             if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
                 if (strpos($error['message'], 'fsockopen():') === 0) {
                     return;
+                }
+                if (ob_get_level() > 0) {
+                    ob_end_clean();
                 }
                 throw new \ErrorException("A fatal error occurred: " . $error['message']);
             }

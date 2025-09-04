@@ -145,7 +145,7 @@ class Paginator
     /**
      * Generate an array of page numbers with ellipsis for gaps (simplified version)
      *
-     * @return string|null
+     * @return array
      */
     public function numbers(): array
     {
