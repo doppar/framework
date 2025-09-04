@@ -24,20 +24,17 @@ class HttpResponseException extends RuntimeException
     /**
      * Create a new HTTP response exception instance.
      *
-     * @param mixed $validationErrors
-     * @param int $statusCode
+     * @param mixed $message
+     * @param int $status
      * @param \Throwable|null $previous
      * @return void
      */
-    public function __construct(
-        mixed $validationErrors = null,
-        int $statusCode = 500,
-        ?Throwable $previous = null
-    ) {
+    public function __construct(mixed $message = null,  int $status = 500,  ?Throwable $previous = null)
+    {
         parent::__construct($previous?->getMessage() ?? '', $previous?->getCode() ?? 0, $previous);
 
-        $this->validationErrors = $validationErrors;
-        $this->statusCode = $statusCode;
+        $this->validationErrors = $message;
+        $this->statusCode = $status;
     }
 
     /**
