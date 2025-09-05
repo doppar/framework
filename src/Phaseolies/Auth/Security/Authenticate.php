@@ -154,7 +154,14 @@ class Authenticate
                     'Please install [doppar/flarion] package before using API token access.'
                 );
             }
-            return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
+
+            $middlewares = app('route')->getCurrentMiddlewareNames();
+
+            if (in_array('auth-api', $middlewares ?? [])) {
+                return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
+            }
+
+            return null;
         }
 
         if (session()->has('cache_auth_user')) {

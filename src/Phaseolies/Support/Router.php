@@ -51,7 +51,9 @@ class Router extends Kernel
     protected string $currentRequestMethod;
 
     /**
-     * @var array<string> The middleware keys for the current route.
+     * The middleware keys for the current route.
+     *
+     * @var array<string, array<string, array<string>>>
      */
     protected static array $routeMiddlewares = [
         'GET' => [],
@@ -1139,5 +1141,29 @@ class Router extends Kernel
     public function getRouteNames(): ?array
     {
         return self::$namedRoutes;
+    }
+
+    /**
+     * Get the current request middleware names
+     *
+     * @return array|null
+     */
+    public function getCurrentMiddlewareNames(): ?array
+    {
+        $url = request()->getPath();
+        $method = request()->getMethod();
+
+        if (isset(self::$routeMiddlewares[$method][$url])) {
+            return self::$routeMiddlewares[$method][$url];
+        }
+
+        foreach (self::$routeMiddlewares[$method] as $route => $middlewares) {
+            $routeRegex = $this->convertRouteToRegex($route);
+            if (preg_match($routeRegex, $url)) {
+                return $middlewares;
+            }
+        }
+
+        return null;
     }
 }

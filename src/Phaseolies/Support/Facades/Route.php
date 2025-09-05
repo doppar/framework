@@ -15,6 +15,7 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\Router bundle(string $uri, string $controller, array $options = []): void
  * @method static \Phaseolies\Support\Router apiBundle(string $uri, string $controller, array $options = []): void
  * @method static \Phaseolies\Support\Router nestedBundle(string $parent, string $child, string $controller, array $options = []): void
+ * @method static \Phaseolies\Support\Router getCurrentMiddlewareNames(): ?array
  *
  * @see \Phaseolies\Support\Router
  */
