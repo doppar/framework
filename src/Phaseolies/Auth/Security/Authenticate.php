@@ -148,6 +148,15 @@ class Authenticate
             return $this->statelessUser;
         }
 
+        if ($this->isApiRequest()) {
+            if (!class_exists(\Doppar\Flarion\ApiAuthenticate::class)) {
+                throw new \RuntimeException(
+                    'Please install [doppar/flarion] package before using API token access.'
+                );
+            }
+            return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
+        }
+
         if (session()->has('cache_auth_user')) {
             $cache = session('cache_auth_user');
 
@@ -250,8 +259,6 @@ class Authenticate
             $user->save();
         }
 
-        $this->statelessUser = null;
-
         session()->forget('user');
         session()->forget('auth_via_remember');
         session()->forget('cache_auth_user');
@@ -271,9 +278,11 @@ class Authenticate
      */
     private function setUser(Model $user): void
     {
-        session()->put('user', $user->id);
+        if (!$this->isApiRequest()) {
+            session()->put('user', $user->id);
 
-        $this->cacheUser($user);
+            $this->cacheUser($user);
+        }
     }
 
     /**
@@ -351,5 +360,15 @@ class Authenticate
             3600,
             fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
         );
+    }
+
+    /**
+     * Determine if the current request is targeting the API.
+     *
+     * @return bool True if the request path starts with `/api/`, false otherwise.
+     */
+    private function isApiRequest(): bool
+    {
+        return (bool) request()->is('/api/*');
     }
 }
