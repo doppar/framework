@@ -285,11 +285,9 @@ class Authenticate
      */
     private function setUser(Model $user): void
     {
-        if (!$this->isApiRequest()) {
-            session()->put('user', $user->id);
+        session()->put('user', $user->id);
 
-            $this->cacheUser($user);
-        }
+        $this->cacheUser($user);
     }
 
     /**
