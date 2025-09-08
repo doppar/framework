@@ -71,6 +71,7 @@ class RealLens implements Lensable
                 $ref = $ref[$segment];
             }
         }
+
         return true;
     }
 
@@ -86,6 +87,7 @@ class RealLens implements Lensable
         foreach ((array) $keys as $key) {
             if ($this->got($array, $key)) return true;
         }
+
         return false;
     }
 
@@ -124,6 +126,7 @@ class RealLens implements Lensable
     public function pick(array $array, string $value, ?string $key = null): array
     {
         $results = [];
+
         foreach ($array as $item) {
             $val = $this->grab($item, $value);
             if ($key !== null) {
@@ -133,6 +136,7 @@ class RealLens implements Lensable
                 $results[] = $val;
             }
         }
+
         return $results;
     }
 
@@ -215,6 +219,7 @@ class RealLens implements Lensable
     public function squash(array $array): array
     {
         $result = [];
+
         foreach ($array as $item) {
             if (is_array($item)) {
                 foreach ($item as $v) {
@@ -222,6 +227,7 @@ class RealLens implements Lensable
                 }
             }
         }
+
         return $result;
     }
 
@@ -235,11 +241,13 @@ class RealLens implements Lensable
     public function keep(array $array, array $keys): array
     {
         $result = [];
+
         foreach ($keys as $key) {
             if (array_key_exists($key, $array)) {
                 $result[$key] = $array[$key];
             }
         }
+
         return $result;
     }
 
@@ -255,6 +263,7 @@ class RealLens implements Lensable
         foreach ($keys as $key) {
             unset($array[$key]);
         }
+
         return $array;
     }
 
@@ -267,6 +276,7 @@ class RealLens implements Lensable
     public function assoc(array $array): bool
     {
         if ([] === $array) return false;
+
         return array_keys($array) !== range(0, count($array) - 1);
     }
 
@@ -280,11 +290,13 @@ class RealLens implements Lensable
     public function whr(array $array, callable $callback): array
     {
         $result = [];
+
         foreach ($array as $key => $value) {
             if ($callback($value, $key)) {
                 $result[$key] = $value;
             }
         }
+
         return $result;
     }
 
@@ -297,6 +309,7 @@ class RealLens implements Lensable
     public function wrap($value): array
     {
         if (is_null($value)) return [];
+
         return is_array($value) ? $value : [$value];
     }
 
@@ -350,10 +363,12 @@ class RealLens implements Lensable
     public function rand(array $array): array
     {
         $array = array_values($array);
+
         for ($i = count($array) - 1; $i > 0; $i--) {
             $j = random_int(0, $i);
             [$array[$i], $array[$j]] = [$array[$j], $array[$i]];
         }
+
         return $array;
     }
 }
