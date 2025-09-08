@@ -20,10 +20,10 @@ abstract class AbstractHandler
     {
         $streamHandler = new StreamHandler($logFile, Level::Debug);
         $formatter = new LineFormatter(
-            "[%datetime%] %channel%.%level_name%: %message%\n",
-            null,
-            true,
-            true
+            format: "[%datetime%] %channel%.%level_name%: %message%\n",
+            dateFormat: null,
+            allowInlineLineBreaks: true,
+            ignoreEmptyContextAndExtra: true
         );
 
         $streamHandler->setFormatter($formatter);

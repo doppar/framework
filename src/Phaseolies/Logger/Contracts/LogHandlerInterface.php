@@ -4,9 +4,6 @@ namespace Phaseolies\Logger\Contracts;
 
 use Monolog\Logger;
 
-/**
- * Interface for log handlers.
- */
 interface LogHandlerInterface
 {
     /**
