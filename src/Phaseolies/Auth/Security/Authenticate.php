@@ -78,7 +78,7 @@ class Authenticate
             );
         }
 
-        if ($this->hasTwoFactorEnabled($user) && !request()->is('/api/*')) {
+        if ($this->hasTwoFactorEnabled($user) && ! $this->isApiRequest()) {
             session()->put('2fa_user_id', $user->id);
             session()->put('2fa_remember', $remember);
 
@@ -370,7 +370,7 @@ class Authenticate
     /**
      * Determine if the current request is targeting the API.
      *
-     * @return bool True if the request path starts with `/api/`, false otherwise.
+     * @return bool
      */
     private function isApiRequest(): bool
     {

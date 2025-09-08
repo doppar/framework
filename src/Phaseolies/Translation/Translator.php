@@ -8,24 +8,28 @@ class Translator extends FileLoader
 {
     /**
      * The file loader instance responsible for loading translation files.
+     *
      * @var FileLoader
      */
     protected $loader;
 
     /**
      * The current locale being used for translations.
+     *
      * @var string
      */
     protected $locale;
 
     /**
      * The fallback locale to use when a translation isn't found.
+     *
      * @var string
      */
     protected $fallback;
 
     /**
      * Array of loaded translation lines grouped by namespace, group, and locale.
+     *
      * @var array
      */
     protected $loaded = [];

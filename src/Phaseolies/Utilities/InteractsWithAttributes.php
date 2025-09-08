@@ -10,8 +10,7 @@ trait InteractsWithAttributes
      * @param string $class The fully qualified class name.
      * @param string $attribute The property name to retrieve.
      * @return mixed The value of the specified property.
-     *
-     * @throws \Exception If the property does not exist on the given class.
+     * @throws \Exception
      */
     protected function getClassProperty(string $class, string $attribute): mixed
     {
@@ -36,8 +35,7 @@ trait InteractsWithAttributes
      * @param string $attribute The property name to inspect.
      * @param string $attributeClass The attribute class to check for (e.g. CastToDate::class).
      * @return bool True if the attribute exists on the property, false otherwise.
-     *
-     * @throws \Exception If the property does not exist on the given class.
+     * @throws \Exception
      */
     protected function propertyHasAttribute(object|string $class, string $attribute, string $attributeClass): bool
     {

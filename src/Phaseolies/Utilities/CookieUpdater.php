@@ -5,16 +5,12 @@ namespace Phaseolies\Utilities;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Http\Response\Cookie;
 
-/**
- * Fluent interface for updating cookies
- *
- * Provides a chainable API for modifying cookie attributes before
- * persisting them to the response.
- */
 class CookieUpdater
 {
     /**
      * The cookie instance being modified
+     *
+     * @var Cookie
      */
     protected Cookie $cookie;
 

@@ -8,18 +8,21 @@ class FileLoader
 {
     /**
      * The File instance used for file operations.
+     *
      * @var File
      */
     protected $file;
 
     /**
      * The base path for translation files.
+     *
      * @var string
      */
     protected $path;
 
     /**
      * Array of namespace hints for package translations.
+     *
      * @var array
      */
     protected $hints = [];
