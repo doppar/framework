@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.1.9 - 2025-09-08
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v2.9.1.8...v2.9.1.9
+
 ## v2.9.1.8 - 2025-09-08
 
 **Full Changelog**: https://github.com/doppar/framework/compare/v2.1.9.7...v2.9.1.8
