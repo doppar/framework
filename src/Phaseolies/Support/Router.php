@@ -785,6 +785,9 @@ class Router extends Kernel
             $method = $reflector->getMethod($actionMethod);
             $methodMiddlewareAttributes = $method->getAttributes(Middleware::class);
             $this->processAttributesMiddlewares($methodMiddlewareAttributes);
+
+            // Process @RateLimit docblock annotations
+            $this->processRateLimitAnnotation($method);
         }
     }
 
@@ -946,6 +949,36 @@ class Router extends Kernel
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Process RateLimit annotations from docblock comments
+     *
+     * @param \ReflectionMethod $method
+     * @return void
+     */
+    protected function processRateLimitAnnotation(\ReflectionMethod $method): void
+    {
+        $docComment = $method->getDocComment();
+
+        if (!$docComment) {
+            return;
+        }
+
+        // Parse the @RateLimit annotation
+        if (preg_match('/@RateLimit\s+([^\s]+)/', $docComment, $matches)) {
+            $rateLimitConfig = $matches[1];
+
+            // Convert the annotation format "60/1"
+            // To throttle middleware format "throttle:60,1"
+            if (preg_match('/^(\d+)\/(\d+)$/', $rateLimitConfig, $configMatches)) {
+                $maxAttempts = $configMatches[1];
+                $decayMinutes = $configMatches[2];
+                $middlewareKey = "throttle:{$maxAttempts},{$decayMinutes}";
+
+                $this->middleware($middlewareKey);
+            }
+        }
     }
 
     /**
