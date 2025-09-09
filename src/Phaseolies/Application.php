@@ -105,7 +105,7 @@ class Application extends Container
 
     /**
      * Indicates if the application is running in the console.
-     * 
+     *
      * @var bool|null
      */
     protected $isRunningInConsole = null;
@@ -118,6 +118,8 @@ class Application extends Container
     protected $serviceProviders = [];
 
     /**
+     * Indicates if the providers has been booted
+     *
      * @var bool
      */
     protected $providersBooted = false;
@@ -197,9 +199,8 @@ class Application extends Container
      * Configures the application instance.
      *
      * @return \Phaseolies\ApplicationBuilder
-     *   Returns an ApplicationBuilder instance for further configuration.
      */
-    public function configure($app)
+    public function configure($app): ApplicationBuilder
     {
         return (new ApplicationBuilder($app))->withMiddlewareStack();
     }
@@ -212,6 +213,7 @@ class Application extends Container
     public function withBasePath(string $basePath): self
     {
         $this->basePath = $basePath;
+
         $this->setNecessaryFolderPath();
 
         return $this;
@@ -258,7 +260,6 @@ class Application extends Container
 
     /**
      * Registers core service providers.
-     * If the application is running in the console, it skips registration.
      *
      * @return self
      */
@@ -289,7 +290,6 @@ class Application extends Container
 
     /**
      * Boots core service providers.
-     * If the application is running in the console, it skips booting.
      *
      * @return self
      */
@@ -372,16 +372,6 @@ class Application extends Container
                 $callback($object, $this);
             }
         }
-    }
-
-    /**
-     * Gets the base path of the application.
-     *
-     * @return string
-     */
-    public function getBasePath(): string
-    {
-        return $this->basePath = base_path();
     }
 
     /**
@@ -483,7 +473,7 @@ class Application extends Container
      */
     public function basePath(): string
     {
-        return $this->basePath = $this->getBasePath();
+        return $this->basePath = base_path();
     }
 
     /**
@@ -531,12 +521,15 @@ class Application extends Container
     }
 
     /**
-     * Bootstraps the application.
+     * Setting up necessary class aliases.
+     *
+     * @return void
      */
     protected function bootstrap(): void
     {
         if (!$this->hasBeenBootstrapped) {
             $this->hasBeenBootstrapped = true;
+
             foreach (config('app.aliases') as $alias => $facade) {
                 if (!class_exists($alias)) {
                     class_alias($facade, $alias);
@@ -568,8 +561,6 @@ class Application extends Container
     public function make($abstract, array $parameters = []): object|string
     {
         $object = parent::make($abstract, $parameters);
-
-        $this->fireResolvingCallbacks($abstract, $object);
 
         return $object;
     }
@@ -642,11 +633,11 @@ class Application extends Container
     }
 
     /**
-     * Bind all the application core singleton classes
+     * Bind application necessary paths
      *
      * @return void
      */
-    protected function bindSingletonClasses(): void
+    public function bindApplicationNecessaryPath(): void
     {
         $this->singleton('path.lang', fn() => $this->langPath());
         $this->singleton('path.config', fn() => $this->configPath());
@@ -654,6 +645,16 @@ class Application extends Container
         $this->singleton('path.storage', fn() => $this->storagePath());
         $this->singleton('path.resources', fn() => $this->resourcesPath());
         $this->singleton('path.database', fn() => $this->databasePath());
+    }
+
+    /**
+     * Bind all the application core singleton classes
+     *
+     * @return void
+     */
+    protected function bindSingletonClasses(): void
+    {
+        $this->bindApplicationNecessaryPath();
         $this->singleton('request', Request::class);
 
         $this->singleton('route', Router::class);
@@ -727,7 +728,7 @@ class Application extends Container
     /**
      * Determine if the application is in the given environment.
      *
-     * @param  string|array  $environments
+     * @param string|array $environments
      * @return bool
      */
     public function environment(...$environments): bool
@@ -750,7 +751,7 @@ class Application extends Container
     /**
      * Get or check the current application environment.
      *
-     * @param  string|null  $environment
+     * @param string|null $environment
      * @return string|bool
      */
     public function environmentIs($environment = null): string|bool
@@ -831,7 +832,7 @@ class Application extends Container
     /**
      * Get the paths that will bypass CSRF token verification.
      *
-     * @return self
+     * @return array
      */
     public function getRelaxablePaths(): array
     {
@@ -840,8 +841,6 @@ class Application extends Container
 
     /**
      * Dispatches the application request.
-     * Resolves the request using the router and sends the response.
-     * Handles any HTTP exceptions that may occur during the process.
      *
      * @param Request $request
      * @return void
