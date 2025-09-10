@@ -70,6 +70,8 @@ class Console extends SymfonyApplication
     {
         $this->bootstrapCommands();
 
+        $this->setAutoExit(false);
+
         return parent::run($input, $output);
     }
 
