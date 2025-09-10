@@ -5,6 +5,7 @@ namespace Phaseolies\Support;
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
@@ -17,7 +18,7 @@ use App\Http\Kernel;
 
 class Router extends Kernel
 {
-    use InteractsWithBundleRouter;
+    use InteractsWithBundleRouter, InteractsWithCurrentRouter;
 
     /**
      * Holds the registered routes.
@@ -1164,39 +1165,5 @@ class Router extends Kernel
         }
 
         return $dependencies;
-    }
-
-    /**
-     * Get the current matched route information (path, callback, method, etc.).
-     *
-     * @return array|null Array with route details or null if no route matched
-     */
-    public function getRouteNames(): ?array
-    {
-        return self::$namedRoutes;
-    }
-
-    /**
-     * Get the current request middleware names
-     *
-     * @return array|null
-     */
-    public function getCurrentMiddlewareNames(): ?array
-    {
-        $url = request()->getPath();
-        $method = request()->getMethod();
-
-        if (isset(self::$routeMiddlewares[$method][$url])) {
-            return self::$routeMiddlewares[$method][$url];
-        }
-
-        foreach (self::$routeMiddlewares[$method] as $route => $middlewares) {
-            $routeRegex = $this->convertRouteToRegex($route);
-            if (preg_match($routeRegex, $url)) {
-                return $middlewares;
-            }
-        }
-
-        return null;
     }
 }
