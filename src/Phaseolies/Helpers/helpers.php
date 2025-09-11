@@ -19,14 +19,11 @@ use Carbon\Carbon;
 use Phaseolies\Support\Facades\Crypt;
 
 /**
- * Gets an environment variable from available sources, and provides emulation
- * for unsupported or inconsistent environment variables (i.e., DOCUMENT_ROOT on
- * IIS, or SCRIPT_NAME in CGI mode). Also exposes some additional custom
- * environment information.
+ * Gets an environment variable from available sources
  *
- * @param string $key Environment variable name.
- * @param string|float|int|bool|null $default Specify a default value in case the environment variable is not defined.
- * @return string|float|int|bool|null Environment variable setting.
+ * @param string $key
+ * @param string|float|int|bool|null $default
+ * @return string|float|int|bool|null
  */
 function env(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
 {
@@ -36,9 +33,9 @@ function env(string $key, string|float|int|bool|null $default = null): string|fl
 /**
  * Retrieves an environment variable or returns a default value if the variable is not set.
  *
- * @param string $key Environment variable name.
- * @param string|float|int|bool|null $default Default value to return if the variable is not set.
- * @return string|float|int|bool|null Environment variable value or default.
+ * @param string $key
+ * @param string|float|int|bool|null $default
+ * @return string|float|int|bool|null
  */
 function dopparEnv(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
 {
@@ -51,7 +48,7 @@ function dopparEnv(string $key, string|float|int|bool|null $default = null): str
  * Get the available container instance
  *
  * @param string|class-string|null $abstract
- * @param array  $parameters
+ * @param array $parameters
  * @return mixed
  */
 function app($abstract = null, array $parameters = [])
@@ -66,7 +63,7 @@ function app($abstract = null, array $parameters = [])
 /**
  * Creates a new request instance to handle HTTP requests.
  *
- * @return mixed A new instance of the Request class.
+ * @return mixed
  */
 function request($key = null, $default = null): mixed
 {
@@ -114,12 +111,12 @@ function lang(): Translator
 /**
  * Generate a url for the application.
  *
- * @param  string|null  $path
- * @param  mixed  $parameters
- * @param  bool|null  $secure
+ * @param string|null $path
+ * @param mixed $parameters
+ * @param bool|null $secure
  * @return ($path is null ? \Phaseolies\Support\UrlGenerator : string)
  */
-function url($path = null, $parameters = [], $secure = null)
+function url(?string $path = null, $parameters = [], ?bool $secure = null)
 {
     $urlGenerator = app(UrlGenerator::class);
 
@@ -152,8 +149,8 @@ function response($content = null, $status = 200, array $headers = [])
 /**
  * Renders a view with the given data.
  *
- * @param string $view The name of the view file to render.
- * @param array $data An associative array of data to pass to the view (default is an empty array).
+ * @param string $view
+ * @param array $data
  * @return Response
  */
 function view($view, array $data = [], array $headers = []): Response
@@ -173,7 +170,11 @@ function view($view, array $data = [], array $headers = []): Response
 /**
  * Creates a new redirect instance for handling HTTP redirects.
  *
- * @return RedirectResponse A new instance of the RedirectResponse class.
+ * @param string|null $to
+ * @param int $status
+ * @param array $headers
+ * @param bool|null $secure
+ * @return RedirectResponse
  */
 function redirect($to = null, $status = 302, $headers = [], $secure = null)
 {
@@ -187,9 +188,9 @@ function redirect($to = null, $status = 302, $headers = [], $secure = null)
 /**
  * Create a new redirect response to the previous location.
  *
- * @param  int  $status
- * @param  array  $headers
- * @param  mixed  $fallback
+ * @param int $status
+ * @param array $headers
+ * @param mixed $fallback
  * @return \Phaseolies\Http\RedirectResponse
  */
 function back($status = 302, $headers = [], $fallback = false)
@@ -200,6 +201,8 @@ function back($status = 302, $headers = [], $fallback = false)
 /**
  * Creates a new Session instance
  *
+ * @param mixed $key
+ * @param mixed $default
  * @return mixed
  */
 function session($key = null, $default = null): mixed
@@ -227,6 +230,7 @@ function csrf_token(): ?string
 
 /**
  * Creates a password hashing helper
+ *
  * @param string $plainText
  * @return string
  */
@@ -238,8 +242,8 @@ function bcrypt(string $plainText): string
 /**
  * Retrieves the old input value for a given key from the session.
  *
- * @param mixed $key The key to retrieve the old input for.
- * @return string|null The old input value or null if not found.
+ * @param mixed $key
+ * @return string|null
  */
 function old($key): ?string
 {
@@ -249,20 +253,21 @@ function old($key): ?string
 /**
  * Creates and returns a Faker generator instance for generating fake data.
  *
- * @return \Faker\Generator An instance of the Faker Generator.
+ * @return \Faker\Generator
  */
 function fake(): \Faker\Generator
 {
     $faker = \Faker\Factory::create();
+
     return $faker;
 }
 
 /**
  * Generates a full URL for a named route.
  *
- * @param string $name The route name.
- * @param mixed $params The parameters for the route.
- * @return string|null The generated URL or null if the route doesn't exist.
+ * @param string $name
+ * @param mixed $params
+ * @return string|null
  */
 function route(string $name, mixed $params = []): ?string
 {
@@ -272,9 +277,9 @@ function route(string $name, mixed $params = []): ?string
 /**
  * Retrieve a configuration value by key.
  *
- * @param string $key The configuration key to retrieve.
- * @param string $default The default configuration key to retrieve.
- * @return string|array|null The configuration value associated with the key, or null if not found.
+ * @param string $key
+ * @param string $default
+ * @return string|array|null
  */
 function config(string|array $key, ?string $default = null): null|string|array
 {
@@ -291,7 +296,7 @@ function config(string|array $key, ?string $default = null): null|string|array
 /**
  * Check if the user is authenticated.
  *
- * @return bool Returns true if the user is logged in, otherwise false.
+ * @return bool
  */
 function is_auth(): bool
 {
@@ -321,8 +326,8 @@ function paginator(?array $data = null): Paginator
 /**
  * Get the base path of the application.
  *
- * @param string $path An optional path to append to the base path.
- * @return string The full base path.
+ * @param string $path
+ * @return string
  */
 function base_path(string $path = ''): string
 {
@@ -348,8 +353,8 @@ function base_path(string $path = ''): string
 /**
  * Get the base URL of the application.
  *
- * @param string $path An optional path to append to the base URL.
- * @return string The full base URL.
+ * @param string $path
+ * @return string
  */
 function base_url(string $path = ''): string
 {
@@ -394,8 +399,8 @@ function base_url(string $path = ''): string
 /**
  * Get the storage path of the application.
  *
- * @param string $path An optional path to append to the storage path.
- * @return string The full storage path.
+ * @param string $path
+ * @return string
  */
 function storage_path(string $path = ''): string
 {
@@ -405,8 +410,8 @@ function storage_path(string $path = ''): string
 /**
  * Get the public path of the application.
  *
- * @param string $path An optional path to append to the public path.
- * @return string The full public path.
+ * @param string $path
+ * @return string
  */
 function public_path(string $path = ''): string
 {
@@ -416,8 +421,8 @@ function public_path(string $path = ''): string
 /**
  * Get the resources path of the application.
  *
- * @param string $path An optional path to append to the resources path.
- * @return string The full resources path.
+ * @param string $path
+ * @return string
  */
 function resource_path(string $path = ''): string
 {
@@ -427,8 +432,8 @@ function resource_path(string $path = ''): string
 /**
  * Get the config path of the application.
  *
- * @param string $path An optional path to append to the config path.
- * @return string The full config path.
+ * @param string $path
+ * @return string
  */
 function config_path(string $path = ''): string
 {
@@ -438,8 +443,8 @@ function config_path(string $path = ''): string
 /**
  * Get the database path of the application.
  *
- * @param string $path An optional path to append to the database path.
- * @return string The full database path.
+ * @param string $path
+ * @return string
  */
 function database_path(string $path = ''): string
 {
@@ -449,8 +454,8 @@ function database_path(string $path = ''): string
 /**
  * Get the language path of the application.
  *
- * @param string $path An optional path to append to the language path.
- * @return string The full language path.
+ * @param string $path
+ * @return string
  */
 function lang_path(string $path = ''): string
 {
@@ -460,8 +465,8 @@ function lang_path(string $path = ''): string
 /**
  * Generate the URL for an asset in the public directory.
  *
- * @param string $path The path to the asset relative to the public directory.
- * @return string The full URL to the asset.
+ * @param string $path
+ * @return string
  */
 function enqueue(string $path = '', $secure = null): string
 {
@@ -508,6 +513,7 @@ function abort_if($condition, $code, $message = '', array $headers = []): void
 
 /**
  * Get the current timestamp with optional timezone
+ *
  * @return \Carbon\Carbon
  */
 function now()
@@ -516,9 +522,9 @@ function now()
 }
 
 /**
- * Log helper
+ * Generate log info message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function info(mixed $payload): void
@@ -527,9 +533,9 @@ function info(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log warning message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function warning(mixed $payload): void
@@ -538,9 +544,9 @@ function warning(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log error message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function error(mixed $payload): void
@@ -549,9 +555,9 @@ function error(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log alert message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function alert(mixed $payload): void
@@ -560,9 +566,9 @@ function alert(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log notice message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function notice(mixed $payload): void
@@ -571,9 +577,9 @@ function notice(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log emergency message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function emergency(mixed $payload): void
@@ -582,9 +588,9 @@ function emergency(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log critical message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function critical(mixed $payload): void
@@ -593,9 +599,9 @@ function critical(mixed $payload): void
 }
 
 /**
- * Log helper
+ * Generate log debug message
  *
- * @param mixed $message The message to log.
+ * @param mixed $message
  * @return void
  */
 function debug(mixed $payload): void
@@ -615,7 +621,8 @@ function collect(array $items = []): Collection
 }
 
 /**
- * Delete folder
+ * Delete folder recursively
+ *
  * @param string $folderPath
  * @return bool
  */
@@ -642,10 +649,7 @@ function delete_folder_recursively(string $folderPath): bool
 /**
  * Generate a UUID v4 string.
  *
- * @return string The generated UUID.
- *
- * @example
- * Str::uuid(); // Returns something like "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+ * @return string
  */
 function uuid(): string
 {
@@ -655,12 +659,14 @@ function uuid(): string
 if (!function_exists('class_basename')) {
     /**
      * Get the class basename
+     *
      * @param mixed $class
      * @return string
      */
     function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
+
         return basename(str_replace('\\', '/', $class));
     }
 }
@@ -700,16 +706,16 @@ function __($key = null, $replace = [], $locale = null)
  * @param string $string
  * @return string
  */
-function encrypt($string)
+function encrypt($string): string
 {
-    return Crypt::encrypt($string);
+    return (string) Crypt::encrypt($string);
 }
 
 /**
  * Decrypts a given string
  *
  * @param string $string
- * @return string
+ * @return mixed
  */
 function decrypt($string)
 {
@@ -719,8 +725,8 @@ function decrypt($string)
 /**
  * Tap the model and return the value.
  *
- * @param  mixed  $value
- * @param  callable|null  $callback
+ * @param mixed $value
+ * @param callable|null $callback
  * @return mixed
  */
 function tap($value, $callback = null)
