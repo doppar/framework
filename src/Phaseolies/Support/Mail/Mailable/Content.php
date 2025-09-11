@@ -15,9 +15,7 @@ class Content
     /**
      * Returns a new instance of the Content class with the same view and data.
      *
-     * This method is useful for method chaining or creating a copy of the content.
-     *
-     * @return self A new instance of the Content class.
+     * @return self
      */
     public function content(): self
     {

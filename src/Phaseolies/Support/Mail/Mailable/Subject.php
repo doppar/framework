@@ -24,9 +24,7 @@ class Subject
     /**
      * Returns a new instance of the Subject class with the same subject.
      *
-     * This method is useful for method chaining or creating a copy of the subject.
-     *
-     * @return self A new instance of the Subject class.
+     * @return self
      */
     public function subject(): self
     {

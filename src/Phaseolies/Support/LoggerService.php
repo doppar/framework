@@ -178,6 +178,8 @@ class LoggerService extends LogService
     }
 
     /**
+     * Format the log message
+     *
      * @param mixed $message
      * @return mixed
      */

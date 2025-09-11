@@ -2,12 +2,6 @@
 
 namespace Phaseolies\Support\Mail;
 
-/**
- * Represents an email message.
- *
- * This class encapsulates the details of an email, including recipients,
- * sender, subject, content, and attachments.
- */
 class Mailable
 {
     /**

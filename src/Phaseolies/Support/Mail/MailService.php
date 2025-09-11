@@ -7,11 +7,6 @@ use Phaseolies\Support\Mail\Driver\SmtpMailDriver;
 use Phaseolies\Support\Mail\Mailable\View;
 use App\Models\User;
 
-/**
- * The Mail class is responsible for sending emails using a specified mail driver.
- * It provides a fluent interface for setting up email details (e.g., recipients, CC, BCC, attachments)
- * and sending the email using the configured driver.
- */
 class MailService
 {
     /**

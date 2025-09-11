@@ -127,6 +127,7 @@ class Sanitizer
         if (!isset($this->errors[$field])) {
             $this->errors[$field] = [];
         }
+
         $this->errors[$field][] = $message;
     }
 }

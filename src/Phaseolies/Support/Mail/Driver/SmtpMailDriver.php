@@ -7,13 +7,6 @@ use Phaseolies\Support\Mail\MailDriverInterface;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-/**
- * SmtpMailDriver class implements the MailDriverInterface for sending emails via SMTP.
- *
- * This class uses the PHPMailer library to handle SMTP connections and email sending.
- * It takes a configuration array containing SMTP server details and sends emails
- * based on the provided Mailable object.
- */
 class SmtpMailDriver implements MailDriverInterface
 {
     /**
@@ -22,10 +15,6 @@ class SmtpMailDriver implements MailDriverInterface
     private $config;
 
     /**
-     * Constructor.
-     *
-     * Initializes a new SmtpMailDriver instance with the provided configuration.
-     *
      * @param array $config Configuration array containing SMTP server details.
      */
     public function __construct(array $config)
@@ -35,9 +24,6 @@ class SmtpMailDriver implements MailDriverInterface
 
     /**
      * Sends an email using the SMTP protocol.
-     *
-     * This method creates a PHPMailer instance, configures it with the provided SMTP
-     * settings, and sends the email based on the information in the Mailable object.
      *
      * @param Mailable $message The Mailable object containing email details.
      * @return bool Returns true if the email is sent successfully, false otherwise.

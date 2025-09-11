@@ -2,12 +2,6 @@
 
 namespace Phaseolies\Support\Mail;
 
-/**
- * Interface for mail drivers.
- *
- * This interface defines the contract for mail drivers, ensuring that any
- * mail driver implementation must provide a `send` method to send an email.
- */
 interface MailDriverInterface
 {
     /**

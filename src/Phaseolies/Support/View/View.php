@@ -105,6 +105,7 @@ class View extends Factory
             }
 
             $result = $this->block('__current_template__', '');
+
             return $this->cache[$cacheKey] = $result;
         } finally {
             array_pop($this->renderStack);
