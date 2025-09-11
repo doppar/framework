@@ -7,15 +7,15 @@ use Phaseolies\Support\Mail\MailDriverInterface;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-class SmtpMailDriver implements MailDriverInterface
+class SendmailMailDriver implements MailDriverInterface
 {
     /**
-     * @var array Configuration array containing SMTP server details.
+     * @var array Configuration array containing sendmail path.
      */
     private $config;
 
     /**
-     * @param array $config Configuration array containing SMTP server details.
+     * @param array $config Configuration array.
      */
     public function __construct(array $config)
     {
@@ -23,7 +23,7 @@ class SmtpMailDriver implements MailDriverInterface
     }
 
     /**
-     * Sends an email using the SMTP protocol.
+     * Sends an email using the sendmail program.
      *
      * @param Mailable $message The Mailable object containing email details.
      * @return bool Returns true if the email is sent successfully, false otherwise.
@@ -35,14 +35,13 @@ class SmtpMailDriver implements MailDriverInterface
         $mail = new PHPMailer(true);
 
         try {
-            // Configure SMTP settings
-            $mail->isSMTP();
-            $mail->Host = $this->config['host'];
-            $mail->SMTPAuth = true;
-            $mail->Username = $this->config['username'];
-            $mail->Password = $this->config['password'];
-            $mail->SMTPSecure = $this->config['encryption'];
-            $mail->Port = $this->config['port'];
+            // Configure sendmail settings
+            $mail->isSendmail();
+
+            // Set custom sendmail path if provided in config
+            if (!empty($this->config['sendmail_path'])) {
+                $mail->Sendmail = $this->config['sendmail_path'];
+            }
 
             // Set email sender and recipient
             $mail->setFrom($message->from['address'], $message->from['name']);
@@ -76,8 +75,8 @@ class SmtpMailDriver implements MailDriverInterface
                     $mail->addAttachment(
                         $attachment['path'],
                         $attachment['name'],
-                        'base64', // Encoding
-                        $attachment['mime'] // MIME type
+                        'base64',
+                        $attachment['mime']
                     );
                 }
             }

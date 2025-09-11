@@ -2,9 +2,12 @@
 
 namespace Phaseolies\Support\Mail;
 
+use Phaseolies\Support\Mail\Mailable\View;
 use Phaseolies\Support\Mail\MailDriverInterface;
 use Phaseolies\Support\Mail\Driver\SmtpMailDriver;
-use Phaseolies\Support\Mail\Mailable\View;
+use Phaseolies\Support\Mail\Driver\SendmailMailDriver;
+use Phaseolies\Support\Mail\Driver\QmailMailDriver;
+use Phaseolies\Support\Mail\Driver\MailMailDriver;
 use App\Models\User;
 
 class MailService
@@ -171,12 +174,10 @@ class MailService
     /**
      * Resolves the mail driver based on the application configuration.
      *
-     * This method reads the mail configuration and instantiates the appropriate mail driver.
-     *
-     * @return MailDriverInterface The resolved mail driver.
-     * @throws \Exception If the mailer is not supported.
+     * @return MailDriverInterface
+     * @throws \Exception
      */
-    private static function resolveDriver()
+    private static function resolveDriver(): MailDriverInterface
     {
         $mailer = config('mail.default');
         $config = config('mail.mailers.' . $mailer);
@@ -184,9 +185,12 @@ class MailService
         switch ($mailer) {
             case 'smtp':
                 return new SmtpMailDriver($config);
-            case 'log':
-                // TODO: Implement log mail driver
-                break;
+            case 'sendmail':
+                return new SendmailMailDriver($config);
+            case 'qmail':
+                return new QmailMailDriver($config);
+            case 'mail':
+                return new MailMailDriver($config);
             default:
                 throw new \Exception("Unsupported mailer: $mailer");
         }
