@@ -18,11 +18,15 @@ The high-performance, minimalist PHP framework for developers who need raw speed
 
 We just put Doppar to the test under some serious load — and the results are in:
 
-## Benchmark Setup
+#### Benchmark: Doppar vs Laravel Performance Test
+
+**Objective:** Compare request handling and latency between Doppar and Laravel under high concurrency with a database-backed endpoint.
+
 - **Load:** 50,000 requests
-- **Concurrency:** 1,000
-- **Endpoint:** `/tags` (DB-backed)
-- **Tool:** ApacheBench
+- **Concurrency:** 1,000 simultaneous requests
+- **Endpoint:** `/tags` (database-backed endpoint to fetch `tags`)
+- **Tool:** ApacheBench (ab)
+- **Metrics Measured:** Requests per second, median/percentile latency, max latency, response size, failed requests
 
 | Metric              | **Doppar**       | **Laravel**        | **Factor**        |
 | ------------------- | ---------------- | ------------------ | ----------------- |
