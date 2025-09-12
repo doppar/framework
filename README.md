@@ -18,7 +18,7 @@ The high-performance, minimalist PHP framework for developers who need raw speed
 
 We just put Doppar to the test under some serious load — and the results are in:
 
-#### Benchmark: Doppar vs Laravel Performance Test
+### Benchmark: Doppar vs Laravel Performance Test
 
 **Objective:** Compare request handling and latency between Doppar and Laravel under high concurrency with a database-backed endpoint.
 
