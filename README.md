@@ -12,8 +12,31 @@
 </p>
 
 ## About Doppar
+The high-performance, minimalist PHP framework for developers who need raw speed and are willing to build their own application layer
 
 > **Note:** This repository contains the core code of the Doppar framework. If you want to build an application using Doppar, visit the main [Doppar repository](https://github.com/doppar/doppar).
+
+We just put Doppar to the test under some serious load — and the results are in:
+
+## Benchmark Setup
+- **Load:** 50,000 requests
+- **Concurrency:** 1,000
+- **Endpoint:** `/tags` (DB-backed)
+- **Tool:** ApacheBench
+
+| Metric              | **Doppar**       | **Laravel**        | **Factor**        |
+| ------------------- | ---------------- | ------------------ | ----------------- |
+| **Total Requests**  | 50,000           | 50,000             | 1×                |
+| **Failed Requests** | 0                | 0                  | 1×                |
+| **Requests/sec**    | **318.5 req/s**  | **43.9 req/s**     | \~7.3×            |
+| **Median Latency**  | \~2.7s (2703 ms) | \~22.2s (22180 ms) | \~8.2× faster     |
+| **95th Percentile** | \~4.8s           | \~34.9s            | \~7.3× faster     |
+| **Max Latency**     | \~7.9s           | \~40.2s            | \~5.1× faster     |
+| **Response Size**   | 1083 bytes       | 4346 bytes         | \~0.25× (smaller) |
+
+Doppar sustained `~7x higher` throughput than Laravel (318 vs 44 req/s). Doppar is `~8x faster` under 1000 concurrent requests. Doppar stayed under 3s median latency and delivered stable high throughput, making it far more suitable for high-concurrency, database-heavy workloads.
+
+Doppar isn’t just a `new PHP framework` — it outperforms PHP's popular framework by nearly an order of magnitude in concurrency + DB tests.
 
 ### 1. Performance & Lightweight Architecture
 - **Minimal overhead**: Core stripped of third-party dependencies → lightning-fast performance with minimal bloat.
