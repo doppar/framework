@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
-use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Utilities\Attributes\Middleware;
 use App\Models\User;
@@ -27,7 +26,7 @@ class RegisterController extends Controller
     /**
      * Handle a user registration request.
      *
-     * @param $request
+     * @param Request $request
      * @return RedirectResponse
      */
     public function register(Request $request): RedirectResponse
