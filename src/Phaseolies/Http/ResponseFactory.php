@@ -28,28 +28,7 @@ class ResponseFactory extends Response
      */
     public function make($content = '', $status = 200, array $headers = []): Response
     {
-        $response = app(Response::class);
-        $response->setStatusCode($status);
-        if ($content instanceof Collection) {
-            $content = json_encode($content->toArray());
-            $response->headers->set('Content-Type', 'application/json');
-        } elseif (is_array($content)) {
-            $content = json_encode($content);
-            $response->headers->set('Content-Type', 'application/json');
-        } elseif ($content instanceof Model) {
-            $content = json_encode($content);
-            $response->headers->set('Content-Type', 'application/json');
-        } elseif ($content instanceof Builder) {
-            $content = json_encode($content);
-            $response->headers->set('Content-Type', 'application/json');
-        }
-
-        foreach ($headers as $name => $value) {
-            $response->headers->set($name, $value);
-        }
-        $response->setBody($content);
-
-        return $response;
+        return new JsonResponse($content, $status, $headers);
     }
 
     /**
