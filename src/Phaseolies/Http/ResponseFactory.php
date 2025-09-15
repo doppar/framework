@@ -2,14 +2,11 @@
 
 namespace Phaseolies\Http;
 
-use Phaseolies\Support\Collection;
 use Phaseolies\Http\Response\Stream\StreamedResponse;
 use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Http\Response\Stream\BinaryFileResponse;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Exceptions\StreamedResponseException;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
 
 class ResponseFactory extends Response
 {
