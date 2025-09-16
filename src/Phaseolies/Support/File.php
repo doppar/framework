@@ -7,7 +7,19 @@ use Phaseolies\Support\Storage\FileNotFoundException;
 use Phaseolies\Support\Facades\Storage;
 
 class File extends \SplFileInfo
-{
+{   
+    /**
+     * Represents an uploaded file in a normalized structure.
+     *
+     * Keys:
+     * - name      : (string) The original name of the uploaded file (basename only).
+     * - type      : (string) The MIME type of the file (from PHP's mime_content_type()).
+     * - tmp_name  : (string) The temporary path where the file is stored.
+     * - error     : (int)    The PHP file upload error code (UPLOAD_ERR_* constants).
+     * - size      : (int)    The size of the file in bytes.
+     *
+     * @var array<string, mixed>
+     */
     protected array $file;
 
     /**
@@ -57,7 +69,7 @@ class File extends \SplFileInfo
     /**
      * Gets the original name of the uploaded file.
      *
-     * @return string The name of the file.
+     * @return string
      */
     public function getClientOriginalName(): string
     {
@@ -67,7 +79,7 @@ class File extends \SplFileInfo
     /**
      * Gets the temporary path where the file is stored on the server.
      *
-     * @return string The temporary file path.
+     * @return string
      */
     public function getClientOriginalPath(): string
     {
@@ -77,7 +89,7 @@ class File extends \SplFileInfo
     /**
      * Gets the MIME type of the uploaded file.
      *
-     * @return string The MIME type of the file (e.g., "image/jpeg").
+     * @return string
      */
     public function getClientOriginalType(): string
     {
@@ -87,7 +99,7 @@ class File extends \SplFileInfo
     /**
      * Gets the size of the uploaded file in bytes.
      *
-     * @return int The file size in bytes.
+     * @return int
      */
     public function getClientOriginalSize(): int
     {
@@ -97,7 +109,7 @@ class File extends \SplFileInfo
     /**
      * Gets the extension of the original file.
      *
-     * @return string The file extension (e.g., "jpg", "png").
+     * @return string
      */
     public function getClientOriginalExtension(): string
     {
@@ -110,7 +122,7 @@ class File extends \SplFileInfo
     /**
      * Generate a unique name for an uploaded file.
      *
-     * @return string The unique filename.
+     * @return string
      */
     public function generateUniqueName(): string
     {
@@ -121,7 +133,7 @@ class File extends \SplFileInfo
      * Checks if the uploaded file is of a specific MIME type.
      *
      * @param string|array $mimeType The MIME type(s) to check against.
-     * @return bool True if the file's MIME type matches, false otherwise.
+     * @return bool
      */
     public function isMimeType(string|array $mimeType): bool
     {
@@ -137,7 +149,7 @@ class File extends \SplFileInfo
     /**
      * Check if the uploaded file is an image.
      *
-     * @return bool True if the file is an image, false otherwise.
+     * @return bool
      */
     public function isImage(): bool
     {
@@ -147,7 +159,7 @@ class File extends \SplFileInfo
     /**
      * Check if the uploaded file is a video.
      *
-     * @return bool True if the file is a video, false otherwise.
+     * @return bool
      */
     public function isVideo(): bool
     {
@@ -157,7 +169,7 @@ class File extends \SplFileInfo
     /**
      * Check if the uploaded file is a document.
      *
-     * @return bool True if the file is a document, false otherwise.
+     * @return bool
      */
     public function isDocument(): bool
     {
@@ -181,7 +193,7 @@ class File extends \SplFileInfo
      *
      * @param string $destination The destination path to move the file to.
      * @param string|null $fileName Optional filename to use. If null, the original filename is used.
-     * @return bool True if the file was moved successfully, false otherwise.
+     * @return bool
      */
     public function move(string $destination, ?string $fileName = null): bool
     {
@@ -202,13 +214,14 @@ class File extends \SplFileInfo
     /**
      * Get the file's mime type by using the fileinfo extension.
      *
-     * @return string|false The file's mime type or false on failure.
+     * @return string|false
      */
     public function getMimeTypeByFileInfo(): string|false
     {
         if (!$this->isValid()) {
             return false;
         }
+        
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime = finfo_file($finfo, $this->getClientOriginalPath());
         finfo_close($finfo);
@@ -219,7 +232,7 @@ class File extends \SplFileInfo
     /**
      * Gets the error code of the uploaded file.
      *
-     * @return int The error code of the file upload process.
+     * @return int
      */
     public function getError(): int
     {
@@ -229,7 +242,7 @@ class File extends \SplFileInfo
     /**
      * Checks if the file was uploaded successfully.
      *
-     * @return bool True if the file upload was successful, otherwise false.
+     * @return bool
      */
     public function isValid(): bool
     {
@@ -241,7 +254,7 @@ class File extends \SplFileInfo
      *
      * @param string $path
      * @param string $disk
-     * @return boolean
+     * @return bool
      */
     public function store(string $path, string $disk = 'public'): bool
     {
@@ -259,7 +272,7 @@ class File extends \SplFileInfo
      * @param string $fileName The filename to use
      * @param string $disk The storage disk to use (default: 'public')
      * @param callable|null $callback Optional validation callback
-     * @return string|false The stored file path or false on failure
+     * @return string|false
      */
     public function storeAs(string $path, string $fileName = '', string $disk = 'public', ?callable $callback = null): string|false
     {
@@ -298,7 +311,7 @@ class File extends \SplFileInfo
     /**
      * Checks if the file is readable.
      *
-     * @return bool True if the file is readable, false otherwise.
+     * @return bool
      */
     public function isReadable(): bool
     {
@@ -308,7 +321,7 @@ class File extends \SplFileInfo
     /**
      * Gets the last modification time of the uploaded file.
      *
-     * @return int|false The last modification time as a Unix timestamp, or false on error.
+     * @return int|false
      */
     public function getMTime(): int|false
     {
@@ -327,9 +340,6 @@ class File extends \SplFileInfo
     public function setAutoLastModified(): static
     {
         if ($mtime = $this->getMTime()) {
-            // Assuming you have a setLastModified method in your class or a related trait/helper.
-            // If not, you will need to implement it according to your application's
-            // request/response handling. Here's a placeholder example:
             $this->setLastModifiedHeader($mtime);
         }
 
@@ -338,9 +348,9 @@ class File extends \SplFileInfo
 
     /**
      * Placeholder method to set the Last-Modified header.
-     * Replace this with your actual implementation.
      *
-     * @param int $timestamp The Unix timestamp of the last modification time.
+     * @param int $timestamp
+     * @return void
      */
     protected function setLastModifiedHeader(int $timestamp): void
     {
