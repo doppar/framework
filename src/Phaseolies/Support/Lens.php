@@ -42,6 +42,7 @@ class Lens
 {
     /**
      * Singleton instance of the Lensable implementation
+     *
      * @var Lensable|null
      */
     private static ?Lensable $instance = null;
