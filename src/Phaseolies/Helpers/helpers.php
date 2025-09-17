@@ -758,3 +758,18 @@ function tap($value, $callback = null)
 
     return $value;
 }
+
+/**
+ * Clean previous buffer and die
+ * 
+ * @param mixed $values
+ * @return never
+ */
+function ddd(mixed ...$values): never
+{
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    dd(...$values);
+}
