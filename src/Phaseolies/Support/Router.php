@@ -412,9 +412,8 @@ class Router extends Kernel
     {
         $this->failFastOnBadRouteDefinition($callback);
 
-        // Handle wildcard routes
         if ($path === '*') {
-            $fullPath = '(.*)'; // Special pattern for catch-all
+            $fullPath = '(.*)';
         } else {
             $prefix = $this->getGroupPrefix();
             $path = ltrim($path, '/');
@@ -446,12 +445,8 @@ class Router extends Kernel
             $this->middleware($groupMiddleware);
         }
 
-        // After the route has been registered,
-        // check if the callback refers to a controller method.
-        // If so, process any middleware attributes associated with the controller.
-        if (is_array($callback)) {
-            $this->processControllerMiddleware($callback);
-        } elseif (is_string($callback)) {
+        // Process any middleware attributes associated with the controller.
+        if (is_array($callback) || is_string($callback)) {
             $this->processControllerMiddleware($callback);
         }
 
