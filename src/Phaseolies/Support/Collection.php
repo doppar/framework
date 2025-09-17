@@ -148,6 +148,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
     /**
      * Required for looping data
+     * 
      * @return Traversable
      */
     public function getIterator(): Traversable
@@ -222,9 +223,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function toArray(): array
     {
-        return array_map(function ($item) {
-            return $item instanceof Model ? $item->toArray() : $item;
-        }, $this->data);
+        return array_map(fn($item) => $item instanceof Model ? $item->toArray() : $item, $this->data);
     }
 
     /**
@@ -269,7 +268,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      * @param callable $callback
      * @return $this
      */
-    public function each(callable $callback)
+    public function each(callable $callback): self
     {
         foreach ($this->data as $key => $item) {
             if ($callback($item, $key) === false) {
