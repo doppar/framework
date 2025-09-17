@@ -187,36 +187,6 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
-     * Key the collection by the given key
-     *
-     * @param string $key
-     * @return array
-     */
-    public function keyBy(string $key): array
-    {
-        $result = [];
-        foreach ($this->data as $item) {
-            $result[$item->$key] = $item;
-        }
-        return $result;
-    }
-
-    /**
-     * Group the collection by the given key
-     *
-     * @param string $key
-     * @return array
-     */
-    public function groupBy(string $key): array
-    {
-        $result = [];
-        foreach ($this->data as $item) {
-            $result[$item->$key][] = $item;
-        }
-        return $result;
-    }
-
-    /**
      * Convert the collection to an array
      *
      * @return array
@@ -454,5 +424,148 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         }
 
         return $data;
+    }
+    
+    /**
+     * Map the collection and group the results by the given key.
+     *
+     * @param callable|string $groupBy Key to group by or callback that returns the group key
+     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @return array
+     */
+    public function mapAsGroup($groupBy, ?callable $mapCallback = null): array
+    {
+        $results = [];
+        
+        $groupResolver = $this->buildKeyResolver($groupBy);
+        
+        foreach ($this->data as $key => $item) {
+            $groupKey = $groupResolver($item, $key);
+
+            $mappedItem = $mapCallback ? $mapCallback($item, $key) : $item;
+
+            if ($groupKey !== null) {
+                $groupKey = (string) $groupKey;
+                $results[$groupKey][] = $mappedItem;
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Map the collection and use the given key as array keys.
+     *
+     * @param callable|string $keyBy Key to use as array key or callback that returns the key
+     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @return array
+     */
+    public function mapAsKey($keyBy, ?callable $mapCallback = null): array
+    {
+        $results = [];
+        
+        $keyResolver = $this->buildKeyResolver($keyBy);
+        
+        foreach ($this->data as $index => $item) {
+            $itemKey = $keyResolver($item, $index);
+
+            $mappedItem = $mapCallback ? $mapCallback($item, $index) : $item;
+
+            if ($itemKey !== null) {
+                $itemKey = (string) $itemKey;
+                $results[$itemKey] = $mappedItem;
+            }
+        }
+        
+        return $results;
+    }
+    
+    /**
+     * Build a key resolver from various input types.
+     *
+     * @param callable|string $key
+     * @return callable
+     */
+    protected function buildKeyResolver($key): callable
+    {
+        if (is_callable($key)) {
+            return $key;
+        }
+        
+        return function ($item) use ($key) {
+            if (is_array($item)) {
+                return $item[$key] ?? null;
+            } elseif (is_object($item)) {
+                return $item->{$key} ?? null;
+            }
+            
+            return null;
+        };
+    }
+    
+    /**
+     * Group the collection by the given key with mapping capability.
+     *
+     * @param callable|string $groupBy
+     * @param callable|null $mapCallback
+     * @return array
+     */
+    public function groupBy($groupBy, ?callable $mapCallback = null): array
+    {
+        return $this->mapAsGroup($groupBy, $mapCallback);
+    }
+    
+    /**
+     * Key the collection by the given key with mapping capability
+     *
+     * @param callable|string $keyBy
+     * @param callable|null $mapCallback
+     * @return array
+     */
+    public function keyBy($keyBy, ?callable $mapCallback = null): array
+    {
+        return $this->mapAsKey($keyBy, $mapCallback);
+    }
+
+    /**
+     * Transform each item in the collection into one or more key-value pairs grouped by keys.
+     *
+     * @param callable $callback
+     * @return array
+     */
+    public function mapToGroups(callable $callback): array
+    {
+        $results = [];
+        
+        foreach ($this->data as $key => $item) {
+            $result = $callback($item, $key);
+            
+            foreach ($result as $groupKey => $value) {
+                $results[$groupKey][] = $value;
+            }
+        }
+        
+        return $results;
+    }
+
+    /**
+     * Transform the collection into a flat associative array with custom keys.
+     *
+     * @param callable $callback
+     * @return array
+     */
+    public function mapWithKeys(callable $callback): array
+    {
+        $results = [];
+        
+        foreach ($this->data as $key => $item) {
+            $result = $callback($item, $key);
+            
+            foreach ($result as $mapKey => $mapValue) {
+                $results[$mapKey] = $mapValue;
+            }
+        }
+        
+        return $results;
     }
 }
