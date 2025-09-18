@@ -12,7 +12,7 @@ class CollectionTest extends TestCase
 {
     protected function makeTestModel($id, $name)
     {
-        return new class ($id, $name) extends Model {
+        return new class($id, $name) extends Model {
             public $id;
             public $name;
 
@@ -651,14 +651,14 @@ class CollectionTest extends TestCase
     public function testMapToGroups()
     {
         $modelClass = get_class($this->makeTestModel(0, ''));
-    
+
         $users = [
             ['id' => 1, 'name' => 'Alice', 'department' => 'IT', 'active' => true],
             ['id' => 2, 'name' => 'Bob', 'department' => 'HR', 'active' => false]
         ];
-    
+
         $collection = new Collection($modelClass, $users);
-    
+
         // Test multiple groups from single callback
         $result = $collection->mapToGroups(function ($user) {
             return [
@@ -667,7 +667,7 @@ class CollectionTest extends TestCase
                 'all_users' => $user['name']
             ];
         });
-    
+
         $expected = [
             'department_IT' => ['Alice'],
             'status_active' => ['Alice'],
@@ -675,14 +675,14 @@ class CollectionTest extends TestCase
             'department_HR' => ['Bob'],
             'status_inactive' => ['Bob']
         ];
-    
+
         $this->assertEquals($expected, $result);
-    
+
         // Test empty collection
         $emptyCollection = new Collection($modelClass, []);
         $this->assertEquals([], $emptyCollection->mapToGroups(fn($user) => []));
     }
-    
+
     public function testMapWithKeys()
     {
         $modelClass = get_class($this->makeTestModel(0, ""));
@@ -728,36 +728,36 @@ class CollectionTest extends TestCase
 
         $this->assertEquals(["same_key" => "overwritten"], $result2);
     }
-    
+
     public function testBuildKeyResolver()
     {
         $collection = new Collection(Model::class, []);
-        
+
         // Test string key resolver
         $resolver1 = $this->invokeMethod($collection, 'buildKeyResolver', ['name']);
         $arrayItem = ['name' => 'Alice', 'age' => 25];
         $objectItem = (object) ['name' => 'Bob', 'age' => 30];
-        
+
         $this->assertEquals('Alice', $resolver1($arrayItem));
         $this->assertEquals('Bob', $resolver1($objectItem));
         $this->assertNull($resolver1(['age' => 25]));
-        
+
         // Test callback resolver
         $callback = fn($item) => $item['name'] . '_' . $item['age'];
         $resolver2 = $this->invokeMethod($collection, 'buildKeyResolver', [$callback]);
-        
+
         $this->assertEquals('Alice_25', $resolver2($arrayItem));
-        
+
         // Test that callable is returned as-is
         $this->assertSame($callback, $this->invokeMethod($collection, 'buildKeyResolver', [$callback]));
     }
-    
+
     private function invokeMethod($object, $methodName, array $parameters = [])
     {
         $reflection = new \ReflectionClass(get_class($object));
         $method = $reflection->getMethod($methodName);
         $method->setAccessible(true);
-        
+
         return $method->invokeArgs($object, $parameters);
     }
 }

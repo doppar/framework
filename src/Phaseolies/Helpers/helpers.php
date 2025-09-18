@@ -761,7 +761,7 @@ function tap($value, $callback = null)
 
 /**
  * Clean previous buffer and die
- * 
+ *
  * @param mixed $values
  * @return never
  */
