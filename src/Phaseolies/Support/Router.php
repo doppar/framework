@@ -68,12 +68,15 @@ class Router extends Kernel
     ];
 
     /**
-     * @var array Stack of group attributes (middleware, prefix, etc.)
+     * Stack of group attributes (middleware, prefix, etc.)
+     *
+     * @var array
      */
     protected static array $groupStack = [];
 
     /**
      * Generate route cache key
+     *
      * @return string
      */
     protected function getCacheKey(): string
@@ -83,6 +86,7 @@ class Router extends Kernel
 
     /**
      * Cache all the routes
+     *
      * @return void
      */
     public function cacheRoutes(): void
@@ -94,11 +98,13 @@ class Router extends Kernel
         ];
 
         $cachePath = $this->getCachePath();
+
         file_put_contents($cachePath, '<?php return ' . var_export($cacheData, true) . ';');
     }
 
     /**
      * Get cacheable route excluding closure based route
+     *
      * @return array
      */
     protected function getCacheableRoutes(): array
@@ -120,6 +126,7 @@ class Router extends Kernel
 
     /**
      * Check is the route is cacheable or not
+     *
      * @param mixed $callback
      * @return bool
      */
@@ -145,6 +152,7 @@ class Router extends Kernel
 
     /**
      * Modified loadCachedRoutes to handle the new cache structure
+     *
      * @return bool
      */
     public function loadCachedRoutes(): bool
@@ -178,6 +186,7 @@ class Router extends Kernel
 
     /**
      * Get the route cache path
+     *
      * @return string
      */
     protected function getCachePath(): string
@@ -187,6 +196,7 @@ class Router extends Kernel
 
     /**
      * Determines whether route caching should be enabled based on environment configuration.
+     *
      * @return bool
      */
     public function shouldCacheRoutes(): bool
@@ -196,9 +206,6 @@ class Router extends Kernel
 
     /**
      * Clears all cached route files from the framework cache directory.
-     *
-     * Searches for all route cache files (matching the pattern 'routes_*.php')
-     * in the framework cache directory and attempts to delete each one.
      *
      * @return bool
      */
