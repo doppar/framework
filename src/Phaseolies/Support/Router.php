@@ -42,11 +42,15 @@ class Router extends Kernel
     public static array $namedRoutes = [];
 
     /**
-     * @var string|null The path of the current route being defined.
+     * The path of the current route being defined.
+     *
+     * @var string|null
      */
     protected ?string $currentRoutePath = null;
 
     /**
+     * The current requested method
+     *
      * @var string
      */
     protected string $currentRequestMethod;
@@ -322,7 +326,9 @@ class Router extends Kernel
      */
     public function any($path, $callback): self
     {
-        $method = request()->_method ?? request()->getMethod();
+        $request = app('request');
+
+        $method = $request->_method ?? $request->getMethod();
 
         return $this->addRoute($method, $path, $callback);
     }
@@ -459,18 +465,10 @@ class Router extends Kernel
     /**
      * Validates a route callback and throws exceptions for invalid definitions.
      *
-     * Performs early validation of route callbacks to fail fast during route registration
-     * rather than at runtime. Checks for:
-     * - Callable functions/closures
-     * - Valid controller method syntax [Controller::class, 'method']
-     * - Invokable controllers (must have __invoke method)
-     *
      * @param mixed $callback The route callback to validate
-     *
      * @throws \BadMethodCallException When array-style controller method doesn't exist
      * @throws \LogicException When invokable controller lacks __invoke method
      * @throws \InvalidArgumentException For all other invalid callback formats
-     *
      * @return void
      */
     public function failFastOnBadRouteDefinition(mixed $callback): void
@@ -819,27 +817,20 @@ class Router extends Kernel
         $reflector = new \ReflectionClass($controllerClass);
 
         // Process middleware defined at the class level
-        // if any are present
         $classMiddlewareAttributes = $reflector->getAttributes(Middleware::class);
         $this->processAttributesMiddlewares($classMiddlewareAttributes);
 
         // Process middleware defined at the method level
-        // if any are present
         if ($reflector->hasMethod($actionMethod)) {
             $method = $reflector->getMethod($actionMethod);
             $methodMiddlewareAttributes = $method->getAttributes(Middleware::class);
             $this->processAttributesMiddlewares($methodMiddlewareAttributes);
-
-            // Process @RateLimit docblock annotations
             $this->processRateLimitAnnotation($method);
         }
     }
 
     /**
      * Resolve form request class
-     *
-     * This method handles the resolution and initialization of form request validation classes.
-     * It ensures the class is properly bound in the container and triggers validation if needed.
      *
      * @param Application $app The application instance
      * @param string $typeName The class name to resolve
@@ -866,9 +857,7 @@ class Router extends Kernel
 
     /**
      * Converts mixed data into a JSON response.
-     * - Objects (any class) are JSON-encoded.
-     * - Arrays, Collections, Models, and Builders are JSON-encoded.
-     * - Non-JSON types (strings, numbers, etc.) are returned as-is.
+     *
      * @param $request
      * @param $result
      * @param mixed $response
@@ -1128,17 +1117,15 @@ class Router extends Kernel
      * Resolves constructor dependencies for a controller.
      *
      * @param \ReflectionClass $reflector The reflection class of the controller.
-     * @param $app The Application instance for resolving dependencies.
+     * @param Application $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved constructor dependencies.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveConstructorDependencies(
-        \ReflectionClass $reflector,
-        $app,
-        array $routeParams
-    ): array {
+    private function resolveConstructorDependencies(\ReflectionClass $reflector, Application $app, array $routeParams): array
+    {
         $constructor = $reflector->getConstructor();
+
         if (!$constructor) {
             return [];
         }
@@ -1151,18 +1138,14 @@ class Router extends Kernel
      *
      * @param \ReflectionClass $reflector The reflection class of the controller.
      * @param string $actionMethod The name of the action method.
-     * @param $app The Application instance for resolving dependencies.
+     * @param Application $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved action dependencies.
      * @throws \ReflectionException If there is an issue with reflection.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveActionDependencies(
-        \ReflectionClass $reflector,
-        string $actionMethod,
-        $app,
-        array $routeParams
-    ): array {
+    private function resolveActionDependencies(\ReflectionClass $reflector, string $actionMethod, Application $app, array $routeParams): array
+    {
         $method = $reflector->getMethod($actionMethod);
         $parameters = $method->getParameters();
 
@@ -1187,12 +1170,12 @@ class Router extends Kernel
      * Resolves parameters for a method or constructor.
      *
      * @param array $parameters The parameters to resolve.
-     * @param $app The Application instance for resolving dependencies.
+     * @param Application $app The Application instance for resolving dependencies.
      * @param array $routeParams The route parameters.
      * @return array The resolved parameters.
      * @throws \Exception If dependency resolution fails.
      */
-    private function resolveParameters(array $parameters, $app, array $routeParams): array
+    private function resolveParameters(array $parameters, Application $app, array $routeParams): array
     {
         $dependencies = [];
         foreach ($parameters as $parameter) {
