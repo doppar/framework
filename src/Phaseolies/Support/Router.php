@@ -1062,15 +1062,10 @@ class Router extends Kernel
         // Apply middleware to current route
         if (!empty($middlewareToApply) && $this->currentRoutePath) {
             $method = $this->getCurrentRequestMethod();
-            $currentMiddlewares = self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [];
-            $newMiddlewares = array_diff($middlewareToApply, $currentMiddlewares);
-
-            if (!empty($newMiddlewares)) {
-                self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge(
-                    $currentMiddlewares,
-                    $newMiddlewares
-                );
-            }
+            self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge(
+                self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [],
+                $middlewareToApply
+            );
         }
     }
 
