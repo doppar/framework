@@ -75,13 +75,29 @@ class Router extends Kernel
     protected static array $groupStack = [];
 
     /**
-     * Generate route cache key
+     * Cache file path for routes
      *
-     * @return string
+     * @var string
      */
-    protected function getCacheKey(): string
+    protected static string $cachePath;
+
+    /**
+     * Flag to track cache loading state
+     *
+     * @var bool
+     */
+    protected static bool $cacheLoaded = false;
+
+    /**
+     * Initialize the cache path
+     *
+     * @return void
+     */
+    protected function initializeCachePath(): void
     {
-        return 'route_cache_' . md5(json_encode(self::$routes));
+        if (!isset(static::$cachePath)) {
+            static::$cachePath = storage_path('framework/cache/routes.php');
+        }
     }
 
     /**
@@ -91,15 +107,16 @@ class Router extends Kernel
      */
     public function cacheRoutes(): void
     {
+        $this->initializeCachePath();
+
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
             'namedRoutes' => self::$namedRoutes,
-            'routeMiddlewares' => self::$routeMiddlewares
+            'routeMiddlewares' => self::$routeMiddlewares,
+            'timestamp' => time()
         ];
 
-        $cachePath = $this->getCachePath();
-
-        file_put_contents($cachePath, '<?php return ' . var_export($cacheData, true) . ';');
+        file_put_contents(static::$cachePath, '<?php return ' . var_export($cacheData, true) . ';');
     }
 
     /**
@@ -115,8 +132,6 @@ class Router extends Kernel
             foreach ($routes as $path => $callback) {
                 if ($this->isCacheableRoute($callback)) {
                     $cacheableRoutes[$method][$path] = $callback;
-                } else {
-                    $cacheableRoutes[$method][$path] = 'closure';
                 }
             }
         }
@@ -142,7 +157,7 @@ class Router extends Kernel
             return true;
         }
 
-        if (is_string($callback) && class_exists($callback)) {
+        if (is_string($callback)) {
             $reflection = new \ReflectionClass($callback);
             return $reflection->hasMethod('__invoke');
         }
@@ -157,41 +172,25 @@ class Router extends Kernel
      */
     public function loadCachedRoutes(): bool
     {
-        $files = glob(storage_path('framework/cache/routes_*.php'));
+        $this->initializeCachePath();
 
-        if (empty($files)) {
+        if (!file_exists(static::$cachePath)) {
             return false;
         }
 
-        $cachePath = end($files);
+        $cached = require static::$cachePath;
 
-        if (file_exists($cachePath)) {
-            $cached = require $cachePath;
-            self::$routes = $cached['routes'] ?? [];
-            self::$namedRoutes = $cached['namedRoutes'] ?? [];
-            self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
-            $uri = strtok(request()->uri(), '?');
-            $method = strtoupper(request()->method());
-            $requestedPath = $cached['routes'][$method][$uri] ?? '';
-
-            if ($requestedPath === 'closure') {
-                return false;
-            }
-
-            return true;
+        if (!isset($cached['routes']) || !isset($cached['namedRoutes']) || !isset($cached['routeMiddlewares'])) {
+            return false;
         }
 
-        return false;
-    }
+        self::$routes = $cached['routes'] ?? [];
+        self::$namedRoutes = $cached['namedRoutes'] ?? [];
+        self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
 
-    /**
-     * Get the route cache path
-     *
-     * @return string
-     */
-    protected function getCachePath(): string
-    {
-        return storage_path('framework/cache/routes_' . $this->getCacheKey() . '.php');
+        static::$cacheLoaded = true;
+
+        return true;
     }
 
     /**
@@ -211,16 +210,13 @@ class Router extends Kernel
      */
     public function clearRouteCache(): bool
     {
-        $files = glob(storage_path('framework/cache/routes_*.php'));
-        $success = true;
+        $this->initializeCachePath();
 
-        foreach ($files as $file) {
-            if (!@unlink($file)) {
-                $success = false;
-            }
+        if (file_exists(static::$cachePath)) {
+            return @unlink(static::$cachePath);
         }
 
-        return $success;
+        return true;
     }
 
     /**
@@ -446,15 +442,15 @@ class Router extends Kernel
 
         $this->currentRequestMethod = $method;
 
-        // Apply group middleware if any
-        $groupMiddleware = $this->getGroupMiddleware();
-        if (!empty($groupMiddleware)) {
-            $this->middleware($groupMiddleware);
-        }
+        if (!static::$cacheLoaded) {
+            $groupMiddleware = $this->getGroupMiddleware();
+            if (!empty($groupMiddleware)) {
+                $this->middleware($groupMiddleware);
+            }
 
-        // Process any middleware attributes associated with the controller.
-        if (is_array($callback) || is_string($callback)) {
-            $this->processControllerMiddleware($callback);
+            if (is_array($callback) || is_string($callback)) {
+                $this->processControllerMiddleware($callback);
+            }
         }
 
         return $this;
@@ -735,8 +731,14 @@ class Router extends Kernel
      */
     public function resolve(Application $app, Request $request): Response
     {
-        if (!$callback = $this->getCallback($request)) {
-            abort(404, "Route [" . $request->getRequestUri() . "] not found");
+        $callback = $this->getCallback($request);
+
+        if (!$callback) {
+            $callback = $this->getOriginalClosure($request);
+
+            if (!$callback) {
+                abort(404, "Route [" . $request->getRequestUri() . "] not found");
+            }
         }
 
         if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
@@ -758,6 +760,45 @@ class Router extends Kernel
         $response = $this->handle($request, $handler);
 
         return $response;
+    }
+
+    /**
+     * Get the original closure for a route when loading from cache
+     *
+     * @param Request $request
+     * @return mixed
+     */
+    protected function getOriginalClosure(Request $request): mixed
+    {
+        $cachedRoutes = self::$routes;
+
+        self::$routes = [];
+        $this->loadRoutesFromFiles();
+
+        $originalCallback = $this->getCallback($request);
+
+        self::$routes = $cachedRoutes;
+
+        return $originalCallback;
+    }
+
+    /**
+     * Load routes from route files (uncached)
+     *
+     * @return void
+     */
+    protected function loadRoutesFromFiles(): void
+    {
+        $routeFiles = [
+            base_path('routes/web.php'),
+            base_path('routes/api.php'),
+        ];
+
+        foreach ($routeFiles as $file) {
+            if (file_exists($file)) {
+                require $file;
+            }
+        }
     }
 
     /**
@@ -1032,10 +1073,15 @@ class Router extends Kernel
         // Apply middleware to current route
         if (!empty($middlewareToApply) && $this->currentRoutePath) {
             $method = $this->getCurrentRequestMethod();
-            self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge(
-                self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [],
-                $middlewareToApply
-            );
+            $currentMiddlewares = self::$routeMiddlewares[$method][$this->currentRoutePath] ?? [];
+            $newMiddlewares = array_diff($middlewareToApply, $currentMiddlewares);
+
+            if (!empty($newMiddlewares)) {
+                self::$routeMiddlewares[$method][$this->currentRoutePath] = array_merge(
+                    $currentMiddlewares,
+                    $newMiddlewares
+                );
+            }
         }
     }
 
