@@ -546,8 +546,8 @@ trait InteractsWithModelQueryProcessing
      */
     public static function __callStatic($method, $parameters)
     {
-        if (method_exists(static::class, $method)) {
-            return (new static)->$method(...$parameters);
+        if (method_exists(static::class, $bindMethod = '__' . $method)) {
+            return (new static)->$bindMethod(static::query(), ...$parameters);
         }
 
         return static::query()->$method(...$parameters);

@@ -2605,8 +2605,8 @@ class Builder
      */
     public function __call($method, $parameters)
     {
-        if (method_exists($this->getModel(), $method)) {
-            return $this->callScope($method, $parameters);
+        if (method_exists($this->modelClass, $bindMethod = '__' . ucfirst($method))) {
+            return $this->adjustBindQuery($bindMethod, $parameters);
         }
 
         if (str_starts_with($method, 'where')) {
@@ -2623,13 +2623,13 @@ class Builder
     /**
      * Apply the given anonymous function on the current builder instance.
      *
-     * @param string $scope
+     * @param string $bind
      * @param array $parameters
      * @return mixed
      */
-    protected function callScope($scope, $parameters)
+    protected function adjustBindQuery($bind, $parameters)
     {
-        return $this->getModel()->{ucfirst($scope)}(...array_merge([$this], $parameters));
+        return $this->getModel()->$bind($this, ...$parameters);
     }
 
     /**
