@@ -37,7 +37,7 @@ class FileSystem
     public function put(string $path, File $file, ?string $fileName = null): bool
     {
         $fileName = $fileName ?? $this->getFileName($file);
-        $stream = fopen($file->getClientOriginalPath(), 'rb'); // Read mode (binary)
+        $stream = fopen($file->getClientOriginalPath(), 'rb');
 
         if (is_resource($stream)) {
             $this->writeStream($path, $fileName, $stream);
@@ -65,8 +65,7 @@ class FileSystem
     }
 
     /**
-     * Writes data from a stream to a file at the specified path.
-     * If the stream size is greater than 50 MB, it chunks the data into 5 MB pieces for efficient writing.
+     * Writes data from a stream to a file at the specified path
      *
      * @param string $path The directory path where the file will be saved.
      * @param string $name The name of the file to be created.
@@ -112,7 +111,7 @@ class FileSystem
 
     /**
      * Path is already exist or not
-     * If not exists this path create this path in file sytem
+     *
      * @param string $path
      * @return string
      */
@@ -121,8 +120,7 @@ class FileSystem
         $realPath = $this->storeageBasePath();
 
         if (! $this->isDirectory($realPath . '/' . trim($path, '/'))) {
-
-            $this->makeDirectory($realPath . '/' . $path, 0777, true);
+            $this->makeDirectory($realPath . '/' . $path, 0755, true);
         }
         return $path;
     }
@@ -162,7 +160,7 @@ class FileSystem
     /**
      * Determine if the given path is a file.
      *
-     * @param  string  $file
+     * @param string $file
      * @return bool
      */
     public function isFile($file)
@@ -173,13 +171,13 @@ class FileSystem
     /**
      * Create a directory.
      *
-     * @param  string  $path
-     * @param  int  $mode
-     * @param  bool  $recursive
-     * @param  bool  $force
+     * @param string $path
+     * @param int $mode
+     * @param bool $recursive
+     * @param bool $force
      * @return bool
      */
-    public function makeDirectory(string $path, $mode = 0755, $recursive = false, $force = false)
+    public function makeDirectory(string $path, $mode = 0755, bool $recursive = false, bool $force = false): bool
     {
         if ($force) {
             return @mkdir($path, $mode, $recursive);

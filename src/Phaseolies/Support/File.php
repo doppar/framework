@@ -2,12 +2,11 @@
 
 namespace Phaseolies\Support;
 
-use Phaseolies\Support\Storage\PublicFileSystem;
 use Phaseolies\Support\Storage\FileNotFoundException;
 use Phaseolies\Support\Facades\Storage;
 
 class File extends \SplFileInfo
-{   
+{
     /**
      * Represents an uploaded file in a normalized structure.
      *
@@ -221,7 +220,7 @@ class File extends \SplFileInfo
         if (!$this->isValid()) {
             return false;
         }
-        
+
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime = finfo_file($finfo, $this->getClientOriginalPath());
         finfo_close($finfo);
@@ -298,7 +297,7 @@ class File extends \SplFileInfo
 
         $directory = dirname($fullPath);
         if (!is_dir($directory)) {
-            mkdir($directory, 0777, true);
+            mkdir($directory, 0755, true);
         }
 
         if (move_uploaded_file($this->getClientOriginalPath(), $fullPath)) {
