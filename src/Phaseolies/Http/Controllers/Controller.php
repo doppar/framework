@@ -83,7 +83,7 @@ class Controller extends View
         // Initialize arrays for blocks, block stacks, and loop stacks
         $this->loopStacks = [];
 
-        $this->jitEnabled = env('BLADE_JIT_ENABLED', true);
+        $this->jitEnabled = env('BLADE_JIT_ENABLED', 'true');
         $this->optimizationLevel = env('BLADE_OPTIMIZATION_LEVEL', 2);
         $this->setOptimizationLevel($this->optimizationLevel);
     }
@@ -221,8 +221,7 @@ class Controller extends View
             file_put_contents($cache, $content);
         }
 
-        // Always apply JIT optimizations if enabled
-        if ($this->jitEnabled) {
+        if ($this->jitEnabled === 'true') {
             $cache = $this->applyJitOptimizations($cache, $viewKey, $needsRecompile);
         }
 

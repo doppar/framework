@@ -28,7 +28,7 @@ class RouteCacheCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $cacheDir = base_path('storage/framework/cache');
 
             if (!is_dir($cacheDir)) {
@@ -38,6 +38,7 @@ class RouteCacheCommand extends Command
             }
 
             $this->line('<fg=yellow>⏳ Caching routes...</>');
+            $this->newLine();
             Route::cacheRoutes();
 
             $this->displaySuccess('Routes cached successfully');
