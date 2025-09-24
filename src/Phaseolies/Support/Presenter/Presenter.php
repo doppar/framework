@@ -106,6 +106,10 @@ abstract class Presenter implements JsonSerializable
     {
         $data = $this->toArray();
 
+        foreach ($data as $key => $value) {
+            $data[$key] = $this->processValue($value);
+        }
+
         if (!empty($this->only)) {
             $data = array_intersect_key($data, array_flip($this->only));
         }
@@ -117,6 +121,37 @@ abstract class Presenter implements JsonSerializable
         return $data;
     }
 
+
+    /**
+     * Process individual values to handle collections, builders, etc.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function processValue($value)
+    {
+        if ($value instanceof \Phaseolies\Support\Collection) {
+            return $value->toArray();
+        }
+
+        if ($value instanceof \Phaseolies\Database\Eloquent\Builder) {
+            return $value->get()->toArray();
+        }
+
+        if ($value instanceof \Phaseolies\Database\Eloquent\Model) {
+            return $value->toArray();
+        }
+
+        if ($value instanceof self || $value instanceof \JsonSerializable) {
+            return $value->jsonSerialize();
+        }
+
+        if ($value instanceof \stdClass || $value instanceof \ArrayObject) {
+            return (array) $value;
+        }
+
+        return $value;
+    }
 
     /**
      * Return the default value of the given value
