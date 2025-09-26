@@ -212,11 +212,13 @@ abstract class Presenter implements JsonSerializable
      * Create a PresenterBundle from a single model
      *
      * @param Model $model
-     * @return PresenterBundle
+     * @return mixed
      */
-    public static function make(Model $model): PresenterBundle
+    public static function make(Model $model)
     {
-        return static::bundle([$model]);
+        $presenter = new static($model);
+
+        return $presenter->jsonSerialize();
     }
 
     /**
