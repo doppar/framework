@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Support\Presenter;
 
+use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Eloquent\Builder;
 use JsonSerializable;
 
 abstract class Presenter implements JsonSerializable
@@ -204,5 +206,39 @@ abstract class Presenter implements JsonSerializable
     protected function unless(bool $condition, $value, $default = null)
     {
         return $this->when(!$condition, $value, $default);
+    }
+
+    /**
+     * Create a PresenterBundle from a single model
+     *
+     * @param Model $model
+     * @return PresenterBundle
+     */
+    public static function make(Model $model): PresenterBundle
+    {
+        return static::bundle([$model]);
+    }
+
+    /**
+     * Create a PresenterBundle for a collection using this presenter
+     *
+     * @param mixed $collection
+     * @return PresenterBundle
+     */
+    public static function bundle($collection): PresenterBundle
+    {
+        return new PresenterBundle($collection, static::class);
+    }
+
+    /**
+     * Create a PresenterBundle from a paginated query
+     *
+     * @param Builder $query
+     * @param int $perPage
+     * @return array
+     */
+    public static function paginate(Builder $query, int $perPage = 15): array
+    {
+        return static::bundle($query->paginate($perPage))->paginate();
     }
 }

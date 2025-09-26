@@ -284,7 +284,7 @@ class PresenterBundle implements JsonSerializable
      *
      * @return array
      */
-    private function paginate(): array
+    public function paginate(): array
     {
         $data = $this->jsonSerialize();
 
