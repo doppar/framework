@@ -172,7 +172,7 @@ trait InteractsWithModelQueryProcessing
     public function toJson($options = 0): string
     {
         try {
-            $json = json_encode($this->jsonSerialize(), $options | JSON_THROW_ON_ERROR);
+            $json = json_encode($this->toArray(), $options | JSON_THROW_ON_ERROR);
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage());
         }

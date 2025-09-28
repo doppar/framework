@@ -425,7 +425,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $data;
     }
-    
+
     /**
      * Map the collection and group the results by the given key.
      *
@@ -436,9 +436,9 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function mapAsGroup($groupBy, ?callable $mapCallback = null): array
     {
         $results = [];
-        
+
         $groupResolver = $this->buildKeyResolver($groupBy);
-        
+
         foreach ($this->data as $key => $item) {
             $groupKey = $groupResolver($item, $key);
 
@@ -449,10 +449,10 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
                 $results[$groupKey][] = $mappedItem;
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * Map the collection and use the given key as array keys.
      *
@@ -463,9 +463,9 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function mapAsKey($keyBy, ?callable $mapCallback = null): array
     {
         $results = [];
-        
+
         $keyResolver = $this->buildKeyResolver($keyBy);
-        
+
         foreach ($this->data as $index => $item) {
             $itemKey = $keyResolver($item, $index);
 
@@ -476,10 +476,10 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
                 $results[$itemKey] = $mappedItem;
             }
         }
-        
+
         return $results;
     }
-    
+
     /**
      * Build a key resolver from various input types.
      *
@@ -491,18 +491,18 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         if (is_callable($key)) {
             return $key;
         }
-        
+
         return function ($item) use ($key) {
             if (is_array($item)) {
                 return $item[$key] ?? null;
             } elseif (is_object($item)) {
                 return $item->{$key} ?? null;
             }
-            
+
             return null;
         };
     }
-    
+
     /**
      * Group the collection by the given key with mapping capability.
      *
@@ -514,7 +514,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         return $this->mapAsGroup($groupBy, $mapCallback);
     }
-    
+
     /**
      * Key the collection by the given key with mapping capability
      *
@@ -536,15 +536,15 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function mapToGroups(callable $callback): array
     {
         $results = [];
-        
+
         foreach ($this->data as $key => $item) {
             $result = $callback($item, $key);
-            
+
             foreach ($result as $groupKey => $value) {
                 $results[$groupKey][] = $value;
             }
         }
-        
+
         return $results;
     }
 
@@ -557,15 +557,26 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function mapWithKeys(callable $callback): array
     {
         $results = [];
-        
+
         foreach ($this->data as $key => $item) {
             $result = $callback($item, $key);
-            
+
             foreach ($result as $mapKey => $mapValue) {
                 $results[$mapKey] = $mapValue;
             }
         }
-        
+
         return $results;
+    }
+
+    /**
+     * Convert the collection to JSON.
+     *
+     * @param int $options JSON encoding options
+     * @return string
+     */
+    public function toJson(int $options = 0): string
+    {
+        return json_encode($this->toArray(), $options);
     }
 }
