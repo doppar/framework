@@ -8,12 +8,12 @@ trait InteractsWithTimeframe
      * Add a where date clause to the query.
      *
      * @param string $column
-     * @param string $operator
+     * @param mixed $operator
      * @param string|null $value
      * @param string $boolean
      * @return self
      */
-    public function whereDate(string $column, string $operator, ?string $value = null, string $boolean = 'AND'): self
+    public function whereDate(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -31,15 +31,34 @@ trait InteractsWithTimeframe
     }
 
     /**
-     * Add a where month clause to the query.
+     * Add an OR where date clause to the query.
      *
      * @param string $column
-     * @param string $operator
+     * @param mixed $operator
      * @param string|null $value
      * @param string $boolean
      * @return self
      */
-    public function whereMonth(string $column, string $operator, ?string $value = null, string $boolean = 'AND'): self
+    public function orWhereDate(string $column, $operator, ?string $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        return $this->whereDate($column, $operator, $value, 'OR');
+    }
+
+    /**
+     * Add a where month clause to the query.
+     *
+     * @param string $column
+     * @param mixed $operator
+     * @param string|null $value
+     * @param string $boolean
+     * @return self
+     */
+    public function whereMonth(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -57,15 +76,33 @@ trait InteractsWithTimeframe
     }
 
     /**
+     * Add an OR where month clause to the query.
+     *
+     * @param string $column
+     * @param mixed $operator
+     * @param string|null $value
+     * @return self
+     */
+    public function orWhereMonth(string $column, $operator, ?string $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        return $this->whereMonth($column, $operator, $value, 'OR');
+    }
+
+    /**
      * Add a where year clause to the query.
      *
      * @param string $column
-     * @param string $operator
+     * @param mixed $operator
      * @param string|null $value
      * @param string $boolean
      * @return self
      */
-    public function whereYear(string $column, string $operator, ?string $value = null, string $boolean = 'AND'): self
+    public function whereYear(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -83,15 +120,33 @@ trait InteractsWithTimeframe
     }
 
     /**
+     * Add an OR where year clause to the query.
+     *
+     * @param string $column
+     * @param mixed $operator
+     * @param string|null $value
+     * @return self
+     */
+    public function orWhereYear(string $column, $operator, ?string $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        return $this->whereYear($column, $operator, $value, 'OR');
+    }
+
+    /**
      * Add a where day clause to the query.
      *
      * @param string $column
-     * @param string $operator
+     * @param mixed $operator
      * @param string|null $value
      * @param string $boolean
      * @return self
      */
-    public function whereDay(string $column, string $operator, ?string $value = null, string $boolean = 'AND'): self
+    public function whereDay(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -109,15 +164,33 @@ trait InteractsWithTimeframe
     }
 
     /**
+     * Add an OR where day clause to the query.
+     *
+     * @param string $column
+     * @param mixed $operator
+     * @param string|null $value
+     * @return self
+     */
+    public function orWhereDay(string $column, $operator, ?string $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        return $this->whereDay($column, $operator, $value, 'OR');
+    }
+
+    /**
      * Add a where time clause to the query.
      *
      * @param string $column
-     * @param string $operator
+     * @param mixed $operator
      * @param string|null $value
      * @param string $boolean
      * @return self
      */
-    public function whereTime(string $column, string $operator, ?string $value = null, string $boolean = 'AND'): self
+    public function whereTime(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -132,6 +205,24 @@ trait InteractsWithTimeframe
         ];
 
         return $this;
+    }
+
+    /**
+     * Add an OR where time clause to the query.
+     *
+     * @param string $column
+     * @param mixed $operator
+     * @param string|null $value
+     * @return self
+     */
+    public function orWhereTime(string $column, $operator, ?string $value = null): self
+    {
+        if (func_num_args() === 2) {
+            $value = $operator;
+            $operator = '=';
+        }
+
+        return $this->whereTime($column, $operator, $value, 'OR');
     }
 
     /**
@@ -154,6 +245,17 @@ trait InteractsWithTimeframe
     public function whereYesterday(string $column): self
     {
         return $this->whereDate($column, now()->subDay()->toDateString());
+    }
+
+    /**
+     * Filter records for yesterday's date with OR condition.
+     *
+     * @param string $column
+     * @return self
+     */
+    public function orWhereYesterday(string $column): self
+    {
+        return $this->orWhereDate($column, now()->subDay()->toDateString());
     }
 
     /**
