@@ -73,7 +73,7 @@ class Schema
      */
     public function hasTable(string $table): bool
     {
-        return DB::connection($this->connection)->tableExists($table);
+        return (bool) DB::connection($this->connection)->tableExists($table);
     }
 
     /**
