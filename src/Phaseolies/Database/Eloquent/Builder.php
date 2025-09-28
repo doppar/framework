@@ -173,7 +173,6 @@ class Builder
      */
     public function where(string $field, $operator, $value = null): self
     {
-        // If only 2 arguments are passed, assume operator is '='
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -202,7 +201,6 @@ class Builder
      */
     public function orWhere(string $field, $operator, $value = null): self
     {
-        // If only 2 arguments are passed, assume operator is '='
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
