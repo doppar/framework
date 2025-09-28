@@ -1001,6 +1001,446 @@ class BuilderTest extends TestCase
             $this->assertInstanceOf(Builder::class, $result, "Method {$method} should return Builder instance");
         }
     }
+
+    public function testToDictionary()
+    {
+        $mockData = [
+            ['id' => 1, 'name' => 'John'],
+            ['id' => 2, 'name' => 'Jane']
+        ];
+
+        $this->pdoStatement->method('fetch')
+            ->willReturnOnConsecutiveCalls($mockData[0], $mockData[1], false);
+
+        $this->pdoStatement->method('execute')
+            ->willReturn(true);
+
+        $dictionary = $this->builder->toDictionary('id', 'name');
+
+        $this->assertInstanceOf(Collection::class, $dictionary);
+        $this->assertEquals(['1' => 'John', '2' => 'Jane'], $dictionary->toArray());
+    }
+
+    public function testToDiff()
+    {
+        $mockData = [
+            ['difference' => 5],
+            ['difference' => -2]
+        ];
+
+        $this->pdoStatement->method('fetch')
+            ->willReturnOnConsecutiveCalls($mockData[0], $mockData[1], false);
+
+        $this->pdoStatement->method('execute')
+            ->willReturn(true);
+
+        $result = $this->builder->toDiff('revenue', 'expenses', 'difference');
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertCount(2, $result);
+        $this->assertEquals(5, $result[0]->difference);
+        $this->assertEquals(-2, $result[1]->difference);
+    }
+
+    public function testToRatio()
+    {
+        $mockData = [
+            ['ratio' => 2.5],
+            ['ratio' => 0.75]
+        ];
+
+        $this->pdoStatement->method('fetch')
+            ->willReturnOnConsecutiveCalls($mockData[0], $mockData[1], false);
+
+        $this->pdoStatement->method('execute')
+            ->willReturn(true);
+
+        $result = $this->builder->toRatio('numerator', 'denominator', 'ratio', 2);
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertCount(2, $result);
+        $this->assertEquals(2.5, $result[0]->ratio);
+        $this->assertEquals(0.75, $result[1]->ratio);
+    }
+
+    public function testRandom()
+    {
+        $builder = $this->builder->random(5);
+
+        $this->assertInstanceOf(Builder::class, $builder);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('ORDER BY RAND()', $sql);
+        $this->assertStringContainsString('LIMIT 5', $sql);
+    }
+
+    public function testJsonHasWithBooleanTrue()
+    {
+        $builder = $this->builder->jsonHas('settings', '$.notifications.email', true);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_CONTAINS(`settings`, CAST(? AS JSON), \'$.notifications.email\')', $sql);
+    }
+
+    public function testJsonHasWithBooleanFalse()
+    {
+        $builder = $this->builder->jsonHas('settings', '$.notifications.sms', false);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_CONTAINS(`settings`, CAST(? AS JSON), \'$.notifications.sms\')', $sql);
+    }
+
+    public function testJsonHasWithStringValue()
+    {
+        $builder = $this->builder->jsonHas('tags', '$.categories', 'premium');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_CONTAINS(`tags`, CAST(? AS JSON), \'$.categories\')', $sql);
+    }
+
+    public function testJsonHasWithArrayValue()
+    {
+        $builder = $this->builder->jsonHas('data', '$.items', ['active', 'featured']);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_CONTAINS(`data`, CAST(? AS JSON), \'$.items\')', $sql);
+    }
+
+    public function testJsonEqualWithBooleanTrue()
+    {
+        $builder = $this->builder->jsonEqual('settings', '$.dark_mode', true);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`settings`, ?)) = ?', $sql);
+    }
+
+    public function testJsonEqualWithBooleanFalse()
+    {
+        $builder = $this->builder->jsonEqual('settings', '$.dark_mode', false);
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`settings`, ?)) = ?', $sql);
+    }
+
+    public function testJsonEqualWithStringValue()
+    {
+        $builder = $this->builder->jsonEqual('profile', '$.theme', 'dark');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`profile`, ?)) = ?', $sql);
+    }
+
+    public function testJsonEqualWithCustomOperator()
+    {
+        $builder = $this->builder->jsonEqual('data', '$.score', 100, '>=');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`data`, ?)) >= ?', $sql);
+    }
+
+    public function testJsonEqualWithOrBoolean()
+    {
+        $builder = $this->builder->jsonEqual('settings', '$.active', true, '=', 'OR');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`settings`, ?)) = ?', $sql);
+    }
+
+    public function testILike()
+    {
+        $builder = $this->builder->iLike('name', '%john%');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('LOWER(name) LIKE LOWER(?)', $sql);
+    }
+
+    public function testTransformByWithStringReturn()
+    {
+        $builder = $this->builder->transformBy(function ($query) {
+            return 'UPPER(name)';
+        }, 'upper_name');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('UPPER(name) as upper_name', $sql);
+    }
+
+    public function testTransformByWithBuilderReturn()
+    {
+        $builder = $this->builder->transformBy(function ($query) {
+            return $query->selectRaw('COUNT(*)')->from('other_table')->toSql();
+        }, 'total_count');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString(' as total_count', $sql);
+    }
+
+    public function testWherePatternWithLike()
+    {
+        $builder = $this->builder->wherePattern('name', '%test%', 'LIKE');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('name LIKE ?', $sql);
+    }
+
+    public function testWherePatternWithRegexp()
+    {
+        $builder = $this->builder->wherePattern('name', '^[A-Z]', 'REGEXP');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('name REGEXP ?', $sql);
+    }
+
+    public function testFirstLastInWindowFirstValue()
+    {
+        $builder = $this->builder->firstLastInWindow('price', 'created_at', 'category_id', true, 'first_price');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('FIRST_VALUE(price) OVER', $sql);
+        $this->assertStringContainsString('PARTITION BY category_id', $sql);
+        $this->assertStringContainsString('ORDER BY created_at', $sql);
+        $this->assertStringContainsString('as first_price', $sql);
+    }
+
+    public function testFirstLastInWindowLastValue()
+    {
+        $builder = $this->builder->firstLastInWindow('price', 'created_at', 'category_id', false, 'last_price');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('LAST_VALUE(price) OVER', $sql);
+        $this->assertStringContainsString('PARTITION BY category_id', $sql);
+        $this->assertStringContainsString('ORDER BY created_at', $sql);
+        $this->assertStringContainsString('as last_price', $sql);
+    }
+
+    public function testMovingDifference()
+    {
+        $builder = $this->builder->movingDifference('sales', 'date', 'daily_diff');
+
+        $sql = $builder->toSql();
+        $this->assertStringContainsString('sales - LAG(sales, 1, 0) OVER (ORDER BY date) as daily_diff', $sql);
+    }
+
+    public function testComplexJsonQuery()
+    {
+        $builder = $this->builder
+            ->jsonHas('settings', '$.notifications.email', true)
+            ->jsonEqual('profile', '$.theme', 'dark')
+            ->where('status', 'active');
+
+        $sql = $builder->toSql();
+
+        $this->assertStringContainsString('JSON_CONTAINS(`settings`, CAST(? AS JSON), \'$.notifications.email\')', $sql);
+        $this->assertStringContainsString('JSON_UNQUOTE(JSON_EXTRACT(`profile`, ?)) = ?', $sql);
+        $this->assertStringContainsString('status = ?', $sql);
+    }
+
+    public function testJsonMethodsWithExistingConditions()
+    {
+        $builder = $this->builder
+            ->where('active', 1)
+            ->jsonHas('data', '$.tags', 'featured')
+            ->orWhere('category', 'premium')
+            ->jsonEqual('settings', '$.level', 'advanced', '=', 'OR');
+
+        $sql = $builder->toSql();
+
+        $this->assertStringContainsString('active = ?', $sql);
+        $this->assertStringContainsString('JSON_CONTAINS(`data`, CAST(? AS JSON), \'$.tags\')', $sql);
+        $this->assertStringContainsString('OR category = ?', $sql);
+        $this->assertStringContainsString('OR JSON_UNQUOTE(JSON_EXTRACT(`settings`, ?)) = ?', $sql);
+    }
+
+    public function testTransformByWithMultipleCalls()
+    {
+        $builder = $this->builder
+            ->transformBy(function ($query) {
+                return 'UPPER(name)';
+            }, 'upper_name')
+            ->transformBy(function ($query) {
+                return 'LENGTH(description)';
+            }, 'desc_length');
+
+        $sql = $builder->toSql();
+
+        $this->assertStringContainsString('UPPER(name) as upper_name', $sql);
+        $this->assertStringContainsString('LENGTH(description) as desc_length', $sql);
+    }
+
+    public function testPatternMatchingCombinations()
+    {
+        $builder = $this->builder
+            ->wherePattern('name', 'John%', 'LIKE')
+            ->wherePattern('code', '^[A-Z]{3}-[0-9]{3}$', 'REGEXP');
+
+        $sql = $builder->toSql();
+
+        $this->assertStringContainsString('name LIKE ?', $sql);
+        $this->assertStringContainsString('code REGEXP ?', $sql);
+    }
+
+    public function testRatioWithDifferentPrecision()
+    {
+        $mockData = [['ratio' => 3.1416]];
+
+        $this->pdoStatement->method('fetch')
+            ->willReturnOnConsecutiveCalls($mockData[0], false);
+
+        $this->pdoStatement->method('execute')
+            ->willReturn(true);
+
+        $result = $this->builder->toRatio('circumference', 'diameter', 'ratio', 4);
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(3.1416, $result[0]->ratio);
+    }
+
+    public function testDictionaryWithEmptyResults()
+    {
+        $this->pdoStatement->method('fetch')
+            ->willReturn(false);
+
+        $this->pdoStatement->method('execute')
+            ->willReturn(true);
+
+        $dictionary = $this->builder->toDictionary('id', 'name');
+
+        $this->assertInstanceOf(Collection::class, $dictionary);
+        $this->assertCount(0, $dictionary);
+    }
+
+    public function testJsonMethodsReturnBuilderInstance()
+    {
+        $jsonHasBuilder = $this->builder->jsonHas('data', '$.key', 'value');
+        $this->assertInstanceOf(Builder::class, $jsonHasBuilder);
+
+        $jsonEqualBuilder = $this->builder->jsonEqual('data', '$.key', 'value');
+        $this->assertInstanceOf(Builder::class, $jsonEqualBuilder);
+    }
+
+    public function testAllUtilsMethodsReturnExpectedTypes()
+    {
+        $methods = [
+            'toDictionary' => ['id', 'name'],
+            'toDiff' => ['col1', 'col2', 'diff'],
+            'toRatio' => ['num', 'den', 'ratio', 2],
+            'random' => [5],
+            'jsonHas' => ['data', '$.path', 'value'],
+            'jsonEqual' => ['data', '$.path', 'value'],
+            'iLike' => ['name', '%test%'],
+            'wherePattern' => ['code', '^TEST', 'REGEXP'],
+            'movingDifference' => ['value', 'date', 'diff'],
+            'movingAverage' => ['value', 5, 'date', 'avg']
+        ];
+
+        foreach ($methods as $method => $args) {
+            $result = call_user_func_array([$this->builder, $method], $args);
+
+            if (in_array($method, ['toDictionary', 'toDiff', 'toRatio', 'toTree'])) {
+                $this->assertInstanceOf(Collection::class, $result, "Method {$method} should return Collection");
+            } else {
+                $this->assertInstanceOf(Builder::class, $result, "Method {$method} should return Builder");
+            }
+        }
+    }
+
+    // public function testTreeWithCustomChildrenIndex()
+    // {
+    //     $mockData = [
+    //         ['id' => 1, 'title' => 'Parent', 'parent_id' => null],
+    //         ['id' => 2, 'title' => 'Child', 'parent_id' => 1]
+    //     ];
+
+    //     $this->pdoStatement->method('fetch')
+    //         ->willReturnOnConsecutiveCalls(...$mockData, false);
+
+    //     $this->pdoStatement->method('execute')
+    //         ->willReturn(true);
+
+    //     $tree = $this->builder->toTree('id', 'parent_id', 'subitems');
+
+    //     $this->assertInstanceOf(Collection::class, $tree);
+    //     $this->assertTrue(isset($tree[0]->subitems));
+    //     $this->assertInstanceOf(Collection::class, $tree[0]->subitems);
+    // }
+
+    // public function testTransformByWithComplexExpression()
+    // {
+    //     $builder = $this->builder->transformBy(function ($query) {
+    //         return 'CONCAT(first_name, " ", last_name)';
+    //     }, 'full_name');
+
+    //     $sql = $builder->toSql();
+    //     $this->assertStringContainsString('CONCAT(first_name, " ", last_name) as full_name', $sql);
+    // }
+
+    // public function testMovingAverage()
+    // {
+    //     $builder = $this->builder->movingAverage('temperature', 7, 'date', 'weekly_avg');
+
+    //     $sql = $builder->toSql();
+    //     $this->assertStringContainsString('AVG(temperature) OVER (ORDER BY date ROWS BETWEEN ? PRECEDING AND CURRENT ROW) as weekly_avg', $sql);
+    // }
+
+    // public function testMultipleWindowFunctions()
+    // {
+    //     $builder = $this->builder
+    //         ->movingAverage('price', 5, 'timestamp', 'price_ma')
+    //         ->movingDifference('volume', 'timestamp', 'volume_diff')
+    //         ->firstLastInWindow('price', 'timestamp', 'symbol', true, 'first_price');
+
+    //     $sql = $builder->toSql();
+
+    //     $this->assertStringContainsString('AVG(price) OVER (ORDER BY timestamp ROWS BETWEEN ? PRECEDING AND CURRENT ROW) as price_ma', $sql);
+    //     $this->assertStringContainsString('volume - LAG(volume, 1, 0) OVER (ORDER BY timestamp) as volume_diff', $sql);
+    //     $this->assertStringContainsString('FIRST_VALUE(price) OVER', $sql);
+    // }
+
+    // public function testToTree()
+    // {
+    //     $mockData = [
+    //         ['id' => 1, 'name' => 'Root', 'parent_id' => null],
+    //         ['id' => 2, 'name' => 'Child 1', 'parent_id' => 1],
+    //         ['id' => 3, 'name' => 'Child 2', 'parent_id' => 1],
+    //         ['id' => 4, 'name' => 'Grandchild', 'parent_id' => 2]
+    //     ];
+
+    //     $this->pdoStatement->method('fetch')
+    //         ->willReturnOnConsecutiveCalls(...$mockData, false);
+
+    //     $this->pdoStatement->method('execute')
+    //         ->willReturn(true);
+
+    //     $tree = $this->builder->toTree('id', 'parent_id', 'children');
+
+    //     $this->assertInstanceOf(Collection::class, $tree);
+    //     $this->assertCount(1, $tree); // Root level
+    //     $this->assertEquals('Root', $tree[0]->name);
+    //     $this->assertTrue(isset($tree[0]->children));
+    //     $this->assertInstanceOf(Collection::class, $tree[0]->children);
+    //     $this->assertCount(2, $tree[0]->children); // Two children
+    //     $this->assertEquals('Child 1', $tree[0]->children[0]->name);
+    //     $this->assertTrue(isset($tree[0]->children[0]->children));
+    //     $this->assertCount(1, $tree[0]->children[0]->children); // One grandchild
+    // }
+
+    // public function testToTreeWithCircularReference()
+    // {
+    //     $mockData = [
+    //         ['id' => 1, 'name' => 'Item 1', 'parent_id' => 2], // Circular: 1 -> 2 -> 1
+    //         ['id' => 2, 'name' => 'Item 2', 'parent_id' => 1]
+    //     ];
+
+    //     $this->pdoStatement->method('fetch')
+    //         ->willReturnOnConsecutiveCalls(...$mockData, false);
+
+    //     $this->pdoStatement->method('execute')
+    //         ->willReturn(true);
+
+    //     $this->expectException(\RuntimeException::class);
+    //     $this->expectExceptionMessage('Circular reference detected');
+
+    //     $this->builder->toTree('id', 'parent_id');
+    // }
 }
 
 // Test model for Builder tests
