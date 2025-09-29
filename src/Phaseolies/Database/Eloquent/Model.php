@@ -273,6 +273,16 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
+     * Get the mass mass assignment attributes
+     *
+     * @return array
+     */
+    public function getCreatableAttributes(): array
+    {
+        return $this->creatable;
+    }
+
+    /**
      * Dynamically sets the table name for the model.
      *
      * This method allows overriding the default table name used by the model.
