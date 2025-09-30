@@ -247,7 +247,7 @@ class Database
      *
      * @param Model $model
      * @return string
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public static function getTable(Model $model): string
     {
@@ -347,7 +347,7 @@ class Database
 
             return new \Phaseolies\Support\Collection(
                 'array',
-                count($results) > 1 ? $results : $results[0]
+                count($results) > 1 ? $results : $results[0] ?? []
             );
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
@@ -359,8 +359,8 @@ class Database
      *
      * @param string $sql
      * @param array $params
-     * @return PDOStatement
-     * @throws PDOException
+     * @return \PDOStatement
+     * @throws \PDOException
      */
     public function statement(string $sql, array $params = []): \PDOStatement
     {
