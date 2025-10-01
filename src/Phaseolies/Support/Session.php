@@ -30,7 +30,7 @@ class Session
      *
      * @param array|null $data
      */
-    public function __construct(?array &$data = [])
+    public function __construct()
     {
         $this->data = &$_SESSION;
         $this->peek = &$_SESSION;
