@@ -106,8 +106,8 @@ class BaseFacadeTest extends TestCase
             return null;
         });
 
-        // $this->expectException(RuntimeException::class);
-        // $this->expectExceptionMessage('A facade root has not been set.');
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('A facade root has not been set.');
 
         TestFacade::exampleMethod('test');
     }

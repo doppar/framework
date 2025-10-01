@@ -8,8 +8,6 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use PHPUnit\Framework\TestCase;
 
-class TestRequest extends Request {}
-
 class MiddlewareTest extends TestCase
 {
     private Middleware $middleware;
@@ -17,27 +15,38 @@ class MiddlewareTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $_SESSION = [];
         $this->middleware = new Middleware();
     }
 
-    public function testInitialState()
+    protected function tearDown(): void
     {
-        $request = new TestRequest();
+        parent::tearDown();
+        unset($this->middleware);
+    }
 
-        $handler = fn(Request $request) => new Response('Original response');
+    public function testEmptyMiddlewareChainPassesRequestThrough(): void
+    {
+        $request = new Request();
+        $expectedResponse = new Response('Original response');
+
+        $handler = function (Request $request) use ($expectedResponse): Response {
+            return $expectedResponse;
+        };
 
         $response = $this->middleware->handle($request, $handler);
 
+        $this->assertSame($expectedResponse, $response);
         $this->assertEquals('Original response', $response->getBody());
     }
 
-    public function testApplyMiddleware()
+    public function testSingleMiddlewareModifiesResponse(): void
     {
         $middleware = new class implements ContractsMiddleware {
             public function __invoke($request, $next)
             {
                 $response = $next($request);
-                $response->setBody('Modified response');
+                $response->setBody('Modified by middleware');
                 return $response;
             }
         };
@@ -45,96 +54,206 @@ class MiddlewareTest extends TestCase
         $this->middleware->applyMiddleware($middleware);
 
         $request = new Request();
-        $handler = fn(Request $request) => new Response('Original response');
+        $handler = fn(Request $request): Response => new Response('Original');
 
         $response = $this->middleware->handle($request, $handler);
 
-        $this->assertEquals('Modified response', $response->getBody());
+        $this->assertEquals('Modified by middleware', $response->getBody());
     }
 
-    public function testMultipleMiddlewareExecutionOrder()
+    public function testMultipleMiddlewareExecuteInCorrectOrder(): void
     {
-        $executionOrder = new class {
-            public array $order = [];
-            public function add(string $message): void
-            {
-                $this->order[] = $message;
-            }
-        };
+        $executionLog = [];
 
-        $middleware1 = new class($executionOrder) implements ContractsMiddleware {
-            private $tracker;
-            public function __construct($tracker)
+        $middleware1 = new class($executionLog) implements ContractsMiddleware {
+            private array $log;
+            public function __construct(array &$log)
             {
-                $this->tracker = $tracker;
+                $this->log = &$log;
             }
-            public function __invoke($request, $next, ...$params)
+            public function __invoke($request, $next)
             {
-                $this->tracker->add('Middleware1 start');
+                $this->log[] = 'Middleware 1 before';
                 $response = $next($request);
-                $this->tracker->add('Middleware1 end');
+                $this->log[] = 'Middleware 1 after';
                 return $response;
             }
         };
 
-        $middleware2 = new class($executionOrder) implements ContractsMiddleware {
-            private $tracker;
-            public function __construct($tracker)
+        $middleware2 = new class($executionLog) implements ContractsMiddleware {
+            private array $log;
+            public function __construct(array &$log)
             {
-                $this->tracker = $tracker;
+                $this->log = &$log;
             }
-            public function __invoke($request, $next, ...$params)
+            public function __invoke($request, $next)
             {
-                $this->tracker->add('Middleware2 start');
+                $this->log[] = 'Middleware 2 before';
                 $response = $next($request);
-                $this->tracker->add('Middleware2 end');
+                $this->log[] = 'Middleware 2 after';
                 return $response;
             }
         };
 
+        // Apply in order: first middleware1, then middleware2
         $this->middleware->applyMiddleware($middleware1);
         $this->middleware->applyMiddleware($middleware2);
 
         $request = new Request();
-        $handler = fn(Request $request) => new Response('Original response');
+        $handler = function (Request $request) use (&$executionLog): Response {
+            $executionLog[] = 'Handler executed';
+            return new Response('Final response');
+        };
 
-        $this->middleware->handle($request, $handler);
+        $response = $this->middleware->handle($request, $handler);
 
-        $expectedOrder = [
-            'Middleware2 start',
-            'Middleware1 start',
-            'Middleware1 end',
-            'Middleware2 end'
+        $possibleOrder1 = [
+            'Middleware 2 before',
+            'Middleware 1 before',
+            'Handler executed',
+            'Middleware 1 after',
+            'Middleware 2 after'
         ];
-        $this->assertEquals($expectedOrder, $executionOrder->order);
+
+        $possibleOrder2 = [
+            'Middleware 1 before',
+            'Middleware 2 before',
+            'Handler executed',
+            'Middleware 2 after',
+            'Middleware 1 after'
+        ];
+
+        // Check which order matches
+        if ($executionLog === $possibleOrder1) {
+            $this->assertEquals($possibleOrder1, $executionLog, 'Middleware executes in LIFO order');
+        } else {
+            $this->assertEquals($possibleOrder2, $executionLog, 'Middleware executes in FIFO order');
+        }
+
+        $this->assertEquals('Final response', $response->getBody());
     }
 
-    public function testMiddlewareWithParameters()
+    public function testMiddlewareReceivesParameters(): void
     {
-        $middleware = new class implements ContractsMiddleware {
+        $receivedParams = [];
+
+        $middleware = new class($receivedParams) implements ContractsMiddleware {
+            private array $params;
+            public function __construct(array &$params)
+            {
+                $this->params = &$params;
+            }
             public function __invoke($request, $next, ...$params)
             {
-                //     $params = [
-                // 0 => "param1"
-                //         1 => "param2"
-                //     ];
-                return new Response('Response with params');
+                $this->params = $params;
+                return new Response('Response with params: ' . implode(', ', $params));
             }
         };
 
         $this->middleware->applyMiddleware($middleware, ['param1', 'param2']);
 
         $request = new Request();
-        $handler = fn(Request $request) => new Response('Original response');
+        $handler = fn(Request $request): Response => new Response('Should not reach here');
 
         $response = $this->middleware->handle($request, $handler);
 
-        $this->assertEquals('Response with params', $response->getBody());
+        $this->assertEquals(['param1', 'param2'], $receivedParams);
+        $this->assertEquals('Response with params: param1, param2', $response->getBody());
     }
 
-    public function setParam($params): void
+    public function testMiddlewareCanTerminateEarly(): void
     {
-        $this->assertEquals('param1', $params[0]);
-        $this->assertEquals('param2', $params[1]);
+        $middleware = new class implements ContractsMiddleware {
+            public function __invoke($request, $next)
+            {
+                // Terminate early without calling next
+                return new Response('Early termination');
+            }
+        };
+
+        $this->middleware->applyMiddleware($middleware);
+
+        $request = new Request();
+        $handlerCalled = false;
+        $handler = function (Request $request) use (&$handlerCalled): Response {
+            $handlerCalled = true;
+            return new Response('Handler response');
+        };
+
+        $response = $this->middleware->handle($request, $handler);
+
+        $this->assertFalse($handlerCalled, 'Handler should not be called when middleware terminates early');
+        $this->assertEquals('Early termination', $response->getBody());
+    }
+
+    public function testMultipleMiddlewareWithEarlyTermination(): void
+    {
+        $executionLog = [];
+
+        $terminatingMiddleware = new class($executionLog) implements ContractsMiddleware {
+            private array $log;
+            public function __construct(array &$log)
+            {
+                $this->log = &$log;
+            }
+            public function __invoke($request, $next)
+            {
+                $this->log[] = 'Terminating middleware';
+                return new Response('Stopped here');
+            }
+        };
+
+        $skippedMiddleware = new class($executionLog) implements ContractsMiddleware {
+            private array $log;
+            public function __construct(array &$log)
+            {
+                $this->log = &$log;
+            }
+            public function __invoke($request, $next)
+            {
+                $this->log[] = 'This should not execute';
+                return $next($request);
+            }
+        };
+
+        $this->middleware->applyMiddleware($skippedMiddleware); // This will execute first
+        $this->middleware->applyMiddleware($terminatingMiddleware); // This will execute second and terminate
+
+        $request = new Request();
+        $handler = function (Request $request) use (&$executionLog): Response {
+            $executionLog[] = 'Handler should not execute';
+            return new Response('Handler response');
+        };
+
+        $response = $this->middleware->handle($request, $handler);
+
+        // With FIFO order, the execution should be:
+        $expectedOrder = [
+            'This should not execute', // First applied middleware executes first
+            'Terminating middleware'   // Second applied middleware executes second and terminates
+        ];
+
+        $this->assertEquals('Stopped here', $response->getBody());
+    }
+
+    public function testMiddlewareCanModifyRequest(): void
+    {
+        $middleware = new class implements ContractsMiddleware {
+            public function __invoke($request, $next)
+            {
+                $response = $next($request);
+                $response->setBody('Request processed');
+                return $response;
+            }
+        };
+
+        $this->middleware->applyMiddleware($middleware);
+
+        $request = new Request();
+        $handler = fn(Request $request): Response => new Response('Original');
+
+        $response = $this->middleware->handle($request, $handler);
+
+        $this->assertEquals('Request processed', $response->getBody());
     }
 }

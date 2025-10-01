@@ -21,6 +21,7 @@ class PaginatorTest extends TestCase
 
     protected function setUp(): void
     {
+        $_SESSION = [];
         $container = new Container;
 
         $container->singleton('request', Request::class);

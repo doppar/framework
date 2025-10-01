@@ -2,13 +2,25 @@
 
 namespace Tests\Unit;
 
-use Phaseolies\Support\Collection;
-use Phaseolies\Support\Presenter\Presenter;
 use Phaseolies\Support\Presenter\PresenterBundle;
+use Phaseolies\Support\Presenter\Presenter;
+use Phaseolies\Support\Collection;
+use Phaseolies\Http\Request;
+use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
 class PresenterBundleTest extends TestCase
 {
+    private $container;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $_SESSION = [];
+        $this->container = new Container();
+        $this->container->bind('request', fn() => new Request());
+    }
+
     protected function createTestPresenterClass()
     {
         return new class(['id' => 1]) extends Presenter {
