@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use stdClass;
 
 class ContainerTest extends TestCase
 {
@@ -167,6 +168,132 @@ class ContainerTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->container->get(UnboundInterface::class);
     }
+
+    public function testShareMethod()
+    {
+        $instance = new \stdClass();
+        $instance->name = 'test';
+
+        $this->container->share('shared', $instance);
+
+        $resolved = $this->container->get('shared');
+        $this->assertSame($instance, $resolved);
+        $this->assertEquals('test', $resolved->name);
+    }
+
+    public function testExtendBinding()
+    {
+        $this->container->bind('service', fn() => 'original');
+        $this->container->extend('service', fn($original) => $original . ' extended');
+
+        $result = $this->container->get('service');
+        $this->assertEquals('original extended', $result);
+    }
+
+    public function testExtendUnboundThrowsException()
+    {
+        $this->expectException(RuntimeException::class);
+        $this->container->extend('nonexistent', fn($original) => $original);
+    }
+
+    public function testAlias()
+    {
+        $this->container->bind('original', fn() => 'original value');
+        $this->container->alias('original', 'aliased');
+
+        $this->assertEquals('original value', $this->container->get('aliased'));
+    }
+
+    public function testCallWithDependencies()
+    {
+        $this->container->bind(TestInterface::class, TestClass::class);
+        $result = $this->container->call(function (TestInterface $dependency, string $param) {
+            return get_class($dependency) . ':' . $param;
+        }, ['param' => 'test']);
+
+        $this->assertStringContainsString('TestClass:test', $result);
+    }
+
+    public function testCallWithMethodDependencies()
+    {
+        $this->container->bind(TestInterface::class, TestClass::class);
+
+        $callable = [new ClassWithMethod(), 'methodWithDependency'];
+        $result = $this->container->call($callable, ['extra' => 'value']);
+
+        $this->assertEquals('Tests\Unit\TestClass:value', $result);
+    }
+
+    public function testIsSingleton()
+    {
+        $this->container->bind('transient', fn() => 'transient');
+        $this->container->singleton('singleton', fn() => 'singleton');
+
+        $this->assertFalse($this->container->isSingleton('transient'));
+        $this->assertTrue($this->container->isSingleton('singleton'));
+        $this->assertFalse($this->container->isSingleton('nonexistent'));
+    }
+
+    public function testResolveMethodDependencies()
+    {
+        $this->container->bind(TestInterface::class, TestClass::class);
+
+        $dependencies = $this->container->resolveMethodDependencies(
+            ClassWithMethod::class,
+            'methodWithDependency',
+            ['extra' => 'test_value']
+        );
+
+        $this->assertCount(2, $dependencies);
+        $this->assertInstanceOf(TestClass::class, $dependencies[0]);
+        $this->assertEquals('test_value', $dependencies[1]);
+    }
+
+    public function testIsResolving()
+    {
+        $this->container->bind('slow_service', function () {
+            return $this->container->isResolving('slow_service') ? 'resolving' : 'not resolving';
+        });
+
+        $result = $this->container->get('slow_service');
+        $this->assertEquals('resolving', $result);
+    }
+
+    public function testRegisterServiceProvider()
+    {
+        $this->container->register(TestServiceProvider::class);
+
+        $this->assertTrue($this->container->has('from_provider'));
+        $this->assertEquals('provided_value', $this->container->get('from_provider'));
+    }
+
+    public function testResetMethod()
+    {
+        $this->container->bind('test', fn() => 'value');
+        $this->container->singleton('singleton', fn() => new \stdClass());
+
+        $this->container->get('singleton'); // Create instance
+
+        $this->assertTrue($this->container->has('test'));
+        $this->assertTrue($this->container->hasInstance('singleton'));
+
+        $this->container->reset();
+
+        $this->assertFalse($this->container->has('test'));
+        $this->assertFalse($this->container->hasInstance('singleton'));
+    }
+
+    public function testResolvedMethod()
+    {
+        $this->container->singleton('singleton', fn() => new \stdClass());
+
+        $this->assertFalse($this->container->resolved('singleton'));
+
+        $this->container->get('singleton');
+
+        $this->assertTrue($this->container->resolved('singleton'));
+        $this->assertFalse($this->container->resolved('nonexistent'));
+    }
 }
 
 // Test classes and interfaces for dependency injection
@@ -197,5 +324,50 @@ class ClassWithPrimitives
     {
         $this->param1 = $param1;
         $this->param2 = $param2;
+    }
+}
+
+class SpecialTestClass implements TestInterface {}
+
+class ClassWithMethod
+{
+    public function methodWithDependency(TestInterface $dependency, string $extra): string
+    {
+        return get_class($dependency) . ':' . $extra;
+    }
+}
+
+class TestServiceProvider
+{
+    public function register(Container $container): void
+    {
+        $container->bind('from_provider', fn() => 'provided_value');
+    }
+
+    public function boot(): void
+    {
+        // Boot logic if needed
+    }
+}
+
+class ClassWithOptionalDependency
+{
+    public $dependency;
+    public $optional;
+
+    public function __construct(TestInterface $dependency, string $optional = 'default')
+    {
+        $this->dependency = $dependency;
+        $this->optional = $optional;
+    }
+}
+
+class ClassWithVariadic
+{
+    public $items;
+
+    public function __construct(string ...$items)
+    {
+        $this->items = $items;
     }
 }

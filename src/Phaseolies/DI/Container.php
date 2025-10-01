@@ -417,4 +417,169 @@ class Container implements ArrayAccess
     {
         self::$instance = null;
     }
+
+    /**
+     * Register an existing instance as shared in the container
+     *
+     * @param string $abstract
+     * @param mixed $instance
+     * @return void
+     */
+    public function share(string $abstract, mixed $instance): void
+    {
+        $this->instance($abstract, $instance);
+    }
+
+    /**
+     * Extend a binding in the container
+     *
+     * @param string $abstract
+     * @param callable $extender
+     * @return void
+     */
+    public function extend(string $abstract, callable $extender): void
+    {
+        if (!$this->has($abstract)) {
+            throw new RuntimeException("Cannot extend unbound abstract [{$abstract}]");
+        }
+
+        $previous = self::$bindings[$abstract];
+
+        self::$bindings[$abstract] = [
+            'concrete' => fn(Container $container, array $parameters = []) => $extender($container->resolveBinding($abstract, $previous, $parameters), $container),
+            'singleton' => $previous['singleton']
+        ];
+    }
+
+    /**
+     * Alias a type to a different name
+     *
+     * @param string $abstract
+     * @param string $alias
+     * @return void
+     */
+    public function alias(string $abstract, string $alias): void
+    {
+        self::$bindings[$alias] = [
+            'concrete' => fn(Container $container) => $container->get($abstract),
+            'singleton' => false
+        ];
+    }
+
+    /**
+     * Call the given callback with dependency injection
+     *
+     * @param callable $callback
+     * @param array $parameters
+     * @return mixed
+     */
+    public function call(callable $callback, array $parameters = []): mixed
+    {
+        if (is_array($callback)) {
+            $reflection = new \ReflectionMethod($callback[0], $callback[1]);
+        } else {
+            $reflection = new \ReflectionFunction($callback);
+        }
+
+        $dependencies = $this->resolveDependencies(
+            $reflection->getParameters(),
+            $parameters
+        );
+
+        return call_user_func_array($callback, $dependencies);
+    }
+
+    /**
+     * Check if a binding is a singleton
+     *
+     * @param string $abstract
+     * @return bool
+     */
+    public function isSingleton(string $abstract): bool
+    {
+        return isset(self::$bindings[$abstract]) && self::$bindings[$abstract]['singleton'];
+    }
+
+    /**
+     * Get all registered aliases
+     *
+     * @return array
+     */
+    public function getAliases(): array
+    {
+        return array_filter(self::$bindings, function ($binding) {
+            return is_callable($binding['concrete']) && !class_exists($binding['concrete']);
+        });
+    }
+
+    /**
+     * Resolve all dependencies for a given class method
+     *
+     * @param string $class
+     * @param string $method
+     * @param array $parameters
+     * @return array
+     */
+    public function resolveMethodDependencies(string $class, string $method, array $parameters = []): array
+    {
+        $reflection = new \ReflectionMethod($class, $method);
+
+        return $this->resolveDependencies($reflection->getParameters(), $parameters, $class);
+    }
+
+    /**
+     * Check if the container is currently resolving the given abstract
+     *
+     * @param string $abstract
+     * @return bool
+     */
+    public function isResolving(string $abstract): bool
+    {
+        return isset($this->resolving[$abstract]);
+    }
+
+    /**
+     * Register a service provider
+     *
+     * @param mixed $provider
+     * @return void
+     */
+    public function register($provider): void
+    {
+        if (is_string($provider) && class_exists($provider)) {
+            $provider = $this->make($provider);
+        }
+
+        if (method_exists($provider, 'register')) {
+            $provider->register($this);
+        }
+
+        if (method_exists($provider, 'boot')) {
+            $this->call([$provider, 'boot']);
+        }
+    }
+
+    /**
+     * Flush all container bindings and instances.
+     *
+     * @return void
+     */
+    public function reset(): void
+    {
+        $this->flush();
+    }
+
+    /**
+     * Check if the given abstract has been resolved at least once
+     *
+     * @param string $abstract
+     * @return bool
+     */
+    public function resolved(string $abstract): bool
+    {
+        return $this->hasInstance($abstract) ||
+            (isset(self::$bindings[$abstract]) &&
+                self::$bindings[$abstract]['singleton'] &&
+                $this->hasInstance($abstract));
+    }
 }
