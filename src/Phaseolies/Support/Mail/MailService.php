@@ -26,24 +26,17 @@ class MailService
      */
     private $message;
 
-    /**
-     * Constructor for the Mail class.
-     *
-     * @param MailDriverInterface $driver The mail driver to use for sending emails.
-     */
-    public function __construct(?MailDriverInterface $driver = null)
+    public function __construct()
     {
-        $this->driver = $driver;
+        $this->driver = self::resolveDriver();
         $this->message = new Mailable();
     }
 
     /**
      * Creates a new Mail instance with the specified driver.
      *
-     * This method is useful for explicitly setting a custom mail driver.
-     *
-     * @param MailDriverInterface $driver The mail driver to use.
-     * @return self A new instance of the Mail class.
+     * @param MailDriverInterface $driver
+     * @return self
      */
     public function driver(MailDriverInterface $driver)
     {
@@ -53,19 +46,14 @@ class MailService
     /**
      * Creates a new Mail instance and sets the primary recipient.
      *
-     * This method initializes the Mail instance with the default driver and sets the "to" address
-     * and "from" address based on the provided user and configuration.
-     *
-     * @param User|string $recipient The user to send the email to.
+     * @param User|string $recipient
      * @param string|null $name
-     * @return self A new instance of the Mail class.
+     * @return self
      */
-    public function to(User|string $recipient, ?string $name = null)
+    public function to(User|string $recipient, ?string $name = null): self
     {
-        $mail = new self(self::resolveDriver());
-
         if ($recipient instanceof User) {
-            $mail->message->to = [
+            $this->message->to = [
                 'address' => $recipient->email,
                 'name' => $recipient->name ?? null
             ];
@@ -75,29 +63,26 @@ class MailService
                 throw new \InvalidArgumentException('Invalid email address provided');
             }
 
-            $mail->message->to = [
+            $this->message->to = [
                 'address' => $recipient,
                 'name' => $name
             ];
         }
 
-        $mail->message->from = [
+        $this->message->from = [
             'address' => config('mail.from.address'),
             'name' => config('mail.from.name'),
         ];
 
-        return $mail;
+        return $this;
     }
 
     /**
      * Sends the email using the provided Mailable object.
      *
-     * This method sets the email subject, body, CC, BCC, and attachments based on the Mailable object
-     * and delegates the actual sending to the mail driver.
-     *
-     * @param Mailable $mailable The Mailable object containing email details.
-     * @return mixed The result of the email sending operation.
-     * @throws \Exception If an attachment file is not found.
+     * @param Mailable $mailable
+     * @return mixed
+     * @throws \Exception
      */
     public function send(Mailable $mailable)
     {
@@ -136,14 +121,12 @@ class MailService
     }
 
     /**
-     * Adds CC (carbon copy) recipients to the email.
+     * Adds CC (carbon copy) recipients to the email
      *
-     * This method accepts a single email address (string) or an array of email addresses.
-     *
-     * @param string|array $cc The CC recipient(s).
-     * @return self The current Mail instance for method chaining.
+     * @param string|array $cc
+     * @return self
      */
-    public function cc($cc)
+    public function cc($cc): self
     {
         if (is_string($cc)) {
             $this->message->cc[] = $cc;
@@ -156,12 +139,10 @@ class MailService
     /**
      * Adds BCC (blind carbon copy) recipients to the email.
      *
-     * This method accepts a single email address (string) or an array of email addresses.
-     *
-     * @param string|array $bcc The BCC recipient(s).
-     * @return self The current Mail instance for method chaining.
+     * @param string|array $bcc
+     * @return self
      */
-    public function bcc($bcc)
+    public function bcc($bcc): self
     {
         if (is_string($bcc)) {
             $this->message->bcc[] = $bcc;

@@ -22,14 +22,6 @@ use Phaseolies\Auth\Security\PasswordHashing;
 use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Application;
 
-/**
- * FacadeServiceProvider is responsible for binding key application services
- * into the service container. These services can then be resolved and used
- * throughout the application via facades or dependency injection.
- *
- * This provider registers singleton instances of various services, ensuring
- * that the same instance is reused whenever the service is requested.
- */
 class FacadeServiceProvider extends ServiceProvider
 {
     /**

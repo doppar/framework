@@ -7,8 +7,8 @@ interface MailDriverInterface
     /**
      * Sends an email using the provided Mailable object.
      *
-     * @param Mailable $message The Mailable object containing email details.
-     * @return mixed The result of the email sending operation.
+     * @param Mailable $mailable
+     * @return mixed
      */
-    public function send(Mailable $message);
+    public function send(Mailable $mailable);
 }

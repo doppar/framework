@@ -17,7 +17,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '2.9.3.0';
+    const VERSION = '2.9.3.6';
 
     /**
      * The base path of the application installation.
@@ -128,20 +128,6 @@ class Application extends Container
      * @var Router
      */
     public Router $router;
-
-    /**
-     * All of the global resolving callbacks.
-     *
-     * @var array
-     */
-    protected $globalResolvingCallbacks = [];
-
-    /**
-     * All of the resolving callbacks by class type.
-     *
-     * @var array
-     */
-    protected $resolvingCallbacks = [];
 
     /**
      * Holds the cached configuration flag.
@@ -318,60 +304,6 @@ class Application extends Container
         $this->bootstrap();
 
         $this->bootServices();
-    }
-
-    /**
-     * Register a callback to run after a service is resolved.
-     *
-     * @param string $abstract
-     * @param \Closure $callback
-     * @return void
-     */
-    public function afterResolving($abstract, \Closure $callback): void
-    {
-        $this->resolving($abstract, function ($object, $app) use ($callback) {
-            $callback($object, $app);
-        });
-    }
-
-    /**
-     * Register a callback to run when a type is being resolved.
-     *
-     * @param string $abstract
-     * @param \Closure|null $callback
-     * @return void
-     */
-    public function resolving($abstract, ?\Closure $callback = null): void
-    {
-        if (is_string($abstract)) {
-            $abstract = $this->normalize($abstract);
-        }
-
-        if ($abstract instanceof \Closure) {
-            $this->globalResolvingCallbacks[] = $abstract;
-        } else {
-            $this->resolvingCallbacks[$abstract][] = $callback;
-        }
-    }
-
-    /**
-     * Fire the resolving callbacks
-     *
-     * @param mixed $abstract
-     * @param mixed $object
-     * @return void
-     */
-    protected function fireResolvingCallbacks($abstract, $object): void
-    {
-        foreach ($this->globalResolvingCallbacks as $callback) {
-            $callback($object, $this);
-        }
-
-        if (isset($this->resolvingCallbacks[$abstract])) {
-            foreach ($this->resolvingCallbacks[$abstract] as $callback) {
-                $callback($object, $this);
-            }
-        }
     }
 
     /**
