@@ -141,7 +141,7 @@ class Request
         $this->query = new InputBag($_GET);
         $this->attributes = new ParameterBag($_SERVER);
         $this->cookies = new InputBag($_COOKIE);
-        $this->session = new Session($_SESSION);
+        $this->session = new Session();
         $this->files = $_FILES;
         $this->content = $this->content();
         $this->requestUri = $this->getPath();
