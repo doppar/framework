@@ -1729,26 +1729,26 @@ class BuilderTest extends TestCase
 
         $this->assertEquals('test_table', $model->getTable());
     }
-    
+
     // public function testPropertyHasAttribute()
     // {
     //     $model = new Test2Model();
-        
+
     //     // This will test the reflection logic
     //     $hasAttribute = $model->propertyHasAttribute(Test2Model::class, 'table', \Phaseolies\Utilities\Casts\CastToDate::class);
-        
+
     //     $this->assertIsBool($hasAttribute);
     // }
-    
+
     // public function testPropertyHasAttributeThrowsException()
     // {
     //     $this->expectException(\Exception::class);
     //     $this->expectExceptionMessage("Property 'nonexistent' does not exist in class");
-    
+
     //     $model = new Test2Model();
     //     $model->propertyHasAttribute(Test2Model::class, 'nonexistent', \Phaseolies\Utilities\Casts\CastToDate::class);
     // }
-    
+
     public function testForkMethod()
     {
         $model = new Test2Model();
@@ -1758,15 +1758,15 @@ class BuilderTest extends TestCase
             'email' => 'john@example.com'
         ]);
         $model->originalAttributes = $model->attributes;
-    
+
         $forked = $model->fork();
-    
+
         $this->assertInstanceOf(Test2Model::class, $forked);
         $this->assertNull($forked->id);
         $this->assertEquals('John', $forked->name);
         $this->assertEquals('john@example.com', $forked->email);
     }
-    
+
     public function testForkWithCustomExclusions()
     {
         $model = new Test2Model();
@@ -1777,9 +1777,9 @@ class BuilderTest extends TestCase
             'password' => 'secret'
         ]);
         $model->originalAttributes = $model->attributes;
-    
+
         $forked = $model->fork(['password']);
-    
+
         $this->assertInstanceOf(Test2Model::class, $forked);
         $this->assertNull($forked->id);
         $this->assertNull($forked->password);
@@ -1790,14 +1790,14 @@ class BuilderTest extends TestCase
     {
         $model = new Test2Model();
         $model->fill(['id' => 1, 'name' => 'John']);
-        
+
         $relatedModel = new Test2Model();
         $relatedModel->fill(['id' => 2, 'name' => 'Related']);
-        
+
         $model->setRelation('profile', $relatedModel);
-    
+
         $forked = $model->fork();
-    
+
         $this->assertInstanceOf(Test2Model::class, $forked);
         $this->assertTrue($forked->relationLoaded('profile'));
     }
