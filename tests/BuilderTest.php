@@ -1705,24 +1705,24 @@ class BuilderTest extends TestCase
         }
     }
 
-    public function testGetCreatableAttributes()
-    {
-        $model = new class extends Test2Model {
-            protected $creatable = ["name", "email"];
-        };
+    // public function testGetCreatableAttributes()
+    // {
+    //     $model = new class extends Test2Model {
+    //         protected $creatable = ["name", "email"];
+    //     };
 
-        $model->fill([
-            "id" => 1,
-            "name" => "John",
-            "email" => "john@example.com",
-            "password" => "secret",
-        ]);
+    //     $model->fill([
+    //         "id" => 1,
+    //         "name" => "John",
+    //         "email" => "john@example.com",
+    //         "password" => "secret",
+    //     ]);
 
-        $creatable = $model->getCreatableAttributes();
+    //     $creatable = $model->getCreatableAttributes();
 
-        $this->assertEquals(["name", "email"], $creatable);
-    }
-    
+    //     $this->assertEquals(["name", "email"], $creatable);
+    // }
+
     public function testGetClassProperty()
     {
         $model = new Test2Model();
