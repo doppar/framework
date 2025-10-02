@@ -143,16 +143,16 @@ class Container implements ArrayAccess
         $this->resolving[$abstract] = true;
 
         try {
+            if (isset(self::$instances[$abstract]) && self::$instances[$abstract] !== null) {
+                return self::$instances[$abstract];
+            }
+
             if (class_exists($abstract)) {
                 foreach (self::$instances as $instance) {
                     if ($instance instanceof $abstract) {
                         return $instance;
                     }
                 }
-            }
-
-            if (isset(self::$instances[$abstract]) && self::$instances[$abstract] !== null) {
-                return self::$instances[$abstract];
             }
 
             if (isset(self::$bindings[$abstract])) {
