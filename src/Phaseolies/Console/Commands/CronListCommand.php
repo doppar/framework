@@ -56,6 +56,7 @@ class CronListCommand extends Command
             }
 
             $table->render();
+            $this->newLine();
             $this->displaySuccess('Listed ' . count($commands) . ' scheduled commands');
             return 0;
         });
