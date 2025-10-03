@@ -30,6 +30,13 @@ class Sanitizer
     protected $errors = [];
 
     /**
+     * Default error message
+     *
+     * @var string
+     */
+    protected $message = 'The given data was invalid.';
+
+    /**
      * Create a new Sanitizer instance.
      *
      * @param array $data The input data to validate.
@@ -88,7 +95,10 @@ class Sanitizer
      */
     public function errors(): array
     {
-        return $this->errors;
+        return [
+            'message' => $this->message,
+            'errors' => $this->errors
+        ];
     }
 
     /**

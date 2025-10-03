@@ -636,6 +636,7 @@ trait ValidationRules
     protected function isEmailValid(array $input, string $fieldName): bool
     {
         $email = $input[$fieldName] ?? '';
+
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 

@@ -196,11 +196,12 @@ class ErrorHandler
             $statusCode === Response::HTTP_TOO_MANY_REQUESTS ||
             $statusCode === Response::HTTP_UNPROCESSABLE_ENTITY ||
             $statusCode === Response::HTTP_UNAUTHORIZED ||
-            $statusCode === 419
+            $statusCode === 419 ||
+            $statusCode === 422
         ) {
             $response = [
-                'success' => false,
-                'message' => $errorMessage
+                'message' => 'The given data was invalid.',
+                'errors' => $errorMessage
             ];
         } else {
             $response = [

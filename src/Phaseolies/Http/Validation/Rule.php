@@ -55,6 +55,7 @@ trait Rule
         }
 
         $this->setPassedData($input);
+
         return $input;
     }
 }
