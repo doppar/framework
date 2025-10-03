@@ -430,7 +430,11 @@ class Cookie
         $this->secureDefault = $default;
     }
 
-    // Phaseolies created this class to modify existing cookie fluently
+    /**
+     * Doppar created this method to modify existing cookie fluently
+     *
+     * @return CookieUpdater
+     */
     public function modify(): CookieUpdater
     {
         return new CookieUpdater($this);
