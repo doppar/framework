@@ -9,9 +9,9 @@ class Encryption
     /**
      * Encrypt data using AES-256-CBC encryption.
      *
-     * @param mixed $data The data to encrypt. Can be a string or an array.
-     * @return string Returns a base64-encoded string containing the encrypted data and IV.
-     * @throws RuntimeException If encryption fails.
+     * @param mixed $data
+     * @return string
+     * @throws RuntimeException
      */
     public function encrypt(mixed $data): string
     {
@@ -41,9 +41,9 @@ class Encryption
     /**
      * Decrypt data that was encrypted using AES-256-CBC.
      *
-     * @param string $encryptedData The base64-encoded encrypted data string (including IV).
-     * @return mixed Returns the decrypted data as a string or array (if the original data was an array).
-     * @throws RuntimeException If decryption fails.
+     * @param string $encryptedData
+     * @return mixed
+     * @throws RuntimeException
      */
     public function decrypt(string $encryptedData): mixed
     {
