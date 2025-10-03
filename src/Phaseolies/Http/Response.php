@@ -8,11 +8,6 @@ use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
 
-/**
- * The Response class handles HTTP responses, including setting headers, status codes,
- * and sending the response body. It also provides methods for handling HTTP exceptions
- * and rendering error pages or JSON responses based on the request type.
- */
 class Response implements HttpStatus
 {
     /**
@@ -1562,5 +1557,33 @@ class Response implements HttpStatus
         }
 
         $this->setVary('Prefer', false);
+    }
+
+    /**
+     * Get the json content type
+     *
+     * @param mixed $content
+     * @return mixed
+     */
+    public function prepareBody(mixed $content)
+    {
+        $this->setOriginal($content);
+
+        if (
+            is_array($content) ||
+            $content instanceof \JsonSerializable ||
+            $content instanceof \Phaseolies\Database\Eloquent\Model ||
+            $content instanceof \Phaseolies\Database\Eloquent\Builder ||
+            $content instanceof \stdClass ||
+            $content instanceof \ArrayObject
+        ) {
+            $content = json_encode($content);
+        } elseif ($content instanceof \Phaseolies\Support\Collection || is_object($content)) {
+            $content = json_encode($content->toArray());
+        }
+
+        $this->setBody($content);
+
+        return $content;
     }
 }

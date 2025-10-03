@@ -22,6 +22,7 @@ class JsonResponse extends StreamedResponse
     ) {
         parent::__construct($this->stream(...), $status, $headers);
 
+        $this->prepareBody($data);
         if (!$this->headers->get('Content-Type')) {
             $this->headers->set('Content-Type', 'application/json');
         }

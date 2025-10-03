@@ -25,7 +25,7 @@ class ResponseFactory extends Response
      */
     public function make($content = '', $status = 200, array $headers = []): Response
     {
-        return new JsonResponse($content, $status, $headers);
+        return $this->json($content, $status, $headers);
     }
 
     /**
