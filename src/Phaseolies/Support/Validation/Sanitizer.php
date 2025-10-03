@@ -8,10 +8,25 @@ class Sanitizer
 {
     use ValidationRules;
 
+    /**
+     * The raw input data to be validated.
+     *
+     * @var array
+     */
     protected $data;
 
+    /**
+     * The validation rules to apply on the data.
+     *
+     * @var array
+     */
     protected $rules;
 
+    /**
+     * The array of validation error messages.
+     *
+     * @var array<string, string[]>
+     */
     protected $errors = [];
 
     /**

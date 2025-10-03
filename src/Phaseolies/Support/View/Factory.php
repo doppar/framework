@@ -14,8 +14,6 @@ class Factory
     /**
      * Register a namespace with its corresponding paths.
      *
-     * This allows grouping view paths under a given namespace.
-     *
      * @param string $namespace The name of the namespace.
      * @param string|array $paths One or more paths to associate with the namespace.
      * @return void
