@@ -60,14 +60,14 @@ class ErrorHandler
 
                 $section->writeln([
                     '',
-                    '<fg=red;options=bold><bg=red;fg=white;> ERROR OCCURRED </></>',
+                    '<fg=red;options=bold><bg=red;fg=white;> ERROR </></>',
                     ''
                 ]);
 
                 $section->writeln([
-                    sprintf('<fg=red;>✖ ERROR:</> <fg=red>%s</>', $errorMessage),
-                    sprintf('<fg=red>📁 FILE:</> <fg=white>%s</>', $errorFile),
-                    sprintf('<fg=red>📍 LINE:</> <fg=white>%d</>', $errorLine),
+                    sprintf('<fg=red;>⛔ ERROR:</> <fg=red>%s</>', $errorMessage),
+                    sprintf('<fg=red>📄 FILE:</> <fg=white>%s</>', $errorFile),
+                    sprintf('<fg=red>📌 LINE:</> <fg=white>%d</>', $errorLine),
                 ]);
 
                 exit(1);
