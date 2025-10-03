@@ -52,6 +52,7 @@ class BinaryFileResponse extends Response
 
         $this->setFile($file, $contentDisposition, $autoEtag, $autoLastModified);
 
+        $this->prepareBody($file);
         if ($public) {
             $this->setPublic();
         }
