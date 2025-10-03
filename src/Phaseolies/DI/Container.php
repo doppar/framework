@@ -3,9 +3,6 @@
 namespace Phaseolies\DI;
 
 use ArrayAccess;
-use ReflectionClass;
-use ReflectionParameter;
-use RuntimeException;
 
 class Container implements ArrayAccess
 {
@@ -137,7 +134,7 @@ class Container implements ArrayAccess
     public function get(string $abstract, array $parameters = []): mixed
     {
         if (isset($this->resolving[$abstract])) {
-            throw new RuntimeException("Circular dependency detected while resolving [{$abstract}]");
+            throw new \RuntimeException("Circular dependency detected while resolving [{$abstract}]");
         }
 
         $this->resolving[$abstract] = true;
@@ -171,7 +168,7 @@ class Container implements ArrayAccess
                 return $resolved;
             }
 
-            throw new RuntimeException("Target [{$abstract}] is not bound in container and is not a class");
+            throw new \RuntimeException("Target [{$abstract}] is not bound in container and is not a class");
         } finally {
             unset($this->resolving[$abstract]);
         }
@@ -228,10 +225,10 @@ class Container implements ArrayAccess
             return new $concrete(...$parameters);
         }
 
-        $reflector = new ReflectionClass($concrete);
+        $reflector = new \ReflectionClass($concrete);
 
         if (!$reflector->isInstantiable()) {
-            throw new RuntimeException("Target [{$concrete}] is not instantiable");
+            throw new \RuntimeException("Target [{$concrete}] is not instantiable");
         }
 
         $constructor = $reflector->getConstructor();
@@ -277,7 +274,7 @@ class Container implements ArrayAccess
      * @param string $className
      * @return mixed
      */
-    protected function resolveDependency(ReflectionParameter $parameter, array &$primitives, string $className = ''): mixed
+    protected function resolveDependency(\ReflectionParameter $parameter, array &$primitives, string $className = ''): mixed
     {
         $paramName = $parameter->getName();
         $paramType = $parameter->getType();
@@ -308,7 +305,7 @@ class Container implements ArrayAccess
             return array_shift($primitives);
         }
 
-        throw new RuntimeException(
+        throw new \RuntimeException(
             "Unresolvable dependency resolving [{$parameter}] in class " .
                 ($className ?: $parameter->getDeclaringClass()->getName())
         );
@@ -440,7 +437,7 @@ class Container implements ArrayAccess
     public function extend(string $abstract, callable $extender): void
     {
         if (!$this->has($abstract)) {
-            throw new RuntimeException("Cannot extend unbound abstract [{$abstract}]");
+            throw new \RuntimeException("Cannot extend unbound abstract [{$abstract}]");
         }
 
         $previous = self::$bindings[$abstract];

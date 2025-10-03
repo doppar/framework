@@ -486,7 +486,13 @@ class Router extends Kernel
                     throw new \LogicException("Method {$callback}::__invoke() does not exist");
                 }
             } else {
-                throw new \InvalidArgumentException('Invalid route definition found');
+                $type = is_object($callback) ? get_class($callback) : gettype($callback);
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        "Invalid route callback: expected array [Controller::class, 'method'], class string, or Closure; got [%s].",
+                        $type
+                    )
+                );
             }
         }
     }
@@ -747,7 +753,7 @@ class Router extends Kernel
 
         $handler = function ($request) use ($callback, $app, $routeParams) {
             $result = $this->resolveAction($callback, $app, $routeParams);
-            $response = app('response');
+            $response = $app->make('response');
             $response->setOriginal($result);
             if (!($result instanceof Response)) {
                 return $this->getResolutionResponse($request, $result, $response);
@@ -934,43 +940,25 @@ class Router extends Kernel
      */
     private function resolveAction(mixed $callback, $app, array $routeParams): mixed
     {
-        if (is_string($callback)) {
+        if (is_array($callback)) {
+            [$controllerClass, $actionMethod] = $callback;
+        } else if (is_string($callback)) {
             $controllerClass = $callback;
             $actionMethod = "__invoke";
         } else if ($callback instanceof \Closure) {
             $reflection = new \ReflectionFunction($callback);
-            $parameters = $reflection->getParameters();
-            foreach ($parameters as $parameter) {
-                $paramName = $parameter->getName();
+            foreach ($reflection->getParameters() as $parameter) {
                 $paramType = $parameter->getType();
-
-                if ($paramType && !$paramType->isBuiltin()) {
+                if (!$paramType->isBuiltin() && $paramType) {
                     $typeName = $paramType->getName();
                     if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
                         $this->resolveFormRequestValidationClass($app, $typeName);
                     }
-
-                    if ($app->has($typeName)) {
-                        $dependencies[] = $app->get($typeName);
-                    } elseif (class_exists($typeName)) {
-                        $dependencies[] = $app->make($typeName);
-                    } else {
-                        throw new \Exception("Cannot resolve dependency {$typeName}");
-                    }
-                } elseif (isset($routeParams[$paramName])) {
-                    $dependencies[] = $routeParams[$paramName];
-                } elseif ($parameter->isDefaultValueAvailable()) {
-                    $dependencies[] = $parameter->getDefaultValue();
-                } else {
-                    throw new \Exception("Cannot resolve parameter {$paramName}");
                 }
             }
 
-            return $callback(...$dependencies ?? []);
-        } else {
-            [$controllerClass, $actionMethod] = $callback;
+            return $app->call($callback, $routeParams);
         }
-
         $reflector = new \ReflectionClass($controllerClass);
 
         $this->processAttributesClassDependencies($controllerClass, $app);
