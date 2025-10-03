@@ -32,9 +32,9 @@ class Sanitizer
     /**
      * Default error message
      *
-     * @var string
+     * @var string|null
      */
-    protected $message = 'The given data was invalid.';
+    protected ?string $message = null;
 
     /**
      * Create a new Sanitizer instance.
@@ -73,6 +73,12 @@ class Sanitizer
             foreach ($rulesArray as $rule) {
                 $this->applyRule($field, $rule);
             }
+        }
+
+        if (!empty($this->errors)) {
+            $this->message = 'The given data was invalid.';
+        } else {
+            $this->message = null;
         }
 
         return empty($this->errors);

@@ -65,7 +65,7 @@ class SanitizerTest extends TestCase
 
         $sanitizer = new Sanitizer($data, $rules);
 
-        $this->assertEmpty($sanitizer->errors());
+        $this->assertEmpty($sanitizer->errors()['errors']);
     }
 
     public function testAddErrorAccumulatesMultipleErrorsForSameField()
@@ -79,7 +79,7 @@ class SanitizerTest extends TestCase
         $method->invoke($sanitizer, 'email', 'Email is required');
         $method->invoke($sanitizer, 'email', 'Email must be valid');
 
-        $errors = $sanitizer->errors();
+        $errors = $sanitizer->errors()['errors'];
 
         $this->assertArrayHasKey('email', $errors);
         $this->assertCount(2, $errors['email']);
@@ -95,7 +95,7 @@ class SanitizerTest extends TestCase
         $sanitizer = new Sanitizer($data, $rules);
 
         $this->assertTrue($sanitizer->validate());
-        $this->assertEmpty($sanitizer->errors());
+        $this->assertEmpty($sanitizer->errors()['errors']);
         $this->assertEmpty($sanitizer->passed());
     }
 }
