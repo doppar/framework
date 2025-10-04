@@ -8,7 +8,6 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\TooManyRequestsHttpException;
 use Phaseolies\Cache\RateLimiter;
 use Closure;
-use Phaseolies\Http\Exceptions\HttpResponseException;
 
 class ThrottleRequests implements Middleware
 {
@@ -148,15 +147,6 @@ class ThrottleRequests implements Middleware
         }
 
         $message = trans('validation.rate_limit.error', ['attribute' => $retryAfter]);
-
-        if ($request->isAjax() || $request->is('/api/*')) {
-            throw new HttpResponseException(
-                [
-                    'errors' => $message
-                ],
-                Response::HTTP_TOO_MANY_REQUESTS
-            );
-        }
 
         throw new TooManyRequestsHttpException(
             $retryAfter,

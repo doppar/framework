@@ -76,7 +76,7 @@ class Sanitizer
         }
 
         if (!empty($this->errors)) {
-            $this->message = 'The given data was invalid.';
+            $this->message = trans('validation.default');
         } else {
             $this->message = null;
         }

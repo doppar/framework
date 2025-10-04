@@ -184,36 +184,30 @@ class ErrorHandler
      * @param int $statusCode
      * @param array|null $responseErrors
      */
-    public static function sendJsonErrorResponse(
-        string $errorFile,
-        int $errorLine,
-        string $errorTrace,
-        int $statusCode,
-        mixed $errorMessage = null
-    ): void {
+    public static function sendJsonErrorResponse(string $errorFile, int $errorLine, string $errorTrace, int $statusCode,  mixed $errorMessage = null): void
+    {
+        $messages = [
+            Response::HTTP_TOO_MANY_REQUESTS    => trans('validation.rate_limit.message'),
+            Response::HTTP_UNPROCESSABLE_ENTITY => trans('validation.default'),
+            Response::PAGE_EXPIRED              => trans('validation.default'),
+            Response::HTTP_UNAUTHORIZED         => trans('validation.unauthorized.message'),
+        ];
 
-        if (
-            $statusCode === Response::HTTP_TOO_MANY_REQUESTS ||
-            $statusCode === Response::HTTP_UNPROCESSABLE_ENTITY ||
-            $statusCode === Response::HTTP_UNAUTHORIZED ||
-            $statusCode === 419 ||
-            $statusCode === 422
-        ) {
-            $response = [
-                'message' => 'The given data was invalid.',
-                'errors' => $errorMessage
-            ];
-        } else {
-            $response = [
-                'success' => false,
+        $message = $messages[$statusCode] ?? $errorMessage;
+
+        $response = isset($messages[$statusCode])
+            ? [
+                'message' => $message,
+                'errors'  => $errorMessage,
+            ]
+            : [
                 'message' => $errorMessage,
-                'error' => [
-                    'file' => $errorFile,
-                    'line' => $errorLine,
+                'errors'  => [
+                    'file'  => $errorFile,
+                    'line'  => $errorLine,
                     'trace' => $errorTrace,
                 ],
             ];
-        }
 
         header('Content-Type: application/json');
         http_response_code($statusCode);
