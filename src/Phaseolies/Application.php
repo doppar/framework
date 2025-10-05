@@ -187,7 +187,7 @@ class Application extends Container
      * @param Application $app
      * @return \Phaseolies\ApplicationBuilder
      */
-    public function configure($app): ApplicationBuilder
+    public function configure(Application $app): ApplicationBuilder
     {
         return (new ApplicationBuilder($app))
             ->withTimezone()
