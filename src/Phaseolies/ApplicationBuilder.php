@@ -19,21 +19,24 @@ class ApplicationBuilder
      */
     public function __construct(protected Application $app)
     {
-        $this->initializeTimezone();
         $this->request = $this->app->make('request');
     }
 
     /**
      * Set the application timezone
      *
-     * @return void
+     * @return self
      */
-    protected function initializeTimezone(): void
+    public function withTimezone(): self
     {
+        $timezone = $this->app['config']->get('app.timezone', 'UTC');
+
         $this->app->singleton(
             'timezone',
-            fn() => new TimezoneHandler($this->app['config']->get('app.timezone', 'UTC'))
+            fn() => new TimezoneHandler($timezone)
         );
+
+        return $this;
     }
 
     /**

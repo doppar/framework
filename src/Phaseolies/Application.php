@@ -182,13 +182,16 @@ class Application extends Container
     }
 
     /**
-     * Configures the application instance.
+     * Configures the application
      *
+     * @param Application $app
      * @return \Phaseolies\ApplicationBuilder
      */
     public function configure($app): ApplicationBuilder
     {
-        return (new ApplicationBuilder($app))->withMiddlewareStack();
+        return (new ApplicationBuilder($app))
+            ->withTimezone()
+            ->withMiddlewareStack();
     }
 
     /**

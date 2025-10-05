@@ -249,7 +249,7 @@ class Container implements ArrayAccess
     /**
      * Resolve constructor dependencies
      *
-     * @param ReflectionParameter[] $parameters
+     * @param \ReflectionParameter[] $parameters
      * @param array $primitives
      * @param string $className
      * @return array
