@@ -31,6 +31,8 @@ class ApplicationBuilder
     {
         $timezone = $this->app['config']->get('app.timezone', 'UTC');
 
+        date_default_timezone_set($timezone);
+
         $this->app->singleton(
             'timezone',
             fn() => new TimezoneHandler($timezone)

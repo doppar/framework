@@ -9,18 +9,18 @@ class TimezoneHandler
     /**
      * Application current timezone
      *
-     * @var string|null $currentTimezone
+     * @var string $currentTimezone
      */
-    protected ?string $currentTimezone = 'UTC';
+    protected string $currentTimezone;
 
     /**
      * Constructor for the TimezoneHandler class.
      *
-     * @param string|null $currentTimezone.
+     * @param string $currentTimezone.
      */
-    public function __construct(?string $currentTimezone = null)
+    public function __construct(string $currentTimezone = 'UTC')
     {
-        $this->currentTimezone = $currentTimezone ?? config('app.timezone', 'UTC');
+        $this->currentTimezone = $currentTimezone;
 
         $this->initialize();
     }
@@ -32,11 +32,6 @@ class TimezoneHandler
      */
     protected function initialize(): void
     {
-        // Set the default timezone for PHP.  This affects how PHP's date/time
-        // functions (like `date()`) behave.
-        date_default_timezone_set($this->currentTimezone);
-
-        // Carbon configuration
         $this->setTimezone();
     }
 
@@ -54,6 +49,16 @@ class TimezoneHandler
 
         $dt = Carbon::now();
         $dt->setTimezone($this->currentTimezone);
+    }
+
+    /**
+     * Get the application current timezone
+     *
+     * @return string
+     */
+    public function getTimezone(): string
+    {
+        return $this->currentTimezone;
     }
 
     /**
