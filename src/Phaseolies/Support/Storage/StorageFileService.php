@@ -5,6 +5,14 @@ namespace Phaseolies\Support\Storage;
 use Phaseolies\Support\Storage\LocalFileSystem;
 use Phaseolies\Support\Storage\DiskNotFoundException;
 
+/**
+ * @method static store(string $path, File $file, ?string $fileName = null): bool
+ * @method static storeageBasePath(): string
+ * @method static get(string $path): ?string
+ * @method static content($path)
+ * @method static delete(string|array $path): bool
+ * @see \Phaseolies\Support\Storage\StorageFileService
+ */
 class StorageFileService
 {
     /**
@@ -17,7 +25,7 @@ class StorageFileService
     /**
      * Get a filesystem instance.
      *
-     * @param  string|null  $name
+     * @param string|null $name
      * @return \Phaseolies\Support\Storage\IFileSystem
      */
     public function disk($name = null)

@@ -51,7 +51,6 @@ class LocalFileSystem extends FileSystem implements IFileSystem
      *
      * @param  string  $path
      * @return string
-     *
      * @throws \Phaseolies\Support\Storage\FileNotFoundException
      */
     public function content($path)
