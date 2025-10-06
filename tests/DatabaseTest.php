@@ -2,15 +2,16 @@
 
 namespace Tests\Unit;
 
-use Phaseolies\Database\Database;
-use Phaseolies\Database\Query\Builder;
-use Phaseolies\Database\Query\RawExpression;
-use Phaseolies\Support\Collection;
-use Phaseolies\Database\Connectors\ConnectionFactory;
 use PDO;
 use PDOException;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use Phaseolies\Database\Database;
+use Phaseolies\Support\Collection;
+use Phaseolies\Database\Query\Builder;
+use Phaseolies\Database\Query\RawExpression;
+use Phaseolies\Database\Connectors\ConnectionFactory;
+use Phaseolies\Database\Contracts\Driver\DriverInterface;
 
 class DatabaseTest extends TestCase
 {
@@ -430,17 +431,17 @@ class DatabaseTest extends TestCase
     public function testDropAllTables()
     {
         $tables = ['users', 'posts', 'comments'];
-
-        $stmtMock = $this->createMock(PDOStatement::class);
-        $stmtMock->expects($this->once())
-            ->method('fetchAll')
-            ->with(PDO::FETCH_COLUMN)
-            ->willReturn($tables);
-
-        $this->pdoMock->expects($this->once())
-            ->method('query')
-            ->with('SHOW TABLES')
-            ->willReturn($stmtMock);
+        
+        $driverMock = $this->createMock(DriverInterface::class);
+        $driverMock->expects($this->once())
+            ->method('dropAllTables')
+            ->with($this->pdoMock)
+            ->willReturn(3);
+            
+        $reflection = new \ReflectionClass(Database::class);
+        $property = $reflection->getProperty('drivers');
+        $property->setAccessible(true);
+        $property->setValue(null, ['default' => $driverMock]);
 
         $result = $this->database->dropAllTables();
 

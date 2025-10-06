@@ -113,6 +113,12 @@ class Router extends Kernel
     {
         $this->initializeCachePath();
 
+        foreach (self::$routeMiddlewares as $method => $routes) {
+            foreach ($routes as $path => $middlewares) {
+                self::$routeMiddlewares[$method][$path] = array_values(array_unique((array)$middlewares));
+            }
+        }
+
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
             'namedRoutes' => self::$namedRoutes,
@@ -258,27 +264,126 @@ class Router extends Kernel
     }
 
     /**
-     * Get the middleware from the current group stack.
+     * Register attributes based route
+     *
+     * @return void
+     */
+    public function registerAttributeRoutes(): void
+    {
+        $controllers = $this->getControllerClasses();
+
+        foreach ($controllers as $controllerClass) {
+            $this->registerRoutesFromController($controllerClass);
+        }
+    }
+
+    /**
+     * Get all controller classes from app directory
      *
      * @return array
      */
-    protected function getGroupMiddleware(): array
+    protected function getControllerClasses(): array
     {
-        if (empty(static::$groupStack)) {
-            return [];
+        $controllerPath = base_path('app/Http/Controllers');
+        $controllers = [];
+
+        if (!is_dir($controllerPath)) {
+            return $controllers;
         }
 
-        $middleware = [];
-        foreach (static::$groupStack ?? [] as $group) {
-            if (isset($group['middleware'])) {
-                $middleware = array_merge(
-                    $middleware,
-                    (array) $group['middleware']
-                );
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($controllerPath)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isDir() || $file->getExtension() !== 'php') {
+                continue;
+            }
+            $relativePath = str_replace($controllerPath . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            $relativePath = str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
+            $className = 'App\\Http\\Controllers\\' . str_replace('.php', '', $relativePath);
+
+            if (class_exists($className)) {
+                $controllers[] = $className;
             }
         }
 
-        return $middleware;
+        return $controllers;
+    }
+
+    /**
+     * Register routes from a controller class using attributes
+     *
+     * @param string $controllerClass
+     * @return void
+     */
+    protected function registerRoutesFromController(string $controllerClass): void
+    {
+        $reflection = new \ReflectionClass($controllerClass);
+
+        foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
+
+            foreach ($routeAttributes as $attribute) {
+                $route = $attribute->newInstance();
+                $this->registerAttributeRoute($controllerClass, $method->getName(), $route);
+            }
+        }
+    }
+
+    /**
+     * Register a single route from attribute
+     *
+     * @param string $controllerClass
+     * @param string $method
+     * @param object $route
+     * @return void
+     */
+    protected function registerAttributeRoute(string $controllerClass, string $method, object $route): void
+    {
+        $path = $route->path;
+        $httpMethods = $route->methods ?? ['GET'];
+        $name = $route->name ?? null;
+        $middleware = $route->middleware ?? [];
+
+        foreach ($httpMethods as $httpMethod) {
+            $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
+            if (!empty($middleware)) {
+                $this->middleware($middleware);
+            }
+        }
+    }
+
+    /**
+     * Add a route name to attribute routing
+     *
+     * @param string $method
+     * @param string $path
+     * @param callable|array $callback
+     * @param string|null $name
+     * @return self
+     */
+    protected function addRouteNameToAttributesRouting(string $method, string $path, $callback, ?string $name = null): self
+    {
+        $this->addRoute($method, $path, $callback);
+
+        if ($name) {
+            self::$namedRoutes[$name] = $this->currentRoutePath;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Load both file-based and attribute-based routes
+     *
+     * @return void
+     */
+    public function loadAttributeBasedRoutes(): void
+    {
+        $this->loadRoutesFromFiles();
+
+        $this->registerAttributeRoutes();
     }
 
     /**
@@ -449,11 +554,6 @@ class Router extends Kernel
         $this->currentRequestMethod = $method;
 
         if (!static::$cacheLoaded) {
-            $groupMiddleware = $this->getGroupMiddleware();
-            if (!empty($groupMiddleware)) {
-                $this->middleware($groupMiddleware);
-            }
-
             if (is_array($callback) || is_string($callback)) {
                 $this->processControllerMiddleware($callback);
             }
@@ -959,6 +1059,7 @@ class Router extends Kernel
 
             return $app->call($callback, $routeParams);
         }
+
         $reflector = new \ReflectionClass($controllerClass);
 
         $this->processAttributesClassDependencies($controllerClass, $app);

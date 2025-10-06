@@ -18,7 +18,11 @@ use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
-    use InteractsWithModelQueryProcessing, InteractsWithBigDataProcessing, QueryUtils, Debuggable, InteractsWithTimeframe;
+    use InteractsWithModelQueryProcessing;
+    use InteractsWithBigDataProcessing;
+    use QueryUtils;
+    use Debuggable;
+    use InteractsWithTimeframe;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -379,7 +383,7 @@ class Builder
 
     /**
      * Filter records that have at least one related record in the given relationship
-     * 
+     *
      * @param string $relation
      * @param callable|null $callback
      * @return self
@@ -407,13 +411,15 @@ class Builder
                     WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
 
             if ($callback) {
-                $relatedTable = (new $relatedModel)->getTable();
+                $relatedTable = (new $relatedModel())->getTable();
                 $subQueryBuilder = $relatedModel::query();
                 $callback($subQueryBuilder);
 
                 // Add conditions to the subquery
                 foreach ($subQueryBuilder->conditions as $condition) {
-                    if (isset($condition['type'])) continue;
+                    if (isset($condition['type'])) {
+                        continue;
+                    }
 
                     $column = $condition[1];
                     $operator = $condition[2];
@@ -439,7 +445,7 @@ class Builder
             // Handle one-to-one and one-to-many relationships
             $foreignKey = $model->getLastForeignKey();
             $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel)->getTable();
+            $relatedTable = (new $relatedModel())->getTable();
 
             $subquery = "SELECT 1 FROM {$relatedTable} 
                     WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
@@ -450,7 +456,9 @@ class Builder
 
                 foreach ($subQueryBuilder->conditions as $condition) {
 
-                    if (isset($condition['type'])) continue;
+                    if (isset($condition['type'])) {
+                        continue;
+                    }
 
                     $column = $condition[1];
                     $operator = $condition[2];
@@ -566,7 +574,7 @@ class Builder
             // Handle one-to-one and one-to-many relationships
             $foreignKey = $model->getLastForeignKey();
             $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel)->getTable();
+            $relatedTable = (new $relatedModel())->getTable();
 
             $subquery = "SELECT 1 FROM {$relatedTable} 
                 WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
@@ -629,7 +637,7 @@ class Builder
     /**
      * Filter records that don't have any related records in the given relationship
      * with optional conditions
-     * 
+     *
      * @param string $relation The relationship name
      * @param callable|null $callback Optional conditions for the related model
      * @return self
@@ -641,7 +649,7 @@ class Builder
 
     /**
      * Insert multiple records into the database in a single query
-     * 
+     *
      * @param array $rows Array of arrays containing attribute sets
      * @return int Number of inserted rows
      * @throws PDOException
@@ -799,7 +807,7 @@ class Builder
 
     /**
      * Attach models to the parent (many-to-many relationship)
-     * 
+     *
      * @param mixed $ids Single ID or array of IDs to attach
      * @param array $pivotData Additional pivot table data
      * @return int Number of affected rows
@@ -867,7 +875,7 @@ class Builder
 
     /**
      * Detach models from the parent (many-to-many relationship)
-     * 
+     *
      * @param mixed $ids Single ID or array of IDs to detach (empty for all)
      * @return int Number of affected rows
      */
@@ -1312,7 +1320,7 @@ class Builder
             return;
         }
 
-        $keys = array_map(fn($model) => $model->{$localKey}, $models);
+        $keys = array_map(fn ($model) => $model->{$localKey}, $models);
         $relatedModelInstance = app($relatedModel);
         $query = $relatedModelInstance->query()->whereIn($foreignKey, $keys);
 
@@ -1363,8 +1371,8 @@ class Builder
         $relatedKey = $firstModel->getLastRelatedKey();
         $pivotTable = $firstModel->getLastPivotTable();
 
-        $keys = array_map(fn($model) => $model->getKey(), $models);
-        $relatedModelInstance = new $relatedModel;
+        $keys = array_map(fn ($model) => $model->getKey(), $models);
+        $relatedModelInstance = new $relatedModel();
 
         $pivotColumns = $this->getTableColumns($pivotTable);
 
@@ -1479,7 +1487,7 @@ class Builder
      */
     protected function loadOneToOne(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
-        $localKeys = array_map(fn($model) => $model->$localKey, $models);
+        $localKeys = array_map(fn ($model) => $model->$localKey, $models);
         $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
@@ -1505,7 +1513,7 @@ class Builder
      */
     protected function loadOneToMany(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
-        $localKeys = array_map(fn($model) => $model->$localKey, $models);
+        $localKeys = array_map(fn ($model) => $model->$localKey, $models);
         $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
@@ -1730,7 +1738,7 @@ class Builder
     {
         if (strpos($identifier, '.') !== false) {
             return implode('.', array_map(
-                fn($part) => "`{$part}`",
+                fn ($part) => "`{$part}`",
                 explode('.', $identifier)
             ));
         }
@@ -1963,7 +1971,7 @@ class Builder
                 $columns[] = 'updated_at';
             }
         }
-        $columnsStr = implode(', ', array_map(fn($col) => "`$col`", $columns));
+        $columnsStr = implode(', ', array_map(fn ($col) => "`$col`", $columns));
 
         // Prepare placeholders and bindings
         $placeholders = [];
@@ -2001,7 +2009,7 @@ class Builder
 
         // Build the ON DUPLICATE KEY UPDATE clause
         $updateStatements = array_map(
-            fn($col) => "`$col` = VALUES(`$col`)",
+            fn ($col) => "`$col` = VALUES(`$col`)",
             $updateColumns
         );
 
@@ -2048,7 +2056,7 @@ class Builder
                 : now();
         }
 
-        $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
+        $setClause = implode(', ', array_map(fn ($key) => "$key = ?", array_keys($attributes)));
 
         $sql = "UPDATE {$this->table} SET $setClause";
 
@@ -2148,7 +2156,7 @@ class Builder
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Convert results to model instances
-            $models = array_map(fn($item) => new $this->modelClass($item), $results);
+            $models = array_map(fn ($item) => new $this->modelClass($item), $results);
 
             $collection = new Collection($this->modelClass, $models);
 
@@ -2244,7 +2252,7 @@ class Builder
 
     /**
      * Retrieve distinct values for a column
-     * 
+     *
      * @param string $column The column to get distinct values from
      * @return Collection Collection of distinct values
      */
@@ -2269,7 +2277,7 @@ class Builder
 
         // Add ORDER BY if any
         if (!empty($this->orderBy)) {
-            $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
+            $orderByStrings = array_map(fn ($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
         }
 
@@ -2335,7 +2343,7 @@ class Builder
 
     /**
      * Increment a column's value by a given amount
-     * 
+     *
      * @param string $column The column to increment
      * @param int $amount Amount to increment by (default 1)
      * @param array $extra Additional columns to update
@@ -2348,7 +2356,7 @@ class Builder
 
     /**
      * Decrement a column's value by a given amount
-     * 
+     *
      * @param string $column The column to decrement
      * @param int $amount Amount to decrement by (default 1)
      * @param array $extra Additional columns to update
@@ -2478,7 +2486,7 @@ class Builder
 
     /**
      * Helper method to handle both increment and decrement operations
-     * 
+     *
      * @param string $column Column to modify
      * @param int $amount Amount to change
      * @param string $operator + or -

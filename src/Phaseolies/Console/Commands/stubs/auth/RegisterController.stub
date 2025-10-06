@@ -6,6 +6,7 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Utilities\Attributes\Route;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\GuestMiddleware;
@@ -18,6 +19,7 @@ class RegisterController extends Controller
      *
      * @return Response
      */
+    #[Route('register', name: 'register')]
     public function index(): Response
     {
         return view('auth.register');
@@ -29,6 +31,7 @@ class RegisterController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
+    #[Route('register', name: 'register', methods: ['POST'])]
     public function register(Request $request): RedirectResponse
     {
         $request->sanitize([

@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Database\Migration;
 
+use PDO;
+
 class ColumnDefinition
 {
     /** @var string The name of the column */
@@ -142,65 +144,77 @@ class ColumnDefinition
      *
      * @return string The SQL type definition
      */
+    /**
+     * Check if the current database connection is SQLite.
+     *
+     * @return bool
+     */
+    protected function isSQLite(): bool
+    {
+        $connection = app('db')->getConnection();
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite';
+    }
+
+    /**
+     * Get the SQL type definition for the column.
+     *
+     * @return string The SQL type definition
+     */
     protected function getTypeDefinition(): string
     {
+        $isSQLite = $this->isSQLite();
+
         // Mapping of abstract types to concrete SQL types
         $map = [
-            'id' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'bigIncrements' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'string' => 'VARCHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'char' => 'CHAR(' . ($this->attributes['length'] ?? 255) . ')',
+            'id' => $isSQLite ? 'INTEGER' : 'BIGINT UNSIGNED',
+            'bigIncrements' => $isSQLite ? 'INTEGER' : 'BIGINT UNSIGNED',
+            'string' => $isSQLite ? 'TEXT' : 'VARCHAR(' . ($this->attributes['length'] ?? 255) . ')',
+            'char' => $isSQLite ? 'TEXT' : 'CHAR(' . ($this->attributes['length'] ?? 255) . ')',
             'text' => 'TEXT',
-            'mediumText' => 'MEDIUMTEXT',
-            'longText' => 'LONGTEXT',
-            'tinyText' => 'TINYTEXT',
-            'boolean' => 'TINYINT(1)',
-            'json' => 'JSON',
-            'jsonb' => 'JSON',
-            'integer' => 'INT',
-            'tinyInteger' => 'TINYINT',
-            'smallInteger' => 'SMALLINT',
-            'mediumInteger' => 'MEDIUMINT',
-            'bigInteger' => 'BIGINT',
-            'unsignedInteger' => 'INT UNSIGNED',
-            'unsignedTinyInteger' => 'TINYINT UNSIGNED',
-            'unsignedSmallInteger' => 'SMALLINT UNSIGNED',
-            'unsignedMediumInteger' => 'MEDIUMINT UNSIGNED',
-            'unsignedBigInteger' => 'BIGINT UNSIGNED',
-            'float' => 'FLOAT',
-            'double' => 'DOUBLE' .
-                (isset($this->attributes['precision']) ?
-                    "({$this->attributes['precision']}" .
-                    (isset($this->attributes['scale']) ? ",{$this->attributes['scale']})" : ")")
-                    : ''),
-            'decimal' => 'DECIMAL(' .
-                ($this->attributes['precision'] ?? 10) . ',' .
-                ($this->attributes['scale'] ?? 2) . ')',
-            'date' => 'DATE',
-            'dateTime' => 'DATETIME',
-            'dateTimeTz' => 'DATETIME',
-            'time' => 'TIME',
-            'timeTz' => 'TIME',
-            'timestamp' => 'TIMESTAMP',
-            'timestampTz' => 'TIMESTAMP',
-            'year' => 'YEAR',
+            'mediumText' => 'TEXT',
+            'longText' => 'TEXT',
+            'tinyText' => 'TEXT',
+            'boolean' => $isSQLite ? 'INTEGER' : 'TINYINT(1)',
+            'json' => 'TEXT',
+            'jsonb' => 'TEXT',
+            'integer' => 'INTEGER',
+            'tinyInteger' => 'INTEGER',
+            'smallInteger' => 'INTEGER',
+            'mediumInteger' => 'INTEGER',
+            'bigInteger' => 'INTEGER',
+            'unsignedInteger' => 'INTEGER',
+            'unsignedTinyInteger' => 'INTEGER',
+            'unsignedSmallInteger' => 'INTEGER',
+            'unsignedMediumInteger' => 'INTEGER',
+            'unsignedBigInteger' => 'INTEGER',
+            'float' => 'REAL',
+            'double' => 'REAL',
+            'decimal' => 'REAL',
+            'date' => 'TEXT',
+            'dateTime' => 'TEXT',
+            'dateTimeTz' => 'TEXT',
+            'time' => 'TEXT',
+            'timeTz' => 'TEXT',
+            'timestamp' => 'INTEGER',
+            'timestampTz' => 'INTEGER',
+            'year' => 'INTEGER',
             'binary' => 'BLOB',
-            'tinyBlob' => 'TINYBLOB',
-            'mediumBlob' => 'MEDIUMBLOB',
-            'longBlob' => 'LONGBLOB',
-            'enum' => 'ENUM(' . $this->getEnumValues() . ')',
-            'set' => 'SET(' . $this->getEnumValues() . ')',
-            'geometry' => 'GEOMETRY',
-            'point' => 'POINT',
-            'lineString' => 'LINESTRING',
-            'polygon' => 'POLYGON',
-            'geometryCollection' => 'GEOMETRYCOLLECTION',
-            'multiPoint' => 'MULTIPOINT',
-            'multiLineString' => 'MULTILINESTRING',
-            'multiPolygon' => 'MULTIPOLYGON',
-            'uuid' => 'CHAR(36)',
-            'ipAddress' => 'VARCHAR(45)',
-            'macAddress' => 'VARCHAR(17)',
+            'tinyBlob' => 'BLOB',
+            'mediumBlob' => 'BLOB',
+            'longBlob' => 'BLOB',
+            'enum' => 'TEXT',
+            'set' => 'TEXT',
+            'geometry' => 'BLOB',
+            'point' => 'BLOB',
+            'lineString' => 'BLOB',
+            'polygon' => 'BLOB',
+            'geometryCollection' => 'BLOB',
+            'multiPoint' => 'BLOB',
+            'multiLineString' => 'BLOB',
+            'multiPolygon' => 'BLOB',
+            'uuid' => 'TEXT',
+            'ipAddress' => 'TEXT',
+            'macAddress' => 'TEXT',
         ];
 
         // Return the mapped type or fall back to uppercase version of the type

@@ -6,6 +6,7 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Utilities\Attributes\Route;
 use Phaseolies\Http\Response\RedirectResponse;
 use App\Models\User;
 use App\Http\Controllers\Controller;
@@ -20,6 +21,7 @@ class LoginController extends Controller
      * @return Response
      */
     #[Middleware([GuestMiddleware::class])]
+    #[Route('login', name: 'login')]
     public function index(): Response
     {
         return view('auth.login');
@@ -32,6 +34,7 @@ class LoginController extends Controller
      * @return RedirectResponse
      */
     #[Middleware([GuestMiddleware::class])]
+    #[Route('login', name: 'login', methods: ['POST'])]
     public function login(Request $request): RedirectResponse
     {
         $request->sanitize([
@@ -60,6 +63,7 @@ class LoginController extends Controller
      * @return RedirectResponse
      */
     #[Middleware([Authenticate::class])]
+    #[Route('logout', name: 'logout', methods: ['POST'])]
     public function logout(): RedirectResponse
     {
         Auth::logout();

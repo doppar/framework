@@ -6,6 +6,7 @@ use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Http\Response\RedirectResponse;
+use Phaseolies\Utilities\Attributes\Route;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use App\Http\Middleware\Authenticate;
@@ -19,6 +20,7 @@ class ProfileController extends Controller
      *
      * @return Response
      */
+    #[Route('profile', name: 'profile')]
     public function index(): Response
     {
         return view('profile');
@@ -30,6 +32,7 @@ class ProfileController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
+    #[Route('profile', name: 'profile', methods: ['POST'])]
     public function update(Request $request): RedirectResponse
     {
         $request->sanitize([
@@ -54,6 +57,7 @@ class ProfileController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
+    #[Route('update/password', name: 'password.update', methods: ['POST'])]
     public function updatePassword(Request $request): RedirectResponse
     {
         $request->sanitize([

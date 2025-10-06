@@ -83,7 +83,7 @@ class Schema
      */
     public function disableForeignKeyConstraints(): void
     {
-        DB::connection($this->connection)->execute('SET FOREIGN_KEY_CHECKS = 0');
+        DB::connection($this->connection)->disableForeignKeyConstraints();
     }
 
     /**
@@ -93,7 +93,7 @@ class Schema
      */
     public function enableForeignKeyConstraints(): void
     {
-        DB::connection($this->connection)->execute('SET FOREIGN_KEY_CHECKS = 1');
+        DB::connection($this->connection)->enableForeignKeyConstraints();
     }
 
     /**
