@@ -113,6 +113,12 @@ class Router extends Kernel
     {
         $this->initializeCachePath();
 
+        foreach (self::$routeMiddlewares as $method => $routes) {
+            foreach ($routes as $path => $middlewares) {
+                self::$routeMiddlewares[$method][$path] = array_values(array_unique((array)$middlewares));
+            }
+        }
+
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
             'namedRoutes' => self::$namedRoutes,
@@ -341,7 +347,6 @@ class Router extends Kernel
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
-            $this->processControllerMiddleware([$controllerClass, $method]);
         }
     }
 
