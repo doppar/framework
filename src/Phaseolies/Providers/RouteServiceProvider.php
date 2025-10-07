@@ -54,6 +54,8 @@ class RouteServiceProvider extends ServiceProvider
             require base_path('routes/api.php');
         });
 
+        $this->app->router->loadAttributeBasedRoutes();
+
         if ($this->app->router->shouldCacheRoutes()) {
             $this->app->router->cacheRoutes();
         }
