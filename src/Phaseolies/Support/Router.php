@@ -340,13 +340,13 @@ class Router extends Kernel
         $name = $route->name ?? null;
 
         foreach ($httpMethods as $httpMethod) {
-            $this->addRouteWithoutProcessing($httpMethod, $path, [$controllerClass, $method], $name);
+            $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
             $this->processControllerMiddleware([$controllerClass, $method]);
         }
     }
 
     /**
-     * Add a route without processing middleware and dependencies immediately
+     * Add a route name to attribute routing
      *
      * @param string $method
      * @param string $path
@@ -354,7 +354,7 @@ class Router extends Kernel
      * @param string|null $name
      * @return self
      */
-    protected function addRouteWithoutProcessing(string $method, string $path, $callback, ?string $name = null): self
+    protected function addRouteNameToAttributesRouting(string $method, string $path, $callback, ?string $name = null): self
     {
         $this->addRoute($method, $path, $callback);
 
