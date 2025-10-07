@@ -9,8 +9,9 @@ class Route
 {
     public function __construct(
         public string $path,
+        public array $methods = ['GET'],
         public ?string $name = null,
-        public array $methods = ['GET']
+        public array $middleware = []
     ) {
         if (is_string($this->methods)) {
             $this->methods = [$this->methods];

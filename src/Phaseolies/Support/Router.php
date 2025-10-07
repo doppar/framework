@@ -344,9 +344,13 @@ class Router extends Kernel
         $path = $route->path;
         $httpMethods = $route->methods ?? ['GET'];
         $name = $route->name ?? null;
+        $middleware = $route->middleware ?? [];
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
+            if (!empty($middleware)) {
+                $this->middleware($middleware);
+            }
         }
     }
 
