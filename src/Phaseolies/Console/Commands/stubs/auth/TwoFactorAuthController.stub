@@ -62,7 +62,7 @@ class TwoFactorAuthController extends Controller
      * @return RedirectResponse
      */
     #[Middleware([GuestMiddleware::class])]
-    #[Route('verify/2fa', name: 'verify.2fa')]
+    #[Route('verify/2fa', name: 'verify.2fa', methods: ['POST'])]
     public function verifyToken(Request $request): RedirectResponse
     {
         if (Auth::verifyTwoFactorCode($request->token)) {

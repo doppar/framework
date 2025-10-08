@@ -894,8 +894,7 @@ class Router extends Kernel
     protected function loadRoutesFromFiles(): void
     {
         $routeFiles = [
-            base_path('routes/web.php'),
-            base_path('routes/api.php'),
+            base_path('routes/web.php')
         ];
 
         foreach ($routeFiles as $file) {
