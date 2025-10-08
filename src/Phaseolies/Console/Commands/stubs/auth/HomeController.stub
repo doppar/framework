@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use Phaseolies\Http\Response;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Utilities\Attributes\Route;
 use App\Http\Middleware\Authenticate;
 use App\Http\Controllers\Controller;
 
-#[Middleware([Authenticate::class])]
 class HomeController extends Controller
 {
     /**
@@ -15,6 +15,8 @@ class HomeController extends Controller
      *
      * @return Response
      */
+    #[Middleware(Authenticate::class)]
+    #[Route('home', name: 'dashboard')]
     public function __invoke(): Response
     {
         return view('home');

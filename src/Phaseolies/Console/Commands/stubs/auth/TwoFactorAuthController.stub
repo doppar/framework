@@ -6,6 +6,7 @@ use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Utilities\Attributes\Route;
 use App\Http\Middleware\GuestMiddleware;
 use App\Http\Middleware\Authenticate;
 use App\Http\Controllers\Controller;
@@ -19,6 +20,7 @@ class TwoFactorAuthController extends Controller
      * @return Response
      */
     #[Middleware([Authenticate::class])]
+    #[Route('enable/2fa', name: 'enable.2fa', methods: ['POST'])]
     public function toggle2FA(Request $request): Response
     {
         $qrCodeImage = null;
@@ -47,6 +49,7 @@ class TwoFactorAuthController extends Controller
      * @return Response
      */
     #[Middleware([GuestMiddleware::class])]
+    #[Route('verify/2fa', name: 'verify.2fa')]
     public function index(): Response
     {
         return view('auth.2fa');
@@ -59,6 +62,7 @@ class TwoFactorAuthController extends Controller
      * @return RedirectResponse
      */
     #[Middleware([GuestMiddleware::class])]
+    #[Route('verify/2fa', name: 'verify.2fa')]
     public function verifyToken(Request $request): RedirectResponse
     {
         if (Auth::verifyTwoFactorCode($request->token)) {
