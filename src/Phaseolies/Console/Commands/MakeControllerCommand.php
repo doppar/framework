@@ -2,8 +2,9 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Phaseolies\Console\Schedule\Command;
 use RuntimeException;
+use Phaseolies\Support\Facades\Str;
+use Phaseolies\Console\Schedule\Command;
 
 class MakeControllerCommand extends Command
 {
@@ -119,8 +120,8 @@ class MakeControllerCommand extends Command
     protected function replacePlaceholders(string $stub, string $namespace, string $className): string
     {
         return str_replace(
-            ['{{ namespace }}', '{{ class }}'],
-            [$namespace, $className],
+            ['{{ namespace }}', '{{ class }}', '{{ routeName }}'],
+            [$namespace, $className, strtolower(Str::removeSuffix($className, 'Controller'))],
             $stub
         );
     }

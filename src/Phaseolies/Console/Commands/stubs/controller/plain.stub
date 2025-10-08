@@ -3,8 +3,13 @@
 namespace {{ namespace }};
 
 use App\Http\Controllers\Controller;
+use Phaseolies\Utilities\Attributes\Route;
 
-class {{ class }} extends Controller
+class {{ class }}
 {
-    //
+    #[Route('/{{ routeName }}')]
+    public function index()
+    {
+        return 'Hello {{ class }}, this is a plain controller';
+    }
 }
