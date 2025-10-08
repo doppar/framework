@@ -1,0 +1,14 @@
+<?php
+
+namespace {{ namespace }};
+
+use Phaseolies\Utilities\Attributes\Route;
+
+class {{ class }}
+{
+    #[Route('/{{ routeName }}')]
+    public function index()
+    {
+        return view('{{ routeView }}.default', ['className' => '{{ class }}']);
+    }
+}

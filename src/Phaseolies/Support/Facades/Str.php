@@ -27,6 +27,8 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\StringService leet_speak(string $input): string
  * @method static \Phaseolies\Support\StringService extract_emails(string $input): array
  * @method static \Phaseolies\Support\StringService highlight_keyword(string $input, string $keyword, string $tag = 'strong'): string
+ * @method static \Phaseolies\Support\StringService suffixAppend(string $input, string $suffix): string
+ * @method static \Phaseolies\Support\StringService remove_suffix(string $input, string $suffix): string
  * @see \Phaseolies\Support\StringService
  */
 
