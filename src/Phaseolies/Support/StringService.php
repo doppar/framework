@@ -551,7 +551,7 @@ class StringService
      * @param string $suffix The suffix to remove.
      * @return string The modified string with the suffix removed.
      */
-    public static function removeSuffix(string $input, string $suffix): string
+    public function removeSuffix(string $input, string $suffix): string
     {
         return substr($input, 0, -strlen($suffix));
     }

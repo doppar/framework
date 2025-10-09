@@ -120,16 +120,52 @@ class MakeControllerCommand extends Command
     }
 
     /**
-     * Replace placeholders in the stub.
+     * Replace placeholders in the stub with actual values.
      */
-    protected function replacePlaceholders(string $stub, string $namespace, string $className, string $routeName): string
-    {
+    protected function replacePlaceholders(
+        string $stub,
+        string $namespace,
+        string $className,
+        string $routeName
+    ): string {
+        $baseNamespace = 'App\\Http\\Controllers';
+        $basePath = 'app/Http/Controllers/';
+
+        // Normalize route view name
         $routeView = str_replace(['\\', '/'], '.', $routeName);
-        return str_replace(
-            ['{{ namespace }}', '{{ class }}', '{{ routeName }}', '{{ routeView }}'],
-            [$namespace, $className, $routeName, $routeView],
-            $stub
-        );
+
+        // Extract sub-namespace relative to base controller namespace
+        $subNamespace = match (true) {
+            str_starts_with($namespace, $baseNamespace . '\\') => substr($namespace, strlen($baseNamespace . '\\')),
+            $namespace === $baseNamespace => '',
+            default => $this->extractSubNamespace($namespace),
+        };
+
+        // Convert sub-namespace to relative path
+        $relativePath = $subNamespace
+            ? str_replace('\\', '/', $subNamespace) . '/'
+            : '';
+
+        $controllerPath = "{$basePath}{$relativePath}{$className}.php";
+
+        return strtr($stub, [
+            '{{ namespace }}'      => $namespace,
+            '{{ class }}'          => $className,
+            '{{ routeName }}'      => $routeName,
+            '{{ routeView }}'      => $routeView,
+            '{{ controllerPath }}' => $controllerPath,
+        ]);
+    }
+
+    /**
+     * Extract sub-namespace after the last "Controllers" segment.
+     */
+    protected function extractSubNamespace(string $namespace): string
+    {
+        $pos = strrpos($namespace, 'Controllers');
+        return $pos !== false
+            ? ltrim(substr($namespace, $pos + strlen('Controllers')), '\\')
+            : '';
     }
 
     /**
@@ -140,7 +176,7 @@ class MakeControllerCommand extends Command
     protected function parseFlags(): array
     {
         $name = str()->suffixAppend($this->argument('name'), 'Controller');
-        $routeName = strtolower(Str::removeSuffix($name, 'Controller'));
+        $routeName = strtolower(str()->removeSuffix($name, 'Controller'));
         $isInvokable = $this->option('invokable');
         $isResource = $this->option('bundle');
         $isApi = $this->option('api');
