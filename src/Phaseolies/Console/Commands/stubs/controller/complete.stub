@@ -2,9 +2,10 @@
 
 namespace {{ namespace }};
 
+use App\Http\Controllers\Controller;
 use Phaseolies\Utilities\Attributes\Route;
 
-class {{ class }}
+class {{ class }} extends Controller
 {
     #[Route('/{{ routeName }}', name:'{{ routingName }}.default')]
     public function index()
