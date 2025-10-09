@@ -1,5 +1,11 @@
 # Release Notes
 
+## v2.9.5.0 - 2025-10-09
+
+* [Console] Add suffix Controller to each controllers by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/15
+* [Package] package update by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/16
+* Improve error page UI and functionality by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/18
+
 ## v2.9.4.9 - 2025-10-08
 
 * fix: routing issue resolve for same origin endpoint without attr base… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/14
