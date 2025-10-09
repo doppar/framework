@@ -153,6 +153,7 @@ class MakeControllerCommand extends Command
             '{{ class }}'          => $className,
             '{{ routeName }}'      => $routeName,
             '{{ routeView }}'      => $routeView,
+            '{{ routingName}}'       => $routeView,
             '{{ controllerPath }}' => $controllerPath,
         ]);
     }
