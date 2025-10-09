@@ -91,9 +91,10 @@ class ErrorHandler
                 }
 
                 $formattedCode = implode("\n", $highlightedLines);
-
+                date_default_timezone_set(config('app.timezone'));
                 $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
                 $languageClass = "language-$fileExtension";
+
                 if (ob_get_level() > 0) {
                     ob_end_clean();
                 }
