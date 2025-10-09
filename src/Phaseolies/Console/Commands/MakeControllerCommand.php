@@ -13,7 +13,7 @@ class MakeControllerCommand extends Command
      *
      * @var string
      */
-    protected $name = 'make:controller {name} {--invokable} {--bundle} {--api} {--complete}';
+    protected $name = 'make:controller {name} {--invokable} {--bundle} {--api} {--complete} {--c}';
 
     /**
      * The description of the console command.
@@ -144,7 +144,7 @@ class MakeControllerCommand extends Command
         $isInvokable = $this->option('invokable');
         $isResource = $this->option('bundle');
         $isApi = $this->option('api');
-        $isComplete = $this->option('complete');
+        $isComplete = $this->option('complete') || $this->option('c');
 
         return [$name, $routeName, $isInvokable, $isResource, $isApi, $isComplete];
     }
