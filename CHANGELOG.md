@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.4.9 - 2025-10-08
+
+* fix: routing issue resolve for same origin endpoint without attr base… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/14
+
 ## v2.9.4.7 - 2025-10-07
 
 **Full Changelog**: https://github.com/doppar/framework/compare/v2.9.4.6...v2.9.4.7
