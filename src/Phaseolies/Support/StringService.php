@@ -529,7 +529,22 @@ class StringService
     }
 
     /**
-     * Remove a suffix from a string.
+     * Append a suffix to a string if it doesn't already end with it.
+     *
+     * @param string $input The input string.
+     * @param string $suffix The suffix to append.
+     * @return string The modified string with the suffix appended.
+     */
+    public function suffixAppend(string $input, string $suffix): string
+    {
+        if (str()->endsWith($input, $suffix)) {
+            return $input;
+        }
+
+        return strtoupper($input[0]) . substr($input, 1) . $suffix;
+    }
+
+    /** Remove a suffix from a string.
      *
      * @param string $input The input string.
      * @param string $suffix The suffix to remove.

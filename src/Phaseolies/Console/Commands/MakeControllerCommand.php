@@ -30,7 +30,7 @@ class MakeControllerCommand extends Command
     protected function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $name = $this->argument('name');
+            $name = str()->suffixAppend($this->argument('name'), 'Controller');
             $isInvokable = $this->option('invokable');
             $isResource = $this->option('bundle');
             $isApi = $this->option('api');
