@@ -4,11 +4,11 @@ namespace {{ namespace }};
 
 use Phaseolies\Utilities\Attributes\Route;
 
-class {{ class }} extends Controller
+class {{ class }}
 {
     #[Route('/{{ routeName }}')]
     public function index()
     {
-        return view('{{ routeName }}.default', ['className' => '{{ class }}']);
+        return view('{{ routeView }}.default', ['className' => '{{ class }}']);
     }
 }

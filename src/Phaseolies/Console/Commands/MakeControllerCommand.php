@@ -75,18 +75,6 @@ class MakeControllerCommand extends Command
 
             $this->displaySuccess('Controller created successfully');
             $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-            $this->newLine();
-
-            $type = match (true) {
-                $isInvokable => 'Invokable',
-                $isResource => 'Resource',
-                $isApi => 'API Resource',
-                $isComplete => 'Complete',
-                default => 'Standard'
-            };
-
-            $this->line('<fg=yellow>📌 Type:</> <fg=white>' . $type . ' controller</>');
-
             // If complete, also publish the layout view
             if ($isComplete) {
                 $layoutStub = $this->getLayoutStub('complete.stub');
@@ -99,6 +87,20 @@ class MakeControllerCommand extends Command
                 file_put_contents($layoutPath, $layoutContent);
                 $this->line('<fg=yellow>📁 Layout:</> <fg=white>' . str_replace(base_path(), '', $layoutPath) . '</>');
             }
+            
+            $this->newLine();
+
+            $type = match (true) {
+                $isInvokable => 'Invokable',
+                $isResource => 'Resource',
+                $isApi => 'API Resource',
+                $isComplete => 'Complete',
+                default => 'Standard'
+            };
+
+            $this->line('<fg=yellow>📌 Type:</> <fg=white>' . $type . ' controller</>');
+
+            
 
             return 0;
         });
@@ -160,9 +162,10 @@ class MakeControllerCommand extends Command
      */
     protected function replacePlaceholders(string $stub, string $namespace, string $className, string $routeName): string
     {
+        $routeView = str_replace(['\\', '/'], '.', $routeName);
         return str_replace(
-            ['{{ namespace }}', '{{ class }}', '{{ routeName }}'],
-            [$namespace, $className, $routeName],
+            ['{{ namespace }}', '{{ class }}', '{{ routeName }}', '{{ routeView }}'],
+            [$namespace, $className, $routeName, $routeView],
             $stub
         );
     }
