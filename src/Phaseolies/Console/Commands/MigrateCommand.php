@@ -12,7 +12,7 @@ class MigrateCommand extends Command
      *
      * @var string
      */
-    protected $name = 'migrate {--path=}';
+    protected $name = 'migrate {--path=} {--connection=}';
 
     /**
      * The description of the console command.
@@ -34,7 +34,6 @@ class MigrateCommand extends Command
     public function __construct()
     {
         parent::__construct();
-
         $this->migrator = app('migrator');
     }
 
@@ -45,21 +44,27 @@ class MigrateCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
+            $connection = $this->option('connection') ?: config('database.default');
+
             $path = $this->option('path');
 
+            $this->line("<fg=yellow>🔁 Running migrations on connection: {$connection}</>");
+            $this->newLine();
+
             if ($path) {
-                $status = $this->migrator->run([$path]);
+                $migrations = $this->migrator->run($connection, $path);
             } else {
-                $status = $this->migrator->run();
+                $migrations = $this->migrator->run($connection);
             }
 
-            if (empty($status)) {
+            if (empty($migrations)) {
+                $this->newLine();
                 $this->displayInfo('Nothing to migrate');
             } else {
                 $this->displaySuccess('Database migrated successfully');
                 $this->line('<fg=yellow>📊 Migrations Executed:</>');
-                foreach ($status as $migration) {
+                foreach ($migrations as $migration) {
                     $this->line('- <fg=white>' . $migration . '</>');
                 }
             }

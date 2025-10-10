@@ -28,7 +28,7 @@ class DBSeedCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $seedName = $this->argument('seed');
 
             if ($seedName) {
@@ -46,6 +46,7 @@ class DBSeedCommand extends Command
                 $databaseSeeder->run();
             }
 
+            $this->newLine();
             $this->displaySuccess('Seeds executed successfully');
 
             return 0;
