@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.5.2 - 2025-10-10
+
+* [Console] Improve server:stop command by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/20
+* attr route params path to uri and comment improved in string class: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/21
+
 ## v2.9.5.1 - 2025-10-10
 
 * date timezone issue resolve for error page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/19
