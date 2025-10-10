@@ -341,7 +341,7 @@ class Router extends Kernel
      */
     protected function registerAttributeRoute(string $controllerClass, string $method, object $route): void
     {
-        $path = $route->path;
+        $path = $route->uri;
         $httpMethods = $route->methods ?? ['GET'];
         $name = $route->name ?? null;
         $middleware = $route->middleware ?? [];
