@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.5.1 - 2025-10-10
+
+* date timezone issue resolve for error page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/19
+* [Console] Add a --complete parameter to create a working controller by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/17
+
 ## v2.9.5.0 - 2025-10-09
 
 * [Console] Add suffix Controller to each controllers by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/15
