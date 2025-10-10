@@ -80,7 +80,7 @@ trait InteractsWithModelQueryProcessing
     {
         $query = static::query();
 
-        $key = (new static)->primaryKey;
+        $key = (new static())->primaryKey;
 
         if (is_array($primaryKey)) {
             $models = $query->whereIn($key, $primaryKey)->get();
@@ -508,7 +508,7 @@ trait InteractsWithModelQueryProcessing
 
             return $property->isStatic()
                 ? $property->getValue()
-                : $property->getValue(new $this->modelClass);
+                : $property->getValue(new $this->modelClass());
         }
 
         throw new \Exception("Property '{$attribute}' does not exist in class '{$class}'.");
@@ -547,7 +547,7 @@ trait InteractsWithModelQueryProcessing
     public static function __callStatic($method, $parameters)
     {
         if (method_exists(static::class, $bindMethod = '__' . $method)) {
-            return (new static)->$bindMethod(static::query(), ...$parameters);
+            return (new static())->$bindMethod(static::query(), ...$parameters);
         }
 
         return static::query()->$method(...$parameters);
