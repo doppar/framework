@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.5.3 - 2025-10-10
+
+* database migration fresh and migrate command improved: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/22
+
 ## v2.9.5.2 - 2025-10-10
 
 * [Console] Improve server:stop command by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/20
