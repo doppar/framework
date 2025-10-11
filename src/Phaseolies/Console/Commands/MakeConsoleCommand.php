@@ -11,7 +11,7 @@ class MakeConsoleCommand extends Command
      *
      * @var string
      */
-    protected $name = 'make:schedule {name}';
+    protected $name = 'make:command {name}';
 
     /**
      * The description of the console command.
@@ -82,6 +82,8 @@ class MakeConsoleCommand extends Command
     {
         $commandName = $this->convertToKebabCase($className);
 
+        $appName = strtolower(str_replace(' ', '_', config('app.name', 'doppar')));
+
         return <<<EOT
 <?php
 
@@ -96,7 +98,7 @@ class {$className} extends Command
      *
      * @var string
      */
-    protected \$name = 'doppar:{$commandName}';
+    protected \$name = '{$appName}:{$commandName}';
 
     /**
      * The console command description.
