@@ -1,5 +1,33 @@
 # Release Notes
 
+## v2.9.5.4 - 2025-10-11
+
+* console command make:schedule to make:command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/23
+
+## v2.9.5.3 - 2025-10-10
+
+* database migration fresh and migrate command improved: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/22
+
+## v2.9.5.2 - 2025-10-10
+
+* [Console] Improve server:stop command by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/20
+* attr route params path to uri and comment improved in string class: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/21
+
+## v2.9.5.1 - 2025-10-10
+
+* date timezone issue resolve for error page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/19
+* [Console] Add a --complete parameter to create a working controller by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/17
+
+## v2.9.5.0 - 2025-10-09
+
+* [Console] Add suffix Controller to each controllers by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/15
+* [Package] package update by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/16
+* Improve error page UI and functionality by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/18
+
+## v2.9.4.9 - 2025-10-08
+
+* fix: routing issue resolve for same origin endpoint without attr base… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/14
+
 ## v2.9.4.7 - 2025-10-07
 
 **Full Changelog**: https://github.com/doppar/framework/compare/v2.9.4.6...v2.9.4.7

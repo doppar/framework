@@ -341,7 +341,7 @@ class Router extends Kernel
      */
     protected function registerAttributeRoute(string $controllerClass, string $method, object $route): void
     {
-        $path = $route->path;
+        $path = $route->uri;
         $httpMethods = $route->methods ?? ['GET'];
         $name = $route->name ?? null;
         $middleware = $route->middleware ?? [];
@@ -894,8 +894,7 @@ class Router extends Kernel
     protected function loadRoutesFromFiles(): void
     {
         $routeFiles = [
-            base_path('routes/web.php'),
-            base_path('routes/api.php'),
+            base_path('routes/web.php')
         ];
 
         foreach ($routeFiles as $file) {
