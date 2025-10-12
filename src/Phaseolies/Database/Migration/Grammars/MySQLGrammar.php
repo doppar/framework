@@ -27,11 +27,10 @@ class MySQLGrammar extends Grammar
         foreach ($columns as $column) {
             $columnSql = $column->toSql();
 
-            if (($column->type === 'id' || $column->type === 'bigIncrements')) {
-                $columnSql = str_replace(
-                    ['BIGINT UNSIGNED', 'INT'],
-                    ['BIGINT UNSIGNED AUTO_INCREMENT', 'INT AUTO_INCREMENT'],
-                    $columnSql
+            if ($column->type === 'id' || $column->type === 'bigIncrements') {
+                $columnSql = sprintf(
+                    '`%s` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT',
+                    $column->name
                 );
                 $primaryKeyColumns[] = trim($column->name, '`');
             } elseif (isset($column->attributes['primary']) && $column->attributes['primary']) {
