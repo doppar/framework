@@ -165,4 +165,14 @@ class AtomicLock
     {
         return $this->name;
     }
+
+    /**
+     * Get the seconds of the lock.
+     *
+     * @return int
+     */
+    public function getSeconds(): int
+    {
+        return $this->seconds;
+    }
 }

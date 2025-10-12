@@ -2,11 +2,11 @@
 
 namespace Tests\Unit;
 
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Phaseolies\Cache\Lock\AtomicLock;
 use Phaseolies\Cache\CacheStore;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use DateInterval;
-use Closure;
 
 class CacheStoreTest extends TestCase
 {
@@ -232,5 +232,344 @@ class CacheStoreTest extends TestCase
     public function testGetAdapter()
     {
         $this->assertSame($this->adapter, $this->cache->getAdapter());
+    }
+
+    // =======================================
+    // Atomic Lock Test
+    // =======================================
+    public function testLockCreation()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $this->assertInstanceOf(AtomicLock::class, $lock);
+        $this->assertEquals('test_lock', $lock->getName());
+        $this->assertEquals(10, $lock->getSeconds());
+        $this->assertNotEmpty($lock->getOwner());
+    }
+
+    public function testLockCreationWithCustomOwner()
+    {
+        $lock = $this->cache->locked('test_lock', 10, 'custom_owner');
+
+        $this->assertEquals('custom_owner', $lock->getOwner());
+    }
+
+    public function testLockAcquisition()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $result = $lock->get();
+
+        $this->assertTrue($result);
+        $this->assertTrue($lock->isOwnedByCurrentProcess());
+    }
+
+    public function testLockAcquisitionFailsWhenAlreadyLocked()
+    {
+        $lock1 = $this->cache->locked('test_lock', 10);
+        $lock2 = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock1->get());
+        $this->assertFalse($lock2->get());
+    }
+
+    public function testLockRelease()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock->get());
+        $this->assertTrue($lock->release());
+        $this->assertFalse($lock->isOwnedByCurrentProcess());
+    }
+
+    public function testLockReleaseFailsWhenNotOwner()
+    {
+        $lock1 = $this->cache->locked('test_lock', 10);
+        $lock2 = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock1->get());
+        $this->assertFalse($lock2->release());
+    }
+
+    public function testLockBlockingAcquisition()
+    {
+        $lock1 = $this->cache->locked('test_lock', 10);
+        $lock2 = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock1->get());
+
+        // Start a separate process to test blocking (simulated)
+        $acquired = false;
+        $startTime = time();
+
+        // This should block for up to 1 second
+        $result = $lock1->release();
+        $this->assertTrue($result);
+
+        $acquired = $lock2->block(1);
+        $endTime = time();
+
+        $this->assertTrue($acquired);
+        $this->assertLessThan(2, $endTime - $startTime); // Should be less than 2 seconds
+    }
+
+    public function testLockBlockingTimeout()
+    {
+        $lock1 = $this->cache->locked('test_lock', 10);
+        $lock2 = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock1->get());
+
+        $startTime = time();
+        $acquired = $lock2->block(1); // Try to acquire for 1 second
+        $endTime = time();
+
+        $this->assertFalse($acquired);
+        $this->assertGreaterThanOrEqual(1, $endTime - $startTime);
+    }
+
+    public function testLockOwner()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $this->assertTrue($lock->get());
+        $this->assertEquals($lock->getOwner(), $lock->owner());
+    }
+
+    public function testLockOwnerWhenNotAcquired()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $this->assertEmpty($lock->owner());
+    }
+
+    public function testLockIsOwnedByCurrentProcess()
+    {
+        $lock = $this->cache->locked('test_lock', 10);
+
+        $this->assertFalse($lock->isOwnedByCurrentProcess());
+
+        $this->assertTrue($lock->get());
+
+        $this->assertTrue($lock->isOwnedByCurrentProcess());
+
+        $this->assertTrue($lock->release());
+
+        $this->assertFalse($lock->isOwnedByCurrentProcess());
+    }
+
+    public function testRestoreLockForNonExistentLock()
+    {
+        $restoredLock = $this->cache->restoreLock('nonexistent_lock', 'some_owner');
+
+        $this->assertInstanceOf(AtomicLock::class, $restoredLock);
+        $this->assertEquals('nonexistent_lock', $restoredLock->getName());
+        $this->assertEquals('some_owner', $restoredLock->getOwner());
+        $this->assertEquals(10, $restoredLock->getSeconds());
+        $this->assertFalse($restoredLock->isOwnedByCurrentProcess());
+    }
+
+    public function testConcurrentLockOperations()
+    {
+        $lockName = 'concurrent_lock';
+
+        // Simulate multiple processes trying to acquire the same lock
+        $lock1 = $this->cache->locked($lockName, 5);
+        $lock2 = $this->cache->locked($lockName, 5);
+        $lock3 = $this->cache->locked($lockName, 5);
+
+        // First lock should succeed
+        $this->assertTrue($lock1->get());
+        $this->assertTrue($lock1->isOwnedByCurrentProcess());
+
+        // Others should fail
+        $this->assertFalse($lock2->get());
+        $this->assertFalse($lock2->isOwnedByCurrentProcess());
+        $this->assertFalse($lock3->get());
+        $this->assertFalse($lock3->isOwnedByCurrentProcess());
+
+        // Release first lock
+        $this->assertTrue($lock1->release());
+
+        // Now second lock should be able to acquire it
+        $this->assertTrue($lock2->get());
+        $this->assertTrue($lock2->isOwnedByCurrentProcess());
+    }
+
+    public function testLockExpiration()
+    {
+        $lock = $this->cache->locked('expiring_lock', 1); // 1 second TTL
+
+        $this->assertTrue($lock->get());
+
+        // Wait for lock to expire
+        sleep(2);
+
+        // Lock should have expired
+        $this->assertFalse($lock->isOwnedByCurrentProcess());
+
+        // Should be able to acquire the lock again
+        $newLock = $this->cache->locked('expiring_lock', 10);
+        $this->assertTrue($newLock->get());
+    }
+
+    public function testLockMultipleDifferentLocks()
+    {
+        $lock1 = $this->cache->locked('lock1', 10);
+        $lock2 = $this->cache->locked('lock2', 10);
+
+        // Both locks should be acquirable since they're different
+        $this->assertTrue($lock1->get());
+        $this->assertTrue($lock2->get());
+
+        $this->assertTrue($lock1->isOwnedByCurrentProcess());
+        $this->assertTrue($lock2->isOwnedByCurrentProcess());
+
+        $this->assertTrue($lock1->release());
+        $this->assertTrue($lock2->release());
+    }
+
+    public function testLockOwnerIsUniquePerInstance()
+    {
+        $lock1 = $this->cache->locked('lock_test', 5);
+        $lock2 = $this->cache->locked('lock_test', 5);
+
+        $this->assertNotEquals($lock1->getOwner(), $lock2->getOwner());
+    }
+
+    public function testLockCannotAcquireIfAlreadyExists()
+    {
+        $lock1 = $this->cache->locked('lock_test', 5);
+        $this->assertTrue($lock1->get());
+
+        $lock2 = $this->cache->locked('lock_test', 5);
+        $this->assertFalse($lock2->get());
+
+        $lock1->release();
+    }
+
+    public function testLockGetNameAndOwner()
+    {
+        $lock = $this->cache->locked('lock_test', 5);
+        $this->assertEquals('lock_test', $lock->getName());
+        $this->assertNotEmpty($lock->getOwner());
+    }
+
+    public function testReleaseReturnsFalseIfLockDoesNotExist()
+    {
+        $lock = $this->cache->locked('lock_test', 5);
+        // Not acquired yet
+        $this->assertFalse($lock->release());
+    }
+
+    public function testRestoreLockThrowsOnOwnerMismatch()
+    {
+        $lock = $this->cache->locked('lock_test', 5);
+        $this->assertTrue($lock->get());
+
+        $wrongOwner = 'fake_owner_123';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Lock owner mismatch/');
+        $this->cache->restoreLock('lock_test', $wrongOwner);
+    }
+
+
+    public function testIsOwnedByCurrentProcess()
+    {
+        $lock = $this->cache->locked('lock_test', 5);
+        $lock->get();
+
+        $this->assertTrue($lock->isOwnedByCurrentProcess());
+
+        // Create new lock with same name but different owner
+        $lock2 = $this->cache->locked('lock_test', 5);
+        $this->assertFalse($lock2->isOwnedByCurrentProcess());
+    }
+
+    public function testAtomicLockOwnerRetrieval()
+    {
+        $lock = $this->cache->locked('lock_test', 5);
+        $this->assertTrue($lock->get());
+
+        $ownerFromLock = $lock->getOwner();
+        $ownerFromCache = $lock->owner();
+
+        $this->assertEquals($ownerFromLock, $ownerFromCache);
+    }
+
+    public function testAtomicLockBlockWaitsUntilAvailable()
+    {
+        $lock1 = $this->cache->locked('lock_test', 1);
+        $this->assertTrue($lock1->get());
+
+        // Create another lock that will block until available
+        $lock2 = $this->cache->locked('lock_test', 1);
+
+        // Release the first lock after a short delay in another thread simulation
+        // Since we can’t sleep in test too long, we manually simulate expiry
+        sleep(1);
+        $this->adapter->deleteItem('lock_test');
+
+        $this->assertTrue($lock2->block(2));
+        $this->assertFalse($this->adapter->hasItem('lock_test'));
+        $this->assertTrue($lock2->release());
+    }
+
+    public function testLockOwnerGeneration()
+    {
+        $lock1 = $this->cache->locked('lock1', 10);
+        $lock2 = $this->cache->locked('lock2', 10);
+
+        $owner1 = $lock1->getOwner();
+        $owner2 = $lock2->getOwner();
+
+        $this->assertNotEquals($owner1, $owner2);
+
+        // Each owner should be non-empty and unique
+        $this->assertNotEmpty($owner1);
+        $this->assertNotEmpty($owner2);
+
+        // Should contain the process ID
+        $this->assertStringContainsString((string) getmypid(), $owner1);
+        $this->assertStringContainsString((string) getmypid(), $owner2);
+
+        // Should be reasonably long (uniqid + _ + pid)
+        $this->assertGreaterThan(10, strlen($owner1));
+        $this->assertGreaterThan(10, strlen($owner2));
+    }
+
+    public function testRestoreLock()
+    {
+        $originalLock = $this->cache->locked('test_lock', 30, 'test_owner');
+        $this->assertTrue($originalLock->get());
+
+        // Restore the lock with the same owner
+        $restoredLock = $this->cache->restoreLock('test_lock', 'test_owner');
+
+        $this->assertInstanceOf(AtomicLock::class, $restoredLock);
+        $this->assertEquals('test_lock', $restoredLock->getName());
+        $this->assertEquals('test_owner', $restoredLock->getOwner());
+        $this->assertEquals(30, $restoredLock->getSeconds());
+        $this->assertTrue($restoredLock->isOwnedByCurrentProcess());
+    }
+
+    public function testLockDataStructure()
+    {
+        $lock = $this->cache->locked('test_lock', 30);
+
+        $this->assertTrue($lock->get());
+
+        $lockData = $this->cache->get('test_lock');
+        $this->assertNotNull($lockData);
+
+        $data = json_decode($lockData, true);
+        $this->assertIsArray($data);
+        $this->assertArrayHasKey('owner', $data);
+        $this->assertArrayHasKey('duration', $data);
+        $this->assertArrayHasKey('acquired_at', $data);
+        $this->assertEquals($lock->getOwner(), $data['owner']);
+        $this->assertEquals(30, $data['duration']);
+        $this->assertIsInt($data['acquired_at']);
     }
 }

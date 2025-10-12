@@ -443,7 +443,7 @@ class CacheStore implements CacheInterface
      */
     public function locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
     {
-        return new AtomicLock($this, $this->prefixedKey($name), $seconds, $owner);
+        return new AtomicLock($this, $name, $seconds, $owner);
     }
 
     /**

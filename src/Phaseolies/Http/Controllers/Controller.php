@@ -4,7 +4,7 @@ namespace Phaseolies\Http\Controllers;
 
 use RuntimeException;
 use Phaseolies\Support\View\View;
-use Phaseolies\Support\Cache\Cache;
+use Phaseolies\Support\Blade\BladeCache;
 use Phaseolies\Support\Blade\Directives;
 use Phaseolies\Support\Blade\BladeCondition;
 use Phaseolies\Support\Blade\BladeCompiler;
@@ -13,7 +13,7 @@ use Countable;
 
 class Controller extends View
 {
-    use Cache, BladeCompiler, Directives, BladeCondition;
+    use BladeCache, BladeCompiler, Directives, BladeCondition;
 
     /**
      * @var array
