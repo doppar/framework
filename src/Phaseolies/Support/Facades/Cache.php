@@ -21,6 +21,7 @@ namespace Phaseolies\Support\Facades;
  * @method static locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
  * @method static restoreLock(string $name, string $owner): AtomicLock
  * @method static \Phaseolies\Cache\Lock\AtomicLock get(): bool
+ * @method static \Phaseolies\Cache\Lock\AtomicLock block(int $seconds): bool
  * @method static \Phaseolies\Cache\Lock\AtomicLock release(): bool
  * @method static \Phaseolies\Cache\Lock\AtomicLock owner(): string
  * @method static \Phaseolies\Cache\Lock\AtomicLock isOwnedByCurrentProcess(): bool
