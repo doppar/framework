@@ -18,6 +18,14 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Cache\CacheStore stash(string $key, $ttl, Closure $callback): mixed
  * @method static \Phaseolies\Cache\CacheStore stashForever(string $key, Closure $callback): mixed
  * @method static \Phaseolies\Cache\CacheStore stashWhen(string $key, Closure $callback, bool $condition, $ttl = null): mixed
+ * @method static locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
+ * @method static restoreLock(string $name, string $owner): AtomicLock
+ * @method static \Phaseolies\Cache\Lock\AtomicLock get(): bool
+ * @method static \Phaseolies\Cache\Lock\AtomicLock release(): bool
+ * @method static \Phaseolies\Cache\Lock\AtomicLock owner(): string
+ * @method static \Phaseolies\Cache\Lock\AtomicLock isOwnedByCurrentProcess(): bool
+ * @method static \Phaseolies\Cache\Lock\AtomicLock getOwner(): string
+ * @method static \Phaseolies\Cache\Lock\AtomicLock getName(): string
  * @see \Phaseolies\Cache\CacheStore
  */
 
