@@ -3,8 +3,6 @@
 namespace Phaseolies\Cache\Lock;
 
 use Phaseolies\Cache\CacheStore;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Process\PhpExecutableFinder;
 
 class AtomicLock
 {
@@ -47,16 +45,6 @@ class AtomicLock
     private $isOwned = false;
 
     /**
-     * @var Process|null
-     */
-    private $heartbeatProcess = null;
-
-    /**
-     * @var int
-     */
-    private $heartbeatInterval;
-
-    /**
      * @var bool
      */
     private $isRestored = false;
@@ -82,14 +70,10 @@ class AtomicLock
         $this->owner = $owner ?: $this->generateOwner();
         $this->isRestored = $isRestored;
 
-        // If this is a restored lock
-        // Checking if we still own it
+        // If this is a restored lock, check if we still own it
         if ($isRestored) {
             $this->isOwned = $this->validateRestoredOwnership();
         }
-
-        // Heartbeat interval: refresh at 1/3 of lock duration
-        $this->heartbeatInterval = max(1, (int) floor($seconds / 3));
     }
 
     /**
@@ -111,8 +95,7 @@ class AtomicLock
                 'duration' => $this->seconds,
                 'acquired_at' => time(),
                 'expires_at' => time() + $this->seconds,
-                'version' => 1,
-                'heartbeat_interval' => $this->heartbeatInterval
+                'version' => 1
             ];
 
             $serializedData = json_encode($lockData);
@@ -124,190 +107,12 @@ class AtomicLock
 
             if ($acquired) {
                 $this->isOwned = true;
-                if (!$this->isRunningInTest()) {
-                    $this->startHeartbeat();
-                }
             }
 
             return $acquired;
         } catch (\Exception $e) {
             error("Lock acquisition failed for '{$this->name}': " . $e->getMessage());
             return false;
-        }
-    }
-
-    /**
-     * Check if we're running in a test environment.
-     *
-     * @return bool
-     */
-    private function isRunningInTest(): bool
-    {
-        return defined('PHPUNIT_COMPOSER_INSTALL') ||
-            getenv('APP_ENV') === 'testing' ||
-            getenv('PHPUNIT') === '1' ||
-            (isset($_SERVER['argv']) && in_array('--test', $_SERVER['argv']));
-    }
-
-    /**
-     * Start heartbeat to refresh lock.
-     *
-     * @return void
-     */
-    private function startHeartbeat(): void
-    {
-        if ($this->heartbeatProcess !== null && $this->heartbeatProcess->isRunning()) {
-            return;
-        }
-
-        try {
-            $phpBinary = (new PhpExecutableFinder())->find();
-
-            if (!$phpBinary) {
-                throw new \RuntimeException('Could not find PHP executable');
-            }
-
-            $inlineCode = $this->buildHeartbeatCode();
-
-            $command = [$phpBinary, '-r', $inlineCode];
-
-            $this->heartbeatProcess = new Process($command);
-            $this->heartbeatProcess->setTimeout(null);
-
-            if (!$this->isRunningInTest()) {
-                $this->heartbeatProcess->disableOutput();
-            }
-
-            $this->heartbeatProcess->start();
-
-            $maxChecks = 5;
-            $checks = 0;
-
-            while ($checks < $maxChecks) {
-                usleep(100000);
-                if ($this->heartbeatProcess->isRunning()) {
-                    error("Heartbeat started for lock '{$this->name}' with PID: " . $this->heartbeatProcess->getPid());
-                    return;
-                }
-                $checks++;
-            }
-
-            // If we get here, the process didn't start properly
-            $errorOutput = $this->heartbeatProcess->getErrorOutput();
-            $exitCode = $this->heartbeatProcess->getExitCode();
-
-            throw new \RuntimeException(
-                "Heartbeat process exited immediately. " .
-                    "Exit code: {$exitCode}, " .
-                    "Error: {$errorOutput}"
-            );
-        } catch (\Exception $e) {
-            error("Failed to start heartbeat for lock '{$this->name}': " . $e->getMessage());
-            $this->heartbeatProcess = null;
-        }
-
-        // Fallback shutdown function
-        register_shutdown_function([$this, 'release']);
-    }
-
-    /**
-     * Build the heartbeat PHP code.
-     *
-     * @return string
-     */
-    private function buildHeartbeatCode(): string
-    {
-        return sprintf(
-            '<?php
-            $lockName = "%s";
-            $owner = "%s";
-            $duration = %d;
-            $interval = %d;
-            $maxRuntime = %d;
-
-            // Use the same cache directory as Symfony FilesystemAdapter
-            $cacheDir = sys_get_temp_dir() . "/phaseolies_cache";
-            if (!is_dir($cacheDir)) {
-                mkdir($cacheDir, 0777, true);
-            }
-
-            $endTime = time() + $maxRuntime;
-            $key = md5($lockName);
-            $filename = $cacheDir . "/" . $key;
-
-            while (time() < $endTime) {
-                if (file_exists($filename)) {
-                    $content = file_get_contents($filename);
-                    if ($content !== false) {
-                        $data = unserialize($content);
-                        if (is_array($data) && isset($data["value"])) {
-                            $lockData = json_decode($data["value"], true);
-                            if (is_array($lockData) && ($lockData["owner"] ?? "") === $owner) {
-                                // Update the lock with new expiration
-                                $newLockData = $lockData;
-                                $newLockData["expires_at"] = time() + $duration;
-                                $newLockData["last_heartbeat"] = time();
-                                $newLockData["version"] = ($lockData["version"] ?? 0) + 1;
-
-                                $newData = [
-                                    "value" => json_encode($newLockData),
-                                    "expires" => time() + $duration
-                                ];
-
-                                $tempFile = $filename . "." . uniqid();
-                                if (file_put_contents($tempFile, serialize($newData))) {
-                                    rename($tempFile, $filename);
-                                }
-                            } else {
-                                // Lock ownership changed or invalid
-                                exit(0);
-                            }
-                        } else {
-                            // Invalid data format
-                            exit(0);
-                        }
-                    } else {
-                        // Cannot read file
-                        exit(0);
-                    }
-                } else {
-                    // Lock file doesn\'t exist
-                    exit(0);
-                }
-                sleep($interval);
-            }
-            exit(0);',
-            addslashes($this->name),
-            addslashes($this->owner),
-            $this->seconds,
-            $this->heartbeatInterval,
-            $this->seconds + 10
-        );
-    }
-
-    /**
-     * Stop heartbeat process.
-     *
-     * @return void
-     */
-    private function stopHeartbeat(): void
-    {
-        if ($this->heartbeatProcess !== null) {
-            try {
-                if ($this->heartbeatProcess->isRunning()) {
-                    // Give it a moment to terminate gracefully
-                    $this->heartbeatProcess->stop(2, SIGTERM);
-
-                    // Force kill if still running
-                    if ($this->heartbeatProcess->isRunning()) {
-                        $this->heartbeatProcess->stop(0, SIGKILL);
-                    }
-                }
-            } catch (\Exception $e) {
-                // Ignore errors during shutdown
-            }
-
-            $this->heartbeatProcess = null;
         }
     }
 
@@ -323,20 +128,16 @@ class AtomicLock
         }
 
         try {
-            $this->stopHeartbeat();
-
             $lockData = $this->store->get($this->name);
 
             if (!$lockData) {
                 $this->isOwned = false;
-                // Lock doesn't exist - return false
                 return false;
             }
 
             $data = json_decode($lockData, true);
             if (!is_array($data) || ($data['owner'] ?? '') !== $this->owner) {
                 $this->isOwned = false;
-                // Not owned by current process
                 return false;
             }
 
@@ -521,23 +322,20 @@ class AtomicLock
             $lockData = $this->store->get($this->name);
 
             if (!$lockData) {
-                // Lock doesn't exist
                 return false;
             }
 
             $data = json_decode($lockData, true);
             if (!is_array($data) || ($data['owner'] ?? '') !== $this->owner) {
-                // Lock exists but we don't own it
                 return false;
             }
 
             // Check if lock is expired
             $expiresAt = $data['expires_at'] ?? 0;
             if (time() > $expiresAt) {
-                return false; // Lock expired
+                return false;
             }
 
-            // We still own the lock
             return true;
         } catch (\Exception $e) {
             return false;
@@ -596,7 +394,7 @@ class AtomicLock
 
     /**
      * Manually set the lock as owned (for restoreLock functionality)
-     * 
+     *
      * @return $this
      */
     public function setOwned(): self
@@ -614,25 +412,5 @@ class AtomicLock
     public function isRestored(): bool
     {
         return $this->isRestored;
-    }
-
-    /**
-     * Get the heartbeat interval.
-     *
-     * @return int
-     */
-    public function getHeartbeatInterval(): int
-    {
-        return $this->heartbeatInterval;
-    }
-
-    /**
-     * Check if heartbeat is running.
-     *
-     * @return bool
-     */
-    public function isHeartbeatRunning(): bool
-    {
-        return $this->heartbeatProcess !== null && $this->heartbeatProcess->isRunning();
     }
 }
