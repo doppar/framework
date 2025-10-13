@@ -439,7 +439,7 @@ class CacheStore implements CacheInterface
      * @param string $name
      * @param int $seconds
      * @param string|null $owner
-     * @return AtomicLock
+     * @return \Phaseolies\Cache\Lock\AtomicLock
      */
     public function locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
     {
