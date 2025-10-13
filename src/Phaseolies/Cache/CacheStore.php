@@ -460,14 +460,21 @@ class CacheStore implements CacheInterface
 
         if ($lockData) {
             $data = json_decode($lockData, true);
-            $seconds = $data['duration'] ?? 10;
+            if (is_array($data)) {
+                $seconds = $data['duration'] ?? 10;
 
-            $cachedOwner = $data['owner'] ?? '';
-            if ($cachedOwner !== $owner) {
-                throw new \RuntimeException("Lock owner mismatch. Expected: {$owner}, Found: {$cachedOwner}");
+                $cachedOwner = $data['owner'] ?? '';
+                if ($cachedOwner !== $owner) {
+                    throw new \RuntimeException("Lock owner mismatch. Expected: {$owner}, Found: {$cachedOwner}");
+                }
+
+                // Create the lock as restored
+                // it will validate ownership automatically
+                return new AtomicLock($this, $name, $seconds, $owner, true);
             }
         }
 
+        // If no lock data exists or data is invalid, create a new lock
         return new AtomicLock($this, $name, $seconds, $owner);
     }
 }
