@@ -30,15 +30,15 @@ class ServerStopCommand extends Command
     {
         return $this->executeWithTiming(function() {
             $port = $this->argument('port');
-            if (!self::isPortOk($port)) {
-                return 1;
-            }
-            if ($port) {
-                if (!self::isPortInUse($port)) {
-                    $this->displayError("Port $port is not in use");
+            // Convert string to int if provided
+            if ($port !== null) {
+                $port = filter_var($port, FILTER_VALIDATE_INT);
+                if ($port === false) {
+                    $this->displayError('Port must be a valid integer');
                     return 1;
                 }
-
+            }
+            if ($port) {
                 $stopped = self::stopServer($port);
                 if (count($stopped) === 0) {
                     $this->displayError("No PHP server found on port $port");
@@ -72,32 +72,6 @@ class ServerStopCommand extends Command
         foreach ($stopped as $item) {
             $this->line("<fg=yellow>Stopped:</> <fg=green>http://localhost:" . $item['port'] . "</> (PID " . $item['pid'] . ")");
         }
-    }
-
-    private function isPortOk(mixed $port): bool
-    {
-        if (empty($port)) {
-            return false;
-        }
-
-        if (!is_int($port)) {
-            $this->displayError('Port must be an integer');
-            return false;
-        }
-
-        return true;
-    }
-
-    private function isPortInUse(int $port): bool
-    {
-        $socket = @fsockopen('127.0.0.1', $port, $errno, $errstr, 1);
-
-        if ($socket) {
-            fclose($socket);
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -171,16 +145,16 @@ class ServerStopCommand extends Command
             return $servers;
         }
 
-        // Linux / macOS: use pgrep to find php -S localhost:<port>
-        $pattern = $port === null ? "php -S localhost:" : "php -S localhost:$port";
-        $process = Process::fromShellCommandline("pgrep -fa '" . $pattern . "'");
+        // Linux / macOS: use ps to find php -S localhost:<port>
+        $pattern = $port === null ? "[p]hp -S localhost:" : "[p]hp -S localhost:$port";
+        $process = Process::fromShellCommandline("ps aux | grep '" . $pattern . "'");
         $process->run();
         $output = $process->getOutput();
         $servers = [];
         foreach (preg_split("/(\r\n|\n|\r)/", $output) as $line) {
             if (trim($line) === '') { continue; }
-            // Line format: "12345 php -S localhost:8000 -t public"
-            if (!preg_match('/^(\d+)\s+.*php\s+-S\s+localhost:(\d+)/', $line, $m)) {
+            // Line format: "user  12345  0.0  0.2 ... php -S localhost:8000 -t public"
+            if (!preg_match('/\s+(\d+)\s+.*php\s+-S\s+localhost:(\d+)/', $line, $m)) {
                 continue;
             }
             $servers[] = ['pid' => (int)$m[1], 'port' => (int)$m[2]];

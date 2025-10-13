@@ -95,9 +95,17 @@ class ErrorHandler
                 $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
                 $languageClass = "language-$fileExtension";
 
+                $response = app('response');
+
+                $response->setBody(json_encode($errorMessage));
+                $response->setOriginal($errorMessage);
+                $response->setException($exception);
+                $response->setStatusCode($errorCode ?: 500);
+
                 if (ob_get_level() > 0) {
                     ob_end_clean();
                 }
+
                 echo str_replace(
                     [
                         '{{ error_message }}',
@@ -112,7 +120,8 @@ class ErrorHandler
                         '{{ timestamp }}',
                         '{{ server_software }}',
                         '{{ platform }}',
-                        '{{ exception_class }}'
+                        '{{ exception_class }}',
+                        '{{ status_code }}'
                     ],
                     [
                         $errorMessage,
@@ -127,7 +136,8 @@ class ErrorHandler
                         now()->toDayDateTimeString(),
                         $_SERVER['SERVER_SOFTWARE'],
                         php_uname(),
-                        class_basename($exception)
+                        class_basename($exception),
+                        app('response')->statusCode
                     ],
                     file_get_contents(__DIR__ . '/error_page_template.blade.php')
                 );

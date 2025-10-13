@@ -1,5 +1,18 @@
 # Release Notes
 
+## v2.9.5.5 - 2025-10-13
+
+* [Atomic Lock] Concurrent-Safe Atomic Locks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/24
+* [name:hello:foo] Normalize cache key format to include colon separator  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/25
+
+## v2.9.5.4 - 2025-10-11
+
+* console command make:schedule to make:command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/23
+
+## v2.9.5.3 - 2025-10-10
+
+* database migration fresh and migrate command improved: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/22
+
 ## v2.9.5.2 - 2025-10-10
 
 * [Console] Improve server:stop command by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/20
