@@ -23,6 +23,13 @@ class Authenticate
      */
     private $statelessUser = null;
 
+    /**
+     * Cache for user version checks during the current request
+     *
+     * @var array
+     */
+    private $versionCheckCache = [];
+
     public function __set($name, $value)
     {
         $this->data[$name] = $value;
@@ -317,10 +324,20 @@ class Authenticate
             return false;
         }
 
-        $currentVersion =  $cache['user']->newQuery()
+        $userId = $cache['user']->id;
+        
+        // Check if we already verified this user's version during this request
+        if (isset($this->versionCheckCache[$userId])) {
+            return $cache['version'] === $this->versionCheckCache[$userId];
+        }
+
+        $currentVersion = $cache['user']->newQuery()
             ->select('updated_at')
-            ->where('id', $cache['user']->id)
+            ->where('id', $userId)
             ->first();
+
+        // Cache the version check result for this request
+        $this->versionCheckCache[$userId] = $currentVersion?->updated_at;
 
         return $cache['version'] === $currentVersion?->updated_at;
     }
