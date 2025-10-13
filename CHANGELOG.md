@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.5.5 - 2025-10-13
+
+* [Atomic Lock] Concurrent-Safe Atomic Locks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/24
+* [name:hello:foo] Normalize cache key format to include colon separator  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/25
+
 ## v2.9.5.4 - 2025-10-11
 
 * console command make:schedule to make:command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/23
