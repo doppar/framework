@@ -4,6 +4,7 @@ namespace Phaseolies\Cache;
 
 use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Psr\SimpleCache\CacheInterface;
+use Phaseolies\Cache\Lock\AtomicLock;
 
 class CacheStore implements CacheInterface
 {
@@ -430,5 +431,50 @@ class CacheStore implements CacheInterface
         return $ttl === null
             ? $this->stashForever($key, $callback)
             : $this->stash($key, $ttl, $callback);
+    }
+
+    /**
+     * Get a lock instance.
+     *
+     * @param string $name
+     * @param int $seconds
+     * @param string|null $owner
+     * @return \Phaseolies\Cache\Lock\AtomicLock
+     */
+    public function locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
+    {
+        return new AtomicLock($this, $name, $seconds, $owner);
+    }
+
+    /**
+     * Restore a lock instance from the given owner.
+     *
+     * @param string $name
+     * @param string|null $owner
+     * @return \Phaseolies\Cache\Lock\AtomicLock
+     */
+    public function restoreLock(string $name, string $owner): AtomicLock
+    {
+        $lockData = $this->get($name);
+        $seconds = 10;
+
+        if ($lockData) {
+            $data = json_decode($lockData, true);
+            if (is_array($data)) {
+                $seconds = $data['duration'] ?? 10;
+
+                $cachedOwner = $data['owner'] ?? '';
+                if ($cachedOwner !== $owner) {
+                    throw new \RuntimeException("Lock owner mismatch. Expected: {$owner}, Found: {$cachedOwner}");
+                }
+
+                // Create the lock as restored
+                // it will validate ownership automatically
+                return new AtomicLock($this, $name, $seconds, $owner, true);
+            }
+        }
+
+        // If no lock data exists or data is invalid, create a new lock
+        return new AtomicLock($this, $name, $seconds, $owner);
     }
 }

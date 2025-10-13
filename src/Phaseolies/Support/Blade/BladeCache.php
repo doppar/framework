@@ -1,10 +1,10 @@
 <?php
 
-namespace Phaseolies\Support\Cache;
+namespace Phaseolies\Support\Blade;
 
 use RuntimeException;
 
-trait Cache
+trait BladeCache
 {
     protected $cacheFolder;
 
