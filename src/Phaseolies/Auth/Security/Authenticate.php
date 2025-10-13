@@ -28,7 +28,7 @@ class Authenticate
      *
      * @var array
      */
-    private $versionCheckCache = [];
+    private static $versionCheckCache = [];
 
     public function __set($name, $value)
     {
@@ -325,10 +325,10 @@ class Authenticate
         }
 
         $userId = $cache['user']->id;
-        
+
         // Check if we already verified this user's version during this request
-        if (isset($this->versionCheckCache[$userId])) {
-            return $cache['version'] === $this->versionCheckCache[$userId];
+        if (isset(self::$versionCheckCache[$userId])) {
+            return $cache['version'] === self::$versionCheckCache[$userId];
         }
 
         $currentVersion = $cache['user']->newQuery()
@@ -337,7 +337,7 @@ class Authenticate
             ->first();
 
         // Cache the version check result for this request
-        $this->versionCheckCache[$userId] = $currentVersion?->updated_at;
+        self::$versionCheckCache[$userId] = $currentVersion?->updated_at;
 
         return $cache['version'] === $currentVersion?->updated_at;
     }
