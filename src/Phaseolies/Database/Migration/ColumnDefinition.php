@@ -109,7 +109,8 @@ class ColumnDefinition
      */
     public function toSql(): string
     {
-        $sql = $this->name . ' ' . $this->getTypeDefinition();
+        $grammar = $this->getGrammar();
+        $sql = $this->name . ' ' . $grammar->getTypeDefinition($this);
 
         // Add PRIMARY KEY constraint if specified
         if (isset($this->attributes['primary']) && $this->attributes['primary']) {
@@ -145,80 +146,20 @@ class ColumnDefinition
      * @return string The SQL type definition
      */
     /**
-     * Check if the current database connection is SQLite.
+     * Get the appropriate grammar instance based on the database driver.
      *
-     * @return bool
+     * @return Grammars\Grammar
      */
-    protected function isSQLite(): bool
+    protected function getGrammar(): Grammars\Grammar
     {
         $connection = app('db')->getConnection();
-        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite';
-    }
+        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
 
-    /**
-     * Get the SQL type definition for the column.
-     *
-     * @return string The SQL type definition
-     */
-    protected function getTypeDefinition(): string
-    {
-        $isSQLite = $this->isSQLite();
-
-        // Mapping of abstract types to concrete SQL types
-        $map = [
-            'id' => $isSQLite ? 'INTEGER' : 'BIGINT UNSIGNED',
-            'bigIncrements' => $isSQLite ? 'INTEGER' : 'BIGINT UNSIGNED',
-            'string' => $isSQLite ? 'TEXT' : 'VARCHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'char' => $isSQLite ? 'TEXT' : 'CHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'mediumText' => 'TEXT',
-            'longText' => 'TEXT',
-            'tinyText' => 'TEXT',
-            'boolean' => $isSQLite ? 'INTEGER' : 'TINYINT(1)',
-            'json' => 'TEXT',
-            'jsonb' => 'TEXT',
-            'integer' => 'INTEGER',
-            'tinyInteger' => 'INTEGER',
-            'smallInteger' => 'INTEGER',
-            'mediumInteger' => 'INTEGER',
-            'bigInteger' => 'INTEGER',
-            'unsignedInteger' => 'INTEGER',
-            'unsignedTinyInteger' => 'INTEGER',
-            'unsignedSmallInteger' => 'INTEGER',
-            'unsignedMediumInteger' => 'INTEGER',
-            'unsignedBigInteger' => 'INTEGER',
-            'float' => 'REAL',
-            'double' => 'REAL',
-            'decimal' => 'REAL',
-            'date' => 'TEXT',
-            'dateTime' => 'TEXT',
-            'dateTimeTz' => 'TEXT',
-            'time' => 'TEXT',
-            'timeTz' => 'TEXT',
-            'timestamp' => 'INTEGER',
-            'timestampTz' => 'INTEGER',
-            'year' => 'INTEGER',
-            'binary' => 'BLOB',
-            'tinyBlob' => 'BLOB',
-            'mediumBlob' => 'BLOB',
-            'longBlob' => 'BLOB',
-            'enum' => 'TEXT',
-            'set' => 'TEXT',
-            'geometry' => 'BLOB',
-            'point' => 'BLOB',
-            'lineString' => 'BLOB',
-            'polygon' => 'BLOB',
-            'geometryCollection' => 'BLOB',
-            'multiPoint' => 'BLOB',
-            'multiLineString' => 'BLOB',
-            'multiPolygon' => 'BLOB',
-            'uuid' => 'TEXT',
-            'ipAddress' => 'TEXT',
-            'macAddress' => 'TEXT',
-        ];
-
-        // Return the mapped type or fall back to uppercase version of the type
-        return $map[$this->type] ?? strtoupper($this->type);
+        return match ($driver) {
+            'mysql' => new Grammars\MySQLGrammar(),
+            'sqlite' => new Grammars\SQLiteGrammar(),
+            default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
+        };
     }
 
     /**

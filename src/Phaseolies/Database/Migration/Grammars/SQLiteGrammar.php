@@ -107,6 +107,7 @@ class SQLiteGrammar extends Grammar
         $map = [
             'id' => 'INTEGER',
             'bigIncrements' => 'INTEGER',
+            'string' => 'TEXT',
             'char' => 'TEXT',
             'text' => 'TEXT',
             'mediumText' => 'TEXT',

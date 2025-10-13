@@ -27,11 +27,10 @@ class MySQLGrammar extends Grammar
         foreach ($columns as $column) {
             $columnSql = $column->toSql();
 
-            if (($column->type === 'id' || $column->type === 'bigIncrements')) {
-                $columnSql = str_replace(
-                    ['BIGINT UNSIGNED', 'INT'],
-                    ['BIGINT UNSIGNED AUTO_INCREMENT', 'INT AUTO_INCREMENT'],
-                    $columnSql
+            if ($column->type === 'id' || $column->type === 'bigIncrements') {
+                $columnSql = sprintf(
+                    '`%s` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT',
+                    $column->name
                 );
                 $primaryKeyColumns[] = trim($column->name, '`');
             } elseif (isset($column->attributes['primary']) && $column->attributes['primary']) {
@@ -83,11 +82,26 @@ class MySQLGrammar extends Grammar
 
     protected function mapType(string $type, array $attributes): string
     {
+        // Handle special cases that require attributes first
+        switch ($type) {
+            case 'enum':
+                return 'ENUM(' . $this->getEnumValues($attributes) . ')';
+            case 'set':
+                return 'SET(' . $this->getEnumValues($attributes) . ')';
+            case 'string':
+                return 'VARCHAR(' . ($attributes['length'] ?? 255) . ')';
+            case 'char':
+                return 'CHAR(' . ($attributes['length'] ?? 255) . ')';
+            case 'decimal':
+                return 'DECIMAL(' . ($attributes['precision'] ?? 10) . ',' . ($attributes['scale'] ?? 2) . ')';
+            case 'double':
+                return 'DOUBLE' . $this->getPrecisionAndScale($attributes);
+        }
+
+        // Standard type mappings
         $map = [
             'id' => 'BIGINT',
             'bigIncrements' => 'BIGINT',
-            'string' => 'VARCHAR(' . ($attributes['length'] ?? 255) . ')',
-            'char' => 'CHAR(' . ($attributes['length'] ?? 255) . ')',
             'text' => 'TEXT',
             'mediumText' => 'MEDIUMTEXT',
             'longText' => 'LONGTEXT',
@@ -106,10 +120,6 @@ class MySQLGrammar extends Grammar
             'unsignedMediumInteger' => 'MEDIUMINT UNSIGNED',
             'unsignedBigInteger' => 'BIGINT UNSIGNED',
             'float' => 'FLOAT',
-            'double' => 'DOUBLE' . $this->getPrecisionAndScale($attributes),
-            'decimal' => 'DECIMAL(' .
-                ($attributes['precision'] ?? 10) . ',' .
-                ($attributes['scale'] ?? 2) . ')',
             'date' => 'DATE',
             'dateTime' => 'DATETIME',
             'dateTimeTz' => 'DATETIME',
@@ -122,8 +132,6 @@ class MySQLGrammar extends Grammar
             'tinyBlob' => 'TINYBLOB',
             'mediumBlob' => 'MEDIUMBLOB',
             'longBlob' => 'LONGBLOB',
-            'enum' => 'ENUM(' . $this->getEnumValues($attributes) . ')',
-            'set' => 'SET(' . $this->getEnumValues($attributes) . ')',
             'geometry' => 'GEOMETRY',
             'point' => 'POINT',
             'lineString' => 'LINESTRING',
