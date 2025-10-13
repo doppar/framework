@@ -314,7 +314,7 @@ class CacheStore implements CacheInterface
             ));
         }
 
-        if (preg_match('/[{}()\/\\\\@:]/', $key)) {
+        if (preg_match('/[{}()\/\\\\@]/', $key)) {
             throw new \InvalidArgumentException(sprintf(
                 'Invalid key: "%s". The key contains one or more characters reserved for future extension',
                 $key
