@@ -8,6 +8,12 @@ class MySQLGrammar extends Grammar
 {
     protected $engine = 'InnoDB';
 
+    /**
+     * Get the SQL data type definition for a given column
+     *
+     * @param ColumnDefinition $column
+     * @return string
+     */
     public function getTypeDefinition(ColumnDefinition $column): string
     {
         $type = $this->mapType($column->type, $column->attributes);
@@ -19,6 +25,16 @@ class MySQLGrammar extends Grammar
 
         return $type;
     }
+
+
+    /**
+     * Compile a SQL CREATE TABLE statement
+     *
+     * @param string $table
+     * @param array $columns
+     * @param array $primaryKeys
+     * @return string
+     */
     public function compileCreateTable(string $table, array $columns, array $primaryKeys = []): string
     {
         $columnDefinitions = [];
@@ -48,30 +64,58 @@ class MySQLGrammar extends Grammar
         return "CREATE TABLE `{$table}` (" . implode(', ', $columnDefinitions) . $primaryKeySql . ") ENGINE={$this->engine}";
     }
 
+    /**
+     * Compile a SQL statement to add a new column to an existing table
+     *
+     * @param string $table
+     * @param string $columnSql
+     * @return string
+     */
     public function compileAddColumn(string $table, string $columnSql): string
     {
         return "ALTER TABLE `{$table}` ADD COLUMN {$columnSql}";
     }
 
+    /**
+     * Compile a SQL statement to create a non-unique index on a column
+     *
+     * @param string $table
+     * @param string $column
+     * @return string
+     */
     public function compileCreateIndex(string $table, string $column): string
     {
         $indexName = "idx_{$table}_{$column}";
+
         return "CREATE INDEX `{$indexName}` ON `{$table}` (`{$column}`)";
     }
 
+    /**
+     * Compile a SQL statement to add a unique constraint on a column
+     *
+     * @param string $table
+     * @param string $column
+     * @return string
+     */
     public function compileCreateUnique(string $table, string $column): string
     {
         $constraintName = "{$table}_{$column}_unique";
+
         return "ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraintName}` UNIQUE (`{$column}`)";
     }
 
+    /**
+     * Determine if the current database supports column ordering
+     *
+     * @return bool
+     */
     public function supportsColumnOrdering(): bool
     {
         return true;
     }
 
     /**
-     * MySQL supporte l'ajout de clé primaire avec ALTER TABLE.
+     * MySQL supports adding a primary key
      *
      * @return bool
      */
@@ -80,6 +124,13 @@ class MySQLGrammar extends Grammar
         return true;
     }
 
+    /**
+     * Map abstract column types to MySQL-specific SQL type definitions
+     *
+     * @param string $type
+     * @param array $attributes
+     * @return string
+     */
     protected function mapType(string $type, array $attributes): string
     {
         // Handle special cases that require attributes first
@@ -148,6 +199,12 @@ class MySQLGrammar extends Grammar
         return $map[$type] ?? strtoupper($type);
     }
 
+    /**
+     * Get the precision and scale for decimal/double types
+     *
+     * @param array $attributes
+     * @return string
+     */
     protected function getPrecisionAndScale(array $attributes): string
     {
         if (!isset($attributes['precision'])) {
@@ -163,12 +220,20 @@ class MySQLGrammar extends Grammar
         return $result;
     }
 
+    /**
+     * Get the enum values
+     *
+     * @param array $attributes
+     * @return string
+     */
     protected function getEnumValues(array $attributes): string
     {
-        if (!isset($attributes['allowed'])) {
+        $values = $attributes['allowed'] ?? $attributes['values'] ?? null;
+
+        if (!$values || !is_array($values)) {
             throw new \InvalidArgumentException('Enum type requires an array of allowed values');
         }
 
-        return "'" . implode("','", $attributes['allowed']) . "'";
+        return "'" . implode("','", $values) . "'";
     }
 }

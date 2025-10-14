@@ -10,9 +10,15 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Connectors\ConnectionFactory;
 use PDOException;
 use PDO;
+use Phaseolies\Database\Eloquent\Query\Grammar;
 
 class Database
 {
+    use Grammar {
+        getTableColumnsSql as protected grammarGetTableColumnsSql;
+        processTableColumnsResult as protected grammarProcessTableColumnsResult;
+    }
+
     /**
      * The active PDO connections
      *
@@ -47,6 +53,38 @@ class Database
     public function __construct(?string $connection = null)
     {
         $this->connection = $connection;
+    }
+
+    /**
+     * Get the SQL query to retrieve table column information
+     *
+     * @param string $tableName
+     * @return string
+     */
+    public function getTableColumnsSql(string $tableName): string
+    {
+        return $this->grammarGetTableColumnsSql($tableName);
+    }
+
+    /**
+     * Process the result to extract column names based on driver
+     *
+     * @param array $result
+     * @return array
+     */
+    public function processTableColumnsResult(array $result): array
+    {
+        return $this->grammarProcessTableColumnsResult($result);
+    }
+
+    /**
+     * Get the driver name for the current connection
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        return $this->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME);
     }
 
     /**
@@ -236,9 +274,11 @@ class Database
         }
 
         try {
-            $stmt = $this->getPdo()->query("DESCRIBE {$table}");
+            $sql = $this->getTableColumnsSql($table);
+            $stmt = $this->getPdo()->query($sql);
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+            return $this->processTableColumnsResult($result);
         } catch (PDOException $e) {
             throw new PDOException("Failed to get table columns: " . $e->getMessage());
         }
@@ -251,11 +291,11 @@ class Database
      */
     public function getTables(): array
     {
-        $stmt = $this->getPdo()->query("SHOW TABLES");
+        $sql = $this->getTablesSql();
+        $stmt = $this->getPdo()->query($sql);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
-
 
     /**
      * Check if a table exists in the database

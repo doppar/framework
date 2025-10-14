@@ -14,6 +14,7 @@ use PDOStatement;
 use PDOException;
 use PDO;
 use Phaseolies\Database\Eloquent\Query\Debuggable;
+use Phaseolies\Database\Eloquent\Query\Grammar;
 use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
@@ -23,6 +24,7 @@ class Builder
     use QueryUtils;
     use Debuggable;
     use InteractsWithTimeframe;
+    use Grammar;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -375,10 +377,12 @@ class Builder
     protected function getTableColumns(?string $table = null): array
     {
         $tableName = $table ?? $this->table;
-        $stmt = $this->pdo->query("DESCRIBE {$tableName}");
-        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $sql = $this->getTableColumnsSql($tableName);
 
-        return $columns;
+        $stmt = $this->pdo->query($sql);
+        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return $this->processTableColumnsResult($result);
     }
 
     /**
@@ -1320,7 +1324,7 @@ class Builder
             return;
         }
 
-        $keys = array_map(fn ($model) => $model->{$localKey}, $models);
+        $keys = array_map(fn($model) => $model->{$localKey}, $models);
         $relatedModelInstance = app($relatedModel);
         $query = $relatedModelInstance->query()->whereIn($foreignKey, $keys);
 
@@ -1371,7 +1375,7 @@ class Builder
         $relatedKey = $firstModel->getLastRelatedKey();
         $pivotTable = $firstModel->getLastPivotTable();
 
-        $keys = array_map(fn ($model) => $model->getKey(), $models);
+        $keys = array_map(fn($model) => $model->getKey(), $models);
         $relatedModelInstance = new $relatedModel();
 
         $pivotColumns = $this->getTableColumns($pivotTable);
@@ -1487,7 +1491,7 @@ class Builder
      */
     protected function loadOneToOne(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
-        $localKeys = array_map(fn ($model) => $model->$localKey, $models);
+        $localKeys = array_map(fn($model) => $model->$localKey, $models);
         $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
@@ -1513,7 +1517,7 @@ class Builder
      */
     protected function loadOneToMany(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
-        $localKeys = array_map(fn ($model) => $model->$localKey, $models);
+        $localKeys = array_map(fn($model) => $model->$localKey, $models);
         $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
@@ -1738,7 +1742,7 @@ class Builder
     {
         if (strpos($identifier, '.') !== false) {
             return implode('.', array_map(
-                fn ($part) => "`{$part}`",
+                fn($part) => "`{$part}`",
                 explode('.', $identifier)
             ));
         }
@@ -1971,7 +1975,7 @@ class Builder
                 $columns[] = 'updated_at';
             }
         }
-        $columnsStr = implode(', ', array_map(fn ($col) => "`$col`", $columns));
+        $columnsStr = implode(', ', array_map(fn($col) => "`$col`", $columns));
 
         // Prepare placeholders and bindings
         $placeholders = [];
@@ -2009,7 +2013,7 @@ class Builder
 
         // Build the ON DUPLICATE KEY UPDATE clause
         $updateStatements = array_map(
-            fn ($col) => "`$col` = VALUES(`$col`)",
+            fn($col) => "`$col` = VALUES(`$col`)",
             $updateColumns
         );
 
@@ -2056,7 +2060,7 @@ class Builder
                 : now();
         }
 
-        $setClause = implode(', ', array_map(fn ($key) => "$key = ?", array_keys($attributes)));
+        $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
 
         $sql = "UPDATE {$this->table} SET $setClause";
 
@@ -2156,7 +2160,7 @@ class Builder
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Convert results to model instances
-            $models = array_map(fn ($item) => new $this->modelClass($item), $results);
+            $models = array_map(fn($item) => new $this->modelClass($item), $results);
 
             $collection = new Collection($this->modelClass, $models);
 
@@ -2277,7 +2281,7 @@ class Builder
 
         // Add ORDER BY if any
         if (!empty($this->orderBy)) {
-            $orderByStrings = array_map(fn ($o) => "$o[0] $o[1]", $this->orderBy);
+            $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
         }
 
@@ -2319,11 +2323,19 @@ class Builder
      */
     public function stdDev(string $column): float
     {
-        $this->select(["STDDEV({$column}) as aggregate"]);
+        $stdDevExpression = $this->getStandardDeviation($column);
+
+        $this->select(["{$stdDevExpression} as aggregate"]);
 
         $result = $this->first();
 
-        return (float) ($result->aggregate ?? 0);
+        $value = $result->aggregate ?? 0;
+
+        if ($value === null || !is_numeric($value) || $value < 0) {
+            return 0.0;
+        }
+
+        return (float) $value;
     }
 
     /**

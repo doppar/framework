@@ -115,15 +115,11 @@ trait QueryUtils
      */
     public function random(int $limit): Builder
     {
-        return $this->orderByRaw('RAND()')->limit($limit);
+        return $this->orderByRaw($this->rand())->limit($limit);
     }
 
     /**
-     * Search a JSON column using MySQL's JSON_CONTAINS function
-     *
-     * This method allows querying JSON columns to check if they contain a specific value
-     * at a given path. It properly handles boolean values by converting them to JSON
-     * compatible strings ('true'/'false') and encodes other values as JSON.
+     * Search a JSON column
      *
      * @param string $column The name of the JSON column to search
      * @param string $path The JSON path to search within (e.g., '$.notifications.email')
@@ -133,45 +129,29 @@ trait QueryUtils
      */
     public function jsonHas(string $column, string $path, $value, string $boolean = 'AND'): self
     {
-        $jsonValue = is_bool($value)
-            ? ($value ? 'true' : 'false')
-            : json_encode($value);
+        [$expression, $bindings] = $this->jsonContains($column, $path, $value);
 
-        return $this->whereRaw(
-            "JSON_CONTAINS(`{$column}`, CAST(? AS JSON), '{$path}')",
-            [$jsonValue],
-            $boolean
-        );
+        return $this->whereRaw($expression, $bindings, $boolean);
     }
 
     /**
      * Search a JSON column using exact path matching with JSON_EXTRACT
-     *
-     * This method allows querying JSON columns by extracting a value at a specific path
-     * and comparing it with the given value. It properly handles boolean values by
-     * converting them to strings and uses JSON_UNQUOTE to remove JSON quotes from
-     * extracted values for proper comparison.
      *
      * @param string $column The name of the JSON column to search
      * @param string $path The JSON path to extract (e.g., '$.theme')
      * @param mixed $value The value to compare against
      * @param string $operator The comparison operator ('=', '!=', '>', etc.)
      * @param string $boolean The logical operator to use ('AND' or 'OR') for chaining
-     * @return self Returns the query builder instance for method chaining
+     * @return self
      */
     public function jsonEqual(string $column, string $path, $value, string $operator = '=', string $boolean = 'AND'): self
     {
-        if (is_bool($value)) {
-            return $this->whereRaw(
-                "JSON_UNQUOTE(JSON_EXTRACT(`{$column}`, ?)) {$operator} ?",
-                [$path, $value ? 'true' : 'false'],
-                $boolean
-            );
-        }
+        $formattedPath = $this->formatJsonPath($path);
+        $jsonExpression = $this->jsonExtract($column, $formattedPath);
 
         return $this->whereRaw(
-            "JSON_UNQUOTE(JSON_EXTRACT(`{$column}`, ?)) {$operator} ?",
-            [$path, $value],
+            "{$jsonExpression} {$operator} ?",
+            [$formattedPath, $value],
             $boolean
         );
     }

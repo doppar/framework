@@ -67,7 +67,7 @@ trait InteractsWithTimeframe
 
         $this->conditions[] = [
             $boolean,
-            "MONTH($column)",
+            $this->month($column),
             $operator,
             $value
         ];
@@ -111,7 +111,7 @@ trait InteractsWithTimeframe
 
         $this->conditions[] = [
             $boolean,
-            "YEAR($column)",
+            $this->year($column),
             $operator,
             $value
         ];
@@ -155,7 +155,7 @@ trait InteractsWithTimeframe
 
         $this->conditions[] = [
             $boolean,
-            "DAY($column)",
+            $this->day($column),
             $operator,
             $value
         ];
@@ -199,7 +199,7 @@ trait InteractsWithTimeframe
 
         $this->conditions[] = [
             $boolean,
-            "TIME($column)",
+            $this->time($column),
             $operator,
             $value
         ];
@@ -303,23 +303,83 @@ trait InteractsWithTimeframe
     }
 
     /**
-     * Filter records between two dates (inclusive).
+     * Add a where date between condition (date only, excludes time)
      *
      * @param string $column
-     * @param string|DateTime $start
-     * @param string|DateTime $end
-     * @param bool $includeTime Whether to include time in comparison
+     * @param mixed $start
+     * @param mixed $end
      * @return self
      */
-    public function whereDateBetween(string $column, $start, $end, bool $includeTime = false): self
+    public function whereDateBetween(string $column, $start, $end): self
     {
-        $start = $start instanceof \DateTime ? $start->format('Y-m-d H:i:s') : $start;
-        $end = $end instanceof \DateTime ? $end->format('Y-m-d H:i:s') : $end;
+        $start = $this->formatDate($start, false);
+        $end = $this->formatDate($end, false);
 
-        if (!$includeTime) {
-            return $this->whereBetween("DATE($column)", [$start, $end]);
+        $endDate = \DateTime::createFromFormat('Y-m-d', $end);
+        if ($endDate) {
+            $endDate->modify('+1 day');
+            $adjustedEnd = $endDate->format('Y-m-d');
+        } else {
+            $adjustedEnd = $end;
         }
 
+        return $this->whereBetween($this->date($column), [$start, $adjustedEnd]);
+    }
+
+    /**
+     * Add a where datetime between condition (includes time)
+     *
+     * @param string $column
+     * @param mixed $start
+     * @param mixed $end
+     * @return self
+     */
+    public function whereDateTimeBetween(string $column, $start, $end): self
+    {
+        $start = $this->formatDate($start, true);
+        $end = $this->formatDate($end, true);
+
         return $this->whereBetween($column, [$start, $end]);
+    }
+
+    /**
+     * Add a where date between condition with time handling
+     *
+     * @param string $column
+     * @param mixed $start
+     * @param mixed $end
+     * @param bool $includeTime
+     * @return self
+     */
+    public function whereDateBetweenLegacy(string $column, $start, $end, bool $includeTime = false): self
+    {
+        if ($includeTime) {
+            return $this->whereDateTimeBetween($column, $start, $end);
+        }
+
+        return $this->whereDateBetween($column, $start, $end);
+    }
+
+
+    /**
+     * Get the proper operator for date range based on includeTime flag
+     *
+     * @param bool $includeTime
+     * @return array [startOperator, endOperator]
+     */
+    public function getDateRangeOperators(bool $includeTime = false): array
+    {
+        if ($includeTime) {
+            return ['>=', '<='];
+        }
+
+        // For date-only ranges, we typically want inclusive start and exclusive end
+        // to cover the entire day
+        $driver = $this->getDriver();
+
+        return match ($driver) {
+            'mysql', 'pgsql', 'sqlite' => ['>=', '<'],
+            default => ['>=', '<='],
+        };
     }
 }

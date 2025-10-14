@@ -141,11 +141,6 @@ class ColumnDefinition
     }
 
     /**
-     * Get the SQL type definition for the column.
-     *
-     * @return string The SQL type definition
-     */
-    /**
      * Get the appropriate grammar instance based on the database driver.
      *
      * @return Grammars\Grammar
