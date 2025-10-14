@@ -1917,7 +1917,9 @@ class Builder
             $stmt = $this->pdo->prepare($sql);
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
-            return $this->pdo->lastInsertId();
+            $lastInsertId = $this->pdo->lastInsertId();
+
+            return $lastInsertId ? (int) $lastInsertId : false;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -2689,5 +2691,24 @@ class Builder
     protected function camelToSnake(string $input): string
     {
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $input));
+    }
+
+    /**
+     * Reset the builder state
+     *
+     * @return self
+     */
+    public function reset(): self
+    {
+        $this->fields = ['*'];
+        $this->conditions = [];
+        $this->orderBy = [];
+        $this->groupBy = [];
+        $this->limit = null;
+        $this->offset = null;
+        $this->joins = [];
+        $this->eagerLoad = [];
+
+        return $this;
     }
 }
