@@ -61,10 +61,39 @@ trait Grammar
         return match ($driver) {
             'sqlite' => array_column($result, 'name'),
             'pgsql' => array_column($result, 'column_name'),
-
-            // MySQL DESCRIBE returns column name as first element
-            default => array_column($result, 0),
+            'mysql' => $this->processMysqlTableColumns($result),
+            default => $this->processMysqlTableColumns($result),
         };
+    }
+
+    /**
+     * Process MySQL DESCRIBE result to extract column names
+     *
+     * @param array $result
+     * @return array
+     */
+    protected function processMysqlTableColumns(array $result): array
+    {
+        $columns = [];
+        foreach ($result as $row) {
+            // MySQL DESCRIBE returns column name in 'Field' key
+            if (isset($row['Field'])) {
+                $columns[] = $row['Field'];
+            }
+            // Fallback for different MySQL drivers
+            elseif (isset($row['field'])) {
+                $columns[] = $row['field'];
+            }
+            // Ultimate fallback - try to get first element
+            elseif (!empty($row) && is_array($row)) {
+                $firstValue = reset($row);
+                if (is_string($firstValue)) {
+                    $columns[] = $firstValue;
+                }
+            }
+        }
+
+        return $columns;
     }
 
     /**
@@ -82,87 +111,6 @@ trait Grammar
             'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
             default => "SHOW TABLES"
         };
-    }
-
-    /**
-     * Get JSON extract expression for the current database driver
-     *
-     * @param string $column
-     * @param string $path
-     * @return string
-     */
-    public function jsonExtract(string $column, string $path): string
-    {
-        $driver = $this->getDriver();
-
-        return match ($driver) {
-            'mysql' => "JSON_UNQUOTE(JSON_EXTRACT(`{$column}`, ?))",
-            'pgsql' => "{$column} #>> ?",
-            'sqlite' => "json_extract({$column}, ?)",
-            default => "JSON_UNQUOTE(JSON_EXTRACT(`{$column}`, ?))",
-        };
-    }
-
-    /**
-     * Format JSON path for the current database driver
-     *
-     * @param string $path
-     * @return string
-     */
-    public function formatJsonPath(string $path): string
-    {
-        $driver = $this->getDriver();
-
-        return match ($driver) {
-            'pgsql' => $this->convertJsonPathToPostgres($path),
-            default => $path,
-        };
-    }
-
-    /**
-     * Convert MySQL-style JSON path to PostgreSQL format
-     *
-     * @param string $path
-     * @return string
-     */
-    protected function convertJsonPathToPostgres(string $path): string
-    {
-        $path = ltrim($path, '$.');
-        $parts = explode('.', $path);
-
-        return '{' . implode(',', $parts) . '}';
-    }
-
-    /**
-     * Check if the database supports native JSON functions
-     *
-     * @return bool
-     */
-    public function supportsJsonFunctions(): bool
-    {
-        $driver = $this->getDriver();
-
-        return match ($driver) {
-            'mysql' => true, // MySQL 5.7+ supports JSON
-            'pgsql' => true, // PostgreSQL 9.3+ supports JSON
-            'sqlite' => $this->checkSqliteJsonSupport(), // SQLite 3.9+ with JSON1 extension
-            default => false,
-        };
-    }
-
-    /**
-     * Check if SQLite has JSON1 extension enabled
-     *
-     * @return bool
-     */
-    protected function checkSqliteJsonSupport(): bool
-    {
-        try {
-            $result = $this->pdo->query("SELECT json('{\"test\": 1}')")->fetch(\PDO::FETCH_ASSOC);
-            return !empty($result);
-        } catch (\PDOException $e) {
-            return false;
-        }
     }
 
     /**

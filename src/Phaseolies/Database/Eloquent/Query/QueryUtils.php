@@ -127,33 +127,11 @@ trait QueryUtils
      * @param string $boolean The logical operator to use ('AND' or 'OR') for chaining conditions
      * @return self Returns the query builder instance for method chaining
      */
-    public function jsonHas(string $column, string $path, $value, string $boolean = 'AND'): self
+    public function whereJson(string $column, string $path, $value, string $boolean = 'AND'): self
     {
         [$expression, $bindings] = $this->jsonContains($column, $path, $value);
 
         return $this->whereRaw($expression, $bindings, $boolean);
-    }
-
-    /**
-     * Search a JSON column using exact path matching with JSON_EXTRACT
-     *
-     * @param string $column The name of the JSON column to search
-     * @param string $path The JSON path to extract (e.g., '$.theme')
-     * @param mixed $value The value to compare against
-     * @param string $operator The comparison operator ('=', '!=', '>', etc.)
-     * @param string $boolean The logical operator to use ('AND' or 'OR') for chaining
-     * @return self
-     */
-    public function jsonEqual(string $column, string $path, $value, string $operator = '=', string $boolean = 'AND'): self
-    {
-        $formattedPath = $this->formatJsonPath($path);
-        $jsonExpression = $this->jsonExtract($column, $formattedPath);
-
-        return $this->whereRaw(
-            "{$jsonExpression} {$operator} ?",
-            [$formattedPath, $value],
-            $boolean
-        );
     }
 
     /**
