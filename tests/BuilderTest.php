@@ -526,20 +526,20 @@ class BuilderTest extends TestCase
 
         // First, let's see the SQL being generated
         $sql = $builder->orderByRaw('RANDOM()')->toSql();
-        echo "Generated SQL: " . $sql . "\n";
+        // echo "Generated SQL: " . $sql . "\n";
 
         // Test without orderByRaw first to ensure we get all records
         $allUsers = $builder->reset()->get();
-        echo "Total users without ordering: " . $allUsers->count() . "\n";
+        // echo "Total users without ordering: " . $allUsers->count() . "\n";
 
         // Now test with orderByRaw
         $randomUsers = $builder->reset()->orderByRaw('RANDOM()')->get();
-        echo "Total users with RANDOM(): " . $randomUsers->count() . "\n";
+        // echo "Total users with RANDOM(): " . $randomUsers->count() . "\n";
 
         // Debug the actual data
-        foreach ($randomUsers as $index => $user) {
-            echo "User $index: ID={$user->id}, Name={$user->name}\n";
-        }
+        // foreach ($randomUsers as $index => $user) {
+        //     echo "User $index: ID={$user->id}, Name={$user->name}\n";
+        // }
 
         $this->assertCount(4, $randomUsers, 'Should return all 4 users regardless of ordering');
     }
@@ -585,7 +585,7 @@ class BuilderTest extends TestCase
             ->where('user_id', $user->id)
             ->first();
 
-        echo "Manual profile: " . ($profile ? $profile->bio : 'NULL') . "\n";
+        // echo "Manual profile: " . ($profile ? $profile->bio : 'NULL') . "\n";
         $this->assertNotNull($profile);
         $this->assertEquals('John Bio', $profile->bio);
 
@@ -594,7 +594,7 @@ class BuilderTest extends TestCase
             ->where('user_id', $user->id)
             ->get();
 
-        echo "Manual posts count: " . $posts->count() . "\n";
+        // echo "Manual posts count: " . $posts->count() . "\n";
         $this->assertGreaterThan(0, $posts->count());
         $this->assertInstanceOf(PostModel::class, $posts[0]);
     }
@@ -653,19 +653,19 @@ class BuilderTest extends TestCase
         $this->assertTrue($tree[0]->relationLoaded('children'));
     }
 
-    public function testCheckSqliteVersion()
-    {
-        $version = $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
-        echo "SQLite Version: " . $version . "\n";
-        echo "Version comparison: " . version_compare($version, '3.38.0') . "\n";
+    // public function testCheckSqliteVersion()
+    // {
+    //     $version = $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
+    //     echo "SQLite Version: " . $version . "\n";
+    //     echo "Version comparison: " . version_compare($version, '3.38.0') . "\n";
 
-        // -1 means older, 0 means equal, 1 means newer
-        if (version_compare($version, '3.38.0') < 0) {
-            echo "Your SQLite version ({$version}) is older than 3.38.0\n";
-        } else {
-            echo "Your SQLite version ({$version}) supports JSON\n";
-        }
-    }
+    //     // -1 means older, 0 means equal, 1 means newer
+    //     if (version_compare($version, '3.38.0') < 0) {
+    //         echo "Your SQLite version ({$version}) is older than 3.38.0\n";
+    //     } else {
+    //         echo "Your SQLite version ({$version}) supports JSON\n";
+    //     }
+    // }
 
     public function testJsonMethods()
     {
