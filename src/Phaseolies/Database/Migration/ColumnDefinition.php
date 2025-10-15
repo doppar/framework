@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Database\Migration;
 
+use PDO;
+
 class ColumnDefinition
 {
     /** @var string The name of the column */
@@ -107,7 +109,8 @@ class ColumnDefinition
      */
     public function toSql(): string
     {
-        $sql = $this->name . ' ' . $this->getTypeDefinition();
+        $grammar = $this->getGrammar();
+        $sql = $this->name . ' ' . $grammar->getTypeDefinition($this);
 
         // Add PRIMARY KEY constraint if specified
         if (isset($this->attributes['primary']) && $this->attributes['primary']) {
@@ -138,73 +141,20 @@ class ColumnDefinition
     }
 
     /**
-     * Get the SQL type definition for the column.
+     * Get the appropriate grammar instance based on the database driver.
      *
-     * @return string The SQL type definition
+     * @return Grammars\Grammar
      */
-    protected function getTypeDefinition(): string
+    protected function getGrammar(): Grammars\Grammar
     {
-        // Mapping of abstract types to concrete SQL types
-        $map = [
-            'id' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'bigIncrements' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'string' => 'VARCHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'char' => 'CHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'mediumText' => 'MEDIUMTEXT',
-            'longText' => 'LONGTEXT',
-            'tinyText' => 'TINYTEXT',
-            'boolean' => 'TINYINT(1)',
-            'json' => 'JSON',
-            'jsonb' => 'JSON',
-            'integer' => 'INT',
-            'tinyInteger' => 'TINYINT',
-            'smallInteger' => 'SMALLINT',
-            'mediumInteger' => 'MEDIUMINT',
-            'bigInteger' => 'BIGINT',
-            'unsignedInteger' => 'INT UNSIGNED',
-            'unsignedTinyInteger' => 'TINYINT UNSIGNED',
-            'unsignedSmallInteger' => 'SMALLINT UNSIGNED',
-            'unsignedMediumInteger' => 'MEDIUMINT UNSIGNED',
-            'unsignedBigInteger' => 'BIGINT UNSIGNED',
-            'float' => 'FLOAT',
-            'double' => 'DOUBLE' .
-                (isset($this->attributes['precision']) ?
-                    "({$this->attributes['precision']}" .
-                    (isset($this->attributes['scale']) ? ",{$this->attributes['scale']})" : ")")
-                    : ''),
-            'decimal' => 'DECIMAL(' .
-                ($this->attributes['precision'] ?? 10) . ',' .
-                ($this->attributes['scale'] ?? 2) . ')',
-            'date' => 'DATE',
-            'dateTime' => 'DATETIME',
-            'dateTimeTz' => 'DATETIME',
-            'time' => 'TIME',
-            'timeTz' => 'TIME',
-            'timestamp' => 'TIMESTAMP',
-            'timestampTz' => 'TIMESTAMP',
-            'year' => 'YEAR',
-            'binary' => 'BLOB',
-            'tinyBlob' => 'TINYBLOB',
-            'mediumBlob' => 'MEDIUMBLOB',
-            'longBlob' => 'LONGBLOB',
-            'enum' => 'ENUM(' . $this->getEnumValues() . ')',
-            'set' => 'SET(' . $this->getEnumValues() . ')',
-            'geometry' => 'GEOMETRY',
-            'point' => 'POINT',
-            'lineString' => 'LINESTRING',
-            'polygon' => 'POLYGON',
-            'geometryCollection' => 'GEOMETRYCOLLECTION',
-            'multiPoint' => 'MULTIPOINT',
-            'multiLineString' => 'MULTILINESTRING',
-            'multiPolygon' => 'MULTIPOLYGON',
-            'uuid' => 'CHAR(36)',
-            'ipAddress' => 'VARCHAR(45)',
-            'macAddress' => 'VARCHAR(17)',
-        ];
+        $connection = app('db')->getConnection();
+        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
 
-        // Return the mapped type or fall back to uppercase version of the type
-        return $map[$this->type] ?? strtoupper($this->type);
+        return match ($driver) {
+            'mysql' => new Grammars\MySQLGrammar(),
+            'sqlite' => new Grammars\SQLiteGrammar(),
+            default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
+        };
     }
 
     /**

@@ -2,6 +2,9 @@
 
 namespace Phaseolies\Database\Migration;
 
+use PDO;
+use Phaseolies\Database\Migration\Grammars\GrammarFactory;
+use Phaseolies\Database\Migration\Grammars\Grammar;
 use Phaseolies\Database\Migration\ColumnDefinition;
 
 class Blueprint
@@ -18,17 +21,30 @@ class Blueprint
     /** @var string The primary key column name */
     protected string $primaryKey = '';
 
-    /** @var string The database engine to be used (default: InnoDB) */
-    protected string $engine = 'InnoDB';
+    /** @var Grammar The grammar instance for the current database driver */
+    protected Grammar $grammar;
 
     /**
      * Create a new table blueprint instance.
      *
      * @param string $table The name of the table
+     * @param string|null $driver Optional database driver name
      */
-    public function __construct(string $table)
+    public function __construct(string $table, ?string $driver = null)
     {
         $this->table = $table;
+        $this->grammar = GrammarFactory::make($driver ?? $this->getDefaultDriver());
+    }
+
+    /**
+     * Get the default database driver.
+     *
+     * @return string
+     */
+    protected function getDefaultDriver(): string
+    {
+        $connection = app('db')->getConnection();
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
 
     /**
@@ -709,24 +725,53 @@ class Blueprint
         $statements = [];
 
         // Convert all columns to their SQL representations
-        $columns = array_filter(array_map(fn($column) => $column->toSql(), $this->columns));
+        $columns = array_values(array_filter($this->columns));
 
         if (empty($columns)) {
             throw new \RuntimeException("No columns defined for table {$this->table}");
         }
 
-        $isAfter = !empty(array_filter($columns, fn($col) => str_contains($col, 'AFTER')));
+        $hasColumnOrdering = !empty(array_filter($columns, function ($col) {
+            return isset($col->attributes['after']);
+        }));
 
-        if (! $isAfter) {
-            $columnDefinitions = array_map(fn($col) => $col->toSql(), $this->columns);
-            $statements[] = "CREATE TABLE `{$this->table}` (" . implode(', ', $columnDefinitions) . ") ENGINE={$this->engine}";
+        if (!$hasColumnOrdering || !$this->grammar->supportsColumnOrdering()) {
+            // Create table with all columns
+            $columnDefinitions = [];
+            $primaryKeys = [];
 
-            foreach ($this->columns as $column) {
+            // First pass: collect column definitions and primary keys
+            foreach ($columns as $column) {
+                $columnSql = $column->toSql();
+
+                // If this is a primary key column, note it for later
+                if (isset($column->attributes['primary']) && $column->attributes['primary']) {
+                    $columnName = trim(explode(' ', $column->name)[0], '`');
+                    $primaryKeys[] = $columnName;
+                }
+
+                $columnDefinitions[] = $columnSql;
+            }
+
+            // Let the grammar handle the table creation with primary keys
+            $statements[] = $this->grammar->compileCreateTable($this->table, $columns, $primaryKeys);
+
+            // Add indexes and unique constraints
+            foreach ($columns as $column) {
                 $this->handleIndexAndUniqueColumn($column, $statements);
             }
         } else {
-            foreach ($this->columns as $column) {
-                $statements[] = "ALTER TABLE `{$this->table}` ADD COLUMN " . $column->toSql();
+            // Handle ALTER TABLE for adding columns with ordering
+            foreach ($columns as $column) {
+                $columnSql = $column->toSql();
+
+                // Skip if this is a primary key column and the grammar doesn't support adding it with ALTER
+                if ((isset($column->attributes['primary']) && $column->attributes['primary']) &&
+                    !$this->grammar->supportsAddingPrimaryKey()) {
+                    continue;
+                }
+
+                $statements[] = $this->grammar->compileAddColumn($this->table, $columnSql);
                 $this->handleIndexAndUniqueColumn($column, $statements);
             }
         }
@@ -738,7 +783,7 @@ class Blueprint
             }
         }
 
-        return implode('; ', $statements);
+        return implode(';' . PHP_EOL, $statements) . ';';
     }
 
     /**
@@ -751,14 +796,32 @@ class Blueprint
     protected function handleIndexAndUniqueColumn(ColumnDefinition $column, array &$statements): void
     {
         if (isset($column->attributes['index']) && $column->attributes['index']) {
-            $indexName = "idx_{$this->table}_{$column->name}";
-            $statements[] = "CREATE INDEX `{$indexName}` ON `{$this->table}` (`{$column->name}`)";
+            $statements[] = $this->grammar->compileCreateIndex($this->table, $column->name);
         }
 
         if (isset($column->attributes['unique']) && $column->attributes['unique']) {
-            $constraintName = "{$this->table}_{$column->name}_unique";
-            $statements[] = "ALTER TABLE `{$this->table}` ADD CONSTRAINT `{$constraintName}` UNIQUE (`{$column->name}`)";
+            $sql = $this->grammar->compileCreateUnique($this->table, $column->name);
+            if (!empty($sql)) {
+                $statements[] = $sql;
+            }
         }
+    }
+
+    /**
+     * Convert the given string to snake_case.
+     *
+     * @param string $input The string to convert
+     * @return string The snake_case version
+     */
+    /**
+     * Check if the current database connection is SQLite.
+     *
+     * @return bool
+     */
+    protected function isSQLite(): bool
+    {
+        $connection = app('db')->getConnection();
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite';
     }
 
     /**
