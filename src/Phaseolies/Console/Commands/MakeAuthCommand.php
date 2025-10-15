@@ -46,7 +46,6 @@ class MakeAuthCommand extends Command
             $this->displayInfo('🎉 Generated Files:');
             $this->line('- Controllers: Login, Register, Home, Profile, 2FA');
             $this->line('- Views: Login, Register, Home, Profile, Layout, 2FA');
-            $this->line('- Routes: Added to web.php');
 
             return 0;
         });
