@@ -315,15 +315,7 @@ trait InteractsWithTimeframe
         $start = $this->formatDate($start, false);
         $end = $this->formatDate($end, false);
 
-        $endDate = \DateTime::createFromFormat('Y-m-d', $end);
-        if ($endDate) {
-            $endDate->modify('+1 day');
-            $adjustedEnd = $endDate->format('Y-m-d');
-        } else {
-            $adjustedEnd = $end;
-        }
-
-        return $this->whereBetween($this->date($column), [$start, $adjustedEnd]);
+        return $this->whereBetween($this->date($column), [$start, $end]);
     }
 
     /**

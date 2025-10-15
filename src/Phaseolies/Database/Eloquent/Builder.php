@@ -2310,7 +2310,8 @@ class Builder
      */
     public function groupConcat(string $column, string $separator = ','): string
     {
-        $this->select(["GROUP_CONCAT({$column} SEPARATOR '{$separator}') as aggregate"]);
+        $groupConcatExpression = $this->getGroupConcatExpression($column, $separator);
+        $this->select(["{$groupConcatExpression} as aggregate"]);
 
         $result = $this->first();
 
@@ -2348,7 +2349,8 @@ class Builder
      */
     public function variance(string $column): float
     {
-        $this->select(["VARIANCE({$column}) as aggregate"]);
+        $varianceExpression = $this->getVarianceExpression($column);
+        $this->select(["{$varianceExpression} as aggregate"]);
 
         $result = $this->first();
 
