@@ -477,4 +477,40 @@ trait Grammar
             default => "SQRT(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
         };
     }
+
+    /**
+     * Get the group concatenation expression for the current database driver
+     *
+     * @param string $column
+     * @param string $separator
+     * @return string
+     */
+    protected function getGroupConcatExpression(string $column, string $separator = ','): string
+    {
+        $driver = $this->getDriver();
+
+        return match ($driver) {
+            'mysql' => "GROUP_CONCAT({$column} SEPARATOR '{$separator}')",
+            'pgsql' => "STRING_AGG({$column}, '{$separator}')",
+            'sqlite' => "GROUP_CONCAT({$column}, '{$separator}')",
+            default => "GROUP_CONCAT({$column} SEPARATOR '{$separator}')",
+        };
+    }
+
+    /**
+     * Get the variance function for the current database driver
+     *
+     * @param string $column
+     * @return string
+     */
+    public function getVarianceExpression(string $column): string
+    {
+        $driver = $this->getDriver();
+
+        return match ($driver) {
+            'mysql', 'pgsql' => "VARIANCE({$column})",
+            'sqlite' => "(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
+            default => "VARIANCE({$column})",
+        };
+    }
 }

@@ -8,16 +8,13 @@ use Phaseolies\Database\Eloquent\Model;
 use Phaseolies\Database\Eloquent\Builder;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
-use PDOStatement;
 use PDOException;
 use PDO;
-use Phaseolies\Application;
 use Phaseolies\Support\UrlGenerator;
 
-class BuilderTest extends TestCase
+class BuilderSQLiteTest extends TestCase
 {
     private $pdo;
-    private $pdoStatement;
     private $builder;
     private $modelClass;
 
@@ -84,6 +81,14 @@ class BuilderTest extends TestCase
             )
         ");
 
+        // Roles table (many-to-many)
+        $this->pdo->exec("
+            CREATE TABLE roles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+            )
+        ");
+
         // Create user_roles pivot table
         $this->pdo->exec("
             CREATE TABLE user_roles (
@@ -118,6 +123,14 @@ class BuilderTest extends TestCase
             (2, 'Jane Bio', 'https://jane.com')
         ");
 
+        // Insert roles
+        $this->pdo->exec("
+            INSERT INTO roles (name) VALUES 
+            ('Admin'),
+            ('Editor'),
+            ('Viewer')
+        ");
+
         $this->pdo->exec("
             INSERT INTO user_roles (user_id, role_id) VALUES 
             (1, 1),
@@ -125,6 +138,12 @@ class BuilderTest extends TestCase
             (2, 1),
             (3, 3)
         ");
+    }
+
+    public function testGetConnection()
+    {
+        $connection = $this->builder->getConnection();
+        $this->assertInstanceOf(PDO::class, $connection);
     }
 
     public function testConstructor()
@@ -838,6 +857,597 @@ class BuilderTest extends TestCase
             return strtoupper($user->name);
         });
         $this->assertContains('JOHN DOE', $userNames->toArray());
+    }
+
+    public function testWithoutEncryptionMethod()
+    {
+        $builder = $this->builder->withoutEncryption();
+        $this->assertInstanceOf(Builder::class, $builder);
+    }
+
+    public function testResetMethod()
+    {
+        $builder = $this->builder
+            ->where('name', 'John Doe')
+            ->orderBy('name', 'DESC')
+            ->limit(5)
+            ->reset();
+
+        // After reset, should return all records
+        $users = $builder->get();
+        $this->assertCount(4, $users);
+    }
+
+    public function testUseRawMethod()
+    {
+        $users = $this->builder->useRaw(
+            "SELECT * FROM users WHERE name LIKE ?",
+            ['%John%']
+        );
+
+        $this->assertCount(2, $users);
+        $this->assertEquals('John Doe', $users[0]->name);
+    }
+
+    public function testWhereBetweenMethods()
+    {
+        // Test whereBetween
+        $users = $this->builder->whereBetween('id', [1, 2])->get();
+        $this->assertCount(2, $users);
+
+        // Test orWhereBetween
+        $users = $this->builder->where('id', 1)->orWhereBetween('id', [2, 3])->get();
+        $this->assertCount(3, $users);
+
+        // Test whereNotBetween
+        $users = $this->builder->whereNotBetween('id', [2, 3])->get();
+        $this->assertCount(1, $users);
+        $this->assertEquals(1, $users[0]->id);
+    }
+
+    public function testDynamicWhereMethods()
+    {
+        // Test dynamic where methods (whereName, whereEmail, etc.)
+        $users = $this->builder->whereName('John Doe')->get();
+        $this->assertCount(1, $users);
+        $this->assertEquals('John Doe', $users[0]->name);
+
+        $users = $this->builder->whereEmail('john@example.com')->get();
+        $this->assertCount(1, $users);
+        $this->assertEquals('john@example.com', $users[0]->email);
+    }
+
+    public function testQueryUtilsMethods()
+    {
+        // Test toDictionary
+        $dict = $this->builder->toDictionary('id', 'name');
+        $this->assertEquals('John Doe', $dict[1]);
+        $this->assertEquals('Jane Smith', $dict[2]);
+
+        // Test toRatio
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $ratio = $postsBuilder->toRatio('id', 'user_id', 'post_ratio');
+        $this->assertInstanceOf(Collection::class, $ratio);
+
+        // Test random
+        $randomUsers = $this->builder->random(2)->get();
+        $this->assertCount(2, $randomUsers);
+    }
+
+    public function testBigDataProcessingMethods()
+    {
+        $processed = 0;
+
+        // Test chunk - there are 4 users in the test database
+        $this->builder->chunk(2, function ($chunk) use (&$processed) {
+            $processed += $chunk->count();
+        });
+
+        $this->assertEquals(4, $processed); // Changed from 3 to 4
+
+        // Test cursor
+        $processed = 0;
+        $this->builder->cursor(function ($model) use (&$processed) {
+            $processed++;
+        });
+
+        $this->assertEquals(4, $processed); // Changed from 3 to 4
+    }
+
+    public function testConditionalIfMethod()
+    {
+        // First, verify we have 4 users total
+        $allUsers = $this->builder->get();
+        $this->assertCount(4, $allUsers, 'Should have 4 total users in database');
+
+        // Test with true condition
+        $users = $this->builder->reset()->if(true, function ($query) {
+            $query->where('name', 'John Doe');
+        })->get();
+
+        $this->assertCount(1, $users);
+        $this->assertEquals('John Doe', $users[0]->name);
+
+        // Test with false condition - should return ALL users
+        $users = $this->builder->reset()->if(false, function ($query) {
+            $query->where('name', 'John Doe');
+        })->get();
+
+        $this->assertCount(4, $users, 'Should return all users when condition is false and no default callback');
+
+        // Test with default callback
+        $users = $this->builder->reset()->if(
+            false,
+            function ($query) {
+                $query->where('name', 'John Doe');
+            },
+            function ($query) {
+                $query->where('name', 'Jane Smith');
+            }
+        )->get();
+
+        $this->assertCount(1, $users);
+        $this->assertEquals('Jane Smith', $users[0]->name);
+    }
+
+    public function testPurgeMethod()
+    {
+        // Test purging multiple records
+        $affected = $this->builder->purge(2, 3);
+        $this->assertEquals(2, $affected);
+
+        // Verify records are deleted
+        $remainingUsers = $this->builder->get();
+        $this->assertCount(2, $remainingUsers);
+        $this->assertIsArray($remainingUsers->toArray());
+    }
+
+    public function testAggregationMethods()
+    {
+        // Test groupConcat
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $concatenated = $postsBuilder->groupConcat('title', '|');
+
+        $this->assertIsString($concatenated);
+        $this->assertStringContainsString('First Post', $concatenated);
+        $this->assertStringContainsString('Second Post', $concatenated);
+        $this->assertStringContainsString('Jane Post', $concatenated);
+        $this->assertStringContainsString('Bob Post', $concatenated);
+
+        // Test stdDev
+        $stdDev = $postsBuilder->stdDev('id');
+        $this->assertIsFloat($stdDev);
+
+        // Test variance
+        $variance = $postsBuilder->variance('id');
+        $this->assertIsFloat($variance);
+    }
+
+    public function testOmitMethod()
+    {
+        $users = $this->builder->omit('email', 'age')->get();
+        $this->assertCount(4, $users);
+
+        // Check that omitted columns are not in the first result
+        $firstUser = $users[0];
+        $this->assertArrayHasKey('name', $firstUser);
+        $this->assertArrayNotHasKey('email', $firstUser);
+        $this->assertArrayNotHasKey('age', $firstUser);
+    }
+
+    public function testNewestMethod()
+    {
+        $users = $this->builder->newest('id')->get();
+        $this->assertEquals(4, $users[0]->id); // Should be the newest (highest ID)
+        $this->assertEquals(3, $users[1]->id);
+    }
+
+    public function testOldestMethod()
+    {
+        $users = $this->builder->oldest('id')->get();
+        $this->assertEquals(1, $users[0]->id); // Should be the oldest (lowest ID)
+        $this->assertEquals(2, $users[1]->id);
+    }
+
+    public function testGroupByRawMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        $results = $postsBuilder
+            ->selectRaw('user_id, COUNT(*) as post_count')
+            ->groupByRaw('user_id')
+            ->get();
+
+        $this->assertGreaterThan(0, $results->count());
+        $this->assertArrayHasKey('post_count', $results[0]);
+    }
+
+    public function testOrWhereInMethod()
+    {
+        $users = $this->builder
+            ->where('id', 1)
+            ->orWhereIn('id', [2, 3])
+            ->get();
+
+        $this->assertCount(3, $users);
+        $ids = $users->pluck('id')->toArray();
+        $this->assertContains(1, $ids);
+        $this->assertContains(2, $ids);
+        $this->assertContains(3, $ids);
+    }
+
+    public function testWhereNotNullMethod()
+    {
+        // Add a user with null email
+        $this->pdo->exec("INSERT INTO users (name, email, age) VALUES ('Null Email User', NULL, 40)");
+
+        $users = $this->builder->whereNotNull('email')->get();
+
+        // Should exclude the user with null email
+        foreach ($users as $user) {
+            $this->assertNotNull($user->email);
+        }
+    }
+
+    public function testOrWhereNullMethod()
+    {
+        // Add a user with null email
+        $this->pdo->exec("INSERT INTO users (name, email, age) VALUES ('Null Email User', NULL, 40)");
+
+        $users = $this->builder
+            ->where('id', 1)
+            ->orWhereNull('email')
+            ->get();
+
+        $this->assertGreaterThanOrEqual(2, $users->count());
+
+        $hasNullEmail = false;
+        $hasUser1 = false;
+
+        foreach ($users as $user) {
+            if ($user->email === null) $hasNullEmail = true;
+            if ($user->id === 1) $hasUser1 = true;
+        }
+
+        $this->assertTrue($hasNullEmail);
+        $this->assertTrue($hasUser1);
+    }
+
+    public function testOrWhereNotNullMethod()
+    {
+        $users = $this->builder
+            ->where('id', 1)
+            ->orWhereNotNull('email')
+            ->get();
+
+        $this->assertCount(4, $users); // All users have email or id=1
+    }
+
+
+    public function testWhereNotBetweenMethod()
+    {
+        $users = $this->builder->whereNotBetween('age', [26, 34])->get();
+
+        foreach ($users as $user) {
+            $this->assertTrue($user->age < 26 || $user->age > 34);
+        }
+    }
+
+    public function testOrWhereNotBetweenMethod()
+    {
+        $users = $this->builder
+            ->where('id', 1)
+            ->orWhereNotBetween('age', [30, 40])
+            ->get();
+
+        $this->assertGreaterThan(0, $users->count());
+    }
+
+    public function testFromMethod()
+    {
+        $builder = $this->builder->from('posts');
+        $posts = $builder->get();
+
+        $this->assertInstanceOf(Builder::class, $builder);
+        $this->assertGreaterThan(0, $posts->count());
+        $this->assertArrayHasKey('title', $posts[0]);
+    }
+
+    public function testToDiffMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $diff = $postsBuilder->toDiff('views', 'id', 'view_diff');
+
+        $this->assertInstanceOf(Collection::class, $diff);
+        $this->assertGreaterThan(0, $diff->count());
+    }
+
+    public function testToRatioMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $ratio = $postsBuilder->toRatio('views', 'id', 'view_ratio');
+
+        $this->assertInstanceOf(Collection::class, $ratio);
+        $this->assertGreaterThan(0, $ratio->count());
+    }
+
+    public function testILikeMethod()
+    {
+        $users = $this->builder->iLike('name', '%john%')->get();
+        $this->assertCount(2, $users);
+        $this->assertEquals('John Doe', $users[0]->name);
+    }
+
+    public function testWherePatternMethod()
+    {
+        $users = $this->builder->wherePattern('name', 'J%', 'LIKE')->get();
+
+        foreach ($users as $user) {
+            $this->assertStringStartsWith('J', $user->name);
+        }
+    }
+
+    public function testTransformByMethod()
+    {
+        $users = $this->builder->transformBy(function ($query) {
+            return "UPPER(name)";
+        }, 'upper_name')->get();
+
+        $this->assertCount(4, $users);
+        $this->assertArrayHasKey('upper_name', $users[0]);
+    }
+
+    public function testFirstLastInWindowMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        $posts = $postsBuilder->firstLastInWindow(
+            'title',
+            'created_at',
+            'user_id',
+            true,
+            'first_title'
+        )->get();
+
+        $this->assertGreaterThan(0, $posts->count());
+        $this->assertArrayHasKey('first_title', $posts[0]);
+    }
+
+    public function testMovingDifferenceMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        $posts = $postsBuilder->movingDifference('views', 'created_at', 'views_diff')->get();
+
+        $this->assertGreaterThan(0, $posts->count());
+        $this->assertArrayHasKey('views_diff', $posts[0]);
+    }
+
+    public function testMovingAverageMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        $posts = $postsBuilder->movingAverage('views', 2, 'created_at', 'moving_avg')->get();
+
+        $this->assertGreaterThan(0, $posts->count());
+        $this->assertArrayHasKey('moving_avg', $posts[0]);
+    }
+
+    public function testStreamMethod()
+    {
+        $processed = 0;
+
+        foreach ($this->builder->stream(2) as $user) {
+            $processed++;
+            $this->assertInstanceOf(Model::class, $user);
+        }
+
+        $this->assertEquals(4, $processed);
+    }
+
+    public function testBatchMethod()
+    {
+        $batchCount = 0;
+        $totalProcessed = 0;
+
+        $this->builder->batch(2, function ($batch) use (&$batchCount, &$totalProcessed) {
+            $batchCount++;
+            $totalProcessed += $batch->count();
+        }, 3); // batch size 3
+
+        $this->assertEquals(2, $batchCount); // 2 batches for 4 records with chunk size 2
+        $this->assertEquals(4, $totalProcessed);
+    }
+
+    public function testStdDevMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $stdDev = $postsBuilder->stdDev('views');
+
+        $this->assertIsFloat($stdDev);
+        $this->assertGreaterThanOrEqual(0, $stdDev);
+    }
+
+    public function testVarianceMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $variance = $postsBuilder->variance('views');
+
+        $this->assertIsFloat($variance);
+        $this->assertGreaterThanOrEqual(0, $variance);
+    }
+
+    public function testGroupConcatMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+        $concatenated = $postsBuilder->groupConcat('title', '|');
+
+        $this->assertIsString($concatenated);
+        $this->assertStringContainsString('First Post', $concatenated);
+        $this->assertStringContainsString('Second Post', $concatenated);
+    }
+
+    public function testWhereDateTimeBetweenMethod()
+    {
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        $posts = $postsBuilder->whereDateTimeBetween(
+            'created_at',
+            date('Y-m-d H:i:s', strtotime('-1 day')),
+            date('Y-m-d H:i:s', strtotime('+1 day'))
+        )->get();
+
+        $this->assertGreaterThan(0, $posts->count());
+    }
+
+    public function testWhereTodayMethod()
+    {
+        $users = $this->builder->whereToday('created_at')->get();
+        $this->assertCount(4, $users); // All users created today
+    }
+
+    public function testWhereYesterdayMethod()
+    {
+        // This should return no results since all users were created today
+        $users = $this->builder->whereYesterday('created_at')->get();
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereThisMonthMethod()
+    {
+        $users = $this->builder->whereThisMonth('created_at')->get();
+        $this->assertCount(4, $users); // All users created this month
+    }
+
+    public function testWhereThisYearMethod()
+    {
+        $users = $this->builder->whereThisYear('created_at')->get();
+        $this->assertCount(4, $users); // All users created this year
+    }
+
+    public function testDynamicMethodCalls()
+    {
+        // Test dynamic where methods
+        $users = $this->builder->whereName('John Doe')->get();
+        $this->assertCount(1, $users);
+        $this->assertEquals('John Doe', $users[0]->name);
+
+        $users = $this->builder->whereAge(25)->get();
+        $this->assertCount(1, $users);
+        $this->assertEquals(25, $users[0]->age);
+    }
+
+    public function testMultipleInsertWithChunking()
+    {
+        $rows = [
+            ['name' => 'Chunk User 1', 'email' => 'chunk1@example.com', 'age' => 20],
+            ['name' => 'Chunk User 2', 'email' => 'chunk2@example.com', 'age' => 21],
+            ['name' => 'Chunk User 3', 'email' => 'chunk3@example.com', 'age' => 22],
+            ['name' => 'Chunk User 4', 'email' => 'chunk4@example.com', 'age' => 23],
+            ['name' => 'Chunk User 5', 'email' => 'chunk5@example.com', 'age' => 24],
+        ];
+
+        $affected = $this->builder->insertMany($rows, 2); // Chunk size of 2
+        $this->assertEquals(5, $affected);
+
+        $count = $this->builder->count();
+        $this->assertEquals(9, $count); // 4 original + 5 new
+    }
+
+    public function testWhereDateBetweenMethod()
+    {
+        // Add posts with specific dates
+        $this->pdo->exec("INSERT INTO posts (user_id, title, content, created_at) VALUES (1, 'Old Post', 'Content', '2023-01-01')");
+        $this->pdo->exec("INSERT INTO posts (user_id, title, content, created_at) VALUES (1, 'New Post', 'Content', '2024-01-01')");
+
+        $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);
+
+        // Filter to only get posts from 2023
+        $posts = $postsBuilder
+            ->whereDateBetween('created_at', '2023-01-01', '2023-12-31')
+            ->get();
+
+        $this->assertCount(1, $posts);
+        $this->assertEquals('Old Post', $posts[0]->title);
+    }
+
+    public function testOrderByRawMethod()
+    {
+        $users = $this->builder->orderByRaw('name DESC')->get();
+
+        $this->assertEquals('John Doe', $users[0]->name);
+        $this->assertEquals('Jane Smith', $users[1]->name);
+        $this->assertEquals('Bob Johnson', $users[2]->name);
+        $this->assertEquals('Alice Brown', $users[3]->name);
+    }
+
+    public function testWhereRawMethod()
+    {
+        $users = $this->builder->whereRaw('LENGTH(name) > ?', [10])->get();
+
+        foreach ($users as $user) {
+            $this->assertGreaterThan(10, strlen($user->name));
+        }
+    }
+
+    public function testSelectRawWithBindings()
+    {
+        $users = $this->builder->selectRaw('name, age + ? as future_age', [10])->get();
+
+        $this->assertCount(4, $users);
+        $this->assertArrayHasKey('future_age', $users[0]);
+
+        // For John Doe (age 25): 25 + 10 = 35
+        // The future_age should be the calculated value from the database
+        $this->assertEquals(35, $users[0]->future_age);
+    }
+
+    public function testToSqlWithConditions()
+    {
+        $sql = $this->builder
+            ->where("name", "John")
+            ->where("age", ">", 25)
+            ->orderBy("created_at", "DESC")
+            ->limit(10)
+            ->toSql();
+
+        $this->assertStringContainsString("WHERE", $sql);
+        $this->assertStringContainsString("ORDER BY", $sql);
+        $this->assertStringContainsString("LIMIT 10", $sql);
+    }
+
+    public function testSetRelationInfo()
+    {
+        $relationInfo = [
+            "type" => "bindToMany",
+            "foreignKey" => "user_id",
+            "relatedKey" => "role_id",
+            "pivotTable" => "user_roles",
+        ];
+
+        $builder = $this->builder->setRelationInfo($relationInfo);
+        $this->assertInstanceOf(Builder::class, $builder);
+    }
+
+    public function testComplexQueryBuildingWithOffset()
+    {
+        $sql = $this->builder
+            ->select("id", "name", "email")
+            ->where("status", "active")
+            ->whereIn("role", ["admin", "moderator"])
+            ->whereNotNull("email_verified_at")
+            ->whereBetween("created_at", ["2023-01-01", "2023-12-31"])
+            ->orderBy("created_at", "DESC")
+            ->groupBy("department")
+            ->limit(10)
+            ->offset(0)
+            ->toSql();
+
+        $this->assertStringContainsString("SELECT", $sql);
+        $this->assertStringContainsString("WHERE", $sql);
+        $this->assertStringContainsString("ORDER BY", $sql);
+        $this->assertStringContainsString("GROUP BY", $sql);
+        $this->assertStringContainsString("LIMIT 10", $sql);
     }
 
     protected function tearDown(): void
