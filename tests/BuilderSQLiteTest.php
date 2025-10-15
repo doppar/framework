@@ -1450,6 +1450,89 @@ class BuilderSQLiteTest extends TestCase
         $this->assertStringContainsString("LIMIT 10", $sql);
     }
 
+    public function testSaveMany()
+    {
+        $rows = [
+            ['name' => 'Batch User 1', 'email' => 'batch1@example.com', 'age' => 20],
+            ['name' => 'Batch User 2', 'email' => 'batch2@example.com', 'age' => 21],
+            ['name' => 'Batch User 3', 'email' => 'batch3@example.com', 'age' => 22]
+        ];
+
+        $affected = $this->builder->insertMany($rows);
+        $this->assertEquals(3, $affected);
+
+        $batchUsers = $this->builder
+            ->whereIn('email', ['batch1@example.com', 'batch2@example.com', 'batch3@example.com'])
+            ->get();
+
+        $this->assertCount(3, $batchUsers);
+    }
+
+    public function testSaveManyWithChunking()
+    {
+        $rows = [
+            ['name' => 'Chunk User 1', 'email' => 'chunk1@example.com', 'age' => 30],
+            ['name' => 'Chunk User 2', 'email' => 'chunk2@example.com', 'age' => 31],
+            ['name' => 'Chunk User 3', 'email' => 'chunk3@example.com', 'age' => 32],
+            ['name' => 'Chunk User 4', 'email' => 'chunk4@example.com', 'age' => 33],
+            ['name' => 'Chunk User 5', 'email' => 'chunk5@example.com', 'age' => 34],
+        ];
+
+        // Test with chunk size of 2
+        $affected = $this->builder->insertMany($rows, 2);
+        $this->assertEquals(5, $affected);
+
+        // Verify all records were created
+        $chunkUsers =  $this->builder
+            ->where('email', 'LIKE', 'chunk%@example.com')
+            ->get();
+
+        $this->assertCount(5, $chunkUsers);
+    }
+
+    public function testDirtyAttributes()
+    {
+        $user = $this->builder->where('id', 1)->first();
+        $user->fill([
+            'name' => 'Timestamp User',
+            'email' => 'timestamp@example.com',
+            'age' => 35
+        ]);
+
+        $dirty = $user->getDirtyAttributes();
+
+        $this->assertEquals('Timestamp User', $dirty['name']);
+        $this->assertEquals('timestamp@example.com', $dirty['email']);
+        $this->assertEquals(35, $dirty['age']);
+        $this->assertTrue($user->isDirtyAttr('name'));
+        $this->assertTrue($user->isDirtyAttr('email'));
+        $this->assertTrue($user->isDirtyAttr('age'));
+    }
+
+    public function testOriginalAttributes()
+    {
+        $user = $this->builder->where('id', 1)->first();
+        $user->fill([
+            'name' => 'Timestamp User',
+            'email' => 'timestamp@example.com',
+            'age' => 35
+        ]);
+
+        $original = $user->getOriginalAttributes();
+
+        $this->assertEquals(1, $original['id']);
+        $this->assertEquals('John Doe', $original['name']);
+        $this->assertEquals('john@example.com', $original['email']);
+        $this->assertEquals(25, $original['age']);
+        $this->assertEquals('active', $original['status']);
+    }
+
+    public function testSetTableAndGetTable()
+    {
+        $user = new TestSqliteModel();
+        $this->assertNotNull($user->getTable());
+    }
+
     protected function tearDown(): void
     {
         // Clean up
