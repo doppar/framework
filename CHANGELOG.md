@@ -1,5 +1,18 @@
 # Release Notes
 
+## v2.9.5.6 - 2025-10-15
+
+* Heartbeat remove from atomic lock: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/26
+* [Console] Fix server:stop on Mac by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/27
+* error page design improved for dark mode and set error information in… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/29
+* [Authenticate] Fix multiple user version verification by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/28
+* version check variable non-static to static by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/30
+* [ErrorHandler] Refactor with Factory & Strategy patterns by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/31
+* [Database] Add SQLite support by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/12
+* [Database] Unit test for missing method by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/33
+* [Database] Fix SQLite sqrt() error : use PHP instead of SQL by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/34
+* unit test of some model method like original attr dirty attr savemany etc by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/35
+
 ## v2.9.5.5 - 2025-10-13
 
 * [Atomic Lock] Concurrent-Safe Atomic Locks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/24
