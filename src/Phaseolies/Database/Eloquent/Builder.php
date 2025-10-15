@@ -2326,12 +2326,44 @@ class Builder
      */
     public function stdDev(string $column): float
     {
-        $stdDevExpression = $this->getStandardDeviation($column);
+        return $this->shouldComputeStdDevInPhp()
+            ? $this->stdDevPhp($column)
+            : $this->stdDevSql($column);
+    }
 
+    /**
+     * Compute standard deviation by fetching variance via SQL and taking sqrt() in PHP
+     *
+     * @param string $column
+     * @return float
+     */
+    protected function stdDevPhp(string $column): float
+    {
+        $varianceExpression = $this->getVarianceExpression($column);
+        $this->select(["{$varianceExpression} as aggregate"]);
+
+        $result = $this->first();
+        $variance = $result->aggregate ?? 0;
+
+        if ($variance === null || !is_numeric($variance) || $variance < 0) {
+            return 0.0;
+        }
+
+        return (float) sqrt((float) $variance);
+    }
+
+    /**
+     * Compute standard deviation using a SQL expression provided by Grammar
+     *
+     * @param string $column
+     * @return float
+     */
+    protected function stdDevSql(string $column): float
+    {
+        $stdDevExpression = $this->getStandardDeviation($column);
         $this->select(["{$stdDevExpression} as aggregate"]);
 
         $result = $this->first();
-
         $value = $result->aggregate ?? 0;
 
         if ($value === null || !is_numeric($value) || $value < 0) {
