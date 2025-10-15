@@ -479,6 +479,17 @@ trait Grammar
     }
 
     /**
+     * Should standard deviation be computed in PHP instead of SQL
+     * Only SQLite does not support SQRT function ATM
+     * 
+     * @return bool
+     */
+    public function shouldComputeStdDevInPhp(): bool
+    {
+        return $this->getDriver() === 'sqlite';
+    }
+
+    /**
      * Get the group concatenation expression for the current database driver
      *
      * @param string $column
