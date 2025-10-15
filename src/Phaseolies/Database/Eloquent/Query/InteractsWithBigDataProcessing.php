@@ -119,7 +119,7 @@ trait InteractsWithBigDataProcessing
 
     /**
      * Process records with batch operations for efficiency
-     * 
+     *
      * @param int chunkSize
      * @param callable $batchProcessor
      * @param int $batchSize
@@ -164,7 +164,7 @@ trait InteractsWithBigDataProcessing
 
     /**
      * Parallel chunk processing using Fibers
-     * 
+     *
      * @param int $chunkSize Records per chunk
      * @param callable $processor Callback to process chunks
      * @param int $concurrency Number of parallel fibers
@@ -230,7 +230,7 @@ trait InteractsWithBigDataProcessing
 
     /**
      * Fiber-based streaming with backpressure control
-     * 
+     *
      * @param int $chunkSize Records per chunk
      * @param callable|null $transform Optional record transformer
      * @param int $bufferSize Maximum items to buffer

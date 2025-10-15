@@ -14,11 +14,17 @@ use PDOStatement;
 use PDOException;
 use PDO;
 use Phaseolies\Database\Eloquent\Query\Debuggable;
+use Phaseolies\Database\Eloquent\Query\Grammar;
 use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
-    use InteractsWithModelQueryProcessing, InteractsWithBigDataProcessing, QueryUtils, Debuggable, InteractsWithTimeframe;
+    use InteractsWithModelQueryProcessing;
+    use InteractsWithBigDataProcessing;
+    use QueryUtils;
+    use Debuggable;
+    use InteractsWithTimeframe;
+    use Grammar;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -371,15 +377,17 @@ class Builder
     protected function getTableColumns(?string $table = null): array
     {
         $tableName = $table ?? $this->table;
-        $stmt = $this->pdo->query("DESCRIBE {$tableName}");
-        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $sql = $this->getTableColumnsSql($tableName);
 
-        return $columns;
+        $stmt = $this->pdo->query($sql);
+        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        return $this->processTableColumnsResult($result);
     }
 
     /**
      * Filter records that have at least one related record in the given relationship
-     * 
+     *
      * @param string $relation
      * @param callable|null $callback
      * @return self
@@ -407,13 +415,15 @@ class Builder
                     WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
 
             if ($callback) {
-                $relatedTable = (new $relatedModel)->getTable();
+                $relatedTable = (new $relatedModel())->getTable();
                 $subQueryBuilder = $relatedModel::query();
                 $callback($subQueryBuilder);
 
                 // Add conditions to the subquery
                 foreach ($subQueryBuilder->conditions as $condition) {
-                    if (isset($condition['type'])) continue;
+                    if (isset($condition['type'])) {
+                        continue;
+                    }
 
                     $column = $condition[1];
                     $operator = $condition[2];
@@ -439,7 +449,7 @@ class Builder
             // Handle one-to-one and one-to-many relationships
             $foreignKey = $model->getLastForeignKey();
             $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel)->getTable();
+            $relatedTable = (new $relatedModel())->getTable();
 
             $subquery = "SELECT 1 FROM {$relatedTable} 
                     WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
@@ -450,7 +460,9 @@ class Builder
 
                 foreach ($subQueryBuilder->conditions as $condition) {
 
-                    if (isset($condition['type'])) continue;
+                    if (isset($condition['type'])) {
+                        continue;
+                    }
 
                     $column = $condition[1];
                     $operator = $condition[2];
@@ -566,7 +578,7 @@ class Builder
             // Handle one-to-one and one-to-many relationships
             $foreignKey = $model->getLastForeignKey();
             $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel)->getTable();
+            $relatedTable = (new $relatedModel())->getTable();
 
             $subquery = "SELECT 1 FROM {$relatedTable} 
                 WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
@@ -629,7 +641,7 @@ class Builder
     /**
      * Filter records that don't have any related records in the given relationship
      * with optional conditions
-     * 
+     *
      * @param string $relation The relationship name
      * @param callable|null $callback Optional conditions for the related model
      * @return self
@@ -641,7 +653,7 @@ class Builder
 
     /**
      * Insert multiple records into the database in a single query
-     * 
+     *
      * @param array $rows Array of arrays containing attribute sets
      * @return int Number of inserted rows
      * @throws PDOException
@@ -799,7 +811,7 @@ class Builder
 
     /**
      * Attach models to the parent (many-to-many relationship)
-     * 
+     *
      * @param mixed $ids Single ID or array of IDs to attach
      * @param array $pivotData Additional pivot table data
      * @return int Number of affected rows
@@ -867,7 +879,7 @@ class Builder
 
     /**
      * Detach models from the parent (many-to-many relationship)
-     * 
+     *
      * @param mixed $ids Single ID or array of IDs to detach (empty for all)
      * @return int Number of affected rows
      */
@@ -1364,7 +1376,7 @@ class Builder
         $pivotTable = $firstModel->getLastPivotTable();
 
         $keys = array_map(fn($model) => $model->getKey(), $models);
-        $relatedModelInstance = new $relatedModel;
+        $relatedModelInstance = new $relatedModel();
 
         $pivotColumns = $this->getTableColumns($pivotTable);
 
@@ -1905,7 +1917,9 @@ class Builder
             $stmt = $this->pdo->prepare($sql);
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
-            return $this->pdo->lastInsertId();
+            $lastInsertId = $this->pdo->lastInsertId();
+
+            return $lastInsertId ? (int) $lastInsertId : false;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -2244,7 +2258,7 @@ class Builder
 
     /**
      * Retrieve distinct values for a column
-     * 
+     *
      * @param string $column The column to get distinct values from
      * @return Collection Collection of distinct values
      */
@@ -2296,7 +2310,8 @@ class Builder
      */
     public function groupConcat(string $column, string $separator = ','): string
     {
-        $this->select(["GROUP_CONCAT({$column} SEPARATOR '{$separator}') as aggregate"]);
+        $groupConcatExpression = $this->getGroupConcatExpression($column, $separator);
+        $this->select(["{$groupConcatExpression} as aggregate"]);
 
         $result = $this->first();
 
@@ -2311,11 +2326,51 @@ class Builder
      */
     public function stdDev(string $column): float
     {
-        $this->select(["STDDEV({$column}) as aggregate"]);
+        return $this->shouldComputeStdDevInPhp()
+            ? $this->stdDevPhp($column)
+            : $this->stdDevSql($column);
+    }
+
+    /**
+     * Compute standard deviation by fetching variance via SQL and taking sqrt() in PHP
+     *
+     * @param string $column
+     * @return float
+     */
+    protected function stdDevPhp(string $column): float
+    {
+        $varianceExpression = $this->getVarianceExpression($column);
+        $this->select(["{$varianceExpression} as aggregate"]);
 
         $result = $this->first();
+        $variance = $result->aggregate ?? 0;
 
-        return (float) ($result->aggregate ?? 0);
+        if ($variance === null || !is_numeric($variance) || $variance < 0) {
+            return 0.0;
+        }
+
+        return (float) sqrt((float) $variance);
+    }
+
+    /**
+     * Compute standard deviation using a SQL expression provided by Grammar
+     *
+     * @param string $column
+     * @return float
+     */
+    protected function stdDevSql(string $column): float
+    {
+        $stdDevExpression = $this->getStandardDeviation($column);
+        $this->select(["{$stdDevExpression} as aggregate"]);
+
+        $result = $this->first();
+        $value = $result->aggregate ?? 0;
+
+        if ($value === null || !is_numeric($value) || $value < 0) {
+            return 0.0;
+        }
+
+        return (float) $value;
     }
 
     /**
@@ -2326,7 +2381,8 @@ class Builder
      */
     public function variance(string $column): float
     {
-        $this->select(["VARIANCE({$column}) as aggregate"]);
+        $varianceExpression = $this->getVarianceExpression($column);
+        $this->select(["{$varianceExpression} as aggregate"]);
 
         $result = $this->first();
 
@@ -2335,7 +2391,7 @@ class Builder
 
     /**
      * Increment a column's value by a given amount
-     * 
+     *
      * @param string $column The column to increment
      * @param int $amount Amount to increment by (default 1)
      * @param array $extra Additional columns to update
@@ -2348,7 +2404,7 @@ class Builder
 
     /**
      * Decrement a column's value by a given amount
-     * 
+     *
      * @param string $column The column to decrement
      * @param int $amount Amount to decrement by (default 1)
      * @param array $extra Additional columns to update
@@ -2478,7 +2534,7 @@ class Builder
 
     /**
      * Helper method to handle both increment and decrement operations
-     * 
+     *
      * @param string $column Column to modify
      * @param int $amount Amount to change
      * @param string $operator + or -
@@ -2669,5 +2725,24 @@ class Builder
     protected function camelToSnake(string $input): string
     {
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $input));
+    }
+
+    /**
+     * Reset the builder state
+     *
+     * @return self
+     */
+    public function reset(): self
+    {
+        $this->fields = ['*'];
+        $this->conditions = [];
+        $this->orderBy = [];
+        $this->groupBy = [];
+        $this->limit = null;
+        $this->offset = null;
+        $this->joins = [];
+        $this->eagerLoad = [];
+
+        return $this;
     }
 }

@@ -321,7 +321,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public static function connection(?string $connection = null): Builder
     {
-        $instance = new static;
+        $instance = new static();
 
         $instance->connection = $connection;
 
@@ -536,7 +536,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         }
 
         $result = static::query()
-            ->where($this->primaryKey,  $this->attributes[$this->primaryKey])
+            ->where($this->primaryKey, $this->attributes[$this->primaryKey])
             ->delete();
 
         if ($result && self::$isHookShouldBeCalled) {
