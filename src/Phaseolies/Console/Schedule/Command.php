@@ -427,9 +427,14 @@ abstract class Command extends SymfonyCommand
     protected function multipleChoice(string $question, array $choices, $default = null): array
     {
         $helper = $this->getHelper('question');
-        $question = new ChoiceQuestion("<question>{$question}</question>", $choices, $default);
+        $question = new ChoiceQuestion("<question>{$question}</question>", $choices);
         $question->setMultiselect(true);
         $question->setErrorMessage('Choice %s is invalid.');
+        
+        // For multiselect, default as null
+        if ($default !== null) {
+            $question->setDefault($default);
+        }
 
         return $helper->ask($this->input, $this->output, $question);
     }
@@ -442,13 +447,7 @@ abstract class Command extends SymfonyCommand
      */
     protected function createProgressBar(int $max = 0)
     {
-        $progressBar = $this->getHelper('progress');
-
-        if (!$progressBar) {
-            throw new \RuntimeException('Progress bar helper not found.');
-        }
-
-        return $progressBar->create($this->output, $max);
+        return new \Symfony\Component\Console\Helper\ProgressBar($this->output, $max);
     }
 
     /**
@@ -458,12 +457,6 @@ abstract class Command extends SymfonyCommand
      */
     protected function createTable()
     {
-        $table = $this->getHelper('table');
-
-        if (!$table) {
-            throw new \RuntimeException('Table helper not found.');
-        }
-
-        return $table->setStyle('default');
+        return new \Symfony\Component\Console\Helper\Table($this->output);
     }
 }
