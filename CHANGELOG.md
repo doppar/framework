@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.2 - 2025-10-16
+
+* [feat] update BindPayload code and add new Bind() attr:  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/42
+
 ## v2.9.6-beta.1 - 2025-10-16
 
 * composer.json "minimum-stability": "stable", to "minimum-stability": "dev" by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/41
