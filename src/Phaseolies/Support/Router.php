@@ -1289,10 +1289,7 @@ class Router extends Kernel
                 $resolvedClass = $paramType->getName();
                 $resolvedInstance = $this->resolveFormRequestValidationClass($app, $resolvedClass);
                 $dependencies[] = $resolvedInstance;
-                continue;
-            }
-
-            if (isset($routeParams[$paramName])) {
+            } elseif (isset($routeParams[$paramName])) {
                 $dependencies[] = $routeParams[$paramName];
             } elseif ($parameter->isOptional()) {
                 $dependencies[] = $parameter->getDefaultValue();
