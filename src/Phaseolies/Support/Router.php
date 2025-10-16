@@ -5,6 +5,7 @@ namespace Phaseolies\Support;
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Utilities\Attributes\BindPayload;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
@@ -1264,6 +1265,25 @@ class Router extends Kernel
         foreach ($parameters as $parameter) {
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
+
+            // Handle DTO binding when parameter is marked with BindPayload attribute
+            $mapAttributes = $parameter->getAttributes(BindPayload::class);
+            if (!empty($mapAttributes)) {
+                if ($paramType && !$paramType->isBuiltin()) {
+                    $dtoClass = $paramType->getName();
+                    if (!class_exists($dtoClass)) {
+                        throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
+                    }
+
+                    $dto = new $dtoClass();
+                    /** @var Request $request */
+                    $request = $app->make('request');
+                    $attributeInstance = $mapAttributes[0]->newInstance();
+                    $dependencies[] = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
+                    continue;
+                }
+                throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
+            }
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
