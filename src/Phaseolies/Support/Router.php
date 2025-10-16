@@ -1276,10 +1276,10 @@ class Router extends Kernel
                     }
 
                     $dto = new $dtoClass();
-                    /** @var Request $req */
-                    $req = $app->make('request');
+                    /** @var Request $request */
+                    $request = $app->make('request');
                     $attributeInstance = $mapAttributes[0]->newInstance();
-                    $dependencies[] = $req->bindTo($dto, (bool)($attributeInstance->strict ?? true));
+                    $dependencies[] = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
                     continue;
                 }
                 throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
