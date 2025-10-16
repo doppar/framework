@@ -499,4 +499,96 @@ trait Grammar
             default => "VARIANCE({$column})",
         };
     }
+
+    /**
+     * Generate an UPSERT (insert or update) SQL statement based on the current database driver.
+     *
+     * @param string $columnsStr The comma-separated column list.
+     * @param array $placeholders The placeholder groups for values.
+     * @param array $updateStatements The update statements (for ON DUPLICATE KEY / ON CONFLICT).
+     * @param array $uniqueBy Columns used for uniqueness constraints.
+     * @param array $updateColumns Columns to update on conflict.
+     * @param bool $ignoreErrors Whether to use IGNORE / DO NOTHING semantics.
+     * @return string The generated UPSERT SQL statement.
+     * @throws \RuntimeException
+     */
+    public function getUpsertSql(
+        string $columnsStr,
+        array $placeholders,
+        array $updateStatements,
+        array $uniqueBy,
+        array $updateColumns,
+        bool $ignoreErrors
+    ): string {
+        $driver = $this->getDriver();
+
+        return match ($driver) {
+            'mysql' => "INSERT " . ($ignoreErrors ? "IGNORE " : "") .
+                "INTO `{$this->table}` ({$columnsStr}) VALUES " .
+                implode(', ', $placeholders) .
+                " ON DUPLICATE KEY UPDATE " .
+                implode(', ', $updateStatements),
+
+            'pgsql' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
+                $uniqueColumns = implode(', ', array_map(fn($col) => "\"{$col}\"", $uniqueBy));
+                if ($ignoreErrors) {
+                    return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
+                        implode(', ', $placeholders) .
+                        " ON CONFLICT({$uniqueColumns}) DO NOTHING";
+                }
+                $updateStatements = array_map(
+                    fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
+                    $updateColumns
+                );
+                return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
+                    implode(', ', $placeholders) .
+                    " ON CONFLICT({$uniqueColumns}) DO UPDATE SET " .
+                    implode(', ', $updateStatements);
+            })(),
+
+            'sqlite' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
+                if ($this->sqliteSupportsOnConflict()) {
+                    $uniqueColumns = implode(', ', array_map(fn($col) => "`$col`", $uniqueBy));
+                    if ($ignoreErrors) {
+                        return "INSERT INTO `{$this->table}` ({$columnsStr}) VALUES " .
+                            implode(', ', $placeholders) .
+                            " ON CONFLICT({$uniqueColumns}) DO NOTHING";
+                    }
+                    $updateStatements = array_map(
+                        fn($col) => "`$col` = EXCLUDED.`$col`",
+                        $updateColumns
+                    );
+                    return "INSERT INTO `{$this->table}` ({$columnsStr}) VALUES " .
+                        implode(', ', $placeholders) .
+                        " ON CONFLICT({$uniqueColumns}) DO UPDATE SET " .
+                        implode(', ', $updateStatements);
+                }
+                return "INSERT OR " . ($ignoreErrors ? "IGNORE" : "REPLACE") .
+                    " INTO `{$this->table}` ({$columnsStr}) VALUES " .
+                    implode(', ', $placeholders);
+            })(),
+
+            default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
+        };
+    }
+
+    /**
+     * Check if SQLite version supports ON CONFLICT clause
+     * 
+     * @return bool
+     */
+    protected function sqliteSupportsOnConflict(): bool
+    {
+        if ($this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
+            return false;
+        }
+
+        try {
+            $version = $this->pdo->query('SELECT sqlite_version()')->fetchColumn();
+            return version_compare($version, '3.24.0', '>=');
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
 }
