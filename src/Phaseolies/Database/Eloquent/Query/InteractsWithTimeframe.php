@@ -312,8 +312,8 @@ trait InteractsWithTimeframe
      */
     public function whereDateBetween(string $column, $start, $end): self
     {
-        $start = $this->formatDate($start, false);
-        $end = $this->formatDate($end, false);
+        $start = $this->formatDate($start);
+        $end = $this->formatDate($end);
 
         return $this->whereBetween($this->date($column), [$start, $end]);
     }
@@ -328,30 +328,62 @@ trait InteractsWithTimeframe
      */
     public function whereDateTimeBetween(string $column, $start, $end): self
     {
-        $start = $this->formatDate($start, true);
-        $end = $this->formatDate($end, true);
+        $start = $this->formatDateTime($start, true);
+        $end = $this->formatDateTime($end, true);
 
         return $this->whereBetween($column, [$start, $end]);
     }
 
     /**
-     * Add a where date between condition with time handling
+     * Format date for database comparison
      *
-     * @param string $column
-     * @param mixed $start
-     * @param mixed $end
-     * @param bool $includeTime
-     * @return self
+     * @param mixed $date
+     * @return string
      */
-    public function whereDateBetweenLegacy(string $column, $start, $end, bool $includeTime = false): self
+    public function formatDate($date): string
     {
-        if ($includeTime) {
-            return $this->whereDateTimeBetween($column, $start, $end);
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
         }
 
-        return $this->whereDateBetween($column, $start, $end);
+        if (is_string($date)) {
+            return substr($date, 0, 10);
+        }
+
+        throw new \InvalidArgumentException('Invalid date provided');
     }
 
+    /**
+     * Format datetime for database comparison with proper time handling
+     *
+     * @param mixed $date
+     * @param string $type 'start' or 'end' to indicate how to handle missing time
+     * @return string
+     */
+    public function formatDateTime($date, string $type = 'start'): string
+    {
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d H:i:s');
+        }
+
+        if (is_string($date)) {
+            // If it's already a full datetime string, return as-is
+            if (strlen($date) > 10 && str_contains($date, ' ')) {
+                return $date;
+            }
+
+            // If it's just a date string, add appropriate time
+            if (strlen($date) === 10) {
+                return $type === 'start' 
+                    ? $date . ' 00:00:00'
+                    : $date . ' 23:59:59';
+            }
+
+            return $date;
+        }
+
+        throw new \InvalidArgumentException('Invalid date provided');
+    }
 
     /**
      * Get the proper operator for date range based on includeTime flag
