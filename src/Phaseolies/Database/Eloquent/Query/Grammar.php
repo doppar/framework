@@ -574,7 +574,7 @@ trait Grammar
 
     /**
      * Check if SQLite version supports ON CONFLICT clause
-     * 
+     *
      * @return bool
      */
     protected function sqliteSupportsOnConflict(): bool

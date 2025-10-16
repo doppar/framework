@@ -9,6 +9,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 abstract class Command extends SymfonyCommand
@@ -430,7 +432,7 @@ abstract class Command extends SymfonyCommand
         $question = new ChoiceQuestion("<question>{$question}</question>", $choices);
         $question->setMultiselect(true);
         $question->setErrorMessage('Choice %s is invalid.');
-        
+
         // For multiselect, default as null
         if ($default !== null) {
             $question->setDefault($default);
@@ -447,7 +449,7 @@ abstract class Command extends SymfonyCommand
      */
     protected function createProgressBar(int $max = 0)
     {
-        return new \Symfony\Component\Console\Helper\ProgressBar($this->output, $max);
+        return new ProgressBar($this->output, $max);
     }
 
     /**
@@ -457,6 +459,6 @@ abstract class Command extends SymfonyCommand
      */
     protected function createTable()
     {
-        return new \Symfony\Component\Console\Helper\Table($this->output);
+        return new Table($this->output);
     }
 }

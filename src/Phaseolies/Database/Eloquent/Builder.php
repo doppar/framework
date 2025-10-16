@@ -2044,8 +2044,8 @@ class Builder
 
             // Normalize return value: always return the number of unique rows processed
             if ($driver === 'mysql' && $rowCount > count($values)) {
-                // MySQL returns 2 for each updated row, 
-                // but intentionally we want to return 1 per unique row
+                // MySQL returns 2 for each updated row,
+                // But intentionally we are returning 1
                 return count($values);
             }
 
