@@ -6,6 +6,7 @@ use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Utilities\Attributes\BindPayload;
+use Phaseolies\Utilities\Attributes\Bind;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
@@ -1266,23 +1267,18 @@ class Router extends Kernel
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
 
-            // Handle DTO binding when parameter is marked with BindPayload attribute
-            $mapAttributes = $parameter->getAttributes(BindPayload::class);
-            if (!empty($mapAttributes)) {
-                if ($paramType && !$paramType->isBuiltin()) {
-                    $dtoClass = $paramType->getName();
-                    if (!class_exists($dtoClass)) {
-                        throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
-                    }
+            // Handle #[BindPayload()]
+            $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
+            if ($payloadResult['handled']) {
+                $dependencies[] = $payloadResult['instance'];
+                continue;
+            }
 
-                    $dto = new $dtoClass();
-                    /** @var Request $request */
-                    $request = $app->make('request');
-                    $attributeInstance = $mapAttributes[0]->newInstance();
-                    $dependencies[] = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
-                    continue;
-                }
-                throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
+            // Handle #[Bind()]
+            $bindResult = $this->handleBindAttribute($parameter, $app);
+            if ($bindResult['handled']) {
+                $dependencies[] = $bindResult['instance'];
+                continue;
             }
 
             if ($paramType && !$paramType->isBuiltin()) {
@@ -1299,5 +1295,75 @@ class Router extends Kernel
         }
 
         return $dependencies;
+    }
+
+    /**
+     * Handle BindPayload attribute for a parameter
+     *
+     * @param \ReflectionParameter $parameter
+     * @param Application $app
+     * @return array
+     * @throws \Exception
+     */
+    private function handleBindPayloadAttribute(\ReflectionParameter $parameter, Application $app): array
+    {
+        $mapAttributes = $parameter->getAttributes(BindPayload::class);
+        if (empty($mapAttributes)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
+        }
+
+        $dtoClass = $paramType->getName();
+        if (!class_exists($dtoClass)) {
+            throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
+        }
+
+        $dto = $app->make($dtoClass);
+        $request = $app->make('request');
+        $attributeInstance = $mapAttributes[0]->newInstance();
+        $instance = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Handle Bind attribute for a parameter
+     *
+     * @param \ReflectionParameter $parameter
+     * @param Application $app
+     * @return array
+     * @throws \Exception
+     */
+    private function handleBindAttribute(\ReflectionParameter $parameter, Application $app): array
+    {
+        $binds = $parameter->getAttributes(Bind::class);
+        if (empty($binds)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception("Parameter '$paramName' must be a class-typed when using Bind");
+        }
+
+        $bindAttribute = $binds[0];
+        $bindInstance = $bindAttribute->newInstance();
+
+        $abstract = $paramType->getName();
+        $bindInstance->singleton
+            ? $app->singleton($abstract, $bindInstance->concrete)
+            : $app->bind($abstract, $bindInstance->concrete);
+
+        $instance = $app->make($abstract);
+
+        return ['handled' => true, 'instance' => $instance];
     }
 }
