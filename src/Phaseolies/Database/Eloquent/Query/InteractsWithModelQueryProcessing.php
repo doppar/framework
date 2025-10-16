@@ -394,6 +394,17 @@ trait InteractsWithModelQueryProcessing
     }
 
     /**
+     * Create a new model instance from another model and save it to the database.
+     *
+     * @param Model $model
+     * @return static
+     */
+    public static function createFromModel(Model $model): static
+    {
+        return self::create($model->getAttributes());
+    }
+
+    /**
      * Get the attributes that are allowed to be mass-assigned.
      *
      * @return array
