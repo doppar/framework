@@ -2020,11 +2020,14 @@ class Builder
         );
 
         // Build the SQL query
-        $sql = "INSERT " . ($ignoreErrors ? "IGNORE " : "") .
-            "INTO `{$this->table}` ({$columnsStr}) VALUES " .
-            implode(', ', $placeholders) .
-            " ON DUPLICATE KEY UPDATE " .
-            implode(', ', $updateStatements);
+        $sql = $this->getUpsertSql(
+            columnsStr: $columnsStr,
+            placeholders: $placeholders,
+            updateStatements: $updateStatements,
+            uniqueBy: $uniqueBy,
+            updateColumns: $updateColumns,
+            ignoreErrors: $ignoreErrors
+        );
 
         try {
             $stmt = $this->pdo->prepare($sql);
@@ -2036,7 +2039,17 @@ class Builder
 
             $stmt->execute();
 
-            return $stmt->rowCount();
+            $rowCount = $stmt->rowCount();
+            $driver = $this->getDriver();
+
+            // Normalize return value: always return the number of unique rows processed
+            if ($driver === 'mysql' && $rowCount > count($values)) {
+                // MySQL returns 2 for each updated row, 
+                // but intentionally we want to return 1 per unique row
+                return count($values);
+            }
+
+            return $rowCount;
         } catch (PDOException $e) {
             if ($ignoreErrors) {
                 return 0;
