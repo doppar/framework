@@ -1,5 +1,13 @@
 # Release Notes
 
+## 2.9.6-beta - 2025-10-16
+
+### What's Changed
+
+* doppar installer class system requirements by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/40
+
+**Full Changelog**: https://github.com/doppar/framework/compare/2.9.5-beta...2.9.6-beta
+
 ## 2.9.5-beta - 2025-10-16
 
 ### What's Changed
