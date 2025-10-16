@@ -437,31 +437,6 @@ trait Grammar
     }
 
     /**
-     * Format date for database comparison
-     *
-     * @param mixed $date
-     * @param bool $includeTime
-     * @return string
-     */
-    public function formatDate($date, bool $includeTime = false): string
-    {
-        if ($date instanceof \DateTimeInterface) {
-            return $includeTime
-                ? $date->format('Y-m-d H:i:s')
-                : $date->format('Y-m-d');
-        }
-
-        if (is_string($date)) {
-            if (!$includeTime && strlen($date) > 10) {
-                return substr($date, 0, 10);
-            }
-            return $date;
-        }
-
-        throw new \InvalidArgumentException('Invalid date provided');
-    }
-
-    /**
      * Get the standard deviation function for the current database driver
      *
      * @param string $column
