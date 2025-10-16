@@ -1,5 +1,16 @@
 # Release Notes
 
+## 2.9.5-beta - 2025-10-16
+
+### What's Changed
+
+* New command to install a package dynamically by user prompts by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/36
+* [fix] whereDateTimeBetween() function and console progress and table generation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/37
+* [BindPayload] Introduce to bind payload attribute by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/38
+* [fix] Upsert issue resolved for SQLite and pgsql driver  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/39
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v2.9.5.6...2.9.5-beta
+
 ## v2.9.5.6 - 2025-10-15
 
 * Heartbeat remove from atomic lock: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/26
