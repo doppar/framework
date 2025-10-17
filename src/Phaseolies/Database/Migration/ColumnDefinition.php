@@ -117,6 +117,11 @@ class ColumnDefinition
             $sql .= ' PRIMARY KEY';
         }
 
+        // Add UNIQUE constraint if grammar requires it in column definition
+        if (!empty($this->attributes['unique']) && $grammar->shouldAddUniqueInColumnDefinition()) {
+            $sql .= ' UNIQUE';
+        }
+
         // Add NULL/NOT NULL constraint
         if (isset($this->attributes['nullable']) && $this->attributes['nullable']) {
             $sql .= ' NULL';

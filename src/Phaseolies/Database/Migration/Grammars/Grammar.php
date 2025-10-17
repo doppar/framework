@@ -70,4 +70,14 @@ abstract class Grammar
     {
         return false;
     }
+
+    /**
+     * Check if UNIQUE constraint should be added in column definition.
+     * 
+     * @return bool
+     */
+    public function shouldAddUniqueInColumnDefinition(): bool
+    {
+        return false;
+    }
 }
