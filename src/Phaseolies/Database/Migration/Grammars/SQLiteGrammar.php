@@ -138,6 +138,16 @@ class SQLiteGrammar extends Grammar
     }
 
     /**
+     * SQLite requires UNIQUE constraint in column definition.
+     *
+     * @return bool
+     */
+    public function shouldAddUniqueInColumnDefinition(): bool
+    {
+        return true;
+    }
+
+    /**
      * Map abstract column types to MySQL-specific SQL type definitions
      *
      * @param string $type
