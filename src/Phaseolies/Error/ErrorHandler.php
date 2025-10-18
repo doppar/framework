@@ -116,6 +116,11 @@ class ErrorHandler
             $before = app($beforeExceptionClass);
 
             if ($before->supports()) {
+                $response = app('response');
+                $statusCode = $exception instanceof \Phaseolies\Http\Exceptions\HttpException
+                    ? $exception->getStatusCode()
+                    : 500;
+                $response->setExceptionError($exception, $statusCode);
                 $before->handle($exception);
             }
         }

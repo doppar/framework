@@ -1586,4 +1586,27 @@ class Response implements HttpStatus
 
         return $content;
     }
+
+    /**
+     * Set exception response body
+     *
+     * @param Throwable $exception
+     * @param int|null $statusCode
+     * @return static
+     */
+    public function setExceptionError(Throwable $exception, ?int $statusCode = null): static
+    {
+        $status = $statusCode ?? ($exception->getCode() ?: 500);
+        $error = $exception->getMessage() ?? 'An error occurred';
+
+        $this->setBody(json_encode($error));
+        $this->setOriginal($exception);
+        $this->setStatusCode($status);
+        $this->setException($status);
+
+        // Fallback
+        http_response_code($status);
+
+        return $this;
+    }
 }
