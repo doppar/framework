@@ -7,9 +7,8 @@ class MessageBag
     /**
      * Set a value in the session.
      *
-     * @param string $key The key to set.
-     * @param mixed $value The value to store.
-     *
+     * @param string $key
+     * @param mixed $value
      * @return void
      */
     public static function set(string $key, $value): void
@@ -19,14 +18,19 @@ class MessageBag
 
     /**
      * Stores the provided input data in the session for later retrieval.
-     * This is typically used when you want to "flash" the input data for the next request,
-     * such as when a form submission fails, and you want to retain the user's input.
      *
      * @return void
      */
-    public static function flashInput()
+    public static function flashInput(): void
     {
-        session()->put('input', $_POST);
+        $input = $_POST;
+        $sensitiveInputExclusions = config('app.exclude_sensitive_input');
+
+        foreach ($sensitiveInputExclusions as $field) {
+            unset($input[$field]);
+        }
+
+        session()->put('input', $input);
     }
 
     /**
@@ -51,8 +55,8 @@ class MessageBag
     /**
      * Checks if old input data exists for a specific key.
      *
-     * @param string $key The key for the input value.
-     * @return bool True if the input exists, false otherwise.
+     * @param string $key
+     * @return bool
      */
     public static function has(string $key): bool
     {
@@ -74,7 +78,7 @@ class MessageBag
     /**
      * Gets all old input data from the session.
      *
-     * @return array|null The old input data, or null if no data exists.
+     * @return array|null
      */
     public static function all(): ?array
     {
