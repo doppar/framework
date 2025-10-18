@@ -1596,27 +1596,16 @@ class Response implements HttpStatus
      */
     public function setExceptionError(Throwable $exception, ?int $statusCode = null): static
     {
-        $statusCode = $statusCode ?? ($exception->getCode() ?: 500);
+        $status = $statusCode ?? ($exception->getCode() ?: 500);
+        $error = $exception->getMessage() ?? 'An error occurred';
 
-        $errorData = [
-            'error' => [
-                'message' => config('app.debug') ? $exception->getMessage() : 'An error occurred',
-                'code' => $statusCode,
-            ]
-        ];
-
-        if (config('app.debug')) {
-            $errorData['error']['type'] = get_class($exception);
-            $errorData['error']['file'] = $exception->getFile();
-            $errorData['error']['line'] = $exception->getLine();
-            $errorData['error']['trace'] = $exception->getTrace();
-        }
-
-        $this->setBody(json_encode($errorData));
+        $this->setBody(json_encode($error));
         $this->setOriginal($exception);
-        $this->setStatusCode($statusCode);
-        $this->setException($exception);
-        http_response_code($statusCode);
+        $this->setStatusCode($status);
+        $this->setException($status);
+
+        // Fallback
+        http_response_code($status);
 
         return $this;
     }
