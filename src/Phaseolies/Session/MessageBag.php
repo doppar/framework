@@ -24,7 +24,7 @@ class MessageBag
     public static function flashInput(): void
     {
         $input = $_POST;
-        $sensitiveInputExclusions = config('app.exclude_sensitive_input');
+        $sensitiveInputExclusions = self::getSensitiveInputFields();
 
         foreach ($sensitiveInputExclusions as $field) {
             unset($input[$field]);
@@ -83,5 +83,19 @@ class MessageBag
     public static function all(): ?array
     {
         return session('input') ?? null;
+    }
+
+    /**
+     * Get the excluded sensitive input fields from being stored in the session
+     *
+     * @return array
+     */
+    public static function getSensitiveInputFields(): array
+    {
+        if (PHP_SAPI === 'cli' || defined('STDIN')) {
+            return [];
+        }
+
+        return config('app.exclude_sensitive_input');
     }
 }
