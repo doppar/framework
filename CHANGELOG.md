@@ -1,5 +1,12 @@
 # Release Notes
 
+## v2.9.6-beta.3 - 2025-10-18
+
+* [SQLite] fix unique constraint + tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/43
+* Unit testing a nested DTO object with BindPayload and Router attributes, and making the class final by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/44
+* [feat] Exclude sensitive input fields from being stored in the session by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/45
+* [feat] before-exception hook for improved exception logging by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/46
+
 ## v2.9.6-beta.2 - 2025-10-16
 
 * [feat] update BindPayload code and add new Bind() attr:  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/42
