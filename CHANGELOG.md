@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.6-beta.4 - 2025-10-19
+
+* [enhancement] Set proper exception message to response body by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/47
+* route:list command to display registerd route by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/48
+
 ## v2.9.6-beta.3 - 2025-10-18
 
 * [SQLite] fix unique constraint + tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/43
