@@ -55,6 +55,7 @@ trait Rule
         }
 
         $this->setPassedData($input);
+        MessageBag::clear();
 
         return $input;
     }
