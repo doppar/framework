@@ -20,7 +20,7 @@ class AppBoostCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Optimizes application performance by clearing and rebuilding caches)';
+    protected $description = 'Optimizes application performance by clearing and rebuilding caches';
 
     /**
      * Execute the console command.
