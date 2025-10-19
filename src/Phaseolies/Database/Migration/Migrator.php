@@ -37,8 +37,8 @@ class Migrator
 
     /**
      * Constructor
-     * @param MigrationRepository $repository Repository for tracking migrations
-     * @param string $migrationPath Path to migration files directory
+     * @param MigrationRepository $repository
+     * @param string $migrationPath
      */
     public function __construct(MigrationRepository $repository, string $migrationPath)
     {
@@ -129,6 +129,7 @@ class Migrator
 
             $executed[] = basename($fullPath);
         }
+        sort($executed);
 
         $this->runMigrationList($executed, $connection);
 
@@ -224,7 +225,7 @@ class Migrator
     /**
      * Run a list of migration files
      *
-     * @param array $migrations List of migration file names to run
+     * @param array $migrations
      * @param string|null $connection
      */
     protected function runMigrationList(array $migrations, ?string $connection = null): void
@@ -240,7 +241,7 @@ class Migrator
      * @param string $file
      * @param string|null $connection
      * @return void
-     * @throws \RuntimeException If migration fails
+     * @throws \RuntimeException
      */
     protected function runMigration(string $file, ?string $connection = null): void
     {
@@ -270,9 +271,9 @@ class Migrator
     /**
      * Resolve a migration file into a Migration instance
      *
-     * @param string $file Migration file name
-     * @return Migration Migration instance
-     * @throws \RuntimeException If file doesn't exist or invalid migration
+     * @param string $file
+     * @return Migration
+     * @throws \RuntimeException
      */
     protected function resolve(string $file): Migration
     {
@@ -294,8 +295,8 @@ class Migrator
     /**
      * Convert a migration file name to a class name
      *
-     * @param string $file Migration file name
-     * @return string Class name
+     * @param string $file
+     * @return string
      */
     protected function getMigrationClass(string $file): string
     {

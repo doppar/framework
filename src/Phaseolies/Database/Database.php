@@ -90,10 +90,10 @@ class Database
     /**
      * Get a PDO instance for the specified connection
      *
-     * @param string|null $connection Connection name (null for default)
+     * @param string|null $connection
      * @return PDO
-     * @throws \RuntimeException When database configuration is invalid
-     * @throws \PDOException When connection fails
+     * @throws \RuntimeException
+     * @throws \PDOException
      */
     public static function getPdoInstance(?string $connection = null): PDO
     {
@@ -453,8 +453,26 @@ class Database
      */
     public function execute(string $sql, array $params = []): int
     {
-        $stmt = $this->getPdo()->prepare($sql);
+        $pdo = $this->getPdo();
+        $driver = $this->getDriver();
 
+        // PostgreSQL
+        if ($driver === 'pgsql') {
+            $statements = array_filter(array_map('trim', explode(';', $sql)));
+
+            $rowCount = 0;
+            foreach ($statements as $stmt) {
+                if (!empty($stmt)) {
+                    $statement = $pdo->prepare($stmt);
+                    $statement->execute($params);
+                    $rowCount += $statement->rowCount();
+                }
+            }
+            return $rowCount;
+        }
+
+        // MySQL/SQLite
+        $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
         return $stmt->rowCount();
@@ -469,6 +487,7 @@ class Database
     public function dropAllTables(): int
     {
         $driver = static::getDriverInstance($this->connection);
+
         return $driver->dropAllTables($this->getPdo());
     }
 
@@ -480,6 +499,7 @@ class Database
     public function disableForeignKeyConstraints(): void
     {
         $driver = static::getDriverInstance($this->connection);
+
         $driver->disableForeignKeyConstraints($this->getPdo());
     }
 
@@ -491,6 +511,7 @@ class Database
     public function enableForeignKeyConstraints(): void
     {
         $driver = static::getDriverInstance($this->connection);
+
         $driver->enableForeignKeyConstraints($this->getPdo());
     }
 
@@ -515,13 +536,14 @@ class Database
     public function table(string $table): Builder
     {
         $driver = self::getDriverInstance($this->connection);
+
         return new Builder($table, $this->getPdo(), $driver);
     }
 
     /**
      * Get a connection instance for the specified connection name
      *
-     * @param string|null $name Connection name (null for default)
+     * @param string|null $name
      * @return self
      */
     public function connection(?string $name = null): self

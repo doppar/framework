@@ -18,9 +18,10 @@ class GrammarFactory
         $driver = strtolower($driver);
 
         return match ($driver) {
-            'mysql' => new MySQLGrammar(),
+            'mysql'  => new MySQLGrammar(),
             'sqlite' => new SQLiteGrammar(),
-            default => throw new InvalidArgumentException("Unsupported database driver: {$driver}"),
+            'pgsql'  => new PostgreSQLGrammar(),
+            default  => throw new InvalidArgumentException("Unsupported database driver: {$driver}"),
         };
     }
 }

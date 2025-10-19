@@ -18,7 +18,7 @@ class ColumnDefinition
     /**
      * Create a new column definition instance.
      *
-     * @param array $attributes The column attributes including name and type
+     * @param array $attributes
      */
     public function __construct(array $attributes = [])
     {
@@ -41,14 +41,21 @@ class ColumnDefinition
 
     /**
      * Set a default value for the column.
-     * Converts boolean false to 0 for database compatibility.
      *
-     * @param mixed $value The default value
+     * @param mixed $value
      * @return self
      */
     public function default($value): self
     {
-        $this->attributes['default'] = $value === false ? 0 : $value;
+        $connection = app('db')->getConnection();
+        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
+
+        if ($driver === 'pgsql' && is_bool($value)) {
+            // PGSQL
+            $this->attributes['default'] = $value ? 'true' : 'false';
+        } else {
+            $this->attributes['default'] = $value === false ? 0 : $value;
+        }
 
         return $this;
     }
@@ -105,7 +112,7 @@ class ColumnDefinition
     /**
      * Convert the column definition to its SQL representation.
      *
-     * @return string The SQL column definition
+     * @return string
      */
     public function toSql(): string
     {
@@ -138,9 +145,10 @@ class ColumnDefinition
         }
 
         // adding AFTER clause if specified
-        if (isset($this->attributes['after'])) {
-            $sql .= " AFTER {$this->attributes['after']}";
-        }
+        // PGSQL No support this
+        // if (isset($this->attributes['after'])) {
+        //     $sql .= " AFTER {$this->attributes['after']}";
+        // }
 
         return $sql;
     }
@@ -158,6 +166,7 @@ class ColumnDefinition
         return match ($driver) {
             'mysql' => new Grammars\MySQLGrammar(),
             'sqlite' => new Grammars\SQLiteGrammar(),
+            'pgsql' => new Grammars\PostgreSQLGrammar(),
             default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
         };
     }
