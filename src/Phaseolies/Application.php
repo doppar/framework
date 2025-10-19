@@ -790,7 +790,6 @@ class Application extends Container
 
             $response->prepare($request)->send();
         } catch (HttpException $e) {
-            app('response')->setException($e->getMessage());
             Response::dispatchHttpException($e);
         }
     }

@@ -57,9 +57,6 @@ class RedirectResponse extends Response
 
         $this->headers->set('Location', $url);
         $this->headers->set('Content-Type', 'text/html; charset=utf-8');
-        if ($this->isSuccessful()) {
-            MessageBag::clear();
-        }
 
         return $this;
     }
