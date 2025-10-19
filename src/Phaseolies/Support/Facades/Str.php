@@ -29,6 +29,9 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\StringService highlightKeyword(string $input, string $keyword, string $tag = 'strong'): string
  * @method static \Phaseolies\Support\StringService suffixAppend(string $input, string $suffix): string
  * @method static \Phaseolies\Support\StringService removeSuffix(string $input, string $suffix): string
+ * @method static \Phaseolies\Support\StringService after(string $subject, string $search): string
+ * @method static \Phaseolies\Support\StringService before(string $subject, string $search): string
+ * @method static \Phaseolies\Support\StringService between(string $subject, string $search): string
  * @see \Phaseolies\Support\StringService
  */
 
