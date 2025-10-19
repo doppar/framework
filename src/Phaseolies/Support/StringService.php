@@ -498,6 +498,10 @@ class StringService
 
     /**
      * Get the portion of $subject after the first occurrence of $search.
+     * 
+     * @param string $subject
+     * @param string $search
+     * @return string
      */
     public function after(string $subject, string $search): string
     {
@@ -512,6 +516,10 @@ class StringService
 
     /**
      * Get the portion of $subject before the first occurrence of $search.
+     * 
+     * @param string $subject
+     * @param string $search
+     * @return string
      */
     public function before(string $subject, string $search): string
     {
@@ -526,6 +534,11 @@ class StringService
 
     /**
      * Get the portion between two values.
+     * 
+     * @param string $subject
+     * @param string $from
+     * @param string $to
+     * @return string
      */
     public function between(string $subject, string $from, string $to): string
     {
