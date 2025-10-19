@@ -347,11 +347,17 @@ class Router extends Kernel
         $httpMethods = $route->methods ?? ['GET'];
         $name = $route->name ?? null;
         $middleware = $route->middleware ?? [];
+        $rateLimit = $route->rateLimit ?? null;
+        $rateLimitDecay = $route->rateLimitDecay ?? 1;
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
             if (!empty($middleware)) {
                 $this->middleware($middleware);
+            }
+
+            if ($rateLimit) {
+                $this->middleware("throttle:{$rateLimit},{$rateLimitDecay}");
             }
         }
     }
