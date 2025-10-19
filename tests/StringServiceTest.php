@@ -183,4 +183,40 @@ class StringServiceTest extends TestCase
         $this->assertEquals('HELLO WORLD', $this->stringService->toUpper('Hello World'));
         $this->assertEquals('HELLO 世界', $this->stringService->toUpper('Hello 世界'));
     }
+
+        public function testAfter(): void
+    {
+        $this->assertEquals('World', $this->stringService->after('Hello/World', '/'));
+        $this->assertEquals('こんにちは', $this->stringService->after('挨拶:こんにちは', ':'));
+
+        $subject = 'no-sep';
+        // when search not found, implementation returns original subject
+        $this->assertEquals($subject, $this->stringService->after($subject, '#'));
+        // empty search returns subject as implemented
+        $this->assertEquals($subject, $this->stringService->after($subject, ''));
+    }
+
+    public function testBefore(): void
+    {
+        $this->assertEquals('Hello', $this->stringService->before('Hello/World', '/'));
+        $this->assertEquals('挨拶', $this->stringService->before('挨拶:こんにちは', ':'));
+
+        $subject = 'no-sep';
+        // when search not found, implementation returns original subject
+        $this->assertEquals($subject, $this->stringService->before($subject, '#'));
+        // empty search returns subject as implemented
+        $this->assertEquals($subject, $this->stringService->before($subject, ''));
+    }
+
+    public function testBetween(): void
+    {
+        $this->assertEquals('b', $this->stringService->between('a [b] c', '[', ']'));
+        $this->assertEquals('大阪', $this->stringService->between('東京-大阪-名古屋', '東京-', '-名古屋'));
+
+        $subject = 'no-delims';
+        // when delimiters not present, implementation returns original subject
+        $this->assertEquals($subject, $this->stringService->between($subject, '[', ']'));
+        // empty delimiters return subject as implemented
+        $this->assertEquals($subject, $this->stringService->between($subject, '', ''));
+    }
 }

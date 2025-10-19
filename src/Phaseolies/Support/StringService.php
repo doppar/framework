@@ -484,7 +484,7 @@ class StringService
         return strtoupper($input[0]) . substr($input, 1) . $suffix;
     }
 
-     /**
+    /**
      * Remove a suffix from a string.
      *
      * @param string $input
@@ -494,5 +494,55 @@ class StringService
     public function removeSuffix(string $input, string $suffix): string
     {
         return substr($input, 0, -strlen($suffix));
+    }
+
+    /**
+     * Get the portion of $subject after the first occurrence of $search.
+     * 
+     * @param string $subject
+     * @param string $search
+     * @return string
+     */
+    public function after(string $subject, string $search): string
+    {
+        if ($search === '') {
+            return $subject;
+        }
+
+        $pos = mb_strpos($subject, $search, 0, 'UTF-8');
+
+        return $pos === false ? $subject : mb_substr($subject, $pos + mb_strlen($search, 'UTF-8'), null, 'UTF-8');
+    }
+
+    /**
+     * Get the portion of $subject before the first occurrence of $search.
+     * 
+     * @param string $subject
+     * @param string $search
+     * @return string
+     */
+    public function before(string $subject, string $search): string
+    {
+        if ($search === '') {
+            return $subject;
+        }
+
+        $pos = mb_strpos($subject, $search, 0, 'UTF-8');
+
+        return $pos === false ? $subject : mb_substr($subject, 0, $pos, 'UTF-8');
+    }
+
+    /**
+     * Get the portion between two values.
+     * 
+     * @param string $subject
+     * @param string $from
+     * @param string $to
+     * @return string
+     */
+    public function between(string $subject, string $from, string $to): string
+    {
+        $start = $this->after($subject, $from);
+        return $this->before($start, $to);
     }
 }
