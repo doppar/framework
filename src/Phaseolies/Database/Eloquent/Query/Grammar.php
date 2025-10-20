@@ -520,14 +520,8 @@ trait Grammar
      * @return string The generated UPSERT SQL statement.
      * @throws \RuntimeException
      */
-    public function getUpsertSql(
-        string $columnsStr,
-        array $placeholders,
-        array $updateStatements,
-        array $uniqueBy,
-        array $updateColumns,
-        bool $ignoreErrors
-    ): string {
+    public function getUpsertSql(string $columnsStr, array $placeholders, array $updateStatements, array $uniqueBy, array $updateColumns, bool $ignoreErrors): string
+    {
         $driver = $this->getDriver();
 
         return match ($driver) {
@@ -537,21 +531,52 @@ trait Grammar
                 " ON DUPLICATE KEY UPDATE " .
                 implode(', ', $updateStatements),
 
-            'pgsql' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
+            'pgsql' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns, $updateStatements) {
                 $uniqueColumns = implode(', ', array_map(fn($col) => "\"{$col}\"", $uniqueBy));
+
                 if ($ignoreErrors) {
                     return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
                         implode(', ', $placeholders) .
                         " ON CONFLICT({$uniqueColumns}) DO NOTHING";
                 }
-                $updateStatements = array_map(
-                    fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
-                    $updateColumns
-                );
+
+                // Debug: Check what we're receiving
+                info("Update Columns: " . print_r($updateColumns, true));
+                info("Update Statements: " . print_r($updateStatements, true));
+
+                // If updateStatements is provided, use it directly
+                if (!empty($updateStatements)) {
+                    $updateClause = implode(', ', $updateStatements);
+                }
+                // If updateColumns is provided, build statements from it
+                elseif (!empty($updateColumns)) {
+                    $updateStatements = array_map(
+                        fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
+                        $updateColumns
+                    );
+                    $updateClause = implode(', ', $updateStatements);
+                }
+                // Fallback: update all columns except unique ones
+                else {
+                    // Get all table columns and exclude unique columns
+                    $allColumns = $this->getTableColumns();
+                    $columnsToUpdate = array_diff($allColumns, $uniqueBy);
+
+                    if (empty($columnsToUpdate)) {
+                        throw new \RuntimeException("No columns available to update in UPSERT operation");
+                    }
+
+                    $updateStatements = array_map(
+                        fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
+                        $columnsToUpdate
+                    );
+                    $updateClause = implode(', ', $updateStatements);
+                }
+
                 return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
                     implode(', ', $placeholders) .
                     " ON CONFLICT({$uniqueColumns}) DO UPDATE SET " .
-                    implode(', ', $updateStatements);
+                    $updateClause;
             })(),
 
             'sqlite' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
@@ -598,5 +623,4 @@ trait Grammar
             return false;
         }
     }
-
 }

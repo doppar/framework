@@ -1935,12 +1935,8 @@ class Builder
      * @return int Number of affected rows
      * @throws PDOException
      */
-    public function upsert(
-        array $values,
-        array|string $uniqueBy,
-        ?array $updateColumns = null,
-        bool $ignoreErrors = false
-    ): int {
+    public function upsert(array $values, array|string $uniqueBy, ?array $updateColumns = null, bool $ignoreErrors = false): int
+    {
         if (empty($values)) {
             return 0;
         }
@@ -1977,7 +1973,11 @@ class Builder
                 $columns[] = 'updated_at';
             }
         }
-        $columnsStr = implode(', ', array_map(fn($col) => "`$col`", $columns));
+
+        // Use proper column quoting based on driver
+        $driver = $this->getDriver();
+        $quoteChar = $driver === 'mysql' ? '`' : '"';
+        $columnsStr = implode(', ', array_map(fn($col) => "{$quoteChar}{$col}{$quoteChar}", $columns));
 
         // Prepare placeholders and bindings
         $placeholders = [];
@@ -2013,9 +2013,9 @@ class Builder
             $updateColumns[] = 'updated_at';
         }
 
-        // Build the ON DUPLICATE KEY UPDATE clause
+        // Build update statements with proper quoting
         $updateStatements = array_map(
-            fn($col) => "`$col` = VALUES(`$col`)",
+            fn($col) => "{$quoteChar}{$col}{$quoteChar} = VALUES({$quoteChar}{$col}{$quoteChar})",
             $updateColumns
         );
 
