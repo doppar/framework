@@ -11,8 +11,8 @@ trait QueryUtils
     /**
      * Execute a query and get the result as a key-value dictionary
      *
-     * @param string $keyColumn The column to use as keys
-     * @param string $valueColumn The column to use as values
+     * @param string $keyColumn
+     * @param string $valueColumn
      * @return Collection
      */
     public function toDictionary(string $keyColumn, string $valueColumn): Collection
@@ -43,9 +43,9 @@ trait QueryUtils
     /**
      * Execute a query and get the result as a nested tree structure
      *
-     * @param string $primaryKey The primary key column
-     * @param string $parentColumn The parent key column
-     * @param string $index The key to use for children (default: 'children')
+     * @param string $primaryKey
+     * @param string $parentColumn
+     * @param string $index
      * @return Collection
      */
     public function toTree(string $primaryKey, string $parentColumn, string $index = 'children'): Collection
@@ -110,7 +110,7 @@ trait QueryUtils
     /**
      * Execute a query with a random sample
      *
-     * @param int $limit The number of rows to sample
+     * @param int $limit
      * @return Builder
      */
     public function random(int $limit): Builder
@@ -121,11 +121,11 @@ trait QueryUtils
     /**
      * Search a JSON column
      *
-     * @param string $column The name of the JSON column to search
-     * @param string $path The JSON path to search within (e.g., '$.notifications.email')
-     * @param mixed $value The value to search for (will be JSON encoded if not boolean)
-     * @param string $boolean The logical operator to use ('AND' or 'OR') for chaining conditions
-     * @return self Returns the query builder instance for method chaining
+     * @param string $column
+     * @param string $path
+     * @param mixed $value
+     * @param string $boolean
+     * @return self
      */
     public function whereJson(string $column, string $path, $value, string $boolean = 'AND'): self
     {
@@ -137,8 +137,8 @@ trait QueryUtils
     /**
      * Execute a query with a case-insensitive pattern matching filter
      *
-     * @param string $column The column to filter
-     * @param string $pattern The pattern to match
+     * @param string $column
+     * @param string $pattern
      * @return Builder
      */
     public function iLike(string $column, string $pattern): Builder
@@ -149,8 +149,8 @@ trait QueryUtils
     /**
      * Execute a query with a custom transformation function
      *
-     * @param callable $callback A function that receives the query builder and returns a SQL expression
-     * @param string $alias The column alias (default: 'transformed')
+     * @param callable $callback
+     * @param string $alias
      * @return self
      */
     public function transformBy(callable $callback, string $alias = 'transformed'): self
@@ -176,9 +176,9 @@ trait QueryUtils
     /**
      * Execute a query with a pattern matching filter
      *
-     * @param string $column The column to filter
-     * @param string $pattern The pattern to match
-     * @param string $type The pattern type (LIKE, REGEXP, SIMILAR TO, etc.)
+     * @param string $column
+     * @param string $pattern
+     * @param string $type
      * @return Builder
      */
     public function wherePattern(string $column, string $pattern, string $type = 'LIKE'): Builder
@@ -189,11 +189,11 @@ trait QueryUtils
     /**
      * Execute a query with a first/last value in window with partitioning
      *
-     * @param string $column The column to get the first/last value from
-     * @param string $orderColumn The column to order by for the window
-     * @param string $partitionColumn The column to partition by
-     * @param bool $first Whether to get the first (true) or last (false) value
-     * @param string $alias The column alias
+     * @param string $column
+     * @param string $orderColumn
+     * @param string $partitionColumn
+     * @param bool $first
+     * @param string $alias
      * @return Builder
      */
     public function firstLastInWindow(
@@ -217,9 +217,9 @@ trait QueryUtils
     /**
      * Execute a query with a running difference calculation
      *
-     * @param string $column The column to calculate the running difference for
-     * @param string $orderColumn The column to order by for the window
-     * @param string $alias The column alias
+     * @param string $column
+     * @param string $orderColumn
+     * @param string $alias
      * @return Builder
      */
     public function movingDifference(string $column, string $orderColumn, string $alias = 'running_diff'): Builder
@@ -232,10 +232,10 @@ trait QueryUtils
     /**
      * Execute a query with a moving average calculation
      *
-     * @param string $column The column to calculate the moving average for
-     * @param int $windowSize The window size for the moving average
-     * @param string $orderColumn The column to order by for the window
-     * @param string $alias The column alias
+     * @param string $column
+     * @param int $windowSize
+     * @param string $orderColumn
+     * @param string $alias
      * @return Builder
      */
     public function movingAverage(string $column, int $windowSize, string $orderColumn, string $alias = 'moving_avg'): Builder
