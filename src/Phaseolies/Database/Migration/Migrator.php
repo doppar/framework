@@ -36,7 +36,6 @@ class Migrator
     protected ?string $connection = null;
 
     /**
-     * Constructor
      * @param MigrationRepository $repository
      * @param string $migrationPath
      */

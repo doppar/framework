@@ -26,8 +26,8 @@ class Schema
     /**
      * Create a new database table
      *
-     * @param string $table Name of the table to create
-     * @param callable $callback Blueprint callback that defines the table structure
+     * @param string $table
+     * @param callable $callback
      */
     public function create(string $table, callable $callback): void
     {
@@ -41,8 +41,8 @@ class Schema
     /**
      * Modify an existing database table
      *
-     * @param string $table Name of the table to modify
-     * @param callable $callback Blueprint callback that defines the modifications
+     * @param string $table
+     * @param callable $callback
      */
     public function table(string $table, callable $callback): void
     {
@@ -58,7 +58,7 @@ class Schema
     /**
      * Drop a table if it exists
      *
-     * @param string $table Name of the table to drop
+     * @param string $table
      */
     public function dropIfExists(string $table): void
     {
@@ -68,8 +68,8 @@ class Schema
     /**
      * Check if a table exists in the database
      *
-     * @param string $table Name of the table to check
-     * @return bool True if table exists, false otherwise
+     * @param string $table
+     * @return bool
      */
     public function hasTable(string $table): bool
     {
