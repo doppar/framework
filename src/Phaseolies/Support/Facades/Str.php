@@ -31,7 +31,8 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\StringService removeSuffix(string $input, string $suffix): string
  * @method static \Phaseolies\Support\StringService after(string $subject, string $search): string
  * @method static \Phaseolies\Support\StringService before(string $subject, string $search): string
- * @method static \Phaseolies\Support\StringService between(string $subject, string $search): string
+ * @method static \Phaseolies\Support\StringService between(string $subject, string $from, string $to): string
+ * @method static \Phaseolies\Support\StringService isJson(string $value): string
  * @see \Phaseolies\Support\StringService
  */
 
