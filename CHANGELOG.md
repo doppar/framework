@@ -1,5 +1,13 @@
 # Release Notes
 
+## v2.9.6-beta.5 - 2025-10-20
+
+* [enhancement] old form input remove way improved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/49
+* [Routing] rate limit option to attribute based routing: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/51
+* [Support] Added before, after, between function in Str Service by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/50
+* [Support] Added isJson function in Str Service by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/53
+* [Database] Implemented PostgreSQL support  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/52
+
 ## v2.9.6-beta.4 - 2025-10-19
 
 * [enhancement] Set proper exception message to response body by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/47
