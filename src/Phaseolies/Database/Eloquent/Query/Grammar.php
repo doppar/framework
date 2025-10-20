@@ -157,20 +157,28 @@ trait Grammar
      */
     protected function pgsqlJsonContains(string $column, string $path, $value): array
     {
+        // Convert JSON path to PostgreSQL JSON path format
+        $cleanPath = str_replace('$.', '', $path);
+        $pathParts = explode('.', $cleanPath);
+
+        // Build the JSON path access using -> and ->> operators
+        $jsonAccess = $column . "::jsonb";
+
+        // Build the path access chain
+        foreach ($pathParts as $part) {
+            $jsonAccess .= " -> '{$part}'";
+        }
+
+        // For the final access, use ->> to get text or -> for boolean
         if (is_bool($value)) {
-            // For boolean values, use @> operator with JSONB
-            $jsonValue = $value ? 'true' : 'false';
-            return [
-                "{$column}::jsonb @> ?::jsonb",
-                ["{\"{$this->getLastPathSegment($path)}\": {$jsonValue}}"]
-            ];
+            $finalAccess = "({$jsonAccess})::boolean = ?";
+            return [$finalAccess, [$value]];
+        } elseif (is_string($value)) {
+            $finalAccess = str_replace(' -> ', ' ->> ', $jsonAccess) . " = ?";
+            return [$finalAccess, [$value]];
         } else {
-            // For other values
-            $jsonValue = json_encode([$this->getLastPathSegment($path) => $value]);
-            return [
-                "{$column}::jsonb @> ?::jsonb",
-                [$jsonValue]
-            ];
+            $finalAccess = "({$jsonAccess})::text = ?";
+            return [$finalAccess, [json_encode($value)]];
         }
     }
 
