@@ -11,7 +11,7 @@ trait Grammar
      */
     public function getDriver(): string
     {
-        return strtolower($this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME));
+        return $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
     }
 
     /**
