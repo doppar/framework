@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Database\Migration;
 
+use Phaseolies\Database\Query\RawExpression;
 use PDO;
 
 class ColumnDefinition
@@ -50,7 +51,7 @@ class ColumnDefinition
         $driver = $this->getDriver();
 
         if ($driver === 'pgsql' && is_bool($value)) {
-            $this->attributes['default'] = $value ? 'true' : 'false';
+            $this->attributes['default'] = new RawExpression($value ? 'TRUE' : 'FALSE');
         } else {
             $this->attributes['default'] = $value === false ? 0 : $value;
         }
