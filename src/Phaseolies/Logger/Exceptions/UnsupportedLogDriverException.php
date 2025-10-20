@@ -9,9 +9,9 @@ class UnsupportedLogDriverException extends InvalidArgumentException
     /**
      * UnsupportedLogDriverException constructor.
      *
-     * @param string $message The exception message.
-     * @param int $code The exception code.
-     * @param \Throwable|null $previous The previous throwable used for exception chaining.
+     * @param string $message
+     * @param int $code
+     * @param \Throwable|null $previous
      */
     public function __construct(string $message = "", int $code = 0, ?\Throwable $previous = null)
     {

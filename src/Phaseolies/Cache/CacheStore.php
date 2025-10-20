@@ -47,8 +47,13 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Get the cache data by key
+     *
+     * @param mixed $key
+     * @param null $default
+     * @return mixed
      */
+    #[\Override]
     public function get($key, $default = null): mixed
     {
         $key = $this->prefixedKey($key);
@@ -59,8 +64,14 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Stores a value in the cache with a specified key.
+     *
+     * @param mixed $key
+     * @param mixed $value
+     * @param null $ttl
+     * @return bool
      */
+    #[\Override]
     public function set($key, $value, $ttl = null): bool
     {
         $key = $this->prefixedKey($key);
@@ -77,8 +88,12 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Deletes a value from the cache by its key.
+     *
+     * @param mixed $key
+     * @return bool
      */
+    #[\Override]
     public function delete($key): bool
     {
         $key = $this->prefixedKey($key);
@@ -89,16 +104,24 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Clears all items from the cache.
+     *
+     * @return bool
      */
+    #[\Override]
     public function clear(): bool
     {
         return $this->adapter->clear();
     }
 
     /**
-     * {@inheritdoc}
+     * Retrieves multiple cache items by their keys.
+     *
+     * @param iterable $keys
+     * @param mixed $default
+     * @return iterable
      */
+    #[\Override]
     public function getMultiple($keys, $default = null): iterable
     {
         if (!is_iterable($keys)) {
@@ -120,8 +143,13 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Stores multiple cache items at once.
+     *
+     * @param iterable $values
+     * @param null|int|\DateInterval $ttl
+     * @return bool
      */
+    #[\Override]
     public function setMultiple($values, $ttl = null): bool
     {
         if (!is_iterable($values)) {
@@ -148,8 +176,12 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Deletes multiple cache items by their keys.
+     *
+     * @param iterable $keys
+     * @return bool
      */
+    #[\Override]
     public function deleteMultiple($keys): bool
     {
         if (!is_iterable($keys)) {
@@ -163,8 +195,12 @@ class CacheStore implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Checks whether a cache item exists for the given key.
+     *
+     * @param mixed $key
+     * @return bool
      */
+    #[\Override]
     public function has($key): bool
     {
         $key = $this->prefixedKey($key);
@@ -342,7 +378,7 @@ class CacheStore implements CacheInterface
     /**
      * Convert TTL to seconds.
      *
-     * @param  null|int|\DateInterval  $ttl
+     * @param null|int|\DateInterval $ttl
      * @return int|null
      */
     protected function convertTtlToSeconds($ttl): ?int
@@ -418,8 +454,8 @@ class CacheStore implements CacheInterface
      *
      * @param string $key
      * @param \Closure $callback
-     * @param bool $condition Whether to cache the result
-     * @param int|\DateInterval|null $ttl Time to live (optional)
+     * @param bool $condition
+     * @param int|\DateInterval|null $ttl
      * @return mixed
      */
     public function stashWhen(string $key, \Closure $callback, bool $condition, $ttl = null): mixed

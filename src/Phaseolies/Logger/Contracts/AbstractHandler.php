@@ -12,8 +12,8 @@ abstract class AbstractHandler
     /**
      * Configures the Monolog handler for logging.
      *
-     * @param Logger $logger The Monolog logger instance.
-     * @param string $channel The logging channel.
+     * @param Logger $logger
+     * @param string $channel
      * @return void
      */
     public function handleConfiguration(Logger $logger, ?string $logFile = null): void

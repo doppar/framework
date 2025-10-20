@@ -153,7 +153,8 @@ class ScheduledCommand
     /**
      * Ensure secure file permissions for lock files.
      *
-     * @param string $filePath Path to the file
+     * @param string $filePath
+     * @return void
      */
     private function ensureSecureFilePermissions(string $filePath): void
     {
@@ -350,7 +351,7 @@ class ScheduledCommand
     /**
      * Manually set a custom CRON expression.
      *
-     * @param string $expression A valid CRON expression.
+     * @param string $expression
      * @return self
      */
     public function cron(string $expression): self
@@ -589,7 +590,6 @@ class ScheduledCommand
 
     /**
      * Prevent overlapping executions of the command.
-     * Optionally, set a custom max lock time (in minutes).
      *
      * @param int $minutes The maximum lock time in minutes. Default: 1440 (24 hours)
      * @return self
@@ -618,7 +618,7 @@ class ScheduledCommand
     /**
      * Check if the command is set to run in the background.
      *
-     * @return bool True if background execution is enabled, false otherwise.
+     * @return bool
      */
     public function shouldRunInBackground(): bool
     {
@@ -745,7 +745,7 @@ class ScheduledCommand
     /**
      * Set a callback to execute when the command succeeds.
      *
-     * @param callable $callback Receives the command output as parameter
+     * @param callable $callback
      * @return self
      */
     public function onSuccess(callable $callback): self
@@ -758,7 +758,7 @@ class ScheduledCommand
     /**
      * Set a callback to execute when the command fails.
      *
-     * @param callable $callback Receives the exception and attempt count as parameters
+     * @param callable $callback
      * @return self
      */
     public function onFailure(callable $callback): self
@@ -771,8 +771,8 @@ class ScheduledCommand
     /**
      * Execute the command with proper sanitization and callback handling.
      *
-     * @return mixed The command output or true if running in background
-     * @throws \Exception If the command fails and no retries are left
+     * @return mixed
+     * @throws \Exception
      */
     public function run()
     {
@@ -814,8 +814,8 @@ class ScheduledCommand
     /**
      * Basic command sanitization to prevent command injection.
      *
-     * @param string $command The command to sanitize
-     * @return string The sanitized command
+     * @param string $command
+     * @return string
      */
     private function sanitizeCommand(string $command): string
     {
@@ -829,8 +829,8 @@ class ScheduledCommand
     /**
      * Execute the command with retry logic and proper cleanup.
      *
-     * @return mixed The command output or true if running in background
-     * @throws \Exception If all retry attempts are exhausted
+     * @return mixed
+     * @throws \Exception
      */
     public function runWithRetry()
     {
@@ -876,8 +876,8 @@ class ScheduledCommand
     /**
      * Set max retry attempts and delay between retries.
      *
-     * @param int $retries Maximum number of retry attempts
-     * @param int $delaySeconds Delay between retries in seconds
+     * @param int $retries
+     * @param int $delaySeconds
      * @return self
      */
     public function retry(int $retries, int $delaySeconds = 60): self
@@ -892,8 +892,8 @@ class ScheduledCommand
     /**
      * Determine if the command is due to run with comprehensive checks.
      *
-     * @return bool True if the command should be executed now, false otherwise.
-     * @throws \InvalidArgumentException if cron expression is invalid
+     * @return bool
+     * @throws \InvalidArgumentException
      */
     public function isDue(): bool
     {
@@ -972,7 +972,7 @@ class ScheduledCommand
     /**
      * Handle the overlapping prevention logic.
      *
-     * @return bool True if command can run (no overlap), false otherwise
+     * @return bool
      */
     private function handleOverlappingPrevention(): bool
     {
@@ -1040,8 +1040,8 @@ class ScheduledCommand
     /**
      * Check if a process with the given PID is currently running.
      *
-     * @param int $pid The process ID to check.
-     * @return bool True if the process is running, false otherwise.
+     * @param int $pid
+     * @return bool
      */
     private function isProcessRunning(int $pid): bool
     {
@@ -1061,10 +1061,7 @@ class ScheduledCommand
     /**
      * Determine if the command is currently locked (i.e., should not run again yet).
      *
-     * This checks for the existence of the lock file and ensures it is still valid
-     * based on the configured maximum lock duration.
-     *
-     * @return bool True if the command is considered locked, false otherwise.
+     * @return bool
      */
     public function isLocked(): bool
     {
@@ -1079,8 +1076,6 @@ class ScheduledCommand
 
     /**
      * Create or update the lock file with the current timestamp.
-     *
-     * This prevents overlapping executions by marking the command as "in progress".
      *
      * @return void
      */

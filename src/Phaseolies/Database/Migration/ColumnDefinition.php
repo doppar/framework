@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Database\Migration;
 
+use Phaseolies\Database\Query\RawExpression;
 use PDO;
 
 class ColumnDefinition
@@ -18,7 +19,7 @@ class ColumnDefinition
     /**
      * Create a new column definition instance.
      *
-     * @param array $attributes The column attributes including name and type
+     * @param array $attributes
      */
     public function __construct(array $attributes = [])
     {
@@ -41,14 +42,19 @@ class ColumnDefinition
 
     /**
      * Set a default value for the column.
-     * Converts boolean false to 0 for database compatibility.
      *
-     * @param mixed $value The default value
+     * @param mixed $value
      * @return self
      */
     public function default($value): self
     {
-        $this->attributes['default'] = $value === false ? 0 : $value;
+        $driver = $this->getDriver();
+
+        if ($driver === 'pgsql' && is_bool($value)) {
+            $this->attributes['default'] = new RawExpression($value ? 'TRUE' : 'FALSE');
+        } else {
+            $this->attributes['default'] = $value === false ? 0 : $value;
+        }
 
         return $this;
     }
@@ -105,7 +111,7 @@ class ColumnDefinition
     /**
      * Convert the column definition to its SQL representation.
      *
-     * @return string The SQL column definition
+     * @return string
      */
     public function toSql(): string
     {
@@ -137,9 +143,10 @@ class ColumnDefinition
             $sql .= " DEFAULT {$default}";
         }
 
-        // adding AFTER clause if specified
-        if (isset($this->attributes['after'])) {
-            $sql .= " AFTER {$this->attributes['after']}";
+        if ((!$this->getDriver()) === 'pgsql') {
+            if (isset($this->attributes['after'])) {
+                $sql .= " AFTER {$this->attributes['after']}";
+            }
         }
 
         return $sql;
@@ -152,12 +159,12 @@ class ColumnDefinition
      */
     protected function getGrammar(): Grammars\Grammar
     {
-        $connection = app('db')->getConnection();
-        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
+        $driver = $this->getDriver();
 
         return match ($driver) {
             'mysql' => new Grammars\MySQLGrammar(),
             'sqlite' => new Grammars\SQLiteGrammar(),
+            'pgsql' => new Grammars\PostgreSQLGrammar(),
             default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
         };
     }
@@ -176,5 +183,17 @@ class ColumnDefinition
         return implode(',', array_map(function ($value) {
             return "'" . addslashes($value) . "'";
         }, $this->attributes['values']));
+    }
+
+    /**
+     * Get the current PDO driver
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        $connection = app('db')->getConnection();
+
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
 }

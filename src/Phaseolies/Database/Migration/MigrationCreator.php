@@ -10,7 +10,6 @@ class MigrationCreator
     protected string $stubPath;
 
     /**
-     * MigrationCreator constructor.
      * Initializes the path to the migration stubs directory.
      */
     public function __construct()
@@ -21,11 +20,11 @@ class MigrationCreator
     /**
      * Create a new migration file.
      *
-     * @param string $name The base name of the migration (e.g., CreateUsersTable)
-     * @param string $path The directory path to save the migration file
-     * @param string|null $table The name of the table (optional)
-     * @param bool $create Whether the migration is for creating a table
-     * @return string The full path to the created migration file
+     * @param string $name
+     * @param string $path
+     * @param string|null $table
+     * @param bool $create
+     * @return string
      */
     public function create(string $name, string $path, ?string $table = null, bool $create = false): string
     {
@@ -58,8 +57,8 @@ class MigrationCreator
     /**
      * Generate a timestamped migration file name.
      *
-     * @param string $name The base name
-     * @return string The timestamped snake_case name
+     * @param string $name
+     * @return string
      */
     protected function getMigrationName(string $name): string
     {
@@ -69,9 +68,9 @@ class MigrationCreator
     /**
      * Get the appropriate stub content based on migration context.
      *
-     * @param string|null $table  The table name
-     * @param bool $create Whether it's a "create" migration
-     * @return string The stub content
+     * @param string|null $table
+     * @param bool $create
+     * @return string
      */
     protected function getStub(?string $table, bool $create): string
     {
@@ -89,9 +88,9 @@ class MigrationCreator
     /**
      * Replace placeholders in the stub with actual values.
      *
-     * @param string $name The generated migration file name
-     * @param string $stub The stub content (passed by reference)
-     * @param string|null $table  The table name (if any)
+     * @param string $name
+     * @param string $stub
+     * @param string|null $table
      * @return void
      */
     protected function populateStub(string $name, string &$stub, ?string $table): void

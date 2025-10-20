@@ -6,6 +6,9 @@ use Phaseolies\Database\Migration\ColumnDefinition;
 
 class MySQLGrammar extends Grammar
 {
+    /**
+     * @var string
+     */
     protected $engine = 'InnoDB';
 
     /**

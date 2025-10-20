@@ -15,7 +15,7 @@ trait Rule
      * Validate the input data against the given rules.
      *
      * @access public
-     * @param array $rules Associative array of field names and their validation rules.
+     * @param array $rules
      * @return null|array|\Phaseolies\Http\Response
      */
     public function sanitize(array $rules): array|Response

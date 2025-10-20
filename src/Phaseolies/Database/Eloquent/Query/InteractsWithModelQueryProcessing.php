@@ -38,9 +38,6 @@ trait InteractsWithModelQueryProcessing
     /**
      * Disable the execution of model hooks for the current instance.
      *
-     * Call this method when you want to perform operations on the model
-     * without triggering any defined hooks (e.g., before_deleted, etc.).
-     *
      * @return self
      */
     public static function withoutHook(): self
@@ -53,7 +50,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Retrieves all records from the model's table.
      *
-     * @return Collection A collection of all model records.
+     * @return Collection
      */
     public static function all(): Collection
     {
@@ -63,7 +60,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Alias for the `all` method. Retrieves all records from the model's table.
      *
-     * @return Collection A collection of all model records.
+     * @return Collection
      */
     public static function get(): Collection
     {
@@ -73,7 +70,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Finds a model record by its primary key.
      *
-     * @param string|array $primaryKey The value of the primary key (can be array or multiple strings)
+     * @param string|array $primaryKey
      * @return mixed
      */
     public static function find(string|int|array $primaryKey)
@@ -101,7 +98,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Returns the total number of records in the model's table.
      *
-     * @return int The count of records.
+     * @return int
      */
     public static function count(): int
     {
@@ -111,7 +108,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Converts the model's attributes to an array.
      *
-     * @return array The array representation of the model's visible attributes.
+     * @return array.
      */
     public function toArray(): array
     {
@@ -136,8 +133,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Pluck an array of values from a single column.
      *
-     * @param string $value Column name for values
-     * @param string|null $key Column name for keys
+     * @param string $value
+     * @param string|null $key
      * @return Collection
      */
     public function pluck(string $value, ?string $key = null): Collection
@@ -165,9 +162,9 @@ trait InteractsWithModelQueryProcessing
     /**
      * Converts the model's attributes to a JSON string.
      *
-     * @param int $options Bitmask of JSON encoding options.
-     * @return string The JSON representation of the model.
-     * @throws \Exception If JSON encoding fails.
+     * @param int $options
+     * @return string
+     * @throws \Exception
      */
     public function toJson($options = 0): string
     {
@@ -280,8 +277,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Insert multiple records into the database
      *
-     * @param array $rows Array of attribute sets
-     * @return int Number of inserted rows
+     * @param array $rows
+     * @return int
      */
     public static function saveMany(array $rows, int $chunkSize = 100): int
     {
@@ -305,8 +302,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Update an existing record or create a new one if it doesn't exist.
      *
-     * @param array $attributes The attributes to match against (for finding existing record)
-     * @param array $values The values to update or insert
+     * @param array $attributes
+     * @param array $values
      * @return Model
      */
     public static function updateOrCreate(array $attributes, array $values = []): Model
@@ -332,8 +329,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Retrieve the first model matching the attributes, or create it if not found.
      *
-     * @param array  $attributes  Key-value pairs to match against existing records
-     * @param array  $values Additional values to use when creating a new record
+     * @param array $attributes
+     * @param array $values
      * @return Model
      */
     public static function firstOrCreate(array $attributes, array $values = []): Model
@@ -356,8 +353,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Update an existing record or ignore
      *
-     * @param array $attributes The attributes to match against (for finding existing record)
-     * @param array $values The values to update or insert
+     * @param array $attributes
+     * @param array $values
      * @return Model|null
      */
     public static function updateOrIgnore(array $attributes, array $values = []): ?Model
@@ -424,7 +421,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Filter models based on dynamic conditions
      *
-     * @param array|callable $filters Array of field => value pairs or a callback function
+     * @param array|callable $filters
      * @return \Phaseolies\Database\Eloquent\Builder
      */
     public static function match(array|callable $filters): Builder
@@ -453,8 +450,8 @@ trait InteractsWithModelQueryProcessing
     /**
      * Update the model in the database.
      *
-     * @param array $attributes Key-value pairs of attributes to update
-     * @return bool True if the update was successful, false otherwise
+     * @param array $attributes
+     * @return bool
      */
     public function update(array $attributes): bool
     {
@@ -504,10 +501,10 @@ trait InteractsWithModelQueryProcessing
     /**
      * Accesses a private or protected property of a class using reflection.
      *
-     * @param string $class The fully qualified class name.
-     * @param string $attribute The property name to retrieve.
-     * @return mixed The value of the specified property.
-     * @throws \Exception If the property does not exist on the given class.
+     * @param string $class
+     * @param string $attribute
+     * @return mixed
+     * @throws \Exception
      */
     protected function getClassProperty(string $class, string $attribute): mixed
     {
@@ -528,11 +525,11 @@ trait InteractsWithModelQueryProcessing
     /**
      * Checks whether a class property has a specific attribute.
      *
-     * @param object|string $class The fully qualified class name.
-     * @param string $attribute The property name to inspect.
-     * @param string $attributeClass The attribute class to check for (e.g. CastToDate::class).
-     * @return bool True if the attribute exists on the property, false otherwise.
-     * @throws \Exception If the property does not exist on the given class.
+     * @param object|string $class
+     * @param string $attribute
+     * @param string $attributeClass
+     * @return bool
+     * @throws \Exception
      */
     protected function propertyHasAttribute(object|string $class, string $attribute, string $attributeClass): bool
     {
@@ -567,7 +564,7 @@ trait InteractsWithModelQueryProcessing
     /**
      * Create a copy of the model instance without the primary key
      *
-     * @param array|null $except Attributes to exclude from replication
+     * @param array|null $except
      * @return static
      */
     public function fork(?array $except = null): static

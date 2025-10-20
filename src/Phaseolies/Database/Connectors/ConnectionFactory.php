@@ -7,19 +7,21 @@ use RuntimeException;
 use Phaseolies\Database\Drivers\MySQLDriver;
 use Phaseolies\Database\Drivers\SQLiteDriver;
 use Phaseolies\Database\Contracts\Driver\DriverInterface;
+use Phaseolies\Database\Drivers\PostgreSQLDriver;
 
 class ConnectionFactory
 {
     /**
      * Creates a PDO connection based on the provided configuration.
      *
-     * @param array $config The database configuration array
-     * @return PDO The PDO database connection instance
-     * @throws RuntimeException If the specified driver is not supported
+     * @param array $config
+     * @return PDO
+     * @throws RuntimeException
      */
     public static function make(array $config): PDO
     {
         $driver = self::createDriver($config);
+
         return $driver->connect($config);
     }
 
@@ -33,13 +35,11 @@ class ConnectionFactory
     {
         $driver = $config['driver'] ?? 'mysql';
 
-        switch (strtolower($driver)) {
-            case 'mysql':
-                return new MySQLDriver();
-            case 'sqlite':
-                return new SQLiteDriver();
-            default:
-                throw new RuntimeException("Unsupported database driver: {$driver}");
-        }
+        return match (strtolower($driver)) {
+            'mysql'  => new MySQLDriver(),
+            'sqlite' => new SQLiteDriver(),
+            'pgsql'  => new PostgreSQLDriver(),
+            default  => throw new RuntimeException("Unsupported database driver: {$driver}"),
+        };
     }
 }

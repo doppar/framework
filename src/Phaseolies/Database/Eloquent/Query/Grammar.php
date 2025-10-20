@@ -134,6 +134,11 @@ trait Grammar
 
     /**
      * MySQL JSON_CONTAINS implementation
+     *
+     * @param string $column
+     * @param string $path
+     * @param mixed $value
+     * @return array
      */
     protected function mysqlJsonContains(string $column, string $path, $value): array
     {
@@ -157,20 +162,28 @@ trait Grammar
      */
     protected function pgsqlJsonContains(string $column, string $path, $value): array
     {
+        // Convert JSON path to PostgreSQL JSON path format
+        $cleanPath = str_replace('$.', '', $path);
+        $pathParts = explode('.', $cleanPath);
+
+        // Build the JSON path access using -> and ->> operators
+        $jsonAccess = $column . "::jsonb";
+
+        // Build the path access chain
+        foreach ($pathParts as $part) {
+            $jsonAccess .= " -> '{$part}'";
+        }
+
+        // For the final access, use ->> to get text or -> for boolean
         if (is_bool($value)) {
-            // For boolean values, use @> operator with JSONB
-            $jsonValue = $value ? 'true' : 'false';
-            return [
-                "{$column}::jsonb @> ?::jsonb",
-                ["{\"{$this->getLastPathSegment($path)}\": {$jsonValue}}"]
-            ];
+            $finalAccess = "({$jsonAccess})::boolean = ?";
+            return [$finalAccess, [$value]];
+        } elseif (is_string($value)) {
+            $finalAccess = str_replace(' -> ', ' ->> ', $jsonAccess) . " = ?";
+            return [$finalAccess, [$value]];
         } else {
-            // For other values
-            $jsonValue = json_encode([$this->getLastPathSegment($path) => $value]);
-            return [
-                "{$column}::jsonb @> ?::jsonb",
-                [$jsonValue]
-            ];
+            $finalAccess = "({$jsonAccess})::text = ?";
+            return [$finalAccess, [json_encode($value)]];
         }
     }
 
@@ -456,7 +469,7 @@ trait Grammar
     /**
      * Should standard deviation be computed in PHP instead of SQL
      * Only SQLite does not support SQRT function ATM
-     * 
+     *
      * @return bool
      */
     public function shouldComputeStdDevInPhp(): bool
@@ -503,23 +516,17 @@ trait Grammar
     /**
      * Generate an UPSERT (insert or update) SQL statement based on the current database driver.
      *
-     * @param string $columnsStr The comma-separated column list.
-     * @param array $placeholders The placeholder groups for values.
-     * @param array $updateStatements The update statements (for ON DUPLICATE KEY / ON CONFLICT).
-     * @param array $uniqueBy Columns used for uniqueness constraints.
-     * @param array $updateColumns Columns to update on conflict.
-     * @param bool $ignoreErrors Whether to use IGNORE / DO NOTHING semantics.
-     * @return string The generated UPSERT SQL statement.
+     * @param string $columnsStr
+     * @param array $placeholders
+     * @param array $updateStatements
+     * @param array $uniqueBy
+     * @param array $updateColumns
+     * @param bool $ignoreErrors
+     * @return string
      * @throws \RuntimeException
      */
-    public function getUpsertSql(
-        string $columnsStr,
-        array $placeholders,
-        array $updateStatements,
-        array $uniqueBy,
-        array $updateColumns,
-        bool $ignoreErrors
-    ): string {
+    public function getUpsertSql(string $columnsStr, array $placeholders, array $updateStatements, array $uniqueBy, array $updateColumns, bool $ignoreErrors): string
+    {
         $driver = $this->getDriver();
 
         return match ($driver) {
@@ -529,21 +536,52 @@ trait Grammar
                 " ON DUPLICATE KEY UPDATE " .
                 implode(', ', $updateStatements),
 
-            'pgsql' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
+            'pgsql' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns, $updateStatements) {
                 $uniqueColumns = implode(', ', array_map(fn($col) => "\"{$col}\"", $uniqueBy));
+
                 if ($ignoreErrors) {
                     return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
                         implode(', ', $placeholders) .
                         " ON CONFLICT({$uniqueColumns}) DO NOTHING";
                 }
-                $updateStatements = array_map(
-                    fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
-                    $updateColumns
-                );
+
+                // Debug: Check what we're receiving
+                info("Update Columns: " . print_r($updateColumns, true));
+                info("Update Statements: " . print_r($updateStatements, true));
+
+                // If updateStatements is provided, use it directly
+                if (!empty($updateStatements)) {
+                    $updateClause = implode(', ', $updateStatements);
+                }
+                // If updateColumns is provided, build statements from it
+                elseif (!empty($updateColumns)) {
+                    $updateStatements = array_map(
+                        fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
+                        $updateColumns
+                    );
+                    $updateClause = implode(', ', $updateStatements);
+                }
+                // Fallback: update all columns except unique ones
+                else {
+                    // Get all table columns and exclude unique columns
+                    $allColumns = $this->getTableColumns();
+                    $columnsToUpdate = array_diff($allColumns, $uniqueBy);
+
+                    if (empty($columnsToUpdate)) {
+                        throw new \RuntimeException("No columns available to update in UPSERT operation");
+                    }
+
+                    $updateStatements = array_map(
+                        fn($col) => "\"{$col}\" = EXCLUDED.\"{$col}\"",
+                        $columnsToUpdate
+                    );
+                    $updateClause = implode(', ', $updateStatements);
+                }
+
                 return "INSERT INTO \"{$this->table}\" ({$columnsStr}) VALUES " .
                     implode(', ', $placeholders) .
                     " ON CONFLICT({$uniqueColumns}) DO UPDATE SET " .
-                    implode(', ', $updateStatements);
+                    $updateClause;
             })(),
 
             'sqlite' => (function () use ($ignoreErrors, $uniqueBy, $columnsStr, $placeholders, $updateColumns) {
@@ -590,5 +628,4 @@ trait Grammar
             return false;
         }
     }
-
 }

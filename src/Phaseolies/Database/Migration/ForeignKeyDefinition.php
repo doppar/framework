@@ -25,8 +25,8 @@ class ForeignKeyDefinition
     /**
      * Create a new foreign key definition instance.
      *
-     * @param Blueprint $blueprint The table blueprint
-     * @param string $column The foreign key column name
+     * @param Blueprint $blueprint
+     * @param string $column
      */
     public function __construct(Blueprint $blueprint, string $column)
     {
@@ -37,7 +37,7 @@ class ForeignKeyDefinition
     /**
      * Set the referenced column name in the foreign table.
      *
-     * @param string $column The referenced column name
+     * @param string $column
      * @return self
      */
     public function references(string $column): self
@@ -50,7 +50,7 @@ class ForeignKeyDefinition
     /**
      * Set the referenced table name.
      *
-     * @param string $table The referenced table name
+     * @param string $table
      * @return self
      */
     public function on(string $table): self
@@ -63,7 +63,7 @@ class ForeignKeyDefinition
     /**
      * Set the ON DELETE action for the foreign key.
      *
-     * @param string $action The action (e.g., 'CASCADE', 'SET NULL')
+     * @param string $action
      * @return self
      */
     public function onDelete(string $action): self
@@ -76,7 +76,7 @@ class ForeignKeyDefinition
     /**
      * Set the ON UPDATE action for the foreign key.
      *
-     * @param string $action The action (e.g., 'CASCADE', 'SET NULL')
+     * @param string $action
      * @return self
      */
     public function onUpdate(string $action): self
@@ -149,8 +149,8 @@ class ForeignKeyDefinition
     /**
      * Convert the foreign key definition to its SQL representation.
      *
-     * @return string The SQL ALTER TABLE statement
-     * @throws \RuntimeException If required references or table are missing
+     * @return string
+     * @throws \RuntimeException
      */
     public function toSql(): string
     {
@@ -181,7 +181,7 @@ class ForeignKeyDefinition
     /**
      * Generate a standard name for the foreign key constraint.
      *
-     * @return string The constraint name in format "fk_[table]_[column]"
+     * @return string
      */
     protected function getConstraintName(): string
     {

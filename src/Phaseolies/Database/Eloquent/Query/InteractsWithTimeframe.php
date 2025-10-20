@@ -389,7 +389,7 @@ trait InteractsWithTimeframe
      * Get the proper operator for date range based on includeTime flag
      *
      * @param bool $includeTime
-     * @return array [startOperator, endOperator]
+     * @return array
      */
     public function getDateRangeOperators(bool $includeTime = false): array
     {

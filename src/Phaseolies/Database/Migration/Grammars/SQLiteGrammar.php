@@ -111,6 +111,7 @@ class SQLiteGrammar extends Grammar
     public function compileCreateIndex(string $table, string $column): string
     {
         $indexName = "idx_{$table}_{$column}";
+
         return "CREATE INDEX `{$indexName}` ON `{$table}` (`{$column}`)";
     }
 

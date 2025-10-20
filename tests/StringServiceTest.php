@@ -220,7 +220,7 @@ class StringServiceTest extends TestCase
         $this->assertEquals($subject, $this->stringService->between($subject, '', ''));
     }
 
-    public function it_returns_true_for_valid_json()
+    public function testReturnsTrueForValidJson()
     {
         $this->assertTrue($this->stringService->isJson('{"name":"John"}'));
         $this->assertTrue($this->stringService->isJson('[1, 2, 3]'));
@@ -228,7 +228,7 @@ class StringServiceTest extends TestCase
         $this->assertTrue($this->stringService->isJson('"Hello"'));
     }
 
-    public function it_returns_false_for_invalid_json()
+    public function testReturnsFalseForInvalidJson()
     {
         $this->assertFalse($this->stringService->isJson('{"name": "John"')); // Missing closing brace
         $this->assertFalse($this->stringService->isJson('{name: John}'));    // Invalid quotes

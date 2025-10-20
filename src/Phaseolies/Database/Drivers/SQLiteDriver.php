@@ -11,8 +11,12 @@ use Phaseolies\Database\Procedure\ProcedureResult;
 class SQLiteDriver implements DriverInterface
 {
     /**
-     * @inheritDoc
+     * Get the MySQL PDO Instance
+     *
+     * @param array $config
+     * @return PDO
      */
+    #[\Override]
     public function connect(array $config): PDO
     {
         $path = $config['database'];
@@ -34,17 +38,27 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Get table columns
+     *
+     * @param PDO $pdo
+     * @param string $table
+     * @return array
      */
+    #[\Override]
     public function getTableColumns(PDO $pdo, string $table): array
     {
         $stmt = $pdo->query("PRAGMA table_info({$table})");
-        return $stmt->fetchAll(PDO::FETCH_COLUMN, 1); // Return column names
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN, 1);
     }
 
     /**
-     * @inheritDoc
+     * Get table list
+     *
+     * @param PDO $pdo
+     * @return array
      */
+    #[\Override]
     public function getTables(PDO $pdo): array
     {
         $stmt = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
@@ -52,8 +66,13 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Check whether a table exists or not
+     *
+     * @param PDO $pdo
+     * @param string $table
+     * @return bool
      */
+    #[\Override]
     public function tableExists(PDO $pdo, string $table): bool
     {
         $stmt = $pdo->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = :name");
@@ -62,8 +81,15 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Call store procedure and get the results
+     *
+     * @param PDO $pdo
+     * @param string $name
+     * @param array $params
+     * @param array $outputParams
+     * @return array
      */
+    #[\Override]
     public function callProcedure(PDO $pdo, string $procedureName, array $params = [], array &$outputParams = []): array
     {
         // SQLite doesn't support stored procedures natively, so we'll use a transaction
@@ -90,8 +116,12 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Drop all the tables
+     *
+     * @param PDO $pdo
+     * @return int
      */
+    #[\Override]
     public function dropAllTables(PDO $pdo): int
     {
         $tables = $this->getTables($pdo);
@@ -111,24 +141,38 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Disable foreign key constraints for table
+     *
+     * @param PDO $pdo
+     * @return void
      */
+    #[\Override]
     public function disableForeignKeyConstraints(PDO $pdo): void
     {
         $pdo->exec('PRAGMA foreign_keys = OFF');
     }
 
     /**
-     * @inheritDoc
+     * Eisable foreign key constraints for table
+     *
+     * @param PDO $pdo
+     * @return void
      */
+    #[\Override]
     public function enableForeignKeyConstraints(PDO $pdo): void
     {
         $pdo->exec('PRAGMA foreign_keys = ON');
     }
 
     /**
-     * @inheritDoc
+     * Truncate a given table
+     *
+     * @param PDO $pdo
+     * @param string $table
+     * @param bool $resetAutoIncrement
+     * @return int
      */
+    #[\Override]
     public function truncate(PDO $pdo, string $table, bool $resetAutoIncrement = true): int
     {
         $count = $pdo->exec("DELETE FROM \"{$table}\"");
@@ -141,18 +185,28 @@ class SQLiteDriver implements DriverInterface
     }
 
     /**
-     * @inheritDoc
+     * Drop a given table
+     *
+     * @param PDO $pdo
+     * @param string $table
+     * @return int
      */
-    public function deleteAll(PDO $pdo, string $table): int
-    {
-        return $pdo->exec("DELETE FROM \"{$table}\"");
-    }
-
-    /**
-     * @inheritDoc
-     */
+    #[\Override]
     public function dropTable(PDO $pdo, string $table): int
     {
         return $pdo->exec("DROP TABLE IF EXISTS \"{$table}\"");
+    }
+
+    /**
+     * Delete all records from a given table
+     *
+     * @param PDO $pdo
+     * @param string $table
+     * @return int
+     */
+    #[\Override]
+    public function deleteAll(PDO $pdo, string $table): int
+    {
+        return $pdo->exec("DELETE FROM \"{$table}\"");
     }
 }
