@@ -11,7 +11,7 @@ trait Grammar
      */
     public function getDriver(): string
     {
-        return $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        return strtolower($this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME));
     }
 
     /**
@@ -21,7 +21,7 @@ trait Grammar
      */
     public function rand(): string
     {
-        $randomFunction = match ($this->driver) {
+        $randomFunction = match ($this->getDriver()) {
             'sqlite', 'pgsql' => 'RANDOM()',
             default           => 'RAND()',
         };
@@ -37,7 +37,7 @@ trait Grammar
      */
     public function getTableColumnsSql(string $tableName): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'sqlite' => "PRAGMA table_info({$tableName})",
             'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$tableName}'",
             default => "DESCRIBE {$tableName}",
@@ -52,7 +52,7 @@ trait Grammar
      */
     public function processTableColumnsResult(array $result): array
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'sqlite' => array_column($result, 'name'),
             'pgsql' => array_column($result, 'column_name'),
             'mysql' => $this->processMysqlTableColumns($result),
@@ -97,7 +97,7 @@ trait Grammar
      */
     public function getTablesSql(): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "SHOW TABLES",
             'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
             'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
@@ -114,7 +114,7 @@ trait Grammar
      */
     public function jsonContains(string $column, string $path, $value): array
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => $this->mysqlJsonContains($column, $path, $value),
             'pgsql' => $this->pgsqlJsonContains($column, $path, $value),
             'sqlite' => $this->sqliteJsonContains($column, $path, $value),
@@ -229,7 +229,7 @@ trait Grammar
      */
     public function month(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "MONTH({$column})",
             'pgsql' => "EXTRACT(MONTH FROM {$column})",
             'sqlite' => "CAST(strftime('%m', {$column}) AS INTEGER)",
@@ -245,7 +245,7 @@ trait Grammar
      */
     public function year(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "YEAR({$column})",
             'pgsql' => "EXTRACT(YEAR FROM {$column})",
             'sqlite' => "CAST(strftime('%Y', {$column}) AS INTEGER)",
@@ -261,7 +261,7 @@ trait Grammar
      */
     public function day(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "DAY({$column})",
             'pgsql' => "EXTRACT(DAY FROM {$column})",
             'sqlite' => "CAST(strftime('%d', {$column}) AS INTEGER)",
@@ -278,7 +278,7 @@ trait Grammar
      */
     public function datePart(string $column, string $part): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => match ($part) {
                 'month' => "MONTH({$column})",
                 'year' => "YEAR({$column})",
@@ -314,7 +314,7 @@ trait Grammar
      */
     public function time(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "TIME({$column})",
             'pgsql' => "{$column}::time",
             'sqlite' => "time({$column})",
@@ -330,7 +330,7 @@ trait Grammar
      */
     public function hour(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "HOUR({$column})",
             'pgsql' => "EXTRACT(HOUR FROM {$column})",
             'sqlite' => "CAST(strftime('%H', {$column}) AS INTEGER)",
@@ -346,7 +346,7 @@ trait Grammar
      */
     public function minute(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "MINUTE({$column})",
             'pgsql' => "EXTRACT(MINUTE FROM {$column})",
             'sqlite' => "CAST(strftime('%M', {$column}) AS INTEGER)",
@@ -362,7 +362,7 @@ trait Grammar
      */
     public function second(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "SECOND({$column})",
             'pgsql' => "EXTRACT(SECOND FROM {$column})",
             'sqlite' => "CAST(strftime('%S', {$column}) AS INTEGER)",
@@ -379,7 +379,7 @@ trait Grammar
      */
     public function timePart(string $column, string $part): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => match ($part) {
                 'hour' => "HOUR({$column})",
                 'minute' => "MINUTE({$column})",
@@ -411,7 +411,7 @@ trait Grammar
      */
     public function date(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "DATE({$column})",
             'pgsql' => "DATE({$column})",
             'sqlite' => "date({$column})",
@@ -427,7 +427,7 @@ trait Grammar
      */
     public function getStandardDeviation(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql', 'pgsql' => "STDDEV({$column})",
             'sqlite' => "SQRT(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
             default => "SQRT(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
@@ -454,7 +454,7 @@ trait Grammar
      */
     protected function getGroupConcatExpression(string $column, string $separator = ','): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "GROUP_CONCAT({$column} SEPARATOR '{$separator}')",
             'pgsql' => "STRING_AGG({$column}, '{$separator}')",
             'sqlite' => "GROUP_CONCAT({$column}, '{$separator}')",
@@ -470,7 +470,7 @@ trait Grammar
      */
     public function getVarianceExpression(string $column): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql', 'pgsql' => "VARIANCE({$column})",
             'sqlite' => "(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
             default => "VARIANCE({$column})",
@@ -491,7 +491,7 @@ trait Grammar
      */
     public function getUpsertSql(string $columnsStr, array $placeholders, array $updateStatements, array $uniqueBy, array $updateColumns, bool $ignoreErrors): string
     {
-        return match ($this->driver) {
+        return match ($this->getDriver()) {
             'mysql' => "INSERT " . ($ignoreErrors ? "IGNORE " : "") .
                 "INTO `{$this->table}` ({$columnsStr}) VALUES " .
                 implode(', ', $placeholders) .
@@ -564,7 +564,7 @@ trait Grammar
                     implode(', ', $placeholders);
             })(),
 
-            default => throw new \RuntimeException("Unsupported database driver: {$this->driver}"),
+            default => throw new \RuntimeException("Unsupported database driver: {$this->getDriver()}"),
         };
     }
 

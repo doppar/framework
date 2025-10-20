@@ -2,20 +2,23 @@
 
 namespace Phaseolies\Database\Eloquent;
 
+use PDOStatement;
+use PDOException;
+use PDO;
+use Phaseolies\Database\Eloquent\Query\{
+    Debuggable,
+    Grammar,
+    InteractsWithTimeframe,
+    QueryUtils,
+    InteractsWithBigDataProcessing,
+    InteractsWithModelQueryProcessing
+};
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Query\QueryUtils;
-use Phaseolies\Database\Eloquent\Query\InteractsWithBigDataProcessing;
-use Phaseolies\Database\Eloquent\Query\InteractsWithModelQueryProcessing;
+
 use Phaseolies\Database\Eloquent\Model;
-use PDOStatement;
-use PDOException;
-use PDO;
-use Phaseolies\Database\Eloquent\Query\Debuggable;
-use Phaseolies\Database\Eloquent\Query\Grammar;
-use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
@@ -121,13 +124,6 @@ class Builder
     protected bool $takeWithoutEncryption = true;
 
     /**
-     * Current database driver name
-     *
-     * @var string
-     */
-    protected string $driver;
-
-    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
@@ -139,7 +135,6 @@ class Builder
         $this->table = $table;
         $this->modelClass = $modelClass;
         $this->rowPerPage = $rowPerPage;
-        $this->driver = $this->getDriver();
     }
 
     /**
@@ -1983,7 +1978,7 @@ class Builder
         }
 
         // Use proper column quoting based on driver
-        $quoteChar = $this->driver === 'mysql' ? '`' : '"';
+        $quoteChar = $this->getDriver() === 'mysql' ? '`' : '"';
         $columnsStr = implode(', ', array_map(fn($col) => "{$quoteChar}{$col}{$quoteChar}", $columns));
 
         // Prepare placeholders and bindings
@@ -2049,7 +2044,7 @@ class Builder
             $rowCount = $stmt->rowCount();
 
             // Normalize return value: always return the number of unique rows processed
-            if ($this->driver === 'mysql' && $rowCount > count($values)) {
+            if ($this->getDriver() === 'mysql' && $rowCount > count($values)) {
                 // MySQL returns 2 for each updated row,
                 // But intentionally we are returning 1
                 return count($values);
