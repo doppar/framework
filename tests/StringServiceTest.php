@@ -219,4 +219,20 @@ class StringServiceTest extends TestCase
         // empty delimiters return subject as implemented
         $this->assertEquals($subject, $this->stringService->between($subject, '', ''));
     }
+
+    public function it_returns_true_for_valid_json()
+    {
+        $this->assertTrue($this->stringService->isJson('{"name":"John"}'));
+        $this->assertTrue($this->stringService->isJson('[1, 2, 3]'));
+        $this->assertTrue($this->stringService->isJson('true'));
+        $this->assertTrue($this->stringService->isJson('"Hello"'));
+    }
+
+    public function it_returns_false_for_invalid_json()
+    {
+        $this->assertFalse($this->stringService->isJson('{"name": "John"')); // Missing closing brace
+        $this->assertFalse($this->stringService->isJson('{name: John}'));    // Invalid quotes
+        $this->assertFalse($this->stringService->isJson('Hello World'));
+        $this->assertFalse($this->stringService->isJson(''));
+    }
 }

@@ -545,4 +545,21 @@ class StringService
         $start = $this->after($subject, $from);
         return $this->before($start, $to);
     }
+
+    /**
+     * Determine if a given string is valid JSON.
+     *
+     * @param string $value
+     * @return bool
+     */
+    public function isJson(string $value): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        json_decode($value);
+
+        return json_last_error() === JSON_ERROR_NONE;
+    }
 }
