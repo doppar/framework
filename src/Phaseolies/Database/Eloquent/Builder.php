@@ -2,20 +2,23 @@
 
 namespace Phaseolies\Database\Eloquent;
 
+use PDOStatement;
+use PDOException;
+use PDO;
+use Phaseolies\Database\Eloquent\Query\{
+    Debuggable,
+    Grammar,
+    InteractsWithTimeframe,
+    QueryUtils,
+    InteractsWithBigDataProcessing,
+    InteractsWithModelQueryProcessing
+};
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Query\QueryUtils;
-use Phaseolies\Database\Eloquent\Query\InteractsWithBigDataProcessing;
-use Phaseolies\Database\Eloquent\Query\InteractsWithModelQueryProcessing;
+
 use Phaseolies\Database\Eloquent\Model;
-use PDOStatement;
-use PDOException;
-use PDO;
-use Phaseolies\Database\Eloquent\Query\Debuggable;
-use Phaseolies\Database\Eloquent\Query\Grammar;
-use Phaseolies\Database\Eloquent\Query\InteractsWithTimeframe;
 
 class Builder
 {
@@ -1975,8 +1978,7 @@ class Builder
         }
 
         // Use proper column quoting based on driver
-        $driver = $this->getDriver();
-        $quoteChar = $driver === 'mysql' ? '`' : '"';
+        $quoteChar = $this->getDriver() === 'mysql' ? '`' : '"';
         $columnsStr = implode(', ', array_map(fn($col) => "{$quoteChar}{$col}{$quoteChar}", $columns));
 
         // Prepare placeholders and bindings
@@ -2040,10 +2042,9 @@ class Builder
             $stmt->execute();
 
             $rowCount = $stmt->rowCount();
-            $driver = $this->getDriver();
 
             // Normalize return value: always return the number of unique rows processed
-            if ($driver === 'mysql' && $rowCount > count($values)) {
+            if ($this->getDriver() === 'mysql' && $rowCount > count($values)) {
                 // MySQL returns 2 for each updated row,
                 // But intentionally we are returning 1
                 return count($values);
