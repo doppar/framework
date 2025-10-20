@@ -73,7 +73,7 @@ abstract class Grammar
 
     /**
      * Check if UNIQUE constraint should be added in column definition.
-     * 
+     *
      * @return bool
      */
     public function shouldAddUniqueInColumnDefinition(): bool

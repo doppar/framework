@@ -47,11 +47,9 @@ class ColumnDefinition
      */
     public function default($value): self
     {
-        $connection = app('db')->getConnection();
-        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
+        $driver = $this->getDriver();
 
         if ($driver === 'pgsql' && is_bool($value)) {
-            // PGSQL
             $this->attributes['default'] = $value ? 'true' : 'false';
         } else {
             $this->attributes['default'] = $value === false ? 0 : $value;
@@ -144,11 +142,11 @@ class ColumnDefinition
             $sql .= " DEFAULT {$default}";
         }
 
-        // adding AFTER clause if specified
-        // PGSQL No support this
-        // if (isset($this->attributes['after'])) {
-        //     $sql .= " AFTER {$this->attributes['after']}";
-        // }
+        if ((!$this->getDriver()) === 'pgsql') {
+            if (isset($this->attributes['after'])) {
+                $sql .= " AFTER {$this->attributes['after']}";
+            }
+        }
 
         return $sql;
     }
@@ -160,8 +158,7 @@ class ColumnDefinition
      */
     protected function getGrammar(): Grammars\Grammar
     {
-        $connection = app('db')->getConnection();
-        $driver = strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
+        $driver = $this->getDriver();
 
         return match ($driver) {
             'mysql' => new Grammars\MySQLGrammar(),
@@ -185,5 +182,17 @@ class ColumnDefinition
         return implode(',', array_map(function ($value) {
             return "'" . addslashes($value) . "'";
         }, $this->attributes['values']));
+    }
+
+    /**
+     * Get the current PDO driver
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        $connection = app('db')->getConnection();
+
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
 }

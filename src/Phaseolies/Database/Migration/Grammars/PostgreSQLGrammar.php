@@ -196,11 +196,6 @@ class PostgreSQLGrammar extends Grammar
 
     /**
      * Create an ENUM type definition for PostgreSQL
-     * For PostgreSQL, we have two options:
-     * 1. Create a custom enum type (requires separate DDL statement)
-     * 2. Use TEXT with a CHECK constraint (simpler approach)
-     * 
-     * This implementation uses the CHECK constraint approach for simplicity
      *
      * @param array $attributes
      * @return string
@@ -213,8 +208,6 @@ class PostgreSQLGrammar extends Grammar
             throw new \InvalidArgumentException('Enum type requires an array of allowed values');
         }
 
-        // For PostgreSQL, we'll use TEXT with a CHECK constraint
-        // The actual CHECK constraint will be added separately
         return 'TEXT';
     }
 
