@@ -14,7 +14,7 @@ trait InteractsWithBigDataProcessing
      *
      * @param int $chunkSize
      * @param callable $processor
-     * @param int|null $total Provide total records for progress tracking
+     * @param int|null $total
      * @return void
      */
     public function chunk($chunkSize, callable $processor, ?int $total = null): void
@@ -49,8 +49,8 @@ trait InteractsWithBigDataProcessing
     /**
      * Process records using a cursor for maximum memory efficiency
      *
-     * @param callable $processor A function to process each record
-     * @param int|null $total Provide total records for progress tracking
+     * @param callable $processor
+     * @param int|null $total
      * @return void
      */
     public function cursor(callable $processor, ?int $total = null): void
@@ -87,8 +87,8 @@ trait InteractsWithBigDataProcessing
     /**
      * Generator-based approach for memory-efficient iteration over large datasets.
      *
-     * @param int $chunkSize Number of records to fetch per iteration.
-     * @param callable|null $transform Optional callback to transform each model before yielding.
+     * @param int $chunkSize
+     * @param callable|null $transform
      * @return Generator
      */
     public function stream($chunkSize, ?callable $transform = null): Generator
@@ -165,9 +165,9 @@ trait InteractsWithBigDataProcessing
     /**
      * Parallel chunk processing using Fibers
      *
-     * @param int $chunkSize Records per chunk
-     * @param callable $processor Callback to process chunks
-     * @param int $concurrency Number of parallel fibers
+     * @param int $chunkSize
+     * @param callable $processor
+     * @param int $concurrency
      * @return void
      */
     public function fchunk(int $chunkSize, callable $processor, int $concurrency = 4): void
@@ -231,9 +231,9 @@ trait InteractsWithBigDataProcessing
     /**
      * Fiber-based streaming with backpressure control
      *
-     * @param int $chunkSize Records per chunk
-     * @param callable|null $transform Optional record transformer
-     * @param int $bufferSize Maximum items to buffer
+     * @param int $chunkSize
+     * @param callable|null $transform
+     * @param int $bufferSize
      * @return Generator
      */
     public function fstream(int $chunkSize, ?callable $transform = null, int $bufferSize = 1000): Generator
@@ -296,8 +296,8 @@ trait InteractsWithBigDataProcessing
     /**
      * Hybrid fiber/cursor processing for maximum efficiency
      *
-     * @param callable $processor Record processor
-     * @param int $bufferSize Number of records to buffer
+     * @param callable $processor
+     * @param int $bufferSize
      * @return void
      */
     public function fcursor(callable $processor, int $bufferSize = 1000): void

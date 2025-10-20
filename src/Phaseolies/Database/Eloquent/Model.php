@@ -18,7 +18,6 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
     /**
      * The name of the database table associated with the model.
-     * If not set, it will be inferred from the class name.
      *
      * @var string
      */
@@ -60,7 +59,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected $pageSize = 15;
 
     /**
-     * Indicates whether the model should maintain timestamps (`created_at` and `updated_at` fields.).
+     * Indicates whether the model should maintain timestamps
      *
      * @var bool
      */
@@ -183,7 +182,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * Execute before hooks
      *
      * @param string $event
-     * @return bool Return false to cancel operation
+     * @return bool
      */
     protected function fireBeforeHooks(string $event): bool
     {
@@ -206,12 +205,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Sets the original attribute values for the model
      *
-     * This stores a snapshot of the model's attributes, typically used:
-     * - Before making changes to track what changed
-     * - In hook events to compare before/after states
-     * - For dirty checking to see which attributes were modified
-     *
-     * @param array $attributes Associative array of attribute names and values
+     * @param array $attributes
      * @return void
      */
     public function setOriginalAttributes(array $attributes): void
@@ -232,7 +226,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Gets a single original attribute value
      *
-     * @param string $key The attribute name to retrieve
+     * @param string $key
      * @param mixed $default
      * @return mixed
      */
@@ -275,10 +269,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Dynamically sets the table name for the model.
      *
-     * This method allows overriding the default table name used by the model.
-     * It is useful when you need to work with dynamic or runtime-determined tables.
-     *
-     * @param string $table The name of the table to be set.
+     * @param string $table
      * @return void
      */
     public function setTable(string $table)
@@ -289,7 +280,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Infers the table name from the class name.
      *
-     * @return string The inferred table name.
+     * @return string
      */
     public function getTable()
     {
@@ -346,7 +337,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Mass-assign attributes to the model.
      *
-     * @param array $attributes Key-value pairs of attributes to assign.
+     * @param array $attributes
      */
     public function fill(array $attributes)
     {
@@ -358,16 +349,15 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Set a single attribute value on the model.
      *
-     * @param string $key The attribute name.
-     * @param mixed $value The value to assign to the attribute.
+     * @param string $key
+     * @param mixed $value
      * @return void
      */
     public function setAttribute($key, $value)
     {
         $value = $this->sanitize($value);
 
-        // Always track original value
-        // when first setting
+        // Always track original value, when first setting
         if (!array_key_exists($key, $this->originalAttributes)) {
             $this->originalAttributes[$key] = $this->attributes[$key] ?? null;
         }
@@ -379,8 +369,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * The sanitize method should be used for data normalization
      * Override this method to implement custom normalization logic.
      *
-     * @param mixed $value The value to sanitize.
-     * @return mixed The sanitized value.
+     * @param mixed $value
+     * @return mixed
      */
     protected function sanitize($value)
     {
@@ -398,8 +388,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Magic setter for assigning values to model attributes.
      *
-     * @param string $name The attribute name.
-     * @param mixed $value The value to assign.
+     * @param string $name
+     * @param mixed $value
      */
     public function __set($name, $value)
     {
@@ -429,7 +419,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Returns an array of attributes that are not marked as unexposable.
      *
-     * @return array The visible attributes.
+     * @return array
      */
     public function makeVisible(): array
     {
@@ -460,7 +450,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Serializes the model to an array for JSON representation.
      *
-     * @return array The array representation of the model.
+     * @return array
      */
     public function jsonSerialize(): array
     {
@@ -470,7 +460,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Converts the model to a JSON string.
      *
-     * @return string The JSON representation of the model.
+     * @return string
      */
     public function __toString(): string
     {
@@ -480,8 +470,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Checks if an attribute exists (ArrayAccess implementation).
      *
-     * @param mixed $offset The attribute name.
-     * @return bool True if the attribute exists, false otherwise.
+     * @param mixed $offset
+     * @return bool
      */
     public function offsetExists($offset): bool
     {
@@ -491,8 +481,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Retrieves an attribute value (ArrayAccess implementation).
      *
-     * @param mixed $offset The attribute name.
-     * @return mixed The attribute value or null if it doesn't exist.
+     * @param mixed $offset
+     * @return mixed
      */
     public function offsetGet($offset): mixed
     {
@@ -502,8 +492,8 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Sets an attribute value (ArrayAccess implementation).
      *
-     * @param mixed $offset The attribute name.
-     * @param mixed $value The value to assign.
+     * @param mixed $offset
+     * @param mixed $value
      */
     public function offsetSet($offset, $value): void
     {
@@ -513,7 +503,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Unsets an attribute (ArrayAccess implementation).
      *
-     * @param mixed $offset The attribute name.
+     * @param mixed $offset
      */
     public function offsetUnset($offset): void
     {
@@ -523,7 +513,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Delete the model from the database.
      *
-     * @return bool True if the deletion was successful, false otherwise.
+     * @return bool
      */
     public function delete(): bool
     {
@@ -569,10 +559,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Define a one-to-one relationship
      *
-     * @param string $related The related model class name
-     * @param string $foreignKey The foreign key on the related model
-     * @param string $localKey The local key on this model
-     * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return \Phaseolies\Database\Eloquent\Builder
      */
     public function linkOne(string $related, string $foreignKey, string $localKey)
     {
@@ -589,10 +579,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Define a one-to-one relationship
      *
-     * @param string $related The related model class name
-     * @param string $foreignKey The foreign key on the related model
-     * @param string $localKey The local key on this model
-     * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return \Phaseolies\Database\Eloquent\Builder
      */
     public function bindTo(string $related, string $foreignKey, string $localKey)
     {
@@ -609,10 +599,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Define a one-to-many relationship
      *
-     * @param string $related The related model class name
-     * @param string $foreignKey The foreign key on the related model
-     * @param string $localKey The local key on this model
-     * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return \Phaseolies\Database\Eloquent\Builder
      */
     public function linkMany(string $related, string $foreignKey, string $localKey)
     {
@@ -629,11 +619,11 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Define a many-to-many relationship
      *
-     * @param string $related The related model class name
-     * @param string $foreignKey The foreign key on the pivot table (references this model)
-     * @param string $relatedKey The related key on the pivot table (references related model)
-     * @param string $pivotTable The name of the pivot table
-     * @return \Phaseolies\Database\Eloquent\Builder The query builder for the related model
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $relatedKey
+     * @param string $pivotTable
+     * @return \Phaseolies\Database\Eloquent\Builder
      */
     public function bindToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
     {
@@ -922,7 +912,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $column
      * @param int $amount
      * @param array $extra
-     * @return int Number of affected rows (should be 1)
+     * @return int
      */
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
@@ -947,7 +937,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $column
      * @param int $amount
      * @param array $extra
-     * @return int Number of affected rows (should be 1)
+     * @return int
      */
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {

@@ -19,9 +19,9 @@ class Builder
     /**
      * Truncate the table
      *
-     * @param bool $resetAutoIncrement Whether to reset auto-increment values
+     * @param bool $resetAutoIncrement
      * @return int
-     * @throws \RuntimeException When table doesn't exist
+     * @throws \RuntimeException
      */
     public function truncate(bool $resetAutoIncrement = true): int
     {

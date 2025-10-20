@@ -42,7 +42,7 @@ trait Debuggable
     /**
      * Dump the SQL query that would be executed
      *
-     * @param bool $withBindings Whether to include bindings
+     * @param bool $withBindings
      * @return self
      */
     public function dumpSql(bool $withBindings = false): self
@@ -64,7 +64,7 @@ trait Debuggable
     /**
      * dd the SQL query that would be executed
      *
-     * @param bool $withBindings Whether to include bindings
+     * @param bool $withBindings
      * @return never
      */
     public function ddSql(bool $withBindings = false): never

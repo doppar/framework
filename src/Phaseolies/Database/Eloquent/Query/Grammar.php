@@ -134,6 +134,11 @@ trait Grammar
 
     /**
      * MySQL JSON_CONTAINS implementation
+     *
+     * @param string $column
+     * @param string $path
+     * @param mixed $value
+     * @return array
      */
     protected function mysqlJsonContains(string $column, string $path, $value): array
     {
@@ -464,7 +469,7 @@ trait Grammar
     /**
      * Should standard deviation be computed in PHP instead of SQL
      * Only SQLite does not support SQRT function ATM
-     * 
+     *
      * @return bool
      */
     public function shouldComputeStdDevInPhp(): bool
@@ -511,13 +516,13 @@ trait Grammar
     /**
      * Generate an UPSERT (insert or update) SQL statement based on the current database driver.
      *
-     * @param string $columnsStr The comma-separated column list.
-     * @param array $placeholders The placeholder groups for values.
-     * @param array $updateStatements The update statements (for ON DUPLICATE KEY / ON CONFLICT).
-     * @param array $uniqueBy Columns used for uniqueness constraints.
-     * @param array $updateColumns Columns to update on conflict.
-     * @param bool $ignoreErrors Whether to use IGNORE / DO NOTHING semantics.
-     * @return string The generated UPSERT SQL statement.
+     * @param string $columnsStr
+     * @param array $placeholders
+     * @param array $updateStatements
+     * @param array $uniqueBy
+     * @param array $updateColumns
+     * @param bool $ignoreErrors
+     * @return string
      * @throws \RuntimeException
      */
     public function getUpsertSql(string $columnsStr, array $placeholders, array $updateStatements, array $uniqueBy, array $updateColumns, bool $ignoreErrors): string
