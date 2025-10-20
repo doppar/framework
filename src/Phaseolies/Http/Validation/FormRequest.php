@@ -8,6 +8,8 @@ use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 abstract class FormRequest implements ValidatesWhenResolved
 {
     /**
+     * The current HTTP Request
+     *
      * @var Request
      */
     protected Request $request;
@@ -36,6 +38,8 @@ abstract class FormRequest implements ValidatesWhenResolved
 
     /**
      * Automatically validate the request when it is resolved.
+     *
+     * @return void
      */
     public function resolvedFormRequestValidation(): void
     {

@@ -52,7 +52,7 @@ class SessionManager
      * Returns the currently initialized session handler.
      *
      * @return SessionHandlerInterface
-     * @throws \RuntimeException if the handler hasn't been initialized yet.
+     * @throws \RuntimeException
      */
     public static function getHandler(): SessionHandlerInterface
     {

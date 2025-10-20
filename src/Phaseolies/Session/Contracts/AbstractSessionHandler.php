@@ -8,15 +8,15 @@ abstract class AbstractSessionHandler implements SessionHandlerInterface
 {
     /**
      * Configuration options for the session handler.
-     * 
+     *
      * @var array
      */
     protected array $config;
 
     /**
      * Constructor - initializes the session handler with configuration.
-     * 
-     * @param array $config Configuration options for the session
+     *
+     * @param array $config
      */
     public function __construct(array $config)
     {
@@ -25,7 +25,6 @@ abstract class AbstractSessionHandler implements SessionHandlerInterface
 
     /**
      * Generates a CSRF token and stores it in the session if not already present.
-     * Uses a cryptographically secure random_bytes function for token generation.
      *
      * @return void
      */
@@ -40,7 +39,6 @@ abstract class AbstractSessionHandler implements SessionHandlerInterface
 
     /**
      * Regenerates the session ID to prevent session fixation attacks.
-     * Only regenerates if the session is currently active.
      *
      * @return void
      */
@@ -54,7 +52,7 @@ abstract class AbstractSessionHandler implements SessionHandlerInterface
     /**
      * Determines if the session should be regenerated based on the configured lifetime.
      *
-     * @return bool True if session should be regenerated, false otherwise
+     * @return bool
      */
     protected function shouldRegenerate(): bool
     {

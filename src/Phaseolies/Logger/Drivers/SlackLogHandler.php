@@ -13,8 +13,8 @@ class SlackLogHandler extends AbstractHandler implements LogHandlerInterface
     /**
      * Configures the Monolog handler for Slack logging.
      *
-     * @param Logger $logger The Monolog logger instance.
-     * @param string $channel The logging channel.
+     * @param Logger $logger
+     * @param string $channel
      * @return void
      */
     public function configureHandler(Logger $logger, string $channel): void
