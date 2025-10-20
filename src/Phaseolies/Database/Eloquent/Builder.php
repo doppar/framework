@@ -121,6 +121,13 @@ class Builder
     protected bool $takeWithoutEncryption = true;
 
     /**
+     * Current database driver name
+     *
+     * @var string
+     */
+    protected string $driver;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
@@ -132,6 +139,7 @@ class Builder
         $this->table = $table;
         $this->modelClass = $modelClass;
         $this->rowPerPage = $rowPerPage;
+        $this->driver = $this->getDriver();
     }
 
     /**
@@ -1975,8 +1983,7 @@ class Builder
         }
 
         // Use proper column quoting based on driver
-        $driver = $this->getDriver();
-        $quoteChar = $driver === 'mysql' ? '`' : '"';
+        $quoteChar = $this->driver === 'mysql' ? '`' : '"';
         $columnsStr = implode(', ', array_map(fn($col) => "{$quoteChar}{$col}{$quoteChar}", $columns));
 
         // Prepare placeholders and bindings
@@ -2040,10 +2047,9 @@ class Builder
             $stmt->execute();
 
             $rowCount = $stmt->rowCount();
-            $driver = $this->getDriver();
 
             // Normalize return value: always return the number of unique rows processed
-            if ($driver === 'mysql' && $rowCount > count($values)) {
+            if ($this->driver === 'mysql' && $rowCount > count($values)) {
                 // MySQL returns 2 for each updated row,
                 // But intentionally we are returning 1
                 return count($values);

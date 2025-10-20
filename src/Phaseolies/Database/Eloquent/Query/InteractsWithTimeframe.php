@@ -384,26 +384,4 @@ trait InteractsWithTimeframe
 
         throw new \InvalidArgumentException('Invalid date provided');
     }
-
-    /**
-     * Get the proper operator for date range based on includeTime flag
-     *
-     * @param bool $includeTime
-     * @return array
-     */
-    public function getDateRangeOperators(bool $includeTime = false): array
-    {
-        if ($includeTime) {
-            return ['>=', '<='];
-        }
-
-        // For date-only ranges, we typically want inclusive start and exclusive end
-        // to cover the entire day
-        $driver = $this->getDriver();
-
-        return match ($driver) {
-            'mysql', 'pgsql', 'sqlite' => ['>=', '<'],
-            default => ['>=', '<='],
-        };
-    }
 }
