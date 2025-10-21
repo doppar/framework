@@ -44,7 +44,7 @@ class MakeRequestCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Request already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -62,7 +62,7 @@ class MakeRequestCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

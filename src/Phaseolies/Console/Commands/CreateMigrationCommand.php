@@ -67,7 +67,7 @@ class CreateMigrationCommand extends Command
 
             $this->displaySuccess('Migration created successfully.');
             $this->line("<fg=yellow>📁 File:</> <fg=white>{$file}</>");
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

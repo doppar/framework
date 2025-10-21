@@ -44,7 +44,7 @@ class MakeMailCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Mailable already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -62,7 +62,7 @@ class MakeMailCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>✉️  Class:</> <fg=white>' . $className . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

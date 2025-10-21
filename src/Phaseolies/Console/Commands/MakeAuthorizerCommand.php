@@ -40,7 +40,7 @@ class MakeAuthorizerCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Authorizer already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $directoryPath = dirname($filePath);
@@ -59,7 +59,7 @@ class MakeAuthorizerCommand extends Command
                 $this->line('<fg=yellow>🏷️ Model:</> <fg=white>' . $model . '</>');
             }
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

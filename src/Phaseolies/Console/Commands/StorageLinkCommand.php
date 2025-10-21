@@ -34,14 +34,14 @@ class StorageLinkCommand extends Command
 
             if (empty($links)) {
                 $this->displayError('No symbolic links configured in config/filesystems.php');
-                return 1;
+                return Command::FAILURE;
             }
 
             foreach ($links as $link => $target) {
                 $this->processLink($link, $target);
             }
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

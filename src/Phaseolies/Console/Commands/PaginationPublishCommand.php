@@ -70,7 +70,7 @@ class PaginationPublishCommand extends Command
                 $this->displayInfo('All pagination views already exist.');
             }
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

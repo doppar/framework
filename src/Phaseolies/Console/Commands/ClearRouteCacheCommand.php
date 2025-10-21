@@ -34,7 +34,7 @@ class ClearRouteCacheCommand extends Command
             Config::clearCache();
             Config::loadAll();
             Config::cacheConfig();
-            return 0;
+            return Command::SUCCESS;
         }, 'Route cache has been gracefully cleared.');
     }
 }

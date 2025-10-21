@@ -56,7 +56,7 @@ class MigrateRefreshCommand extends Command
 
             if (strtolower($response) !== 'yes') {
                 $this->displayInfo('Command cancelled');
-                return 0;
+                return Command::SUCCESS;
             }
 
             $this->newLine();
@@ -73,7 +73,7 @@ class MigrateRefreshCommand extends Command
                 $this->line("<fg=green>✔ Dropped {$tablesDropped} tables from {$connection}</>");
             } catch (\Throwable $e) {
                 $this->displayError("Failed to refresh database [{$connection}]: {$e->getMessage()}");
-                return 1;
+                return Command::FAILURE;
             }
 
             $this->newLine();
@@ -87,7 +87,7 @@ class MigrateRefreshCommand extends Command
                 $this->line('- <fg=white>' . $migration . '</>');
             }
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 }

@@ -33,11 +33,11 @@ class MakePasswordCommand extends Command
 
             if (empty($password)) {
                 $this->displayError('Password is required');
-                return 1;
+                return Command::FAILURE;
             }
             if (!is_string($password)) {
                 $this->displayError('Password must be a string');
-                return 1;
+                return Command::FAILURE;
             }
 
             $hashedPassword = self::hash($password);
@@ -45,7 +45,7 @@ class MakePasswordCommand extends Command
             $this->displaySuccess('Password hashed successfully');
             $this->line("<fg=yellow>🔑 Key:</> <fg=white>$hashedPassword</>");
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 
