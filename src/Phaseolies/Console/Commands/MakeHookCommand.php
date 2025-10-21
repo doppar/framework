@@ -38,7 +38,7 @@ class MakeHookCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Hook already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -56,7 +56,7 @@ class MakeHookCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>📌 Hook Class:</> <fg=white>' . $className . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

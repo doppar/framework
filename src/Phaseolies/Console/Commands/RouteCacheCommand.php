@@ -34,7 +34,7 @@ class RouteCacheCommand extends Command
             if (!is_dir($cacheDir)) {
                 $this->displayError('Cache directory does not exist:');
                 $this->line('<fg=white>' . $cacheDir . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $this->line('<fg=yellow>⏳ Caching routes...</>');
@@ -42,7 +42,7 @@ class RouteCacheCommand extends Command
             Route::cacheRoutes();
 
             $this->displaySuccess('Routes cached successfully');
-            return 0;
+            return Command::SUCCESS;
         });
     }
 }

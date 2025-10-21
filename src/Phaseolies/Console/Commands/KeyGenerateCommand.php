@@ -49,9 +49,9 @@ class KeyGenerateCommand extends Command
 
             $this->displaySuccess('Application key set successfully');
             $this->line("<fg=yellow>🔑 Key:</> <fg=white>base64:$randomKey</>");
-            return 0;
+            return Command::SUCCESS;
         });
 
-        return 0;
+        return Command::SUCCESS;
     }
 }

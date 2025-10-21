@@ -46,7 +46,7 @@ class ServerStartCommand extends Command
             $this->displaySuccess("Server started on <fg=green>http://localhost:$port</>");
             self::startServer($port, $background);
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

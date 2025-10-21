@@ -59,7 +59,7 @@ class MakeModelCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Model already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -89,7 +89,7 @@ class MakeModelCommand extends Command
                 $this->line('<fg=white>' . str_replace(base_path(), '', $migrationFile) . '</>');
             }
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

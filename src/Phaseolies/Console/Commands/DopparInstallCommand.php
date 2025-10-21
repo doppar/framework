@@ -41,7 +41,7 @@ class DopparInstallCommand extends Command
         $this->newLine();
         $this->info('Version: v' . Application::VERSION);
 
-        return 0;
+        return Command::SUCCESS;
     }
 
     /**
