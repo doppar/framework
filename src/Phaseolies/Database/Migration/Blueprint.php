@@ -341,6 +341,20 @@ class Blueprint
     }
 
     /**
+     * Create an ENUM column with nullable option.
+     *
+     * @param string $column
+     * @param array $values
+     * @param bool $nullable
+     * @return ColumnDefinition
+     */
+    public function enumNullable(string $column, array $values, bool $nullable = true): ColumnDefinition
+    {
+        return $this->addColumn('enum', $column, ['values' => $values, 'nullable' => $nullable]);
+    }
+
+
+    /**
      * Create a SET column (string that can have zero or more values from predefined set)
      *
      * @param string $column
@@ -362,6 +376,18 @@ class Blueprint
     {
         return $this->addColumn('uuid', $column);
     }
+
+    /**
+     * Create a UUID primary key column.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function uuidPrimary(string $column = 'id'): ColumnDefinition
+    {
+        return $this->uuid($column)->primary();
+    }
+
 
     /**
      * Create an IP address column (stored as VARCHAR(45) to support IPv6)
@@ -529,6 +555,18 @@ class Blueprint
     {
         return $this->addColumn('boolean', $column);
     }
+    
+    /**
+     * Create a BIT column (binary flag)
+     *
+     * @param string $column
+     * @param int $length
+     * @return ColumnDefinition
+     */
+    public function bit(string $column, int $length = 1): ColumnDefinition
+    {
+        return $this->addColumn('bit', $column, compact('length'));
+    }
 
     /**
      * Create a JSON column.
@@ -537,6 +575,17 @@ class Blueprint
      * @return ColumnDefinition
      */
     public function json(string $column): ColumnDefinition
+    {
+        return $this->addColumn('json', $column);
+    }
+
+    /**
+     * Create a JSON column that will store arrays.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function jsonArray(string $column): ColumnDefinition
     {
         return $this->addColumn('json', $column);
     }
@@ -572,6 +621,17 @@ class Blueprint
     {
         $this->timestamp('created_at')->nullable();
         $this->timestamp('updated_at')->nullable();
+    }
+
+    /**
+     * Add created_at and updated_at with timezone awareness.
+     *
+     * @return void
+     */
+    public function timestampsTz(): void
+    {
+        $this->timestampTz('created_at')->nullable();
+        $this->timestampTz('updated_at')->nullable();
     }
 
     /**
