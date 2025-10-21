@@ -23,7 +23,8 @@ class MessageBag
      */
     public static function flashInput(): void
     {
-        $input = $_POST;
+        $input = request()->except('_token', '_method');
+
         $sensitiveInputExclusions = self::getSensitiveInputFields();
 
         foreach ($sensitiveInputExclusions as $field) {
