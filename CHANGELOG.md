@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.7 - 2025-10-21
+
+* Fix: Resolved issues with previous request session input and peek message clearance. by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/58
+
 ## v2.9.6-beta.6 - 2025-10-21
 
 * Refactored code of query grammar class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/54
