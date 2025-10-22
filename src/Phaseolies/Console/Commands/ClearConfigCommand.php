@@ -29,7 +29,7 @@ class ClearConfigCommand extends Command
     {
         return $this->withTiming(function () {
             app('config')->clearCache();
-            return 0;
+            return Command::SUCCESS;
         }, 'Configuration cache has been gracefully cleared.');
     }
 }

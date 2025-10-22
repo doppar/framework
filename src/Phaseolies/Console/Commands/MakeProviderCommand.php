@@ -36,7 +36,7 @@ class MakeProviderCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Provider already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -54,7 +54,7 @@ class MakeProviderCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $name . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

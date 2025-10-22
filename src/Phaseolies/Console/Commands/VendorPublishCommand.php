@@ -46,16 +46,16 @@ class VendorPublishCommand extends Command
 
             if ($provider) {
                 $this->publishProvider($provider, $force);
-                return 0;
+                return Command::SUCCESS;
             }
 
             if ($tag) {
                 $this->publishTag($tag, $force);
-                return 0;
+                return Command::SUCCESS;
             }
 
             $this->publishAll($force);
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

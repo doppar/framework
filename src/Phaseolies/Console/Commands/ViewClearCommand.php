@@ -31,7 +31,7 @@ class ViewClearCommand extends Command
         return $this->withTiming(function() {
             $viewCacheDir = base_path('storage/framework/views');
             $this->clearViewCache($viewCacheDir);
-            return 0;
+            return Command::SUCCESS;
         }, 'Compiled views cleared successfully');
     }
 

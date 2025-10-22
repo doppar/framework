@@ -1,5 +1,15 @@
 # Release Notes
 
+## v2.9.6-beta.7 - 2025-10-21
+
+* Fix: Resolved issues with previous request session input and peek message clearance. by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/58
+
+## v2.9.6-beta.6 - 2025-10-21
+
+* Refactored code of query grammar class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/54
+* Remove duplicate object creation to maintain singleton object by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/55
+* remove messagebag clear code after validation passed: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/57
+
 ## v2.9.6-beta.5 - 2025-10-20
 
 * [enhancement] old form input remove way improved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/49

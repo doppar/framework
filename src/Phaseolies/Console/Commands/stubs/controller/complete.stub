@@ -7,7 +7,7 @@ use Phaseolies\Utilities\Attributes\Route;
 
 class {{ class }} extends Controller
 {
-    #[Route('/{{ routeName }}', name:'{{ routingName }}.default')]
+    #[Route(uri:'/{{ routeName }}', name:'{{ routingName }}.default')]
     public function index()
     {
         return view('{{ routeView }}.default', ['className' => '{{ class }}']);
