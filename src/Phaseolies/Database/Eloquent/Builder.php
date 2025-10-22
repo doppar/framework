@@ -2786,33 +2786,4 @@ class Builder
     {
         return $this->addLikeCondition($field, $value, $caseSensitive, 'OR', 'LIKE');
     }
-
-    /**
-     * Internal method to handle LIKE conditions with proper case handling for each driver.
-     *
-     * @param string $field
-     * @param string $value
-     * @param bool $caseSensitive
-     * @param string $boolean
-     * @param string $operator
-     * @return self
-     */
-    protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean, string $operator): self
-    {
-        $driver = $this->getDriver();
-
-        // For case-insensitive search, use the appropriate method for each driver
-        if (!$caseSensitive) {
-            match ($driver) {
-                'pgsql' => $this->conditions[] = [$boolean, $field, 'ILIKE', $value],
-                'mysql', 'sqlite' => $this->conditions[] = [$boolean, "LOWER({$field})", $operator, strtolower($value)],
-                default => $this->conditions[] = [$boolean, $field, $operator, $value]
-            };
-        } else {
-            // Case-sensitive search - use regular LIKE
-            $this->conditions[] = [$boolean, $field, $operator, $value];
-        }
-
-        return $this;
-    }
 }
