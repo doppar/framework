@@ -397,6 +397,56 @@ class Builder
      */
     public function present(string $relation, ?callable $callback = null): self
     {
+        return $this->handleRelationshipExists($relation, $callback, 'AND', 'EXISTS');
+    }
+
+    /**
+     * Filter records that have at least one related record in the given relationship
+     * using OR condition with previous where clauses
+     *
+     * @param string $relation
+     * @param callable|null $callback
+     * @return self
+     */
+    public function orPresent(string $relation, ?callable $callback = null): self
+    {
+        return $this->handleRelationshipExists($relation, $callback, 'OR', 'EXISTS');
+    }
+
+    /**
+     * Filter records that don't have any related records in the given relationship
+     *
+     * @param string $relation
+     * @return self
+     */
+    public function absent(string $relation): self
+    {
+        return $this->handleRelationshipExists($relation, null, 'AND', 'NOT EXISTS');
+    }
+
+    /**
+     * Filter records that don't have any related records in the given relationship
+     * using OR condition with previous where clauses
+     *
+     * @param string $relation
+     * @return self
+     */
+    public function orAbsent(string $relation): self
+    {
+        return $this->handleRelationshipExists($relation, null, 'OR', 'NOT EXISTS');
+    }
+
+    /**
+     * Internal method to handle both present and orPresent functionality
+     *
+     * @param string $relation
+     * @param callable|null $callback
+     * @param string $boolean AND/OR
+     * @param string $type EXISTS/NOT EXISTS
+     * @return self
+     */
+    private function handleRelationshipExists(string $relation, ?callable $callback, string $boolean = 'AND', string $type = 'EXISTS'): self
+    {
         $model = $this->getModel();
 
         if (!method_exists($model, $relation)) {
@@ -415,7 +465,7 @@ class Builder
             $localKey = $model->getLastLocalKey();
 
             $subquery = "SELECT 1 FROM {$pivotTable} 
-                    WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
+                WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
 
             if ($callback) {
                 $relatedTable = (new $relatedModel())->getTable();
@@ -455,14 +505,13 @@ class Builder
             $relatedTable = (new $relatedModel())->getTable();
 
             $subquery = "SELECT 1 FROM {$relatedTable} 
-                    WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
+                WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
 
             if ($callback) {
                 $subQueryBuilder = $relatedModel::query();
                 $callback($subQueryBuilder);
 
                 foreach ($subQueryBuilder->conditions as $condition) {
-
                     if (isset($condition['type'])) {
                         continue;
                     }
@@ -491,9 +540,10 @@ class Builder
         $subquery .= ' LIMIT 1';
 
         $this->conditions[] = [
-            'type' => 'EXISTS',
+            'type' => $type,
             'subquery' => $subquery,
-            'bindings' => []
+            'bindings' => [],
+            'boolean' => $boolean
         ];
 
         return $this;
@@ -550,55 +600,6 @@ class Builder
     }
 
     /**
-     * Filter records that don't have any related records in the given relationship
-     *
-     * @param string $relation
-     * @return self
-     */
-    public function absent(string $relation): self
-    {
-        $model = $this->getModel();
-
-        if (!method_exists($model, $relation)) {
-            throw new \BadMethodCallException("Relationship {$relation} does not exist on model " . get_class($model));
-        }
-
-        // Initialize the relationship to get metadata
-        $relationQuery = $model->$relation();
-        $relationType = $model->getLastRelationType();
-        $relatedModel = $model->getLastRelatedModel();
-
-        // Handle different relationship types
-        if ($relationType === 'bindToMany') {
-            $pivotTable = $model->getLastPivotTable();
-            $foreignKey = $model->getLastForeignKey();
-            $relatedKey = $model->getLastRelatedKey();
-            $localKey = $model->getLastLocalKey();
-
-            $subquery = "SELECT 1 FROM {$pivotTable} 
-                WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
-        } else {
-            // Handle one-to-one and one-to-many relationships
-            $foreignKey = $model->getLastForeignKey();
-            $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel())->getTable();
-
-            $subquery = "SELECT 1 FROM {$relatedTable} 
-                WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
-        }
-
-        $subquery .= ' LIMIT 1';
-
-        $this->conditions[] = [
-            'type' => 'NOT EXISTS',
-            'subquery' => $subquery,
-            'bindings' => []
-        ];
-
-        return $this;
-    }
-
-    /**
      * Format conditions with AND/OR.
      *
      * @param array $conditionStrings
@@ -609,7 +610,13 @@ class Builder
         $formattedConditions = [];
 
         foreach ($this->conditions as $index => $condition) {
-            if (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
+            if (isset($condition['type']) && in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
+                // Handle EXISTS/NOT EXISTS conditions with custom boolean
+                if ($index > 0) {
+                    $formattedConditions[] = $condition['boolean'] ?? 'AND';
+                }
+                $formattedConditions[] = $conditionStrings[$index];
+            } elseif (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
                 // For raw conditions
                 // Use the boolean operator they specified
                 if ($index > 0) {
