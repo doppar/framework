@@ -553,7 +553,7 @@ class Blueprint
      */
     public function bit(string $column, int $length = 1): ColumnDefinition
     {
-        $driver = $this->connection->getDriverName();
+        $driver = $this->getDefaultDriver();
     
         if ($driver === 'pgsql') {
             // PostgreSQL does not support BIT(1) for boolean flags
