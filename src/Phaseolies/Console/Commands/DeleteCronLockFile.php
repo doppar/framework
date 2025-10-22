@@ -32,12 +32,12 @@ class DeleteCronLockFile extends Command
 
             if (!is_dir($cacheDir)) {
                 $this->displayInfo('No cron files directory found.');
-                return 0;
+                return Command::SUCCESS;
             }
 
             $this->deleteDirectoryContents($cacheDir);
 
-            return 0;
+            return Command::SUCCESS;
         }, 'Cron files deleted successfully');
     }
 

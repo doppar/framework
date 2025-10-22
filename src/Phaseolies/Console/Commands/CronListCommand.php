@@ -37,7 +37,7 @@ class CronListCommand extends Command
 
             if (empty($commands)) {
                 $this->displayInfo('No scheduled commands are registered.');
-                return 0;
+                return Command::SUCCESS;
             }
 
             $table = new Table($this->output);
@@ -58,7 +58,7 @@ class CronListCommand extends Command
             $table->render();
             $this->newLine();
             $this->displaySuccess('Listed ' . count($commands) . ' scheduled commands');
-            return 0;
+            return Command::SUCCESS;
         });
     }
 }
