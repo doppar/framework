@@ -175,13 +175,17 @@ class Builder
     /**
      * Add a WHERE condition.
      *
-     * @param string $field Field name
+     * @param string|callable $field Field name or callback for nested conditions
      * @param mixed $operator Operator or value (if only 2 arguments passed)
      * @param mixed $value Value to compare (optional)
      * @return self
      */
-    public function where(string $field, $operator, $value = null): self
+    public function where($field, $operator = null, $value = null): self
     {
+        if (is_callable($field)) {
+            return $this->whereNested($field, 'AND');
+        }
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -203,19 +207,47 @@ class Builder
     /**
      * Add an OR WHERE condition.
      *
-     * @param string $field Field name
+     * @param string|callable $field Field name or callback for nested conditions
      * @param mixed $operator Operator or value (if only 2 arguments passed)
      * @param mixed $value Value to compare (optional)
      * @return self
      */
-    public function orWhere(string $field, $operator, $value = null): self
+    public function orWhere($field, $operator = null, $value = null): self
     {
+        if (is_callable($field)) {
+            return $this->whereNested($field, 'OR');
+        }
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
         }
 
         $this->conditions[] = ['OR', $field, $operator, $value];
+
+        return $this;
+    }
+
+    /**
+     * Add a nested WHERE condition.
+     *
+     * @param callable $callback
+     * @param string $boolean
+     * @return self
+     */
+    public function whereNested(callable $callback, string $boolean = 'AND'): self
+    {
+        $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage);
+
+        $callback($nestedQuery);
+
+        if (!empty($nestedQuery->conditions)) {
+            $this->conditions[] = [
+                'type' => 'NESTED',
+                'query' => $nestedQuery,
+                'boolean' => $boolean
+            ];
+        }
 
         return $this;
     }
@@ -328,7 +360,11 @@ class Builder
         if (!empty($this->conditions)) {
             $conditionStrings = [];
             foreach ($this->conditions as $condition) {
-                if (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
+                if (isset($condition['type']) && $condition['type'] === 'NESTED') {
+                    $nestedSql = $condition['query']->toSql();
+                    $nestedWhere = substr($nestedSql, strpos($nestedSql, 'WHERE') + 5);
+                    $conditionStrings[] = "({$nestedWhere})";
+                } elseif (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
                     $conditionStrings[] = $condition['sql'];
                 } elseif (isset($condition['type']) && ($condition['type'] === 'EXISTS' || $condition['type'] === 'NOT EXISTS')) {
                     $conditionStrings[] = "{$condition['type']} ({$condition['subquery']})";
@@ -610,23 +646,35 @@ class Builder
         $formattedConditions = [];
 
         foreach ($this->conditions as $index => $condition) {
-            if (isset($condition['type']) && in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
-                // Handle EXISTS/NOT EXISTS conditions with custom boolean
-                if ($index > 0) {
-                    $formattedConditions[] = $condition['boolean'] ?? 'AND';
+            // Handle nested conditions
+            $hasType = isset($condition['type']);
+
+            if ($hasType) {
+                // Handle nested conditions
+                if ($condition['type'] === 'NESTED') {
+                    if ($index > 0) {
+                        $formattedConditions[] = $condition['boolean'] ?? 'AND';
+                    }
+                    $formattedConditions[] = $conditionStrings[$index];
                 }
-                $formattedConditions[] = $conditionStrings[$index];
-            } elseif (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
-                // For raw conditions
-                // Use the boolean operator they specified
-                if ($index > 0) {
-                    $formattedConditions[] = $condition['boolean'];
+                // Handle EXISTS/NOT EXISTS conditions
+                elseif (in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
+                    if ($index > 0) {
+                        $formattedConditions[] = $condition['boolean'] ?? 'AND';
+                    }
+                    $formattedConditions[] = $conditionStrings[$index];
                 }
-                $formattedConditions[] = $conditionStrings[$index];
+                // Handle raw conditions
+                elseif ($condition['type'] === 'RAW_WHERE') {
+                    if ($index > 0) {
+                        $formattedConditions[] = $condition['boolean'];
+                    }
+                    $formattedConditions[] = $conditionStrings[$index];
+                }
             } else {
-                // For regular conditions
+                // For regular conditions (without 'type' key)
                 if ($index > 0) {
-                    $formattedConditions[] = $condition[0];
+                    $formattedConditions[] = $condition[0]; // AND/OR
                 }
                 $formattedConditions[] = $conditionStrings[$index];
             }
@@ -1866,6 +1914,12 @@ class Builder
 
         foreach ($this->conditions as $condition) {
             if (isset($condition['type'])) {
+                // Handle nested conditions - recursively binding values
+                if ($condition['type'] === 'NESTED') {
+                    $this->bindNestedValues($stmt, $condition['query'], $index);
+                    continue;
+                }
+
                 // Bind all RAW_* bindings
                 if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY', 'RAW_WHERE'])) {
                     if (!empty($condition['bindings']) && is_array($condition['bindings'])) {
@@ -1906,6 +1960,33 @@ class Builder
             // Standard case: column, operator, value
             if (isset($condition[3])) {
                 $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
+            }
+        }
+    }
+
+    /**
+     * Bind values from nested queries
+     */
+    protected function bindNestedValues(PDOStatement $stmt, self $nestedQuery, int &$index): void
+    {
+        foreach ($nestedQuery->conditions as $nestedCondition) {
+            if (isset($nestedCondition['type']) && $nestedCondition['type'] === 'NESTED') {
+                $this->bindNestedValues($stmt, $nestedCondition['query'], $index);
+                continue;
+            }
+
+            // Bind regular nested conditions
+            if (!isset($nestedCondition['type'])) {
+                if (in_array($nestedCondition[2], ['BETWEEN', 'NOT BETWEEN'])) {
+                    $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
+                    $stmt->bindValue($index++, $nestedCondition[4], $this->getPdoParamType($nestedCondition[4]));
+                } elseif ($nestedCondition[2] === 'IN') {
+                    foreach ($nestedCondition[3] as $value) {
+                        $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                    }
+                } elseif (!in_array($nestedCondition[2], ['IS NULL', 'IS NOT NULL'])) {
+                    $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
+                }
             }
         }
     }
@@ -2738,6 +2819,33 @@ class Builder
     }
 
     /**
+     * Add a WHERE LIKE condition with driver-agnostic case handling.
+     *
+     * @param string $field
+     * @param bool $caseSensitive
+     * @param string $boolean
+     * @return self
+     */
+    public function whereLike(string $field, string $value, bool $caseSensitive = false, string $boolean = 'AND'): self
+    {
+        return $this->addLikeCondition($field, $value, $caseSensitive, $boolean, 'LIKE');
+    }
+
+    /**
+     * Add an OR WHERE LIKE condition with driver-agnostic case handling.
+     *
+     * @param string $field
+     * @param string $value
+     * @param bool $caseSensitive
+     * @return self
+     */
+    public function orWhereLike(string $field, string $value, bool $caseSensitive = false): self
+    {
+        return $this->addLikeCondition($field, $value, $caseSensitive, 'OR', 'LIKE');
+    }
+
+
+    /**
      * Convert camelCase to snake_case for column names
      *
      * @param string $input
@@ -2765,32 +2873,5 @@ class Builder
         $this->eagerLoad = [];
 
         return $this;
-    }
-
-    /**
-     * Add a WHERE LIKE condition with driver-agnostic case handling.
-     *
-     * @param string $field Field name
-     * @param string $value Value to search for
-     * @param bool $caseSensitive Whether the search should be case sensitive
-     * @param string $boolean Logical operator (AND/OR)
-     * @return self
-     */
-    public function whereLike(string $field, string $value, bool $caseSensitive = false, string $boolean = 'AND'): self
-    {
-        return $this->addLikeCondition($field, $value, $caseSensitive, $boolean, 'LIKE');
-    }
-
-    /**
-     * Add an OR WHERE LIKE condition with driver-agnostic case handling.
-     *
-     * @param string $field Field name
-     * @param string $value Value to search for
-     * @param bool $caseSensitive Whether the search should be case sensitive
-     * @return self
-     */
-    public function orWhereLike(string $field, string $value, bool $caseSensitive = false): self
-    {
-        return $this->addLikeCondition($field, $value, $caseSensitive, 'OR', 'LIKE');
     }
 }

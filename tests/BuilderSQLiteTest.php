@@ -50,6 +50,8 @@ class BuilderSQLiteTest extends TestCase
                 email TEXT UNIQUE,
                 age INTEGER,
                 status TEXT DEFAULT 'active',
+                salary DECIMAL(10,2),
+                department TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 deleted_at DATETIME NULL
@@ -64,6 +66,7 @@ class BuilderSQLiteTest extends TestCase
                 title TEXT NOT NULL,
                 content TEXT,
                 views INTEGER DEFAULT 0,
+                is_published BOOLEAN DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
@@ -102,19 +105,23 @@ class BuilderSQLiteTest extends TestCase
 
         // Insert test data
         $this->pdo->exec("
-            INSERT INTO users (name, email, age, status) VALUES 
-            ('John Doe', 'john@example.com', 25, 'active'),
-            ('Jane Smith', 'jane@example.com', 30, 'active'),
-            ('Bob Johnson', 'bob@example.com', 35, 'inactive'),
-            ('Alice Brown', 'alice@example.com', 28, 'active')
+            INSERT INTO users (name, email, age, status, salary, department) VALUES
+            ('John Doe', 'john@example.com', 25, 'active', 50000, 'Engineering'),
+            ('Jane Smith', 'jane@example.com', 30, 'active', 60000, 'Marketing'),
+            ('Bob Johnson', 'bob@example.com', 35, 'inactive', 70000, 'Engineering'),
+            ('Alice Brown', 'alice@example.com', 28, 'active', 55000, 'Sales'),
+            ('Charlie Wilson', 'charlie@example.com', 40, 'active', 80000, 'Engineering'),
+            ('Diana Prince', 'diana@example.com', 32, 'inactive', 65000, 'Marketing')
         ");
 
         $this->pdo->exec("
-            INSERT INTO posts (user_id, title, content, views) VALUES 
-            (1, 'First Post', 'Content 1', 100),
-            (1, 'Second Post', 'Content 2', 50),
-            (2, 'Jane Post', 'Content 3', 75),
-            (3, 'Bob Post', 'Content 4', 25)
+            INSERT INTO posts (user_id, title, content, views, is_published) VALUES 
+            (1, 'First Post', 'Content 1', 100, 1),
+            (1, 'Second Post', 'Content 2', 50, 0),
+            (2, 'Jane Post', 'Content 3', 75, 1),
+            (3, 'Bob Post', 'Content 4', 25, 1),
+            (4, 'Alice Post', 'Content 5', 150, 1),
+            (5, 'Charlie Post', 'Content 6', 200, 0)
         ");
 
         $this->pdo->exec("
@@ -155,13 +162,13 @@ class BuilderSQLiteTest extends TestCase
     {
         $users = $this->builder->get();
         $this->assertInstanceOf(Collection::class, $users);
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
     }
 
     public function testSelectSpecificColumns()
     {
         $users = $this->builder->select('id', 'name', 'email')->get();
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
         $this->assertArrayHasKey('name', $users[0]);
         $this->assertArrayHasKey('email', $users[0]);
     }
@@ -176,7 +183,7 @@ class BuilderSQLiteTest extends TestCase
     public function testWhereWithOperator()
     {
         $users = $this->builder->where('age', '>', 25)->get();
-        $this->assertCount(3, $users);
+        $this->assertCount(5, $users);
 
         foreach ($users as $user) {
             $this->assertGreaterThan(25, $user->age);
@@ -210,7 +217,7 @@ class BuilderSQLiteTest extends TestCase
     public function testWhereNull()
     {
         $users = $this->builder->whereNull('deleted_at')->get();
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
     }
 
     public function testWhereNotNull()
@@ -241,10 +248,10 @@ class BuilderSQLiteTest extends TestCase
     public function testCount()
     {
         $count = $this->builder->count();
-        $this->assertEquals(4, $count);
+        $this->assertEquals(6, $count);
 
-        $activeCount = $this->builder->where('status', 'active')->count();
-        $this->assertEquals(3, $activeCount);
+        $activeCount = $this->builder->reset()->where('status', 'active')->count();
+        $this->assertEquals(4, $activeCount);
     }
 
     public function testExists()
@@ -293,7 +300,7 @@ class BuilderSQLiteTest extends TestCase
         $this->assertEquals(3, $affected);
 
         $count = $this->builder->count();
-        $this->assertEquals(7, $count); // 4 original + 3 new
+        $this->assertEquals(9, $count); // 4 original + 3 new
     }
 
     public function testUpdate()
@@ -344,13 +351,13 @@ class BuilderSQLiteTest extends TestCase
     public function testSum()
     {
         $sum = $this->builder->sum('age');
-        $this->assertEquals(118, $sum); // 25 + 30 + 35 + 28
+        $this->assertEquals(190, $sum); // 25 + 30 + 35 + 28 + 40 + 32
     }
 
     public function testAvg()
     {
         $avg = $this->builder->avg('age');
-        $this->assertEquals(29.5, $avg);
+        $this->assertEquals(31.666666666666668, $avg);
     }
 
     public function testMin()
@@ -362,7 +369,7 @@ class BuilderSQLiteTest extends TestCase
     public function testMax()
     {
         $max = $this->builder->max('age');
-        $this->assertEquals(35, $max);
+        $this->assertEquals(40, $max);
     }
 
     public function testIncrement()
@@ -469,7 +476,7 @@ class BuilderSQLiteTest extends TestCase
         $this->assertArrayHasKey('last_page', $result);
 
         $this->assertCount(2, $result['data']);
-        $this->assertEquals(4, $result['total']);
+        $this->assertEquals(6, $result['total']);
         $this->assertEquals(2, $result['per_page']);
     }
 
@@ -602,7 +609,7 @@ class BuilderSQLiteTest extends TestCase
         );
 
         $user = $this->builder->reset()->where('email', 'timestamp@example.com')->first();
-        
+
         // Test 11: Bulk operations with chunking (if supported)
         $largeDataset = [];
         for ($i = 1; $i <= 50; $i++) {
@@ -668,7 +675,7 @@ class BuilderSQLiteTest extends TestCase
             ->selectRaw('COUNT(*) as total_users')
             ->first();
 
-        $this->assertEquals(4, $users->total_users);
+        $this->assertEquals(6, $users->total_users);
 
         // Test whereRaw
         $users = $this->builder
@@ -697,7 +704,7 @@ class BuilderSQLiteTest extends TestCase
         //     echo "User $index: ID={$user->id}, Name={$user->name}\n";
         // }
 
-        $this->assertCount(4, $randomUsers, 'Should return all 4 users regardless of ordering');
+        $this->assertCount(6, $randomUsers, 'Should return all 4 users regardless of ordering');
     }
 
     public function testConditionalIf()
@@ -708,7 +715,7 @@ class BuilderSQLiteTest extends TestCase
             })
             ->get();
 
-        $this->assertCount(3, $users1, 'Should return only active users when condition is true');
+        $this->assertCount(4, $users1, 'Should return only active users when condition is true');
 
         // Test 2: Condition is false - should NOT apply the where clause
         $users2 = $this->createFreshBuilder()
@@ -717,7 +724,7 @@ class BuilderSQLiteTest extends TestCase
             })
             ->get();
 
-        $this->assertCount(4, $users2, 'Should return all users when condition is false');
+        $this->assertCount(6, $users2, 'Should return all users when condition is false');
 
         $allUsers = $this->createFreshBuilder()
             ->if(false, function ($query) {
@@ -728,7 +735,7 @@ class BuilderSQLiteTest extends TestCase
         $statuses = $allUsers->pluck('status')->toArray();
         $this->assertContains('active', $statuses);
         $this->assertContains('inactive', $statuses);
-        $this->assertCount(4, $allUsers);
+        $this->assertCount(6, $allUsers);
     }
 
     public function testRelationships()
@@ -765,8 +772,8 @@ class BuilderSQLiteTest extends TestCase
             $totalProcessed += $chunk->count();
         });
 
-        $this->assertEquals(2, $chunkCount); // 4 records in 2 chunks of 2
-        $this->assertEquals(4, $totalProcessed);
+        $this->assertEquals(3, $chunkCount); // 4 records in 2 chunks of 2
+        $this->assertEquals(6, $totalProcessed);
     }
 
     public function testToDictionary()
@@ -987,7 +994,7 @@ class BuilderSQLiteTest extends TestCase
         $activeUsers = $users->filter(function ($user) {
             return $user->status === 'active';
         });
-        $this->assertCount(3, $activeUsers);
+        $this->assertCount(4, $activeUsers);
 
         // Test map
         $userNames = $users->map(function ($user) {
@@ -1012,7 +1019,7 @@ class BuilderSQLiteTest extends TestCase
 
         // After reset, should return all records
         $users = $builder->get();
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
     }
 
     public function testUseRawMethod()
@@ -1080,7 +1087,7 @@ class BuilderSQLiteTest extends TestCase
             $processed += $chunk->count();
         });
 
-        $this->assertEquals(4, $processed); // Changed from 3 to 4
+        $this->assertEquals(6, $processed); // Changed from 3 to 4
 
         // Test cursor
         $processed = 0;
@@ -1088,14 +1095,14 @@ class BuilderSQLiteTest extends TestCase
             $processed++;
         });
 
-        $this->assertEquals(4, $processed); // Changed from 3 to 4
+        $this->assertEquals(6, $processed); // Changed from 3 to 4
     }
 
     public function testConditionalIfMethod()
     {
-        // First, verify we have 4 users total
+        // First, verify we have 6 users total
         $allUsers = $this->builder->get();
-        $this->assertCount(4, $allUsers, 'Should have 4 total users in database');
+        $this->assertCount(6, $allUsers, 'Should have 4 total users in database');
 
         // Test with true condition
         $users = $this->builder->reset()->if(true, function ($query) {
@@ -1110,7 +1117,7 @@ class BuilderSQLiteTest extends TestCase
             $query->where('name', 'John Doe');
         })->get();
 
-        $this->assertCount(4, $users, 'Should return all users when condition is false and no default callback');
+        $this->assertCount(6, $users, 'Should return all users when condition is false and no default callback');
 
         // Test with default callback
         $users = $this->builder->reset()->if(
@@ -1135,7 +1142,7 @@ class BuilderSQLiteTest extends TestCase
 
         // Verify records are deleted
         $remainingUsers = $this->builder->get();
-        $this->assertCount(2, $remainingUsers);
+        $this->assertCount(4, $remainingUsers);
         $this->assertIsArray($remainingUsers->toArray());
     }
 
@@ -1163,7 +1170,7 @@ class BuilderSQLiteTest extends TestCase
     public function testOmitMethod()
     {
         $users = $this->builder->omit('email', 'age')->get();
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
 
         // Check that omitted columns are not in the first result
         $firstUser = $users[0];
@@ -1175,8 +1182,8 @@ class BuilderSQLiteTest extends TestCase
     public function testNewestMethod()
     {
         $users = $this->builder->newest('id')->get();
-        $this->assertEquals(4, $users[0]->id); // Should be the newest (highest ID)
-        $this->assertEquals(3, $users[1]->id);
+        $this->assertEquals(6, $users[0]->id); // Should be the newest (highest ID)
+        $this->assertEquals(5, $users[1]->id);
     }
 
     public function testOldestMethod()
@@ -1257,7 +1264,7 @@ class BuilderSQLiteTest extends TestCase
             ->orWhereNotNull('email')
             ->get();
 
-        $this->assertCount(4, $users); // All users have email or id=1
+        $this->assertCount(6, $users); // All users have email or id=1
     }
 
 
@@ -1330,7 +1337,7 @@ class BuilderSQLiteTest extends TestCase
             return "UPPER(name)";
         }, 'upper_name')->get();
 
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
         $this->assertArrayHasKey('upper_name', $users[0]);
     }
 
@@ -1379,7 +1386,7 @@ class BuilderSQLiteTest extends TestCase
             $this->assertInstanceOf(Model::class, $user);
         }
 
-        $this->assertEquals(4, $processed);
+        $this->assertEquals(6, $processed);
     }
 
     public function testBatchMethod()
@@ -1393,7 +1400,7 @@ class BuilderSQLiteTest extends TestCase
         }, 3); // batch size 3
 
         $this->assertEquals(2, $batchCount); // 2 batches for 4 records with chunk size 2
-        $this->assertEquals(4, $totalProcessed);
+        $this->assertEquals(6, $totalProcessed);
     }
 
     public function testStdDevMethod()
@@ -1440,7 +1447,7 @@ class BuilderSQLiteTest extends TestCase
     public function testWhereTodayMethod()
     {
         $users = $this->builder->whereToday('created_at')->get();
-        $this->assertCount(4, $users); // All users created today
+        $this->assertCount(6, $users); // All users created today
     }
 
     public function testWhereYesterdayMethod()
@@ -1453,13 +1460,13 @@ class BuilderSQLiteTest extends TestCase
     public function testWhereThisMonthMethod()
     {
         $users = $this->builder->whereThisMonth('created_at')->get();
-        $this->assertCount(4, $users); // All users created this month
+        $this->assertCount(6, $users); // All users created this month
     }
 
     public function testWhereThisYearMethod()
     {
         $users = $this->builder->whereThisYear('created_at')->get();
-        $this->assertCount(4, $users); // All users created this year
+        $this->assertCount(6, $users); // All users created this year
     }
 
     public function testDynamicMethodCalls()
@@ -1488,7 +1495,7 @@ class BuilderSQLiteTest extends TestCase
         $this->assertEquals(5, $affected);
 
         $count = $this->builder->count();
-        $this->assertEquals(9, $count); // 4 original + 5 new
+        $this->assertEquals(11, $count); // 6 original + 5 new
     }
 
     public function testWhereDateBetweenMethod()
@@ -1510,12 +1517,12 @@ class BuilderSQLiteTest extends TestCase
 
     public function testOrderByRawMethod()
     {
-        $users = $this->builder->orderByRaw('name DESC')->get();
+        $users = $this->builder->reset()->orderByRaw('name DESC')->get();
 
         $this->assertEquals('John Doe', $users[0]->name);
         $this->assertEquals('Jane Smith', $users[1]->name);
-        $this->assertEquals('Bob Johnson', $users[2]->name);
-        $this->assertEquals('Alice Brown', $users[3]->name);
+        $this->assertEquals('Diana Prince', $users[2]->name);
+        $this->assertEquals('Charlie Wilson', $users[3]->name);
     }
 
     public function testWhereRawMethod()
@@ -1531,7 +1538,7 @@ class BuilderSQLiteTest extends TestCase
     {
         $users = $this->builder->selectRaw('name, age + ? as future_age', [10])->get();
 
-        $this->assertCount(4, $users);
+        $this->assertCount(6, $users);
         $this->assertArrayHasKey('future_age', $users[0]);
 
         // For John Doe (age 25): 25 + 10 = 35
@@ -1664,6 +1671,528 @@ class BuilderSQLiteTest extends TestCase
         $this->assertEquals('active', $original['status']);
     }
 
+    // ==========================
+    // where callback test
+    // ==========================
+
+    public function testBasicNestedWhereCallback()
+    {
+        $users = $this->builder->reset()
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->where('department', 'Engineering');
+            })
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $names = $users->pluck('name')->toArray();
+        $this->assertContains('Charlie Wilson', $names);
+        $this->assertNotContains('John Doe', $names);
+    }
+
+    public function testOrWhereWithCallback()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->orWhere(function ($query) {
+                $query->where('age', '>', 35)
+                    ->where('salary', '>', 75000);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testMultipleNestedConditions()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->orWhere('department', 'Engineering');
+            })
+            ->where(function ($query) {
+                $query->where('salary', '>=', 50000)
+                    ->where('salary', '<=', 70000);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testDeeplyNestedConditions()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->orWhere(function ($q) {
+                        $q->where('department', 'Engineering')
+                            ->where('salary', '>', 60000);
+                    });
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testMultipleLevelNesting()
+    {
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->where(function ($q) {
+                        $q->where('age', '>', 30)
+                            ->orWhere(function ($subQ) {
+                                $subQ->where('department', 'Marketing')
+                                    ->where('salary', '>', 55000);
+                            });
+                    });
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testMixedAndOrNesting()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->orWhere(function ($query) {
+                $query->where('age', '<', 30)
+                    ->where('department', 'Engineering');
+            })
+            ->orWhere(function ($query) {
+                $query->where('salary', '>', 75000)
+                    ->orWhere('department', 'Sales');
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(4, $users->count()); // Should get most users
+    }
+
+    public function testNestedWhereWithWhereIn()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereIn('department', ['Engineering', 'Marketing'])
+                    ->where('age', '>', 25);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+
+        foreach ($users as $user) {
+            $this->assertEquals('active', $user->status);
+            $this->assertContains($user->department, ['Engineering', 'Marketing']);
+            $this->assertGreaterThan(25, $user->age);
+        }
+    }
+
+    public function testNestedWhereWithWhereBetween()
+    {
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->whereBetween('age', [25, 35])
+                    ->orWhereBetween('salary', [50000, 70000]);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testNestedWhereWithWhereNull()
+    {
+        // Add a user with NULL department
+        $this->pdo->exec("INSERT INTO users (name, email, age, department) VALUES ('Null Dept', 'null@example.com', 45, NULL)");
+
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->whereNull('department')
+                    ->orWhere('department', 'Engineering');
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testNestedWhereWithWhereNotNull()
+    {
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->whereNotNull('department')
+                    ->whereNotNull('email');
+            })
+            ->get();
+
+        // All users should have department and email
+        $this->assertGreaterThanOrEqual(6, $users->count());
+    }
+
+    public function testNestedWhereWithOrderBy()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->orWhere('salary', '>', 60000);
+            })
+            ->orderBy('age', 'DESC')
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+
+        // Check ordering
+        $ages = $users->pluck('age')->toArray();
+        $sortedAges = $ages;
+        rsort($sortedAges);
+        $this->assertEquals($sortedAges, $ages);
+    }
+
+    public function testNestedWhereWithLimit()
+    {
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere('department', 'Engineering');
+            })
+            ->orderBy('id', 'ASC')
+            ->limit(3)
+            ->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testNestedWhereWithOffset()
+    {
+        $users = $this->builder
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->where('age', '>', 25);
+            })
+            ->orderBy('id', 'ASC')
+            ->limit(2)
+            ->offset(1)
+            ->get();
+
+        $this->assertLessThanOrEqual(2, $users->count());
+    }
+
+    public function testNestedWhereWithJoin()
+    {
+        $users = $this->builder
+            ->select('users.*', 'posts.title')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->where('users.status', 'active')
+            ->where(function ($query) {
+                $query->where('posts.views', '>', 50)
+                    ->orWhere('posts.is_published', 1);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+
+        foreach ($users as $user) {
+            $this->assertArrayHasKey('title', $user);
+        }
+    }
+
+    public function testComplexNestedWithMultipleJoins()
+    {
+        $users = $this->builder
+            ->select('users.*')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->where('users.status', 'active')
+            ->where(function ($query) {
+                $query->where('posts.views', '>', 100)
+                    ->orWhere(function ($q) {
+                        $q->where('users.age', '>', 30)
+                            ->where('posts.is_published', 1);
+                    });
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testNestedWhereWithGroupBy()
+    {
+        $results = $this->builder
+            ->select('department')
+            ->selectRaw('COUNT(*) as user_count')
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhere('age', '>', 30);
+            })
+            ->groupBy('department')
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $results->count());
+
+        foreach ($results as $result) {
+            $this->assertArrayHasKey('user_count', $result);
+            $this->assertGreaterThan(0, $result->user_count);
+        }
+    }
+
+    public function testNestedWhereWithHaving()
+    {
+        $results = $this->builder
+            ->select('department')
+            ->selectRaw('AVG(salary) as avg_salary')
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->where('age', '>', 25);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $results->count());
+    }
+
+    public function testEmptyNestedCallback()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                // Empty callback - should not affect query
+            })
+            ->get();
+
+        $this->assertCount(4, $users); // Only status=active condition applies
+    }
+
+    public function testNestedCallbackWithNoConditions()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('id', '>', 0); // Always true condition
+            })
+            ->get();
+
+        $this->assertCount(4, $users); // Should return all active users
+    }
+
+    public function testMultipleEmptyNestedCallbacks()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {})
+            ->orWhere(function ($query) {})
+            ->get();
+
+        $this->assertCount(4, $users); // Should return all active users
+    }
+
+    public function testDeepNestingWithEmptyCallbacks()
+    {
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('age', '>', 25);
+                })
+                    ->orWhere(function ($q) {
+                        // Empty callback
+                    });
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testToSqlWithNestedWhere()
+    {
+        $sql = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->orWhere('department', 'Engineering');
+            })
+            ->toSql();
+
+        $this->assertStringContainsString('SELECT', $sql);
+        $this->assertStringContainsString('FROM users', $sql);
+        $this->assertStringContainsString('WHERE', $sql);
+        $this->assertStringContainsString('(', $sql); // Should have parentheses for nested conditions
+        $this->assertStringContainsString(')', $sql);
+    }
+
+    public function testComplexSqlGeneration()
+    {
+        $sql = $this->builder
+            ->select('id', 'name', 'email')
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('age', '>', 25)
+                    ->orWhere(function ($q) {
+                        $q->where('department', 'Engineering')
+                            ->where('salary', '>', 60000);
+                    });
+            })
+            ->orderBy('name', 'ASC')
+            ->limit(10)
+            ->toSql();
+
+        $this->assertStringContainsString('SELECT', $sql);
+        $this->assertStringContainsString('WHERE', $sql);
+        $this->assertStringContainsString('ORDER BY', $sql);
+        $this->assertStringContainsString('LIMIT 10', $sql);
+        $this->assertStringContainsString('(', $sql);
+        $this->assertStringContainsString(')', $sql);
+    }
+
+    public function testNestedWhereWithConditionalIf()
+    {
+        $applyNestedCondition = true;
+
+        $users = $this->builder
+            ->where('status', 'active')
+            ->if($applyNestedCondition, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('age', '>', 30)
+                        ->orWhere('department', 'Engineering');
+                });
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testConditionalNestedWhere()
+    {
+        $searchEngineering = true;
+        $minAge = 30;
+
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) use ($searchEngineering, $minAge) {
+                $query->where('age', '>', $minAge);
+
+                if ($searchEngineering) {
+                    $query->orWhere('department', 'Engineering');
+                }
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testUserSearchWithMultipleFilters()
+    {
+        $filters = [
+            'status' => 'active',
+            'min_age' => 25,
+            'max_age' => 35,
+            'departments' => ['Engineering', 'Marketing'],
+            'min_salary' => 50000
+        ];
+
+        $users = $this->builder
+            ->where('status', $filters['status'])
+            ->where(function ($query) use ($filters) {
+                $query->whereBetween('age', [$filters['min_age'], $filters['max_age']])
+                    ->whereIn('department', $filters['departments'])
+                    ->where('salary', '>=', $filters['min_salary']);
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+
+        foreach ($users as $user) {
+            $this->assertEquals('active', $user->status);
+            $this->assertGreaterThanOrEqual($filters['min_age'], $user->age);
+            $this->assertLessThanOrEqual($filters['max_age'], $user->age);
+            $this->assertContains($user->department, $filters['departments']);
+            $this->assertGreaterThanOrEqual($filters['min_salary'], $user->salary);
+        }
+    }
+
+    public function testAdvancedSearchWithOptionalFilters()
+    {
+        $searchParams = [
+            'name' => 'John',
+            'department' => null, // Optional filter
+            'min_salary' => 45000,
+            'max_salary' => null, // Optional filter
+        ];
+
+        $users = $this->builder
+            ->where(function ($query) use ($searchParams) {
+                $query->where('name', 'LIKE', "%{$searchParams['name']}%");
+
+                if ($searchParams['department']) {
+                    $query->where('department', $searchParams['department']);
+                }
+
+                $query->where('salary', '>=', $searchParams['min_salary']);
+
+                if ($searchParams['max_salary']) {
+                    $query->where('salary', '<=', $searchParams['max_salary']);
+                }
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testPermissionBasedQuery()
+    {
+        $userRoles = ['admin', 'manager'];
+        $userId = 1;
+
+        $users = $this->builder
+            ->where(function ($query) use ($userRoles, $userId) {
+                // Admins can see all users
+                if (in_array('admin', $userRoles)) {
+                    $query->where('id', '>', 0); // All users
+                }
+                // Managers can see their department and inactive users
+                elseif (in_array('manager', $userRoles)) {
+                    $currentUser = $this->builder->where('id', $userId)->first();
+                    $query->where('department', $currentUser->department)
+                        ->orWhere('status', 'inactive');
+                }
+                // Regular users can only see active users in their department
+                else {
+                    $currentUser = $this->builder->where('id', $userId)->first();
+                    $query->where('department', $currentUser->department)
+                        ->where('status', 'active');
+                }
+            })
+            ->get();
+
+        $this->assertGreaterThanOrEqual(1, $users->count());
+    }
+
+    public function testNestedWhereWithInvalidColumn()
+    {
+        $this->expectException(\PDOException::class);
+
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                $query->where('invalid_column', 'value'); // This should cause an error
+            })
+            ->get();
+    }
+
+    public function testNestedWhereWithNullCallback()
+    {
+        // This should not throw an error - callback is required parameter
+        $users = $this->builder
+            ->where('status', 'active')
+            ->where(function ($query) {
+                // Valid callback
+            })
+            ->get();
+
+        $this->assertCount(4, $users);
+    }
+
     public function testSetTableAndGetTable()
     {
         $user = new TestSqliteModel();
@@ -1683,7 +2212,7 @@ class TestSqliteModel extends Model
 {
     protected $table = "users";
     protected $primaryKey = 'id';
-    protected $creatable = ['name', 'email', 'age', 'status'];
+    protected $creatable = ['name', 'email', 'age', 'status', 'salary', 'department'];
 
     public function posts()
     {
@@ -1704,7 +2233,7 @@ class TestSqliteModel extends Model
 class PostModel extends Model
 {
     protected $table = "posts";
-    protected $creatable = ['user_id', 'title', 'content', 'views'];
+    protected $creatable = ['user_id', 'title', 'content', 'views', 'is_published'];
 }
 
 class ProfileModel extends Model
