@@ -553,14 +553,13 @@ class Blueprint
      */
     public function bit(string $column, int $length = 1): ColumnDefinition
     {
-        $driver = $this->getDefaultDriver();
-    
-        if ($driver === 'pgsql') {
-            // PostgreSQL does not support BIT(1) for boolean flags
-            return $this->boolean($column);
+        if ($this->getDefaultDriver() === 'pgsql') {
+             if ($length === 1) {
+                 return $this->boolean($column);
+             }
+            return $this->addColumn('bit', $column, compact('length'));
         }
-    
-        // Default: MySQL and others
+        
         return $this->addColumn('bit', $column, compact('length'));
     }
     /**
