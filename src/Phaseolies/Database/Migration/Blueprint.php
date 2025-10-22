@@ -377,7 +377,6 @@ class Blueprint
         return $this->addColumn('uuid', $column);
     }
 
-
     /**
      * Create an IP address column (stored as VARCHAR(45) to support IPv6)
      *
