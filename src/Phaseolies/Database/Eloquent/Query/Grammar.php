@@ -594,25 +594,133 @@ trait Grammar
      * @param string $value
      * @param bool $caseSensitive
      * @param string $boolean
-     * @param string $operator
      * @return self
      */
-    protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean, string $operator): self
+    protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean): self
     {
         $driver = $this->getDriver();
+        $likeValue = $this->prepareLikeValue($value);
 
-        // For case-insensitive search, use the appropriate method for each driver
         if (!$caseSensitive) {
-            match ($driver) {
-                'pgsql' => $this->conditions[] = [$boolean, $field, 'ILIKE', $value],
-                'mysql', 'sqlite' => $this->conditions[] = [$boolean, "LOWER({$field})", $operator, strtolower($value)],
-                default => $this->conditions[] = [$boolean, $field, $operator, $value]
-            };
+            switch ($driver) {
+                case 'pgsql':
+                    $operator = 'ILIKE';
+
+                    // Using field as-is for ILIKE
+                    $field = $field;
+                    break;
+                case 'mysql':
+                case 'sqlite':
+                default:
+                    $field = "LOWER({$field})";
+                    $likeValue = strtolower($likeValue);
+                    $operator = 'LIKE';
+            }
         } else {
-            // Case-sensitive search - use regular LIKE
-            $this->conditions[] = [$boolean, $field, $operator, $value];
+            switch ($driver) {
+                case 'mysql':
+                    // For MySQL case-sensitive, check if column is already case-sensitive
+                    // If not, use BINARY to force case sensitivity
+                    $field = $this->isCaseSensitiveColumn($field)
+                        ? $field
+                        : "BINARY {$field}";
+                    $operator = 'LIKE';
+                    break;
+                case 'sqlite':
+                    $operator = 'GLOB';
+                    $likeValue = $this->convertLikeToGlob($likeValue);
+                    break;
+                default:
+                    $operator = 'LIKE';
+            }
         }
 
+        $this->conditions[] = [$boolean, $field, $operator, $likeValue];
+
         return $this;
+    }
+
+    /**
+     * Prepare LIKE value by adding wildcards if needed
+     *
+     * @param string $value
+     * @return string
+     */
+    protected function prepareLikeValue(string $value): string
+    {
+        if (str_contains($value, '%') || str_contains($value, '_')) {
+            return $value;
+        }
+
+        return "%{$value}%";
+    }
+
+    /**
+     * Check if a column is case-sensitive (MySQL specific)
+     *
+     * @param string $field
+     * @return bool
+     */
+    protected function isCaseSensitiveColumn(string $field): bool
+    {
+        try {
+            // Extract table and column names
+            if (str_contains($field, '.')) {
+                [$table, $column] = explode('.', $field, 2);
+                // Remove backticks if present
+                $table = trim($table, '`');
+                $column = trim($column, '`');
+            } else {
+                $table = $this->table;
+                $column = trim($field, '`');
+            }
+
+            // Only MySQL supports this level of collation detection
+            if ($this->getDriver() !== 'mysql') {
+                // Default to case-sensitive for other drivers
+                return true;
+            }
+
+            $stmt = $this->pdo->prepare("
+            SELECT COLLATION_NAME
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = ?
+            AND COLUMN_NAME = ?
+        ");
+
+            if ($stmt === false) {
+                // Fallback if prepare fails
+                return true;
+            }
+
+            $stmt->execute([$table, $column]);
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if ($result && isset($result['COLLATION_NAME'])) {
+                $collation = $result['COLLATION_NAME'];
+
+                // _cs = case-sensitive, _ci = case-insensitive
+                return str_ends_with($collation, '_cs');
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            return true;
+        }
+    }
+
+    /**
+     * Convert LIKE pattern to SQLite GLOB pattern for case-sensitive search
+     *
+     * @param string $likePattern
+     * @return string
+     */
+    protected function convertLikeToGlob(string $likePattern): string
+    {
+        $globPattern = str_replace('%', '*', $likePattern);
+        $globPattern = str_replace('_', '?', $globPattern);
+
+        return $globPattern;
     }
 }

@@ -2827,13 +2827,13 @@ class Builder
      * Add a WHERE LIKE condition with driver-agnostic case handling.
      *
      * @param string $field
+     * @param string $value
      * @param bool $caseSensitive
-     * @param string $boolean
      * @return self
      */
-    public function whereLike(string $field, string $value, bool $caseSensitive = false, string $boolean = 'AND'): self
+    public function whereLike(string $field, string $value, bool $caseSensitive = false): self
     {
-        return $this->addLikeCondition($field, $value, $caseSensitive, $boolean, 'LIKE');
+        return $this->addLikeCondition($field, $value, $caseSensitive, 'AND');
     }
 
     /**
@@ -2846,9 +2846,39 @@ class Builder
      */
     public function orWhereLike(string $field, string $value, bool $caseSensitive = false): self
     {
-        return $this->addLikeCondition($field, $value, $caseSensitive, 'OR', 'LIKE');
+        return $this->addLikeCondition($field, $value, $caseSensitive, 'OR');
     }
 
+    /**
+     * Adds a dynamic search filter to a query based on given attributes and a search term.
+     *
+     * @param array $attributes
+     * @param string $searchTerm
+     * @param bool $caseSensitive
+     * @return self
+     */
+    public function search(array $attributes, ?string $searchTerm = null, bool $caseSensitive = false): self
+    {
+        if (empty($searchTerm)) {
+            return $this;
+        }
+
+        $searchQuery = function (Builder $query) use ($attributes, $searchTerm, $caseSensitive) {
+            foreach ($attributes as $attribute) {
+                if (str_contains($attribute, '.')) {
+                    [$relation, $column] = explode('.', $attribute, 2);
+                    $query->orPresent(
+                        $relation,
+                        fn(Builder $q) => $q->whereLike($column, $searchTerm, $caseSensitive)
+                    );
+                } else {
+                    $query->orWhereLike($attribute, $searchTerm, $caseSensitive);
+                }
+            }
+        };
+
+        return $this->where($searchQuery);
+    }
 
     /**
      * Convert camelCase to snake_case for column names
