@@ -38,7 +38,7 @@ class BundleCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Bundle class already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $directoryPath = dirname($filePath);
@@ -53,7 +53,7 @@ class BundleCommand extends Command
             $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
             $this->newLine();
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

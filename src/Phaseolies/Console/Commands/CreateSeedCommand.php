@@ -33,7 +33,7 @@ class CreateSeedCommand extends Command
 
             if (file_exists($filePath)) {
                 $this->displayError('Seed file already exists!');
-                return 1;
+                return Command::FAILURE;
             }
 
             $content = $this->generateSeedContent($name);
@@ -41,7 +41,7 @@ class CreateSeedCommand extends Command
 
             $this->displaySuccess('Seed file created successfully');
             $this->line("<fg=yellow>📁 File:</> <fg=white>{$filePath}</>");
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

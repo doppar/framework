@@ -32,7 +32,7 @@ class ClearCacheCommand extends Command
             $cacheDir = base_path('storage/framework/cache');
             $this->deleteDirectoryContents($cacheDir);
             Cache::clear();
-            return 0;
+            return Command::SUCCESS;
         }, 'Application cache has been gracefully cleared.');
     }
 

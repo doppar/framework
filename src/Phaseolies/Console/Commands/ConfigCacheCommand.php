@@ -32,7 +32,7 @@ class ConfigCacheCommand extends Command
             Config::clearCache();
             Config::loadAll();
             Config::cacheConfig();
-            return 0;
+            return Command::SUCCESS;
         }, 'Application configuration cached successfully.');
     }
 }
