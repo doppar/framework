@@ -377,17 +377,6 @@ class Blueprint
         return $this->addColumn('uuid', $column);
     }
 
-    /**
-     * Create a UUID primary key column.
-     *
-     * @param string $column
-     * @return ColumnDefinition
-     */
-    public function uuidPrimary(string $column = 'id'): ColumnDefinition
-    {
-        return $this->uuid($column)->primary();
-    }
-
 
     /**
      * Create an IP address column (stored as VARCHAR(45) to support IPv6)
@@ -565,9 +554,16 @@ class Blueprint
      */
     public function bit(string $column, int $length = 1): ColumnDefinition
     {
+        $driver = $this->connection->getDriverName();
+    
+        if ($driver === 'pgsql') {
+            // PostgreSQL does not support BIT(1) for boolean flags
+            return $this->boolean($column);
+        }
+    
+        // Default: MySQL and others
         return $this->addColumn('bit', $column, compact('length'));
     }
-
     /**
      * Create a JSON column.
      *
