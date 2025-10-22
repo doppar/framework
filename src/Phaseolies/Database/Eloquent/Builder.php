@@ -2759,4 +2759,60 @@ class Builder
 
         return $this;
     }
+
+    /**
+     * Add a WHERE LIKE condition with driver-agnostic case handling.
+     *
+     * @param string $field Field name
+     * @param string $value Value to search for
+     * @param bool $caseSensitive Whether the search should be case sensitive
+     * @param string $boolean Logical operator (AND/OR)
+     * @return self
+     */
+    public function whereLike(string $field, string $value, bool $caseSensitive = false, string $boolean = 'AND'): self
+    {
+        return $this->addLikeCondition($field, $value, $caseSensitive, $boolean, 'LIKE');
+    }
+
+    /**
+     * Add an OR WHERE LIKE condition with driver-agnostic case handling.
+     *
+     * @param string $field Field name
+     * @param string $value Value to search for
+     * @param bool $caseSensitive Whether the search should be case sensitive
+     * @return self
+     */
+    public function orWhereLike(string $field, string $value, bool $caseSensitive = false): self
+    {
+        return $this->addLikeCondition($field, $value, $caseSensitive, 'OR', 'LIKE');
+    }
+
+    /**
+     * Internal method to handle LIKE conditions with proper case handling for each driver.
+     *
+     * @param string $field
+     * @param string $value
+     * @param bool $caseSensitive
+     * @param string $boolean
+     * @param string $operator
+     * @return self
+     */
+    protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean, string $operator): self
+    {
+        $driver = $this->getDriver();
+
+        // For case-insensitive search, use the appropriate method for each driver
+        if (!$caseSensitive) {
+            match ($driver) {
+                'pgsql' => $this->conditions[] = [$boolean, $field, 'ILIKE', $value],
+                'mysql', 'sqlite' => $this->conditions[] = [$boolean, "LOWER({$field})", $operator, strtolower($value)],
+                default => $this->conditions[] = [$boolean, $field, $operator, $value]
+            };
+        } else {
+            // Case-sensitive search - use regular LIKE
+            $this->conditions[] = [$boolean, $field, $operator, $value];
+        }
+
+        return $this;
+    }
 }
