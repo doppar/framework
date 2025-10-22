@@ -1966,6 +1966,11 @@ class Builder
 
     /**
      * Bind values from nested queries
+     *
+     * @param PDOStatement $stmt
+     * @param self $nestedQuery
+     * @param int $index
+     * @return void
      */
     protected function bindNestedValues(PDOStatement $stmt, self $nestedQuery, int &$index): void
     {
