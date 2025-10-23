@@ -11,7 +11,8 @@ use Phaseolies\Database\Entity\Query\{
     InteractsWithTimeframe,
     QueryUtils,
     InteractsWithBigDataProcessing,
-    InteractsWithModelQueryProcessing
+    InteractsWithModelQueryProcessing,
+    InteractsWithAggregateFucntion
 };
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
@@ -28,6 +29,7 @@ class Builder
     use Debuggable;
     use InteractsWithTimeframe;
     use Grammar;
+    use InteractsWithAggregateFucntion;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -2319,70 +2321,6 @@ class Builder
     }
 
     /**
-     * Add aggregation methods to Builder class
-     */
-
-    /**
-     * Retrieve the sum of the values of a given column
-     *
-     * @param string $column
-     * @return float
-     */
-    public function sum(string $column): float
-    {
-        $this->select(["SUM({$column}) as aggregate"]);
-
-        $result = $this->first();
-
-        return (float) ($result->aggregate ?? 0);
-    }
-
-    /**
-     * Retrieve the average of the values of a given column
-     *
-     * @param string $column
-     * @return float
-     */
-    public function avg(string $column): float
-    {
-        $this->select(["AVG({$column}) as aggregate"]);
-
-        $result = $this->first();
-
-        return (float) ($result->aggregate ?? 0);
-    }
-
-    /**
-     * Retrieve the minimum value of a given column
-     *
-     * @param string $column
-     * @return mixed
-     */
-    public function min(string $column)
-    {
-        $this->select(["MIN({$column}) as aggregate"]);
-
-        $result = $this->first();
-
-        return $result->aggregate;
-    }
-
-    /**
-     * Retrieve the maximum value of a given column
-     *
-     * @param string $column
-     * @return mixed
-     */
-    public function max(string $column)
-    {
-        $this->select(["MAX({$column}) as aggregate"]);
-
-        $result = $this->first();
-
-        return $result->aggregate;
-    }
-
-    /**
      * Retrieve distinct values for a column
      *
      * @param string $column The column to get distinct values from
@@ -2442,77 +2380,6 @@ class Builder
         $result = $this->first();
 
         return (string) ($result->aggregate ?? '');
-    }
-
-    /**
-     * Retrieve the standard deviation of a column
-     *
-     * @param string $column
-     * @return float
-     */
-    public function stdDev(string $column): float
-    {
-        return $this->shouldComputeStdDevInPhp()
-            ? $this->stdDevPhp($column)
-            : $this->stdDevSql($column);
-    }
-
-    /**
-     * Compute standard deviation by fetching variance via SQL and taking sqrt() in PHP
-     *
-     * @param string $column
-     * @return float
-     */
-    protected function stdDevPhp(string $column): float
-    {
-        $varianceExpression = $this->getVarianceExpression($column);
-        $this->select(["{$varianceExpression} as aggregate"]);
-
-        $result = $this->first();
-        $variance = $result->aggregate ?? 0;
-
-        if ($variance === null || !is_numeric($variance) || $variance < 0) {
-            return 0.0;
-        }
-
-        return (float) sqrt((float) $variance);
-    }
-
-    /**
-     * Compute standard deviation using a SQL expression provided by Grammar
-     *
-     * @param string $column
-     * @return float
-     */
-    protected function stdDevSql(string $column): float
-    {
-        $stdDevExpression = $this->getStandardDeviation($column);
-        $this->select(["{$stdDevExpression} as aggregate"]);
-
-        $result = $this->first();
-        $value = $result->aggregate ?? 0;
-
-        if ($value === null || !is_numeric($value) || $value < 0) {
-            return 0.0;
-        }
-
-        return (float) $value;
-    }
-
-    /**
-     * Retrieve the variance of a column
-     *
-     * @param string $column
-     * @return float
-     */
-    public function variance(string $column): float
-    {
-        $varianceExpression = $this->getVarianceExpression($column);
-        $this->select(["{$varianceExpression} as aggregate"]);
-
-        $result = $this->first();
-
-        return (float) ($result->aggregate ?? 0);
     }
 
     /**
