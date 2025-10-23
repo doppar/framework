@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.9 - 2025-10-23
+
+* many to many relationship non primary key table handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/66
+
 ## v2.9.6-beta.8 - 2025-10-23
 
 * [Console] Refactor AddColumnMigrationCommand by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/59
