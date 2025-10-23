@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.10 - 2025-10-23
+
+* Prevent Double Eager Loading During Count & Pagination by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/67
+
 ## v2.9.6-beta.9 - 2025-10-23
 
 * many to many relationship non primary key table handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/66
