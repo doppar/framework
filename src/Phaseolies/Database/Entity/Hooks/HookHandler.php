@@ -1,8 +1,8 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent\Hooks;
+namespace Phaseolies\Database\Entity\Hooks;
 
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 
 class HookHandler
 {

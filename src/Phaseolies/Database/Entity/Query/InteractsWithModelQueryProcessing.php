@@ -1,11 +1,11 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent\Query;
+namespace Phaseolies\Database\Entity\Query;
 
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Database\Database;
 
 trait InteractsWithModelQueryProcessing
@@ -19,7 +19,7 @@ trait InteractsWithModelQueryProcessing
      * Creates and returns a new query builder instance for the model.
      *
      * @param $connection = 'mysql'
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public static function query(?string $connection = null): Builder
     {
@@ -422,7 +422,7 @@ trait InteractsWithModelQueryProcessing
      * Filter models based on dynamic conditions
      *
      * @param array|callable $filters
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public static function match(array|callable $filters): Builder
     {

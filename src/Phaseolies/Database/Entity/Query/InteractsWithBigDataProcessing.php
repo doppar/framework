@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent\Query;
+namespace Phaseolies\Database\Entity\Query;
 
 use PDO;
 use Generator;

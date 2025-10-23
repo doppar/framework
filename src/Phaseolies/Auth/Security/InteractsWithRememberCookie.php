@@ -4,7 +4,7 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 
 trait InteractsWithRememberCookie
 {

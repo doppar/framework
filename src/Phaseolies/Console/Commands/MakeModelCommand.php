@@ -103,7 +103,7 @@ class MakeModelCommand extends Command
 
 namespace {$namespace};
 
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 
 class {$className} extends Model
 {

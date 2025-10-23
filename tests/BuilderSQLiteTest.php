@@ -4,8 +4,8 @@ namespace Tests\Unit;
 
 use Phaseolies\Support\Collection;
 use Phaseolies\Http\Request;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use PDOException;
