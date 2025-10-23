@@ -1,10 +1,10 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent\Query;
+namespace Phaseolies\Database\Entity\Query;
 
 use RuntimeException;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Builder;
 
 trait QueryUtils
 {

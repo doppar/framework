@@ -6,7 +6,7 @@ use PDO;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Builder;
 
 class DatabaseBuilderTest extends TestCase
 {

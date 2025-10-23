@@ -6,11 +6,11 @@ use Phaseolies\Support\Collection;
 use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Query\Builder;
 use Phaseolies\Database\Procedure\ProcedureResult;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Connectors\ConnectionFactory;
 use PDOException;
 use PDO;
-use Phaseolies\Database\Eloquent\Query\Grammar;
+use Phaseolies\Database\Entity\Query\Grammar;
 
 class Database
 {

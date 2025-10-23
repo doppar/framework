@@ -3,7 +3,7 @@
 namespace Tests\Unit;
 
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use PHPUnit\Framework\TestCase;
 use ArrayIterator;
 use Traversable;

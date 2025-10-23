@@ -13,8 +13,8 @@ use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
 use App\Http\Kernel;
 

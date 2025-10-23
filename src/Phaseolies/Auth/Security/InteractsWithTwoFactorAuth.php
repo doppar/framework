@@ -8,7 +8,7 @@ use Symfony\Component\Clock\NativeClock;
 use Psr\Clock\ClockInterface;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\Facades\Auth;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use ParagonIE\ConstantTime\Base32;
 use OTPHP\TOTP;
 

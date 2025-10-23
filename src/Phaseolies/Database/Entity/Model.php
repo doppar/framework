@@ -1,11 +1,11 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent;
+namespace Phaseolies\Database\Entity;
 
 use Stringable;
 use Phaseolies\Support\Collection;
-use Phaseolies\Database\Eloquent\Query\InteractsWithModelQueryProcessing;
-use Phaseolies\Database\Eloquent\Hooks\HookHandler;
+use Phaseolies\Database\Entity\Query\InteractsWithModelQueryProcessing;
+use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use PDO;
@@ -562,7 +562,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $related
      * @param string $foreignKey
      * @param string $localKey
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public function linkOne(string $related, string $foreignKey, string $localKey)
     {
@@ -582,7 +582,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $related
      * @param string $foreignKey
      * @param string $localKey
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public function bindTo(string $related, string $foreignKey, string $localKey)
     {
@@ -602,7 +602,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $related
      * @param string $foreignKey
      * @param string $localKey
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public function linkMany(string $related, string $foreignKey, string $localKey)
     {
@@ -623,7 +623,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param string $foreignKey
      * @param string $relatedKey
      * @param string $pivotTable
-     * @return \Phaseolies\Database\Eloquent\Builder
+     * @return \Phaseolies\Database\Entity\Builder
      */
     public function bindToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
     {

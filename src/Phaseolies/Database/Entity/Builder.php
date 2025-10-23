@@ -1,11 +1,11 @@
 <?php
 
-namespace Phaseolies\Database\Eloquent;
+namespace Phaseolies\Database\Entity;
 
 use PDOStatement;
 use PDOException;
 use PDO;
-use Phaseolies\Database\Eloquent\Query\{
+use Phaseolies\Database\Entity\Query\{
     Debuggable,
     Grammar,
     InteractsWithTimeframe,
@@ -18,7 +18,7 @@ use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
 
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 
 class Builder
 {
@@ -1488,7 +1488,7 @@ class Builder
     /**
      * Get the model instance
      *
-     * @return \Phaseolies\Database\Eloquent\Model
+     * @return \Phaseolies\Database\Entity\Model
      */
     public function getModel(): Model
     {

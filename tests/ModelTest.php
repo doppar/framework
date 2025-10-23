@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Database\Database;
 use Phaseolies\Support\Collection;
 use PHPUnit\Framework\TestCase;

@@ -4,7 +4,7 @@ namespace Phaseolies\Support;
 
 use Traversable;
 use Ramsey\Collection\Collection as RamseyCollection;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use IteratorAggregate;
 use ArrayIterator;
 use ArrayAccess;

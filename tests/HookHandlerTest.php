@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use RuntimeException;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Hooks\HookHandler;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;

@@ -1572,8 +1572,8 @@ class Response implements HttpStatus
         if (
             is_array($content) ||
             $content instanceof \JsonSerializable ||
-            $content instanceof \Phaseolies\Database\Eloquent\Model ||
-            $content instanceof \Phaseolies\Database\Eloquent\Builder ||
+            $content instanceof \Phaseolies\Database\Entity\Model ||
+            $content instanceof \Phaseolies\Database\Entity\Builder ||
             $content instanceof \stdClass ||
             $content instanceof \ArrayObject
         ) {
