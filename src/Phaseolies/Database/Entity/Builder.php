@@ -124,6 +124,11 @@ class Builder
     protected bool $takeWithoutEncryption = true;
 
     /**
+     * @var bool
+     */
+    protected bool $suppressEagerLoad = false;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
@@ -1124,6 +1129,20 @@ class Builder
     }
 
     /**
+     * Get the data without calling the eager loading
+     *
+     * @return self
+     */
+    public function withoutEagerLoad(): self
+    {
+        $clone = clone $this;
+        $clone->eagerLoad = [];
+        $clone->suppressEagerLoad = true;
+
+        return $clone;
+    }
+
+    /**
      * Eager load the relationships for the collection
      *
      * @param Collection $collection
@@ -1646,7 +1665,7 @@ class Builder
                 }
             }
 
-            if (!empty($this->eagerLoad)) {
+            if (!empty($this->eagerLoad) && !$this->suppressEagerLoad) {
                 $collection = new Collection($this->modelClass, [$model]);
                 $this->eagerLoadRelations($collection);
             }
@@ -1666,7 +1685,7 @@ class Builder
      */
     public function count(string $column = '*'): int
     {
-        $query = clone $this;
+        $query = $this->withoutEagerLoad();
 
         $query->orderBy = [];
         $query->limit = null;
