@@ -1,5 +1,16 @@
 # Release Notes
 
+## v2.9.6-beta.8 - 2025-10-23
+
+* [Console] Refactor AddColumnMigrationCommand by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/59
+* Enhance Blueprint with additional commonly used column types by [@tareqsifat](https://github.com/tareqsifat) in https://github.com/doppar/framework/pull/56
+* [Console] Add "uri:" to --complete make:controller by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/60
+* [Database] Driver-Agnostic WHERE LIKE Implementation for Like operation by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/61
+* [Builder] orPresent() and orAbsent() query builder methods for relationship existence conditions by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/62
+* Add Support for Passing where() and orWhere() Callbacks as Parameters by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/63
+* Builder with search() Method and Fix whereLike / orWhereLike Issues by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/64
+* Refactor ORM Namespace: Replace “Eloquent” with “Entity” for Doppar’s Official ORM Layer by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/65
+
 ## v2.9.6-beta.7 - 2025-10-21
 
 * Fix: Resolved issues with previous request session input and peek message clearance. by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/58
