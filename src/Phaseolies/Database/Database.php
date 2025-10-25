@@ -5,6 +5,7 @@ namespace Phaseolies\Database;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Query\Builder;
+use Phaseolies\Database\Entity\Query\Builder as QueryBuilder;
 use Phaseolies\Database\Procedure\ProcedureResult;
 use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Connectors\ConnectionFactory;
@@ -549,5 +550,16 @@ class Database
     public function connection(?string $name = null): self
     {
         return new static($name);
+    }
+
+    /**
+     * Get the query builder instance
+     *
+     * @param string $table
+     * @return QueryBuilder
+     */
+    public function bucket(string $table): QueryBuilder
+    {
+        return new QueryBuilder($this->getPdo(), $table);
     }
 }

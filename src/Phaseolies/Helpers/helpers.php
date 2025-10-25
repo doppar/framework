@@ -5,6 +5,7 @@ use Phaseolies\Translation\Translator;
 use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Facades\Log;
+use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Support\Collection;
 use Phaseolies\Session\MessageBag;
@@ -12,11 +13,11 @@ use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\ResponseFactory;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Controllers\Controller;
+use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\Authenticate;
 use Carbon\Carbon;
-use Phaseolies\Support\Facades\Crypt;
 
 /**
  * Gets an environment variable from available sources
@@ -772,4 +773,14 @@ function ddd(mixed ...$values): never
     }
 
     dd(...$values);
+}
+
+/**
+ * Get a database query builder instance
+ *
+ * @return Database
+ */
+function db(): Database
+{
+    return app('db');
 }
