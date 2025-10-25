@@ -1,5 +1,13 @@
 # Release Notes
 
+## v2.9.6-beta.11 - 2025-10-25
+
+* [Tests] Add some builder tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/68
+* Optimized pagination query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/69
+* Introduce Entity Builder (Fluent Query Builder Interface) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/70
+* Copied all the necessary function from ORM builder to Query Builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/71
+* [Entity Builder] Uni test: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/72
+
 ## v2.9.6-beta.10 - 2025-10-23
 
 * Prevent Double Eager Loading During Count & Pagination by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/67
