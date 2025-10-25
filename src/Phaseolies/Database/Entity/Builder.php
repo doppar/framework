@@ -1878,16 +1878,17 @@ class Builder
      */
     public function paginate(?int $perPage = null): array
     {
+        $query = clone $this;
         $page = request()->page ?? 1;
-        $perPage = $perPage ?? $this->rowPerPage;
+        $perPage = $perPage ?? $query->rowPerPage;
 
         if (!is_int($perPage) || $perPage <= 0) {
             $perPage = 15;
         }
 
         $offset = ($page - 1) * $perPage;
-        $total = $this->count();
-        $results = $this->limit($perPage)->offset($offset)->get()->all();
+        $total = $query->count();
+        $results = $query->limit($perPage)->offset($offset)->get()->all();
 
         $lastPage = max(ceil($total / $perPage), 1);
         $path = URL::current();
