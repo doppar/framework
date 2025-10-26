@@ -2,7 +2,7 @@
 
 namespace Phaseolies\Database\Entity\Query;
 
-trait BuilderAggregateFucntion
+trait InteractsWithBuilderAggregateFucntion
 {
     /**
      * Run a SQL aggregate function without eager loading.
