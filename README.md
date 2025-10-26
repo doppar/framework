@@ -1,20 +1,14 @@
 <p align="center">
-    <a href="https://doppar.com" target="_blank">
-        <img src="https://raw.githubusercontent.com/doppar/doppar/7138fb0e72cd55256769be6947df3ac48c300700/public/logo.png" width="400">
-    </a>
-</p>
-
-<p align="center">
-<a href="https://github.com/doppar/framework/actions/workflows/tests.yml"><img src="https://github.com/doppar/framework/actions/workflows/tests.yml/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/dt/doppar/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/v/doppar/framework" alt="Latest Stable Version"></a>
-<a href="https://github.com/doppar/framework/blob/main/LICENSE"><img src="https://img.shields.io/github/license/doppar/framework" alt="License"></a>
+  <a href="https://doppar.com" target="_blank">
+    <img src="https://raw.githubusercontent.com/doppar/doppar/7138fb0e72cd55256769be6947df3ac48c300700/public/logo.png" width="320" alt="Doppar logo">
+  </a>
+  
 </p>
 
 ## About Doppar
 The high-performance, minimalist PHP framework for developers who need raw speed and are willing to build their own application layer
 
-> **Note:** This repository contains the core code of the Doppar framework. If you want to build an application using Doppar, visit the main [Doppar repository](https://github.com/doppar/doppar).
+> This repository contains the Doppar framework core. To build an application with Doppar, use the main [Doppar repository](https://github.com/doppar/doppar).
 
 ### 1. Performance & Lightweight Architecture
 - **Minimal overhead**: Core stripped of third-party dependencies → lightning-fast performance with minimal bloat.
