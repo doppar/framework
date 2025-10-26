@@ -621,4 +621,14 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
             parent::__unserialize($data);
         }
     }
+
+    /**
+     * Get the model class name associated to this collection.
+     *
+     * @return ?string
+     */
+    public function getModel(): ?string
+    {
+        return $this->model ?? null;
+    }
 }
