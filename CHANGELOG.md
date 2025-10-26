@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.12 - 2025-10-26
+
+* [Entity Builder] aggregate function query support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/73
+
 ## v2.9.6-beta.11 - 2025-10-25
 
 * [Tests] Add some builder tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/68
