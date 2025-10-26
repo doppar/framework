@@ -2,7 +2,7 @@
 
 namespace Phaseolies\Database\Entity\Query;
 
-trait InteractsWithAggregateFucntion
+trait BuilderAggregateFucntion
 {
     /**
      * Run a SQL aggregate function without eager loading.
@@ -12,7 +12,7 @@ trait InteractsWithAggregateFucntion
      */
     protected function runAggregate(string $expression): float
     {
-        $query = $this->withoutEagerLoad();
+        $query = clone $this;
 
         $query->select(["{$expression} as aggregate"]);
 
@@ -99,7 +99,7 @@ trait InteractsWithAggregateFucntion
      */
     protected function stdDevPhp(string $column): float
     {
-        $query = $this->withoutEagerLoad();
+        $query = clone $this;
 
         $varianceExpression = $this->getVarianceExpression($column);
         $query->select(["{$varianceExpression} as aggregate"]);
@@ -122,7 +122,7 @@ trait InteractsWithAggregateFucntion
      */
     protected function stdDevSql(string $column): float
     {
-        $query = $this->withoutEagerLoad();
+        $query = clone $this;
 
         $stdDevExpression = $this->getStandardDeviation($column);
         $query->select(["{$stdDevExpression} as aggregate"]);

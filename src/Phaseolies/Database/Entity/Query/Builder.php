@@ -8,7 +8,7 @@ use PDO;
 use Phaseolies\Database\Entity\Query\{
     Grammar,
     InteractsWithTimeframe,
-    InteractsWithAggregateFucntion
+    BuilderAggregateFucntion
 };
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Collection;
@@ -17,7 +17,7 @@ class Builder
 {
     use InteractsWithTimeframe;
     use Grammar;
-    use InteractsWithAggregateFucntion;
+    use BuilderAggregateFucntion;
 
     /**
      * Holds the PDO instance for database connectivity.
