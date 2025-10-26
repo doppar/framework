@@ -579,4 +579,46 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         return json_encode($this->toArray(), $options);
     }
+
+    /**
+     * Ensure the model is preserved when the collection is serialized by cache.
+     *
+     * @return array
+     */
+    public function __serialize(): array
+    {
+        $parent = [];
+
+        // If the parent defines __serialize, merge its payload to avoid losing state.
+        if (method_exists(get_parent_class($this) ?: '', '__serialize')) {
+            $parent = parent::__serialize();
+        }
+
+        $payload = [
+            '__ph_model' => $this->model,
+            '__ph_data' => $this->data,
+        ];
+
+        // Merge parent state (if any) with our own
+        return array_merge($parent, $payload);
+    }
+
+    /**
+     * Restore the model and data when the collection is unserialized by cache.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        // Restore our own state
+        $this->model = $data['__ph_model'] ?? $this->model ?? null;
+        $this->data = $data['__ph_data'] ?? $this->data ?? [];
+
+        // If the parent defines __unserialize, pass remaining data to it
+        if (method_exists(get_parent_class($this) ?: '', '__unserialize')) {
+            unset($data['__ph_model'], $data['__ph_data']);
+            parent::__unserialize($data);
+        }
+    }
 }
