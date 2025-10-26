@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.6-beta.13 - 2025-10-26
+
+* [Entity Builder] aggregate trait namespace update by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/74
+* [CacheStore] Fix model serialize by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/75
+
 ## v2.9.6-beta.12 - 2025-10-26
 
 * [Entity Builder] aggregate function query support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/73
