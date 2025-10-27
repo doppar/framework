@@ -1178,88 +1178,38 @@ class Builder
         // First load the primary relation
         $this->loadRelation($collection, $primaryRelation);
 
-        // Then load nested relations for each model's primary relation
-        $models = $collection->all();
+        // Collect all related models from the primary relation
+        $allRelatedModels = [];
+        $relatedModelClass = null;
 
-        foreach ($models as $model) {
+        foreach ($collection->all() as $model) {
             if ($model->relationLoaded($primaryRelation)) {
                 $related = $model->getRelation($primaryRelation);
 
                 if ($related instanceof Collection) {
-                    // If the relation is a collection (linkMany, bindToMany, etc.)
-                    $this->loadNestedRelationsForCollection($related, $nestedPath, $constraint);
+                    foreach ($related->all() as $relatedModel) {
+                        $allRelatedModels[] = $relatedModel;
+                    }
+                    if (!$relatedModelClass && $related->count() > 0) {
+                        $relatedModelClass = get_class($related->first());
+                    }
                 } elseif ($related !== null) {
-                    // If the relation is a single model (linkOne or bindTo)
-                    $this->loadNestedRelationsForModel($related, $nestedPath, $constraint);
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Load nested relations for a collection of models
-     *
-     * @param Collection $collection
-     * @param string $nestedPath
-     * @param callable|null $constraint
-     * @return void
-     */
-    protected function loadNestedRelationsForCollection(Collection $collection, string $nestedPath, ?callable $constraint = null): void
-    {
-        if (str_contains($nestedPath, '.')) {
-            $relations = explode('.', $nestedPath);
-            $primaryRelation = array_shift($relations);
-            $remainingPath = implode('.', $relations);
-
-            $this->loadRelation($collection, $primaryRelation);
-
-            foreach ($collection->all() as $model) {
-                if ($model->relationLoaded($primaryRelation)) {
-                    $related = $model->getRelation($primaryRelation);
-
-                    if ($related instanceof Collection) {
-                        $this->loadNestedRelationsForCollection($related, $remainingPath, $constraint);
-                    } elseif ($related !== null) {
-                        $this->loadNestedRelationsForModel($related, $remainingPath, $constraint);
+                    $allRelatedModels[] = $related;
+                    if (!$relatedModelClass) {
+                        $relatedModelClass = get_class($related);
                     }
                 }
             }
-        } else {
-            $this->loadRelation($collection, $nestedPath, $constraint);
         }
-    }
 
-    /**
-     * Load nested relations for a single model
-     *
-     * @param Model $model
-     * @param string $nestedPath
-     * @param callable|null $constraint
-     * @return void
-     */
-    protected function loadNestedRelationsForModel(Model $model, string $nestedPath, ?callable $constraint = null): void
-    {
-        if (str_contains($nestedPath, '.')) {
-            $relations = explode('.', $nestedPath);
-            $primaryRelation = array_shift($relations);
-            $remainingPath = implode('.', $relations);
+        // If we have related models, load nested relations in bulk
+        if (!empty($allRelatedModels) && $relatedModelClass) {
+            $relatedCollection = new Collection($relatedModelClass, $allRelatedModels);
 
-            // Load the primary relation if not already loaded
-            if (!$model->relationLoaded($primaryRelation)) {
-                $this->loadRelation(new Collection(get_class($model), [$model]), $primaryRelation);
-            }
-
-            $related = $model->getRelation($primaryRelation);
-
-            if ($related instanceof Collection) {
-                $this->loadNestedRelationsForCollection($related, $remainingPath, $constraint);
-            } elseif ($related !== null) {
-                $this->loadNestedRelationsForModel($related, $remainingPath, $constraint);
-            }
-        } else {
-            if (!$model->relationLoaded($nestedPath)) {
-                $this->loadRelation(new Collection(get_class($model), [$model]), $nestedPath, $constraint);
+            if (str_contains($nestedPath, '.')) {
+                $this->loadNestedRelations($relatedCollection, $nestedPath, $constraint);
+            } else {
+                $this->loadRelation($relatedCollection, $nestedPath, $constraint);
             }
         }
     }
