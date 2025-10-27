@@ -1,5 +1,12 @@
 # Release Notes
 
+## v2.9.6-beta.14 - 2025-10-27
+
+* [Readme] Remove badges by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/76
+* README.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/77
+* Fix: N+1 query issues for nested relation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/78
+* [Entity ORM] new method embedCount() to count relational model: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/79
+
 ## v2.9.6-beta.13 - 2025-10-26
 
 * [Entity Builder] aggregate trait namespace update by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/74
