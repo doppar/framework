@@ -1153,6 +1153,13 @@ class Builder
     protected function eagerLoadRelations(Collection $collection): void
     {
         foreach ($this->eagerLoad as $relation => $constraint) {
+            // Check if this is a count relation
+            if (str_starts_with($relation, 'count:')) {
+                $actualRelation = substr($relation, 6);
+                $this->loadRelationCount($collection, $actualRelation, $constraint);
+                continue;
+            }
+
             if (str_contains($relation, '.')) {
                 $this->loadNestedRelations($collection, $relation, $constraint);
             } else {
@@ -1453,6 +1460,150 @@ class Builder
                 $relation,
                 new Collection($relatedModel, $grouped[$key] ?? [])
             );
+        }
+    }
+
+    /**
+     * Add relationship counts to be loaded with the query
+     *
+     * @param string|array $relations Relation name(s) to count
+     * @param callable|null $callback Optional callback to filter the count
+     * @return self
+     */
+    public function embedCount($relations, ?callable $callback = null): self
+    {
+        if (is_string($relations)) {
+            $this->eagerLoad["count:{$relations}"] = $callback;
+            return $this;
+        }
+
+        if (is_array($relations)) {
+            foreach ($relations as $key => $value) {
+                if (is_callable($value)) {
+                    $this->eagerLoad["count:{$key}"] = $value;
+                } else {
+                    $this->eagerLoad["count:{$value}"] = null;
+                }
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Load the count of a relationship for a collection of models
+     *
+     * @param Collection $collection
+     * @param string $relation
+     * @param callable|null $constraint
+     * @return void
+     */
+    protected function loadRelationCount(Collection $collection, string $relation, ?callable $constraint = null): void
+    {
+        $models = $collection->all();
+        $firstModel = $models[0] ?? null;
+
+        if (!$firstModel || !method_exists($firstModel, $relation)) {
+            return;
+        }
+
+        // Initialize the relationship to get metadata
+        $firstModel->$relation();
+        $relationType = $firstModel->getLastRelationType();
+        $relatedModel = $firstModel->getLastRelatedModel();
+        $foreignKey = $firstModel->getLastForeignKey();
+        $localKey = $firstModel->getLastLocalKey();
+
+        // Collect all local keys
+        $localKeys = array_map(fn($model) => $model->{$localKey}, $models);
+
+        if ($relationType === 'bindToMany') {
+            // Handle many-to-many count
+            $this->loadManyToManyCount($collection, $relation, $constraint, $localKeys);
+            return;
+        }
+
+        // Handle one-to-many or one-to-one count
+        $relatedModelInstance = app($relatedModel);
+        $query = $relatedModelInstance->query()
+            ->select([$foreignKey, 'COUNT(*) as aggregate'])
+            ->whereIn($foreignKey, $localKeys)
+            ->groupBy($foreignKey);
+
+        if (is_callable($constraint)) {
+            $constraint($query);
+        }
+
+        $results = $query->get();
+        $counts = [];
+
+        foreach ($results as $result) {
+            $counts[$result->{$foreignKey}] = (int) $result->aggregate;
+        }
+
+        // Set the count on each model
+        $countAttribute = $relation . '_count';
+        foreach ($models as $model) {
+            $key = $model->{$localKey};
+            $model->{$countAttribute} = $counts[$key] ?? 0;
+        }
+    }
+
+    /**
+     * Load many-to-many relationship count
+     *
+     * @param Collection $collection
+     * @param string $relation
+     * @param callable|null $constraint
+     * @param array $localKeys
+     * @return void
+     */
+    protected function loadManyToManyCount(Collection $collection, string $relation, ?callable $constraint, array $localKeys): void
+    {
+        $models = $collection->all();
+        $firstModel = $models[0] ?? null;
+
+        if (!$firstModel) {
+            return;
+        }
+
+        $firstModel->$relation();
+        $relatedModel = $firstModel->getLastRelatedModel();
+        $foreignKey = $firstModel->getLastForeignKey();
+        $relatedKey = $firstModel->getLastRelatedKey();
+        $pivotTable = $firstModel->getLastPivotTable();
+        $localKey = $firstModel->getLastLocalKey();
+
+        $relatedModelInstance = new $relatedModel();
+        $relatedTable = $relatedModelInstance->getTable();
+
+        $query = $relatedModelInstance->query()
+            ->select(["{$pivotTable}.{$foreignKey}", 'COUNT(*) as aggregate'])
+            ->join(
+                $pivotTable,
+                "{$pivotTable}.{$relatedKey}",
+                '=',
+                "{$relatedTable}.{$relatedModelInstance->getKeyName()}"
+            )
+            ->whereIn("{$pivotTable}.{$foreignKey}", $localKeys)
+            ->groupBy("{$pivotTable}.{$foreignKey}");
+
+        if (is_callable($constraint)) {
+            $constraint($query);
+        }
+
+        $results = $query->get();
+        $counts = [];
+
+        foreach ($results as $result) {
+            $counts[$result->{$foreignKey}] = (int) $result->aggregate;
+        }
+
+        // Set the count on each model
+        $countAttribute = $relation . '_count';
+        foreach ($models as $model) {
+            $key = $model->{$localKey};
+            $model->{$countAttribute} = $counts[$key] ?? 0;
         }
     }
 
