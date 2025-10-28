@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.6-beta.18 - 2025-10-28
+
+* [fix] Multilevel relationship search for entity builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/86
+* [Entity ORM] Relationship Unit Test with SQLite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/87
+
 ## v2.9.6-beta.17 - 2025-10-28
 
 * [Entity Builder] nested relationship support for relationship exists method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/85
