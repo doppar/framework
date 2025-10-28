@@ -656,8 +656,6 @@ class Builder
         $this->offset = null;
 
         if (!empty($this->groupBy)) {
-            $groupColumns = implode(', ', $this->groupBy);
-
             $subQuery = clone $this;
             $subQuery->fields = $this->groupBy;
             $subSql = $subQuery->toSql();
@@ -771,23 +769,6 @@ class Builder
         ];
 
         return $this;
-    }
-
-    /**
-     * Properly quote an identifier for SQL.
-     *
-     * @param string $identifier
-     * @return string
-     */
-    protected function quoteIdentifier(string $identifier): string
-    {
-        if (strpos($identifier, '.') !== false) {
-            return implode('.', array_map(
-                fn($part) => "`{$part}`",
-                explode('.', $identifier)
-            ));
-        }
-        return "`{$identifier}`";
     }
 
     /**
