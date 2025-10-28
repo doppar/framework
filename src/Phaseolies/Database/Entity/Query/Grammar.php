@@ -723,4 +723,22 @@ trait Grammar
 
         return $globPattern;
     }
+
+    /**
+     * Quote identifier based on database driver
+     *
+     * @param string $identifier
+     * @return string
+     */
+    public function quoteIdentifier(string $identifier): string
+    {
+        $quoteChar = $this->getDriver() === 'pgsql' ? '"' : '`';
+
+        if (strpos($identifier, '.') !== false) {
+            $parts = explode('.', $identifier);
+            return implode('.', array_map(fn($part) => "{$quoteChar}{$part}{$quoteChar}", $parts));
+        }
+
+        return "{$quoteChar}{$identifier}{$quoteChar}";
+    }
 }

@@ -496,88 +496,14 @@ class Builder
             throw new \BadMethodCallException("Relationship {$relation} does not exist on model " . get_class($model));
         }
 
-        // Initialize the relationship to get metadata
         $relationQuery = $model->$relation();
         $relationType = $model->getLastRelationType();
         $relatedModel = $model->getLastRelatedModel();
 
         if ($relationType === 'bindToMany') {
-            $pivotTable = $model->getLastPivotTable();
-            $foreignKey = $model->getLastForeignKey();
-            $relatedKey = $model->getLastRelatedKey();
-            $localKey = $model->getLastLocalKey();
-
-            $subquery = "SELECT 1 FROM {$pivotTable} 
-                WHERE {$pivotTable}.{$foreignKey} = {$this->table}.{$localKey}";
-
-            if ($callback) {
-                $relatedTable = (new $relatedModel())->getTable();
-                $subQueryBuilder = $relatedModel::query();
-                $callback($subQueryBuilder);
-
-                // Add conditions to the subquery
-                foreach ($subQueryBuilder->conditions as $condition) {
-                    if (isset($condition['type'])) {
-                        continue;
-                    }
-
-                    $column = $condition[1];
-                    $operator = $condition[2];
-                    $value = $condition[3];
-
-                    // Handle different operator types
-                    if ($value === null) {
-                        if ($operator === 'IS NULL') {
-                            $subquery .= " AND {$column} IS NULL";
-                        } elseif ($operator === 'IS NOT NULL') {
-                            $subquery .= " AND {$column} IS NOT NULL";
-                        }
-                    } elseif ($operator === 'IN') {
-                        $escapedValues = array_map([$this->pdo, 'quote'], $value);
-                        $subquery .= " AND {$relatedTable}.{$column} IN (" . implode(',', $escapedValues) . ")";
-                    } else {
-                        $escapedValue = $this->pdo->quote($value);
-                        $subquery .= " AND {$relatedTable}.{$column} {$operator} {$escapedValue}";
-                    }
-                }
-            }
+            $subquery = $this->buildManyToManySubquery($model, $relatedModel, $callback);
         } else {
-            // Handle one-to-one and one-to-many relationships
-            $foreignKey = $model->getLastForeignKey();
-            $localKey = $model->getLastLocalKey();
-            $relatedTable = (new $relatedModel())->getTable();
-
-            $subquery = "SELECT 1 FROM {$relatedTable} 
-                WHERE {$relatedTable}.{$foreignKey} = {$this->table}.{$localKey}";
-
-            if ($callback) {
-                $subQueryBuilder = $relatedModel::query();
-                $callback($subQueryBuilder);
-
-                foreach ($subQueryBuilder->conditions as $condition) {
-                    if (isset($condition['type'])) {
-                        continue;
-                    }
-
-                    $column = $condition[1];
-                    $operator = $condition[2];
-                    $value = $condition[3];
-
-                    if ($value === null) {
-                        if ($operator === 'IS NULL') {
-                            $subquery .= " AND {$column} IS NULL";
-                        } elseif ($operator === 'IS NOT NULL') {
-                            $subquery .= " AND {$column} IS NOT NULL";
-                        }
-                    } elseif ($operator === 'IN') {
-                        $escapedValues = array_map([$this->pdo, 'quote'], $value);
-                        $subquery .= " AND {$column} IN (" . implode(',', $escapedValues) . ")";
-                    } else {
-                        $escapedValue = $this->pdo->quote($value);
-                        $subquery .= " AND {$column} {$operator} {$escapedValue}";
-                    }
-                }
-            }
+            $subquery = $this->buildDirectRelationshipSubquery($model, $relatedModel, $callback);
         }
 
         $subquery .= ' LIMIT 1';
@@ -590,6 +516,176 @@ class Builder
         ];
 
         return $this;
+    }
+
+    /**
+     * Build subquery for many-to-many relationships
+     *
+     * @param Model $model
+     * @param mixed $relatedModel
+     * @param callable|null $callback
+     * @return string
+     */
+    private function buildManyToManySubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    {
+        $pivotTable = $model->getLastPivotTable();
+        $foreignKey = $model->getLastForeignKey();
+        $relatedKey = $model->getLastRelatedKey();
+        $localKey = $model->getLastLocalKey();
+        $relatedTable = (new $relatedModel())->getTable();
+        $relatedPrimaryKey = (new $relatedModel())->getKeyName();
+
+        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
+
+        // Build subquery with JOIN to access related model columns
+        $subquery = "SELECT 1 FROM {$quote($pivotTable)}";
+
+        // Add JOIN to related table if we have a callback
+        if ($callback) {
+            $subquery .= " INNER JOIN {$quote($relatedTable)} ON {$quote($pivotTable)}.{$quote($relatedKey)} = {$quote($relatedTable)}.{$quote($relatedPrimaryKey)}";
+        }
+
+        $subquery .= " WHERE {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
+
+        if ($callback) {
+            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+        }
+
+        return $subquery;
+    }
+
+    /**
+     * Build subquery for one-to-one and one-to-many relationships
+     *
+     * @param Model $model
+     * @param mixed $relatedModel
+     * @param callable|null $callback
+     * @return string
+     */
+    private function buildDirectRelationshipSubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    {
+        $foreignKey = $model->getLastForeignKey();
+        $localKey = $model->getLastLocalKey();
+        $relatedTable = (new $relatedModel())->getTable();
+
+        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
+
+        $subquery = "SELECT 1 FROM {$quote($relatedTable)}
+            WHERE {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
+
+        if ($callback) {
+            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+        }
+
+        return $subquery;
+    }
+
+    /**
+     * Add callback conditions to the subquery
+     *
+     * @param string $subquery
+     * @param mixed $relatedModel
+     * @param callable $callback
+     * @param string $relatedTable
+     * @return string
+     */
+    private function addCallbackConditions(string $subquery, mixed $relatedModel, callable $callback, string $relatedTable): string
+    {
+        $subQueryBuilder = $relatedModel::query();
+        $callback($subQueryBuilder);
+
+        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
+        $escapeValue = fn($value) => $this->escapeValue($value);
+
+        foreach ($subQueryBuilder->conditions as $condition) {
+            if (isset($condition['type'])) {
+                continue;
+            }
+
+            $column = $condition[1];
+            $operator = $condition[2];
+            $value = $condition[3];
+
+            // Ensure column is properly qualified with table name if not already
+            if (strpos($column, '.') === false) {
+                $column = "{$quote($relatedTable)}.{$quote($column)}";
+            } else {
+                // Quote qualified column names
+                $column = $quote($column);
+            }
+
+            $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
+        }
+
+        return $subquery;
+    }
+
+    /**
+     * Build individual condition clause
+     *
+     * @param string $column
+     * @param string $operator
+     * @param mixed $value
+     * @param callable $escapeValue
+     * @return string
+     */
+    private function buildConditionClause(string $column, string $operator, $value, callable $escapeValue): string
+    {
+        if ($value === null) {
+            if ($operator === '=') {
+                return " AND {$column} IS NULL";
+            } elseif ($operator === '!=') {
+                return " AND {$column} IS NOT NULL";
+            }
+        } elseif ($operator === 'IN') {
+            if (empty($value)) {
+                // Empty IN clause is always false
+                return " AND 1=0";
+            } else {
+                $escapedValues = $escapeValue($value);
+                return " AND {$column} IN {$escapedValues}";
+            }
+        } elseif ($operator === 'LIKE' || $operator === 'NOT LIKE') {
+            $escapedValue = $escapeValue($value);
+            return " AND {$column} {$operator} {$escapedValue}";
+        } else {
+            $escapedValue = $escapeValue($value);
+            return " AND {$column} {$operator} {$escapedValue}";
+        }
+
+        return '';
+    }
+
+    /**
+     * Properly escape values based on type
+     *
+     * @param mixed $value
+     * @return string
+     */
+    private function escapeValue($value): string
+    {
+        if ($value === null) {
+            return 'NULL';
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'TRUE' : 'FALSE';
+        }
+
+        if (is_numeric($value)) {
+            return $value;
+        }
+
+        // For arrays, handle each element
+        if (is_array($value)) {
+            $escapedValues = array_map(function ($v) {
+                return $this->escapeValue($v);
+            }, $value);
+            return '(' . implode(', ', $escapedValues) . ')';
+        }
+
+        // For strings, use proper quoting
+        return $this->pdo->quote($value);
     }
 
     /**
@@ -1795,8 +1891,6 @@ class Builder
         $query->offset = null;
 
         if (!empty($query->groupBy)) {
-            $groupColumns = implode(', ', $query->groupBy);
-
             $subQuery = clone $query;
             $subQuery->fields = $query->groupBy;
 
@@ -1910,23 +2004,6 @@ class Builder
         ];
 
         return $this;
-    }
-
-    /**
-     * Properly quote an identifier for SQL.
-     *
-     * @param string $identifier
-     * @return string
-     */
-    protected function quoteIdentifier(string $identifier): string
-    {
-        if (strpos($identifier, '.') !== false) {
-            return implode('.', array_map(
-                fn($part) => "`{$part}`",
-                explode('.', $identifier)
-            ));
-        }
-        return "`{$identifier}`";
     }
 
     /**
@@ -2725,10 +2802,10 @@ class Builder
     /**
      * Filter records that have at least one related record matching the given condition
      *
-     * @param string $relation The relationship name to check
-     * @param string $column The related model's column to compare
-     * @param mixed $operator Comparison operator or value if only 3 arguments passed
-     * @param mixed $value The value to compare against
+     * @param string $relation
+     * @param string $column
+     * @param mixed $operator
+     * @param mixed $value
      * @return self
      */
     public function whereLinked($relation, $column, $operator = null, $value = null): self
