@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.9.6-beta.15 - 2025-10-28
+
+* whereLinked() driver based support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/80
+* remove case-sensitive search support from whereLike by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/81
+
 ## v2.9.6-beta.14 - 2025-10-27
 
 * [Readme] Remove badges by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/76
