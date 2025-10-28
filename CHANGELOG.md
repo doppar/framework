@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.9.6-beta.17 - 2025-10-28
+
+* [Entity Builder] nested relationship support for relationship exists method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/85
+
 ## v2.9.6-beta.16 - 2025-10-28
 
 * Entity builder count quote method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/82
