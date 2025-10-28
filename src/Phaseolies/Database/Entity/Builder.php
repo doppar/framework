@@ -13,7 +13,8 @@ use Phaseolies\Database\Entity\Query\{
     InteractsWithBigDataProcessing,
     InteractsWithModelQueryProcessing,
     InteractsWithAggregateFucntion,
-    CollectsRelations
+    CollectsRelations,
+    InteractsWithNestedRelations
 };
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
@@ -32,6 +33,7 @@ class Builder
     use Grammar;
     use InteractsWithAggregateFucntion;
     use CollectsRelations;
+    use InteractsWithNestedRelations;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -492,6 +494,10 @@ class Builder
      */
     private function handleRelationshipExists(string $relation, ?callable $callback, string $boolean = 'AND', string $type = 'EXISTS'): self
     {
+        if (str_contains($relation, '.')) {
+            return $this->handleNestedRelationshipExists($relation, $callback, $boolean, $type);
+        }
+
         $model = $this->getModel();
 
         if (!method_exists($model, $relation)) {
@@ -2821,132 +2827,6 @@ class Builder
         return $this->present($relation, function ($query) use ($column, $operator, $value) {
             $query->where($column, $operator, $value);
         });
-    }
-
-    /**
-     * Handle nested whereLinked (e.g., 'comments.reply')
-     *
-     * @param string $nestedRelation
-     * @param string $column
-     * @param mixed $operator
-     * @param mixed $value
-     * @return self
-     */
-    protected function whereLinkedNested(string $nestedRelation, string $column, $operator, $value): self
-    {
-        $relations = explode('.', $nestedRelation);
-        $model = $this->getModel();
-
-        // Nested EXISTS subquery
-        $subquery = $this->buildNestedRelationshipSubquery($model, $relations, $column, $operator, $value);
-
-        $this->conditions[] = [
-            'type' => 'EXISTS',
-            'subquery' => $subquery,
-            'bindings' => [],
-            'boolean' => 'AND'
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Build a nested relationship subquery for whereLinked
-     *
-     * @param Model $model
-     * @param array $relations
-     * @param string $column
-     * @param mixed $operator
-     * @param mixed $value
-     * @return string
-     */
-    protected function buildNestedRelationshipSubquery(Model $model, array $relations, string $column, $operator, $value): string
-    {
-        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
-        $escapeValue = fn($val) => $this->escapeValue($val);
-
-        $currentModel = $model;
-        $currentTable = $this->table;
-        $joins = [];
-        $lastForeignKey = null;
-        $lastLocalKey = null;
-
-        // Process each relation in the chain
-        foreach ($relations as $index => $relation) {
-            if (!method_exists($currentModel, $relation)) {
-                throw new \BadMethodCallException("Relationship {$relation} does not exist on model " . get_class($currentModel));
-            }
-
-            // Initialize the relationship to get metadata
-            $currentModel->$relation();
-            $relationType = $currentModel->getLastRelationType();
-            $relatedModel = $currentModel->getLastRelatedModel();
-            $foreignKey = $currentModel->getLastForeignKey();
-            $localKey = $currentModel->getLastLocalKey();
-
-            $relatedModelInstance = new $relatedModel();
-            $relatedTable = $relatedModelInstance->getTable();
-            $relatedPrimaryKey = $relatedModelInstance->getKeyName();
-
-            if ($relationType === 'bindToMany') {
-                // Many-to-many relationship
-                $pivotTable = $currentModel->getLastPivotTable();
-                $relatedKey = $currentModel->getLastRelatedKey();
-
-                if ($index === 0) {
-                    // First relation: link from main table to pivot
-                    $joins[] = "INNER JOIN {$quote($pivotTable)} ON {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($localKey)}";
-                } else {
-                    // Subsequent relation: link from previous table to pivot
-                    $joins[] = "INNER JOIN {$quote($pivotTable)} ON {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($lastLocalKey)}";
-                }
-
-                // Link from pivot to related table
-                $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($relatedPrimaryKey)} = {$quote($pivotTable)}.{$quote($relatedKey)}";
-            } else {
-                // One-to-one or one-to-many relationship
-                if ($index === 0) {
-                    // First relation: link from main table
-                    $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($localKey)}";
-                } else {
-                    // Subsequent relation: link from previous table
-                    $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($lastLocalKey)}";
-                }
-            }
-
-            // Update for next iteration
-            $currentModel = $relatedModelInstance;
-            $currentTable = $relatedTable;
-            $lastForeignKey = $foreignKey;
-            $lastLocalKey = $relatedPrimaryKey;
-        }
-
-        // Build the final subquery
-        $subquery = "SELECT 1 FROM {$quote($this->table)} AS {$quote($this->table . '_sub')}";
-
-        // Add all the joins
-        $subquery .= ' ' . implode(' ', $joins);
-
-        // Add the WHERE clause linking back to the main table
-        if (!empty($relations)) {
-            $firstRelation = $relations[0];
-            $model->$firstRelation();
-            $firstLocalKey = $model->getLastLocalKey();
-
-            $subquery .= " WHERE {$quote($this->table . '_sub')}.{$quote($firstLocalKey)} = {$quote($this->table)}.{$quote($firstLocalKey)}";
-        }
-
-        // Add the condition on the final table
-        $finalTable = $currentTable;
-        $columnQualified = strpos($column, '.') === false
-            ? "{$quote($finalTable)}.{$quote($column)}"
-            : $quote($column);
-
-        $subquery .= $this->buildConditionClause($columnQualified, $operator, $value, $escapeValue);
-
-        $subquery .= ' LIMIT 1';
-
-        return $subquery;
     }
 
     /**
