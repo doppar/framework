@@ -2937,7 +2937,10 @@ class Builder
         $searchQuery = function (Builder $query) use ($attributes, $searchTerm) {
             foreach ($attributes as $attribute) {
                 if (str_contains($attribute, '.')) {
-                    [$relation, $column] = explode('.', $attribute, 2);
+                    $parts = explode('.', $attribute);
+                    $column = array_pop($parts);
+                    $relation = implode('.', $parts);
+
                     $query->orPresent(
                         $relation,
                         fn(Builder $q) => $q->whereLike($column, $searchTerm)
