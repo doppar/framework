@@ -162,7 +162,7 @@ class Builder
     /**
      * Set the fields to select.
      *
-     * @param array|string ...$fields Field(s) to select (can be array or multiple strings)
+     * @param array|string ...$fields
      * @return self
      */
     public function select(array|string ...$fields): self
@@ -184,9 +184,9 @@ class Builder
     /**
      * Add a WHERE condition.
      *
-     * @param string|callable $field Field name or callback for nested conditions
-     * @param mixed $operator Operator or value (if only 2 arguments passed)
-     * @param mixed $value Value to compare (optional)
+     * @param string|callable $field
+     * @param mixed $operator
+     * @param mixed $value
      * @return self
      */
     public function where($field, $operator = null, $value = null): self
@@ -216,9 +216,9 @@ class Builder
     /**
      * Add an OR WHERE condition.
      *
-     * @param string|callable $field Field name or callback for nested conditions
-     * @param mixed $operator Operator or value (if only 2 arguments passed)
-     * @param mixed $value Value to compare (optional)
+     * @param string|callable $field
+     * @param mixed $operator
+     * @param mixed $value
      * @return self
      */
     public function orWhere($field, $operator = null, $value = null): self
@@ -696,8 +696,8 @@ class Builder
      * (0 and false will not trigger the callback)
      *
      * @param mixed $value
-     * @param callable $callback The callback that adds query constraints
-     * @param callable|null $default Optional default callback if condition is false
+     * @param callable $callback
+     * @param callable|null $default
      * @return self
      */
     public function if($value, callable $callback, ?callable $default = null): self
@@ -717,7 +717,7 @@ class Builder
      * Check if a value should be considered as having a value
      *
      * @param mixed $value
-     * @return bool false for: null, empty string, false, 0, empty array
+     * @return bool
      */
     protected function hasValue($value): bool
     {
@@ -792,8 +792,8 @@ class Builder
      * Filter records that have at least one related record in the given relationship
      * with optional conditions
      *
-     * @param string $relation The relationship name
-     * @param callable|null $callback Optional conditions for the related model
+     * @param string $relation
+     * @param callable|null $callback
      * @return self
      */
     public function ifExists(string $relation, ?callable $callback = null): self
@@ -805,8 +805,8 @@ class Builder
      * Filter records that don't have any related records in the given relationship
      * with optional conditions
      *
-     * @param string $relation The relationship name
-     * @param callable|null $callback Optional conditions for the related model
+     * @param string $relation
+     * @param callable|null $callback
      * @return self
      */
     public function ifNotExists(string $relation, ?callable $callback = null): self
@@ -817,8 +817,8 @@ class Builder
     /**
      * Insert multiple records into the database in a single query
      *
-     * @param array $rows Array of arrays containing attribute sets
-     * @return int Number of inserted rows
+     * @param array $rows
+     * @return int
      * @throws PDOException
      */
     public function insertMany(array $rows, int $chunkSize = 100): int
@@ -910,7 +910,7 @@ class Builder
     /**
      * Execute the query and return a collection of model instances.
      *
-     * @return Collection A collection of model instances.
+     * @return Collection
      */
     public function get(): Collection
     {
@@ -975,9 +975,9 @@ class Builder
     /**
      * Attach models to the parent (many-to-many relationship)
      *
-     * @param mixed $ids Single ID or array of IDs to attach
-     * @param array $pivotData Additional pivot table data
-     * @return int Number of affected rows
+     * @param mixed $ids
+     * @param array $pivotData
+     * @return int
      */
     public function link($ids, array $pivotData = []): int
     {
@@ -991,7 +991,7 @@ class Builder
         $parentKey = $this->relationInfo['parentKey'] ?? null;
 
         if (empty($pivotTable) || empty($foreignKey) || empty($relatedKey)) {
-            throw new \RuntimeException("Many-to-many relationship metadata is incomplete");
+            throw new \RuntimeException("bindToMany() relationship metadata is incomplete");
         }
 
         if (empty($parentKey)) {
@@ -1043,8 +1043,8 @@ class Builder
     /**
      * Detach models from the parent (many-to-many relationship)
      *
-     * @param mixed $ids Single ID or array of IDs to detach (empty for all)
-     * @return int Number of affected rows
+     * @param mixed $ids
+     * @return int
      */
     public function unlink($ids = null): int
     {
@@ -1347,8 +1347,8 @@ class Builder
     /**
      * Delete records by their primary keys.
      *
-     * @param mixed ...$ids Single ID or array of IDs to delete
-     * @return int Number of deleted records
+     * @param mixed ...$ids
+     * @return int
      * @throws PDOException
      */
     public function purge(...$ids): int
@@ -1535,8 +1535,8 @@ class Builder
     /**
      * Add relationship counts to be loaded with the query
      *
-     * @param string|array $relations Relation name(s) to count
-     * @param callable|null $callback Optional callback to filter the count
+     * @param string|array $relations
+     * @param callable|null $callback
      * @return self
      */
     public function embedCount($relations, ?callable $callback = null): self
@@ -1729,6 +1729,7 @@ class Builder
 
         $placeholders = implode(',', array_fill(0, count($values), '?'));
         $this->conditions[] = ['AND', $field, 'IN', $values, "($placeholders)"];
+
         return $this;
     }
 
@@ -1748,6 +1749,7 @@ class Builder
 
         $placeholders = implode(',', array_fill(0, count($values), '?'));
         $this->conditions[] = ['OR', $field, 'IN', $values, "($placeholders)"];
+
         return $this;
     }
 
@@ -1875,7 +1877,7 @@ class Builder
     /**
      * Get the count of rows matching the current query.
      *
-     * @param string $column The column to count (defaults to '*')
+     * @param string $column
      * @return int
      * @throws PDOException
      */
@@ -1916,8 +1918,8 @@ class Builder
     /**
      * Add a raw select expression to the query.
      *
-     * @param string $expression The raw SQL expression
-     * @param array $bindings Optional bindings for the expression
+     * @param string $expression
+     * @param array $bindings
      * @return self
      */
     public function selectRaw(string $expression, array $bindings = []): self
@@ -1946,8 +1948,8 @@ class Builder
     /**
      * Add a raw GROUP BY clause to the query.
      *
-     * @param string $sql The raw GROUP BY expression
-     * @param array $bindings Optional bindings for parameters
+     * @param string $sql
+     * @param array $bindings
      * @return self
      */
     public function groupByRaw(string $sql, array $bindings = []): self
@@ -1968,8 +1970,8 @@ class Builder
     /**
      * Add a raw ORDER BY clause to the query.
      *
-     * @param string $sql The raw ORDER BY expression
-     * @param array $bindings Optional bindings for parameters
+     * @param string $sql
+     * @param array $bindings
      * @return self
      */
     public function orderByRaw(string $sql, array $bindings = []): self
@@ -1986,9 +1988,9 @@ class Builder
     /**
      * Add a raw WHERE clause to the query with optional bindings.
      *
-     * @param string $sql The raw SQL WHERE clause
-     * @param array $bindings Optional bindings for parameters
-     * @param string $boolean The boolean operator (AND/OR)
+     * @param string $sql
+     * @param array $bindings
+     * @param string $boolean
      * @return self
      */
     public function whereRaw(string $sql, array $bindings = [], string $boolean = 'AND'): self
@@ -2047,8 +2049,8 @@ class Builder
     /**
      * Paginate the query results.
      *
-     * @param int $perPage Number of items per page.
-     * @param int $page Current page number.
+     * @param int $perPage
+     * @param int $page
      * @return array
      */
     public function paginate(?int $perPage = null): array
@@ -2197,7 +2199,7 @@ class Builder
      * Insert a new record into the database.
      *
      * @param array $attributes
-     * @return int|false The ID of the inserted record or false on failure.
+     * @return int|false
      */
     public function insert(array $attributes)
     {
@@ -2221,11 +2223,11 @@ class Builder
     /**
      * Insert new records or update existing ones (upsert).
      *
-     * @param array $values Array of records to insert/update
-     * @param array|string $uniqueBy Column(s) that uniquely identify records
-     * @param array|null $updateColumns Columns to update if record exists (null means update all)
-     * @param bool $ignoreErrors Whether to continue on error (like duplicate keys)
-     * @return int Number of affected rows
+     * @param array $values
+     * @param array|string $uniqueBy
+     * @param array|null $updateColumns
+     * @param bool $ignoreErrors
+     * @return int
      * @throws PDOException
      */
     public function upsert(array $values, array|string $uniqueBy, ?array $updateColumns = null, bool $ignoreErrors = false): int
@@ -2413,8 +2415,8 @@ class Builder
     /**
      * Delete records from the database.
      *
-     * @return bool Returns true if the delete operation was successful, false otherwise.
-     * @throws PDOException If a database error occurs.
+     * @return bool
+     * @throws PDOException
      */
     public function delete(): bool
     {
@@ -2444,8 +2446,8 @@ class Builder
     /**
      * Execute a raw SQL query and return the results as model instances.
      *
-     * @param string $sql The raw SQL query to execute
-     * @param array $bindings Optional parameter bindings for prepared statements
+     * @param string $sql
+     * @param array $bindings
      * @return Collection
      * @throws PDOException
      */
@@ -2499,8 +2501,8 @@ class Builder
     /**
      * Retrieve distinct values for a column
      *
-     * @param string $column The column to get distinct values from
-     * @return Collection Collection of distinct values
+     * @param string $column
+     * @return Collection
      */
     public function distinct(string $column): Collection
     {
@@ -2545,7 +2547,7 @@ class Builder
      * Retrieve the grouped concatenation of values
      *
      * @param string $column
-     * @param string $separator Defaults to ','
+     * @param string $separator
      * @return string
      */
     public function groupConcat(string $column, string $separator = ','): string
@@ -2561,10 +2563,10 @@ class Builder
     /**
      * Increment a column's value by a given amount
      *
-     * @param string $column The column to increment
-     * @param int $amount Amount to increment by (default 1)
-     * @param array $extra Additional columns to update
-     * @return int Number of affected rows
+     * @param string $column
+     * @param int $amount
+     * @param array $extra
+     * @return int
      */
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
@@ -2574,10 +2576,10 @@ class Builder
     /**
      * Decrement a column's value by a given amount
      *
-     * @param string $column The column to decrement
-     * @param int $amount Amount to decrement by (default 1)
-     * @param array $extra Additional columns to update
-     * @return int Number of affected rows
+     * @param string $column
+     * @param int $amount
+     * @param array $extra
+     * @return int
      */
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {
@@ -2704,11 +2706,11 @@ class Builder
     /**
      * Helper method to handle both increment and decrement operations
      *
-     * @param string $column Column to modify
-     * @param int $amount Amount to change
-     * @param string $operator + or -
-     * @param array $extra Additional columns to update
-     * @return int Number of affected rows
+     * @param string $column
+     * @param int $amount
+     * @param string $operator
+     * @param array $extra
+     * @return int
      */
     protected function updateColumn(string $column, int $amount, string $operator, array $extra = []): int
     {
@@ -2778,7 +2780,7 @@ class Builder
     /**
      * Exclude columns from the select query
      *
-     * @param string|array ...$columns Columns to exclude (can be array or multiple strings)
+     * @param string|array ...$columns
      * @return self
      */
     public function omit(string|array ...$columns): self
