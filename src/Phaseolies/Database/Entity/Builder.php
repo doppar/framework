@@ -492,6 +492,10 @@ class Builder
      */
     private function handleRelationshipExists(string $relation, ?callable $callback, string $boolean = 'AND', string $type = 'EXISTS'): self
     {
+        if (str_contains($relation, '.')) {
+            return $this->handleNestedRelationshipExists($relation, $callback, $boolean, $type);
+        }
+
         $model = $this->getModel();
 
         if (!method_exists($model, $relation)) {
@@ -518,6 +522,145 @@ class Builder
         ];
 
         return $this;
+    }
+
+    /**
+     * Handle nested relationship exists checks (e.g., 'comments.reply')
+     *
+     * @param string $nestedRelation
+     * @param callable|null $callback
+     * @param string $boolean
+     * @param string $type
+     * @return self
+     */
+    private function handleNestedRelationshipExists(string $nestedRelation, ?callable $callback, string $boolean, string $type): self
+    {
+        $relations = explode('.', $nestedRelation);
+        $model = $this->getModel();
+
+        $subquery = $this->buildNestedRelationshipExistsSubquery($model, $relations, $callback);
+        $subquery .= ' LIMIT 1';
+
+        $this->conditions[] = [
+            'type' => $type,
+            'subquery' => $subquery,
+            'bindings' => [],
+            'boolean' => $boolean
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Build a nested relationship EXISTS subquery
+     *
+     * @param Model $model
+     * @param array $relations
+     * @param callable|null $callback
+     * @return string
+     */
+    private function buildNestedRelationshipExistsSubquery(Model $model, array $relations, ?callable $callback): string
+    {
+        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
+        $escapeValue = fn($val) => $this->escapeValue($val);
+
+        $subqueryParts = [];
+        $currentModel = $model;
+        $previousTable = $this->table;
+        $previousKey = null;
+
+        // Build each relationship join
+        foreach ($relations as $index => $relation) {
+            if (!method_exists($currentModel, $relation)) {
+                throw new \BadMethodCallException("Relationship {$relation} does not exist on model " . get_class($currentModel));
+            }
+
+            $currentModel->$relation();
+            $relationType = $currentModel->getLastRelationType();
+            $relatedModel = $currentModel->getLastRelatedModel();
+            $foreignKey = $currentModel->getLastForeignKey();
+            $localKey = $currentModel->getLastLocalKey();
+
+            $relatedModelInstance = new $relatedModel();
+            $relatedTable = $relatedModelInstance->getTable();
+            $relatedPrimaryKey = $relatedModelInstance->getKeyName();
+
+            if ($index === 0) {
+                // First relationship - connect to outer query table
+                if ($relationType === 'bindToMany') {
+                    $pivotTable = $currentModel->getLastPivotTable();
+                    $relatedKey = $currentModel->getLastRelatedKey();
+
+                    $subqueryParts['from'] = $quote($pivotTable);
+                    $subqueryParts['joins'][] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($relatedPrimaryKey)} = {$quote($pivotTable)}.{$quote($relatedKey)}";
+                    $subqueryParts['where'] = "{$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
+
+                    $previousTable = $relatedTable;
+                    $previousKey = $relatedPrimaryKey;
+                } else {
+                    $subqueryParts['from'] = $quote($relatedTable);
+                    $subqueryParts['where'] = "{$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
+
+                    $previousTable = $relatedTable;
+                    $previousKey = $relatedPrimaryKey;
+                }
+            } else {
+                // Subsequent relationships - chain from previous
+                if ($relationType === 'bindToMany') {
+                    $pivotTable = $currentModel->getLastPivotTable();
+                    $relatedKey = $currentModel->getLastRelatedKey();
+
+                    $subqueryParts['joins'][] = "INNER JOIN {$quote($pivotTable)} ON {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($previousTable)}.{$quote($previousKey)}";
+                    $subqueryParts['joins'][] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($relatedPrimaryKey)} = {$quote($pivotTable)}.{$quote($relatedKey)}";
+
+                    $previousTable = $relatedTable;
+                    $previousKey = $relatedPrimaryKey;
+                } else {
+                    $subqueryParts['joins'][] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($previousTable)}.{$quote($previousKey)}";
+
+                    $previousTable = $relatedTable;
+                    $previousKey = $relatedPrimaryKey;
+                }
+            }
+
+            $currentModel = $relatedModelInstance;
+        }
+
+        // Build the complete subquery
+        $subquery = "SELECT 1 FROM {$subqueryParts['from']}";
+
+        if (!empty($subqueryParts['joins'])) {
+            $subquery .= ' ' . implode(' ', $subqueryParts['joins']);
+        }
+
+        $subquery .= " WHERE {$subqueryParts['where']}";
+
+        // Apply callback conditions on the final table
+        if ($callback && $previousTable) {
+            $subQueryBuilder = $currentModel->query();
+            $callback($subQueryBuilder);
+
+            foreach ($subQueryBuilder->conditions as $condition) {
+                if (isset($condition['type'])) {
+                    continue;
+                }
+
+                $column = $condition[1];
+                $operator = $condition[2];
+                $value = $condition[3];
+
+                // Qualify column with table name
+                if (strpos($column, '.') === false) {
+                    $column = "{$quote($previousTable)}.{$quote($column)}";
+                } else {
+                    $column = $quote($column);
+                }
+
+                $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
+            }
+        }
+
+        return $subquery;
     }
 
     /**
