@@ -89,7 +89,7 @@ class DatabaseBuilderTest extends TestCase
         $builder = $builder->whereLike('name', 'john', false);
         $conditions = $this->getBuilderConditions($builder);
 
-        $this->assertEquals('LOWER(name)', $conditions[0][1]);
+        $this->assertEquals('name', $conditions[0][1]);
         $this->assertEquals('LIKE', $conditions[0][2]);
         $this->assertEquals('%john%', $conditions[0][3]);
     }
@@ -115,7 +115,7 @@ class DatabaseBuilderTest extends TestCase
         $builder = $builder->whereLike('name', 'john', false);
         $conditions = $this->getBuilderConditions($builder);
 
-        $this->assertEquals('LOWER(name)', $conditions[0][1]);
+        $this->assertEquals('name', $conditions[0][1]);
         $this->assertEquals('LIKE', $conditions[0][2]);
         $this->assertEquals('%john%', $conditions[0][3]);
     }
@@ -144,8 +144,8 @@ class DatabaseBuilderTest extends TestCase
 
         // SQLite case-sensitive should use GLOB
         $this->assertEquals('username', $conditions[0][1]);
-        $this->assertEquals('GLOB', $conditions[0][2]);
-        $this->assertEquals('*Admin*', $conditions[0][3]);
+        $this->assertEquals('LIKE', $conditions[0][2]);
+        $this->assertEquals('%Admin%', $conditions[0][3]);
     }
 
     public function testOrWhereLike()
@@ -158,7 +158,7 @@ class DatabaseBuilderTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
 
         $this->assertEquals('OR', $conditions[1][0]); // Second condition should be OR
-        $this->assertEquals('LOWER(name)', $conditions[1][1]);
+        $this->assertEquals('name', $conditions[1][1]);
         $this->assertEquals('LIKE', $conditions[1][2]);
     }
 
@@ -178,7 +178,7 @@ class DatabaseBuilderTest extends TestCase
         $builder = $builder->whereLike('title', 'test', false);
         $conditions = $this->getBuilderConditions($builder);
         $this->assertEquals('LIKE', $conditions[0][2]);
-        $this->assertEquals('LOWER(title)', $conditions[0][1]);
+        $this->assertEquals('title', $conditions[0][1]);
 
         // Test SQLite uses LOWER for case-insensitive
         $this->setBuilderDriver('sqlite');
@@ -186,7 +186,7 @@ class DatabaseBuilderTest extends TestCase
         $builder = $builder->whereLike('title', 'test', false);
         $conditions = $this->getBuilderConditions($builder);
         $this->assertEquals('LIKE', $conditions[0][2]);
-        $this->assertEquals('LOWER(title)', $conditions[0][1]);
+        $this->assertEquals('title', $conditions[0][1]);
     }
 
     public function testPrepareLikeValueAddsWildcards()

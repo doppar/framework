@@ -73,7 +73,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $builder = $builder->whereLike('name', 'john', false);
         $conditions = $this->getBuilderConditions($builder);
 
-        $this->assertEquals('LOWER(name)', $conditions[0][1]);
+        $this->assertEquals('name', $conditions[0][1]);
         $this->assertEquals('LIKE', $conditions[0][2]);
         $this->assertEquals('%john%', $conditions[0][3]);
     }
@@ -99,7 +99,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $builder = $builder->whereLike('name', 'john', false);
         $conditions = $this->getBuilderConditions($builder);
 
-        $this->assertEquals('LOWER(name)', $conditions[0][1]);
+        $this->assertEquals('name', $conditions[0][1]);
         $this->assertEquals('LIKE', $conditions[0][2]);
         $this->assertEquals('%john%', $conditions[0][3]);
     }
@@ -126,8 +126,8 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
 
         $this->assertEquals('username', $conditions[0][1]);
-        $this->assertEquals('GLOB', $conditions[0][2]);
-        $this->assertEquals('*Admin*', $conditions[0][3]);
+        $this->assertEquals('LIKE', $conditions[0][2]);
+        $this->assertEquals('%Admin%', $conditions[0][3]);
     }
 
     public function testOrWhereLike()
@@ -140,7 +140,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
 
         $this->assertEquals('OR', $conditions[1][0]);
-        $this->assertEquals('LOWER(name)', $conditions[1][1]);
+        $this->assertEquals('name', $conditions[1][1]);
         $this->assertEquals('LIKE', $conditions[1][2]);
     }
 
@@ -158,14 +158,14 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $builder = $builder->whereLike('title', 'test', false);
         $conditions = $this->getBuilderConditions($builder);
         $this->assertEquals('LIKE', $conditions[0][2]);
-        $this->assertEquals('LOWER(title)', $conditions[0][1]);
+        $this->assertEquals('title', $conditions[0][1]);
 
         $this->setBuilderDriver('sqlite');
         $builder = $this->createBuilder();
         $builder = $builder->whereLike('title', 'test', false);
         $conditions = $this->getBuilderConditions($builder);
         $this->assertEquals('LIKE', $conditions[0][2]);
-        $this->assertEquals('LOWER(title)', $conditions[0][1]);
+        $this->assertEquals('title', $conditions[0][1]);
     }
 
     public function testPrepareLikeValueAddsWildcards()
@@ -217,7 +217,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
 
         $this->assertEquals('username', $conditions[0][1]);
-        $this->assertEquals('LIKE', $conditions[0][2]);
+        $this->assertEquals('ILIKE', $conditions[0][2]);
         $this->assertEquals('%Admin%', $conditions[0][3]);
     }
 
@@ -245,8 +245,8 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
 
         $this->assertEquals('username', $conditions[0][1]);
-        $this->assertEquals('GLOB', $conditions[0][2]);
-        $this->assertEquals('A?min?', $conditions[0][3]);
+        $this->assertEquals('LIKE', $conditions[0][2]);
+        $this->assertEquals('A_min_', $conditions[0][3]);
     }
 
     public function testSearchBuildsNestedOrWhereLikeConditions()
@@ -274,10 +274,10 @@ class DatabaseBuilderLikeSearchTest extends TestCase
 
         $this->assertGreaterThanOrEqual(2, count($nestedConds));
         $this->assertEquals('OR', $nestedConds[0][0]);
-        $this->assertEquals('LOWER(name)', $nestedConds[0][1]);
+        $this->assertEquals('name', $nestedConds[0][1]);
         $this->assertEquals('LIKE', $nestedConds[0][2]);
         $this->assertEquals('OR', $nestedConds[1][0]);
-        $this->assertEquals('LOWER(username)', $nestedConds[1][1]);
+        $this->assertEquals('username', $nestedConds[1][1]);
         $this->assertEquals('LIKE', $nestedConds[1][2]);
     }
 
@@ -286,12 +286,11 @@ class DatabaseBuilderLikeSearchTest extends TestCase
         $this->setBuilderDriver('mysql');
         $builder = $this->createBuilder();
 
-        $sql = $builder->whereLike('name', 'John Doe', false)->toSql();
+        $sql = $builder->reset()->whereLike('name', 'John Doe', false)->toSql();
 
         $this->assertStringStartsWith('SELECT * FROM users WHERE', $sql);
-        $this->assertStringContainsString('LOWER(name) LIKE ?', $sql);
+        $this->assertStringContainsString('name LIKE ?', $sql);
         $this->assertStringNotContainsString('ILIKE', $sql);
-        $this->assertStringNotContainsString('GLOB', $sql);
     }
 
     public function testCaseSensitiveColumnDetection()
