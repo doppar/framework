@@ -2919,25 +2919,24 @@ class Builder
      *
      * @param array $attributes
      * @param string $searchTerm
-     * @param bool $caseSensitive
      * @return self
      */
-    public function search(array $attributes, ?string $searchTerm = null, bool $caseSensitive = false): self
+    public function search(array $attributes, ?string $searchTerm = null): self
     {
         if (empty($searchTerm)) {
             return $this;
         }
 
-        $searchQuery = function (Builder $query) use ($attributes, $searchTerm, $caseSensitive) {
+        $searchQuery = function (Builder $query) use ($attributes, $searchTerm) {
             foreach ($attributes as $attribute) {
                 if (str_contains($attribute, '.')) {
                     [$relation, $column] = explode('.', $attribute, 2);
                     $query->orPresent(
                         $relation,
-                        fn(Builder $q) => $q->whereLike($column, $searchTerm, $caseSensitive)
+                        fn(Builder $q) => $q->whereLike($column, $searchTerm)
                     );
                 } else {
-                    $query->orWhereLike($attribute, $searchTerm, $caseSensitive);
+                    $query->orWhereLike($attribute, $searchTerm);
                 }
             }
         };

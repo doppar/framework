@@ -598,41 +598,20 @@ trait Grammar
      */
     protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean): self
     {
+        // Intentionally avoiding $caseSensitive search
         $driver = $this->getDriver();
         $likeValue = $this->prepareLikeValue($value);
 
-        if (!$caseSensitive) {
-            switch ($driver) {
-                case 'pgsql':
-                    $operator = 'ILIKE';
-
-                    // Using field as-is for ILIKE
-                    $field = $field;
-                    break;
-                case 'mysql':
-                case 'sqlite':
-                default:
-                    $field = "LOWER({$field})";
-                    $likeValue = strtolower($likeValue);
-                    $operator = 'LIKE';
-            }
-        } else {
-            switch ($driver) {
-                case 'mysql':
-                    // For MySQL case-sensitive, check if column is already case-sensitive
-                    // If not, use BINARY to force case sensitivity
-                    $field = $this->isCaseSensitiveColumn($field)
-                        ? $field
-                        : "BINARY {$field}";
-                    $operator = 'LIKE';
-                    break;
-                case 'sqlite':
-                    $operator = 'GLOB';
-                    $likeValue = $this->convertLikeToGlob($likeValue);
-                    break;
-                default:
-                    $operator = 'LIKE';
-            }
+        switch ($driver) {
+            case 'pgsql':
+                $operator = 'ILIKE';
+                break;
+            case 'mysql':
+                $operator = 'LIKE';
+                break;
+            case 'sqlite':
+            default:
+                $operator = 'LIKE';
         }
 
         $this->conditions[] = [$boolean, $field, $operator, $likeValue];
