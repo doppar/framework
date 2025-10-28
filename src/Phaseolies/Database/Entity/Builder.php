@@ -12,7 +12,8 @@ use Phaseolies\Database\Entity\Query\{
     QueryUtils,
     InteractsWithBigDataProcessing,
     InteractsWithModelQueryProcessing,
-    InteractsWithAggregateFucntion
+    InteractsWithAggregateFucntion,
+    CollectsRelations
 };
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
@@ -30,6 +31,7 @@ class Builder
     use InteractsWithTimeframe;
     use Grammar;
     use InteractsWithAggregateFucntion;
+    use CollectsRelations;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -1274,36 +1276,7 @@ class Builder
      */
     protected function loadNestedRelations(Collection $collection, string $nestedRelation, ?callable $constraint = null): void
     {
-        $relations = explode('.', $nestedRelation);
-        $primaryRelation = array_shift($relations);
-        $nestedPath = implode('.', $relations);
-
-        // First load the primary relation
-        $this->loadRelation($collection, $primaryRelation);
-
-        // Collect all related models from the primary relation
-        $allRelatedModels = [];
-        $relatedModelClass = null;
-
-        foreach ($collection->all() as $model) {
-            if ($model->relationLoaded($primaryRelation)) {
-                $related = $model->getRelation($primaryRelation);
-
-                if ($related instanceof Collection) {
-                    foreach ($related->all() as $relatedModel) {
-                        $allRelatedModels[] = $relatedModel;
-                    }
-                    if (!$relatedModelClass && $related->count() > 0) {
-                        $relatedModelClass = get_class($related->first());
-                    }
-                } elseif ($related !== null) {
-                    $allRelatedModels[] = $related;
-                    if (!$relatedModelClass) {
-                        $relatedModelClass = get_class($related);
-                    }
-                }
-            }
-        }
+        [$allRelatedModels, $relatedModelClass, $nestedPath] = $this->collectNestedRelatedModels($collection, $nestedRelation);
 
         // If we have related models, load nested relations in bulk
         if (!empty($allRelatedModels) && $relatedModelClass) {
@@ -1596,6 +1569,11 @@ class Builder
      */
     protected function loadRelationCount(Collection $collection, string $relation, ?callable $constraint = null): void
     {
+        if (str_contains($relation, '.')) {
+            $this->loadNestedRelationCount($collection, $relation, $constraint);
+            return;
+        }
+
         $models = $collection->all();
         $firstModel = $models[0] ?? null;
 
@@ -1700,6 +1678,25 @@ class Builder
         foreach ($models as $model) {
             $key = $model->{$localKey};
             $model->{$countAttribute} = $counts[$key] ?? 0;
+        }
+    }
+
+    /**
+     * Load nested relationship count (e.g., 'comments.reply_count')
+     *
+     * @param Collection $collection
+     * @param string $nestedRelation
+     * @param callable|null $constraint
+     * @return void
+     */
+    protected function loadNestedRelationCount(Collection $collection, string $nestedRelation, ?callable $constraint = null): void
+    {
+        [$allRelatedModels, $relatedModelClass, $nestedPath] = $this->collectNestedRelatedModels($collection, $nestedRelation);
+
+        // Load counts on the nested relation
+        if (!empty($allRelatedModels) && $relatedModelClass) {
+            $relatedCollection = new Collection($relatedModelClass, $allRelatedModels);
+            $this->loadRelationCount($relatedCollection, $nestedPath, $constraint);
         }
     }
 
@@ -2815,11 +2812,139 @@ class Builder
             $operator = '=';
         }
 
-        // Use the present() method to filter models that have the relationship
-        // and apply the additional condition to the related models
+        if (str_contains($relation, '.')) {
+            return $this->whereLinkedNested($relation, $column, $operator, $value);
+        }
+
         return $this->present($relation, function ($query) use ($column, $operator, $value) {
             $query->where($column, $operator, $value);
         });
+    }
+
+    /**
+     * Handle nested whereLinked (e.g., 'comments.reply')
+     *
+     * @param string $nestedRelation
+     * @param string $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @return self
+     */
+    protected function whereLinkedNested(string $nestedRelation, string $column, $operator, $value): self
+    {
+        $relations = explode('.', $nestedRelation);
+        $model = $this->getModel();
+
+        // Nested EXISTS subquery
+        $subquery = $this->buildNestedRelationshipSubquery($model, $relations, $column, $operator, $value);
+
+        $this->conditions[] = [
+            'type' => 'EXISTS',
+            'subquery' => $subquery,
+            'bindings' => [],
+            'boolean' => 'AND'
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Build a nested relationship subquery for whereLinked
+     *
+     * @param Model $model
+     * @param array $relations
+     * @param string $column
+     * @param mixed $operator
+     * @param mixed $value
+     * @return string
+     */
+    protected function buildNestedRelationshipSubquery(Model $model, array $relations, string $column, $operator, $value): string
+    {
+        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
+        $escapeValue = fn($val) => $this->escapeValue($val);
+
+        $currentModel = $model;
+        $currentTable = $this->table;
+        $joins = [];
+        $lastForeignKey = null;
+        $lastLocalKey = null;
+
+        // Process each relation in the chain
+        foreach ($relations as $index => $relation) {
+            if (!method_exists($currentModel, $relation)) {
+                throw new \BadMethodCallException("Relationship {$relation} does not exist on model " . get_class($currentModel));
+            }
+
+            // Initialize the relationship to get metadata
+            $currentModel->$relation();
+            $relationType = $currentModel->getLastRelationType();
+            $relatedModel = $currentModel->getLastRelatedModel();
+            $foreignKey = $currentModel->getLastForeignKey();
+            $localKey = $currentModel->getLastLocalKey();
+
+            $relatedModelInstance = new $relatedModel();
+            $relatedTable = $relatedModelInstance->getTable();
+            $relatedPrimaryKey = $relatedModelInstance->getKeyName();
+
+            if ($relationType === 'bindToMany') {
+                // Many-to-many relationship
+                $pivotTable = $currentModel->getLastPivotTable();
+                $relatedKey = $currentModel->getLastRelatedKey();
+
+                if ($index === 0) {
+                    // First relation: link from main table to pivot
+                    $joins[] = "INNER JOIN {$quote($pivotTable)} ON {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($localKey)}";
+                } else {
+                    // Subsequent relation: link from previous table to pivot
+                    $joins[] = "INNER JOIN {$quote($pivotTable)} ON {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($lastLocalKey)}";
+                }
+
+                // Link from pivot to related table
+                $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($relatedPrimaryKey)} = {$quote($pivotTable)}.{$quote($relatedKey)}";
+            } else {
+                // One-to-one or one-to-many relationship
+                if ($index === 0) {
+                    // First relation: link from main table
+                    $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($localKey)}";
+                } else {
+                    // Subsequent relation: link from previous table
+                    $joins[] = "INNER JOIN {$quote($relatedTable)} ON {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($currentTable)}.{$quote($lastLocalKey)}";
+                }
+            }
+
+            // Update for next iteration
+            $currentModel = $relatedModelInstance;
+            $currentTable = $relatedTable;
+            $lastForeignKey = $foreignKey;
+            $lastLocalKey = $relatedPrimaryKey;
+        }
+
+        // Build the final subquery
+        $subquery = "SELECT 1 FROM {$quote($this->table)} AS {$quote($this->table . '_sub')}";
+
+        // Add all the joins
+        $subquery .= ' ' . implode(' ', $joins);
+
+        // Add the WHERE clause linking back to the main table
+        if (!empty($relations)) {
+            $firstRelation = $relations[0];
+            $model->$firstRelation();
+            $firstLocalKey = $model->getLastLocalKey();
+
+            $subquery .= " WHERE {$quote($this->table . '_sub')}.{$quote($firstLocalKey)} = {$quote($this->table)}.{$quote($firstLocalKey)}";
+        }
+
+        // Add the condition on the final table
+        $finalTable = $currentTable;
+        $columnQualified = strpos($column, '.') === false
+            ? "{$quote($finalTable)}.{$quote($column)}"
+            : $quote($column);
+
+        $subquery .= $this->buildConditionClause($columnQualified, $operator, $value, $escapeValue);
+
+        $subquery .= ' LIMIT 1';
+
+        return $subquery;
     }
 
     /**
