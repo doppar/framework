@@ -1,5 +1,11 @@
 # Release Notes
 
+## v2.9.6-beta.16 - 2025-10-28
+
+* Entity builder count quote method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/82
+* [Entity Builder] Nested relation count support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/83
+* [Entity Builder] comment updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/84
+
 ## v2.9.6-beta.15 - 2025-10-28
 
 * whereLinked() driver based support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/80
