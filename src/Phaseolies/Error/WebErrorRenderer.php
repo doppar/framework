@@ -77,7 +77,7 @@ class WebErrorRenderer
                 PHP_VERSION,
                 Application::VERSION,
                 request()->getMethod(),
-                request()->fullUrl(),
+                trim(request()->fullUrl(), '/'),
                 now()->toDayDateTimeString(),
                 $_SERVER['SERVER_SOFTWARE'],
                 php_uname(),

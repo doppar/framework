@@ -38,7 +38,7 @@
 <body
     class="px-2 md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
     <div class="top-bar rounded-lg">
-        <div class="flex border-[1.2px] bg-white/[1%] border-dashed dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
+        <div class="flex border-[1.2px] bg-white/[1%]  dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
             <div>
                 <div class="dark:text-white text-neutral-950 text-3xl font-bold">
                     {{ exception_class }}
@@ -75,7 +75,7 @@
                 </div>
                 <!-- versions -->
                 <div
-                    class="rounded-md flex border-[1.2px] bg-white/[1%] border-dashed text-sm py-1 bg-white/2 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
+                    class="rounded-md flex border-[1.2px] bg-white/[1%]  text-sm py-1 bg-white/2 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
                     <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
                         <span class="text-neutral-800 dark:text-neutral-500">DOPPAR</span> {{ doppar_version }}
                     </div>
@@ -87,25 +87,24 @@
         </div>
     </div>
     <!-- endpoints details -->
-    <div class="flex  border-[1.2px] bg-white/[1%] border-dashed my-5 dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
-        {{ request_method }} / {{ request_url }} {{ timestamp }}
+    <div class="flex gap-2 items-center border-[1.2px] bg-white/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2  rounded-lg">
+        <span 
+            data-request-type="{{ request_method }}" 
+            class="badge p-1 rounded [&[data-request-type=GET]]:bg-green-500/10 [&[data-request-type=GET]]:text-green-500
+                [&[data-request-type=POST]]:bg-blue-500/10 [&[data-request-type=POST]]:text-blue-500
+                [&[data-request-type=PUT]]:bg-yellow-500/10 [&[data-request-type=PUT]]:text-yellow-500
+                [&[data-request-type=DELETE]]:bg-red-500/10 [&[data-request-type=DELETE]]:text-red-500
+            "
+        >
+            {{ request_method }}
+        </span>
+        <span class="dark:text-neutral-400">{{ request_url }}</span>
+        <span class="ml-auto">{{ timestamp }}</span>
     </div>
-    <!-- aside:backtrace <-> main:file-preview -->
+    <!-- error backtrace and error previeww -->
     <div class="flex gap-4">
-
-        <!-- 
-        <aside class="basis-1/4">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia corporis  quibusdam
-            nihil esse unde consequatur a voluptas voluptatibus exercitationem. Officiis, qui molestiae. Tempore
-            reprehenderit veritatis nulla atque quaerat, ipsa quod illo incidunt iusto architecto similique nisi
-            voluptatum delectus autem accusamus cumque! Itaque, vel ut. Sequi, ipsum aspernatur. Voluptates veniam
-            ducimus sunt quis officiis ab quos nobis odio ratione excepturi, facilis sit velit libero vitae suscipit
-            modi placeat dignissimos, dolore rem architecto voluptatum molestias aliquid animi deserunt. Quod eos optio
-            est assumenda sapiente? Omnis beatae dignissimos illo aliquid, natus nulla quae inventore odio hic neque
-            harum exercitationem autem sequi blanditiis et.
-        </aside> -->
-
-        <main class="_basis-3/4 rounded-lg border-[1.2px] bg-white/[1%] border-dashed border-neutral-900/5 dark:border-white/5 p-4">
+        <main 
+        class="rounded-lg border-[1.2px] bg-white/[1%]  border-neutral-900/5 dark:border-white/5 p-4">
             <div class="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-900 rounded-md px-2 py-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="size-6">
