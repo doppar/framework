@@ -1,5 +1,15 @@
 # Release Notes
 
+## v2.9.6-beta.19 - 2025-10-30
+
+* [New Command] Get model creatable properties for quick setup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/88
+* [Unit Test] Config and Translator Unit Test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/89
+* syntax error, unexpected token -> PHP8.3 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/90
+* unit test file namespace update for builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/91
+* Application class unit test initialized by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/92
+* [Tests] Harmonize the url for windows tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/93
+* [Entity Builder] relationship specific column selection enhancement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/94
+
 ## v2.9.6-beta.18 - 2025-10-28
 
 * [fix] Multilevel relationship search for entity builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/86
