@@ -35,8 +35,8 @@
 
 <body
     class="px-2 md:px-3 lg:px-4 pt-2 md:pt-3 lg:pt-4 bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
-    <div class="top-bar p-2 border dark:border-white/10 border-neutral-900/10 rounded-lg">
-        <div class="flex justify-end mb-4">
+    <div class="top-bar mb-4 rounded-lg">
+        <div class="flex border dark:border-white/10 border-neutral-900/10 p-4 rounded-lg">
             <div>
                 <div class="text-red-600 text-3xl">
                     {{ exception_class }}
@@ -74,15 +74,30 @@
                         <path stroke-linecap="round" stroke-linejoin="round"
                             d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                     </svg>
-
-
-
                 </button>
             </div>
         </div>
+    </div>
+    <!-- aside:backtrace <-> main:file-preview -->
+    <div class="flex gap-4" >
+        
+        <aside class="basis-1/4">Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia corporis quibusdam nihil esse unde consequatur a voluptas voluptatibus exercitationem. Officiis, qui molestiae. Tempore reprehenderit veritatis nulla atque quaerat, ipsa quod illo incidunt iusto architecto similique nisi voluptatum delectus autem accusamus cumque! Itaque, vel ut. Sequi, ipsum aspernatur. Voluptates veniam ducimus sunt quis officiis ab quos nobis odio ratione excepturi, facilis sit velit libero vitae suscipit modi placeat dignissimos, dolore rem architecto voluptatum molestias aliquid animi deserunt. Quod eos optio est assumenda sapiente? Omnis beatae dignissimos illo aliquid, natus nulla quae inventore odio hic neque harum exercitationem autem sequi blanditiis et.</aside>
 
-        {{ error_file }}
-        {{ error_line }}
+        <main class="basis-3/4 rounded-lg border border-white/5 p-4">
+            <div class="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-900 rounded-md px-2 py-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                  <path 
+                        stroke-linecap="round" 
+                        stroke-linejoin="round" 
+                        d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" 
+                    />
+                </svg>
+                {{ error_file }}
+            </div>
+            <div>
+                {{ file_content }}
+            </div>    
+        </main>
     </div>
 </body>
 
