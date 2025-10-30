@@ -562,4 +562,9 @@ class StringService
 
         return json_last_error() === JSON_ERROR_NONE;
     }
+
+    public function urlHarmonize(string $url): string
+    {
+        return str_replace("\\", "/", $url);
+    }
 }

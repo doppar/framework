@@ -4,7 +4,6 @@ namespace Tests\Unit\Application;
 
 use ReflectionClass;
 use Tests\Support\Kernel;
-use Tests\Support\StrTest;
 use Phaseolies\Application;
 use Phaseolies\DI\Container;
 use Phaseolies\Http\Request;
@@ -12,6 +11,7 @@ use Phaseolies\Config\Config;
 use Phaseolies\Support\Router;
 use Phaseolies\Console\Console;
 use PHPUnit\Framework\TestCase;
+use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
 
 if (!class_exists('App\Http\Kernel')) {
@@ -172,13 +172,14 @@ final class ApplicationTest extends TestCase
 
     public function testPathMethodsReturnCorrectPaths(): void
     {
-        $this->assertStringEndsWith('/resources/views', StrTest::urlHarmonize($this->app->resourcesPath('views')));
-        $this->assertStringEndsWith('/bootstrap/cache', StrTest::urlHarmonize($this->app->bootstrapPath('cache')));
-        $this->assertStringEndsWith('/database/migrations', StrTest::urlHarmonize($this->app->databasePath('migrations')));
-        $this->assertStringEndsWith('/public/assets', StrTest::urlHarmonize($this->app->publicPath('assets')));
-        $this->assertStringEndsWith('/storage/logs', StrTest::urlHarmonize($this->app->storagePath('logs')));
-        $this->assertStringEndsWith('/config/app.php', StrTest::urlHarmonize($this->app->configPath('app.php')));
-        $this->assertStringEndsWith('/lang/en', StrTest::urlHarmonize($this->app->langPath('en')));
+        $stringService = app(StringService::class);
+        $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
+        $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
+        $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
+        $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
+        $this->assertStringEndsWith('/storage/logs', $stringService->urlHarmonize($this->app->storagePath('logs')));
+        $this->assertStringEndsWith('/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
+        $this->assertStringEndsWith('/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
     }
 
     public function testPathCaching(): void
