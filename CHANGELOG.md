@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.0 - 2025-10-30
+
+* translation comment doc update and application version unit test issue resolved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/95
+
 ## v2.9.6-beta.19 - 2025-10-30
 
 * [New Command] Get model creatable properties for quick setup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/88
