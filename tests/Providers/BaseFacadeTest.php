@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Providers;
 
 use Phaseolies\Facade\BaseFacade;
 use Phaseolies\DI\Container;

@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 
-class DatabaseBuilderTest extends TestCase
+class DatabaseBuilderAllDriverTest extends TestCase
 {
     private $database;
     private $pdoMock;
