@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Error;
 
+use Phaseolies\Application;
 use Throwable;
 
 class WebErrorRenderer
@@ -14,6 +15,9 @@ class WebErrorRenderer
      */
     public function renderDebug(Throwable $exception): void
     {
+        // dd($exception->getTrace());
+
+
         $errorMessage = $exception->getMessage();
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
@@ -54,6 +58,7 @@ class WebErrorRenderer
                 '{{ file_content }}',
                 '{{ file_extension }}',
                 '{{ php_version }}',
+                '{{ doppar_version }}',
                 '{{ request_method }}',
                 '{{ request_url }}',
                 '{{ timestamp }}',
@@ -70,6 +75,7 @@ class WebErrorRenderer
                 $formattedCode,
                 $languageClass,
                 PHP_VERSION,
+                Application::VERSION,
                 request()->getMethod(),
                 request()->fullUrl(),
                 now()->toDayDateTimeString(),
