@@ -2,16 +2,17 @@
 
 namespace Tests\Unit\Application;
 
-use Tests\Support\Kernel;
 use ReflectionClass;
-use Phaseolies\Support\View\Factory as ViewFactory;
-use Phaseolies\Support\Router;
-use Phaseolies\Http\Request;
-use Phaseolies\DI\Container;
-use Phaseolies\Console\Console;
-use Phaseolies\Config\Config;
+use Tests\Support\Kernel;
 use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Http\Request;
+use Phaseolies\Config\Config;
+use Phaseolies\Support\Router;
+use Phaseolies\Console\Console;
 use PHPUnit\Framework\TestCase;
+use Phaseolies\Support\StringService;
+use Phaseolies\Support\View\Factory as ViewFactory;
 
 if (!class_exists('App\Http\Kernel')) {
     class_alias(Kernel::class, 'App\Http\Kernel');
@@ -171,13 +172,14 @@ final class ApplicationTest extends TestCase
 
     public function testPathMethodsReturnCorrectPaths(): void
     {
-        $this->assertStringEndsWith('/resources/views', $this->app->resourcesPath('views'));
-        $this->assertStringEndsWith('/bootstrap/cache', $this->app->bootstrapPath('cache'));
-        $this->assertStringEndsWith('/database/migrations', $this->app->databasePath('migrations'));
-        $this->assertStringEndsWith('/public/assets', $this->app->publicPath('assets'));
-        $this->assertStringEndsWith('/storage/logs', $this->app->storagePath('logs'));
-        $this->assertStringEndsWith('/config/app.php', $this->app->configPath('app.php'));
-        $this->assertStringEndsWith('/lang/en', $this->app->langPath('en'));
+        $stringService = app(StringService::class);
+        $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
+        $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
+        $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
+        $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
+        $this->assertStringEndsWith('/storage/logs', $stringService->urlHarmonize($this->app->storagePath('logs')));
+        $this->assertStringEndsWith('/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
+        $this->assertStringEndsWith('/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
     }
 
     public function testPathCaching(): void

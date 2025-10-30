@@ -33,6 +33,7 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\StringService before(string $subject, string $search): string
  * @method static \Phaseolies\Support\StringService between(string $subject, string $from, string $to): string
  * @method static \Phaseolies\Support\StringService isJson(string $value): string
+ * @method static \Phaseolies\Support\StringService urlHarmonize(string $url): string
  * @see \Phaseolies\Support\StringService
  */
 
