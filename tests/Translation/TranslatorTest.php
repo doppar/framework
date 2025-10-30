@@ -49,7 +49,7 @@ class TranslatorTest extends TestCase
 
     public function testParseKeyForNamespacedKey(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod("parseKey");
+        $method = (new \ReflectionClass($this->translator))->getMethod("parseKey");
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -72,7 +72,7 @@ class TranslatorTest extends TestCase
 
     public function testParseNamespacedKeyMethod(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod("parseNamespacedKey");
+        $method = (new \ReflectionClass($this->translator))->getMethod("parseNamespacedKey");
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -189,7 +189,7 @@ class TranslatorTest extends TestCase
         // Load once
         $this->translator->get("messages.menu.file.new"); // preload group
         // Access getLine directly
-        $method = new \ReflectionClass($this->translator)->getMethod("getLine");
+        $method = (new \ReflectionClass($this->translator))->getMethod("getLine");
         $method->setAccessible(true);
 
         $result = $method->invoke(
@@ -207,7 +207,7 @@ class TranslatorTest extends TestCase
     public function testGetLineReturnsNullWhenNotFound(): void
     {
         $this->loader->method("load")->willReturn(["menu" => ["file" => []]]);
-        $method = new \ReflectionClass($this->translator)->getMethod("getLine");
+        $method = (new \ReflectionClass($this->translator))->getMethod("getLine");
         $method->setAccessible(true);
 
         $result = $method->invoke(
@@ -348,7 +348,7 @@ class TranslatorTest extends TestCase
 
     public function testParseKeyWithNamespacedSingleWord(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod('parseKey');
+        $method = (new \ReflectionClass($this->translator))->getMethod('parseKey');
         $method->setAccessible(true);
 
         $result = $method->invoke($this->translator, 'package::welcome');
@@ -358,7 +358,7 @@ class TranslatorTest extends TestCase
 
     public function testParseNamespacedKeyWithInvalidFormat(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod('parseNamespacedKey');
+        $method = (new \ReflectionClass($this->translator))->getMethod('parseNamespacedKey');
         $method->setAccessible(true);
 
         $result = $method->invoke($this->translator, 'invalidkey');
@@ -376,7 +376,7 @@ class TranslatorTest extends TestCase
                 ]
             ]);
 
-        $method = new \ReflectionClass($this->translator)->getMethod('getLine');
+        $method = (new \ReflectionClass($this->translator))->getMethod('getLine');
         $method->setAccessible(true);
 
         $result = $method->invoke(
@@ -398,7 +398,7 @@ class TranslatorTest extends TestCase
         $this->loader->method('load')
             ->willReturn(['welcome' => 'Welcome!']);
 
-        $method = new \ReflectionClass($this->translator)->getMethod('getLine');
+        $method = (new \ReflectionClass($this->translator))->getMethod('getLine');
         $method->setAccessible(true);
 
         $result = $method->invoke(
