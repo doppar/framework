@@ -30,7 +30,7 @@ class FileLoader
     /**
      * Create a new file loader instance.
      *
-     * @param string $path The base path to translation files
+     * @param string $path
      */
     public function __construct($path)
     {
@@ -41,10 +41,10 @@ class FileLoader
     /**
      * Load the messages for the given locale, group, and namespace.
      *
-     * @param string $locale The locale to load
-     * @param string $group The translation group name
-     * @param string|null $namespace The package namespace
-     * @return array The loaded translations
+     * @param string $locale
+     * @param string $group
+     * @param string|null $namespace
+     * @return array
      */
     public function load($locale, $group, $namespace = null)
     {
@@ -82,12 +82,12 @@ class FileLoader
     /**
      * Load a translation file from the given path.
      *
-     * @param string $path The base path to look in
-     * @param string $locale The locale to load
-     * @param string $group The translation group name
-     * @return array The loaded translations
-     * @throws \InvalidArgumentException If group is empty
-     * @throws \RuntimeException If translation file not found
+     * @param string $path
+     * @param string $locale
+     * @param string $group
+     * @return array
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
      */
     protected function loadPath($path, $locale, $group)
     {
@@ -107,11 +107,11 @@ class FileLoader
     /**
      * Load any namespace override files and merge them with the base translations.
      *
-     * @param array $lines The base translations
-     * @param string $locale The locale
-     * @param string $group The group name
-     * @param string $namespace The package namespace
-     * @return array The merged translations
+     * @param array $lines
+     * @param string $locale
+     * @param string $group
+     * @param string $namespace
+     * @return array
      */
     protected function loadNamespaceOverrides(array $lines, $locale, $group, $namespace)
     {
@@ -128,8 +128,8 @@ class FileLoader
      * Add a namespace hint to the loader.
      * Used to register package translation locations.
      *
-     * @param string $namespace The package namespace
-     * @param string $hint The path hint
+     * @param string $namespace
+     * @param string $hint
      * @return void
      */
     public function addNamespace($namespace, $hint)

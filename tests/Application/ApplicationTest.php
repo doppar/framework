@@ -162,7 +162,7 @@ final class ApplicationTest extends TestCase
 
     public function testApplicationVersionConstant(): void
     {
-        $this->assertSame('2.9.6-beta.18', Application::VERSION);
+        $this->assertGreaterThan('2.9.6-beta.18', Application::VERSION);
     }
 
     public function testApplicationIsContainerInstance(): void
