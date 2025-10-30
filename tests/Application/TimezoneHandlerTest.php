@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Application;
 
 use Phaseolies\Support\TimezoneHandler;
 use Phaseolies\DI\Container;

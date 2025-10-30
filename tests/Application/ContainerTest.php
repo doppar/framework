@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Application;
 
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
@@ -221,7 +221,7 @@ class ContainerTest extends TestCase
         $callable = [new ClassWithMethod(), 'methodWithDependency'];
         $result = $this->container->call($callable, ['extra' => 'value']);
 
-        $this->assertEquals('Tests\Unit\TestClass:value', $result);
+        $this->assertEquals('Tests\Unit\Application\TestClass:value', $result);
     }
 
     public function testIsSingleton()
