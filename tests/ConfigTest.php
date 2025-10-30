@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Tests\Support\MockContainer;
 use Phaseolies\DI\Container;
 
-class MinimalConfigTest extends TestCase
+class ConfigTest extends TestCase
 {
     protected function setUp(): void
     {
