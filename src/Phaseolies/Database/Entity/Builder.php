@@ -1282,16 +1282,26 @@ class Builder
      */
     protected function loadNestedRelations(Collection $collection, string $nestedRelation, ?callable $constraint = null): void
     {
-        [$allRelatedModels, $relatedModelClass, $nestedPath] = $this->collectNestedRelatedModels($collection, $nestedRelation);
+        [$relations, $finalColumns] = $this->parseNestedRelationWithColumns($nestedRelation);
+        $relationPath = implode('.', $relations);
 
-        // If we have related models, load nested relations in bulk
+        // Create constraint with column selection if specified
+        $finalConstraint = !empty($finalColumns)
+            ? $this->createColumnConstraint($constraint, $finalColumns)
+            : $constraint;
+
+        [$allRelatedModels, $relatedModelClass, $nestedPath] = $this->collectNestedRelatedModels(
+            $collection,
+            $relationPath
+        );
+
         if (!empty($allRelatedModels) && $relatedModelClass) {
             $relatedCollection = new Collection($relatedModelClass, $allRelatedModels);
 
             if (str_contains($nestedPath, '.')) {
-                $this->loadNestedRelations($relatedCollection, $nestedPath, $constraint);
+                $this->loadNestedRelations($relatedCollection, $nestedPath, $finalConstraint);
             } else {
-                $this->loadRelation($relatedCollection, $nestedPath, $constraint);
+                $this->loadRelation($relatedCollection, $nestedPath, $finalConstraint);
             }
         }
     }
@@ -1437,11 +1447,18 @@ class Builder
 
         $keys = array_map(fn($model) => $model->{$localKey}, $models);
         $relatedModelInstance = app($relatedModel);
+
+        // For linkOne/bindTo relations, the foreignKey is on the related table
+        // For linkMany relations, the foreignKey is also on the related table
         $query = $relatedModelInstance->query()->whereIn($foreignKey, $keys);
 
+        // Apply constraint (which may include column selection)
         if (is_callable($constraint)) {
             $constraint($query);
         }
+
+        // Ensure foreign key and primary key are always included
+        $this->ensureRequiredKeysInSelection($query, $foreignKey, $relatedModelInstance->getKeyName());
 
         $results = $query->get();
         $grouped = [];
@@ -1495,21 +1512,60 @@ class Builder
             return "{$pivotTable}.{$column} as pivot_{$column}";
         }, $pivotColumns);
 
-        $query = $relatedModelInstance->query()
-            ->select(array_merge(
+        $query = $relatedModelInstance->query();
+
+        // Check if constraint specifies columns
+        $hasCustomSelect = false;
+        if (is_callable($constraint)) {
+            // Create a test query to check if select is called
+            $testQuery = $relatedModelInstance->query();
+            $constraint($testQuery);
+            if ($testQuery->fields !== ['*']) {
+                $hasCustomSelect = true;
+                $selectedColumns = array_map(function ($field) use ($relatedModelInstance) {
+                    if (strpos($field, '.') === false) {
+                        return "{$relatedModelInstance->getTable()}.{$field}";
+                    }
+                    return $field;
+                }, $testQuery->fields);
+
+                $query->select(array_merge($selectedColumns, $pivotSelects));
+            }
+        }
+
+        if (!$hasCustomSelect) {
+            $query->select(array_merge(
                 ["{$relatedModelInstance->getTable()}.*"],
                 $pivotSelects
-            ))
-            ->join(
-                $pivotTable,
-                "{$pivotTable}.{$relatedKey}",
-                '=',
-                "{$relatedModelInstance->getTable()}.{$relatedModelInstance->getKeyName()}"
-            )
-            ->whereIn("{$pivotTable}.{$foreignKey}", $keys);
+            ));
+        }
 
-        if (is_callable($constraint)) {
+        $query->join(
+            $pivotTable,
+            "{$pivotTable}.{$relatedKey}",
+            '=',
+            "{$relatedModelInstance->getTable()}.{$relatedModelInstance->getKeyName()}"
+        )->whereIn("{$pivotTable}.{$foreignKey}", $keys);
+
+        // Apply constraint for additional conditions
+        // Without overriding select
+        if (is_callable($constraint) && $hasCustomSelect) {
             $constraint($query);
+        } elseif (is_callable($constraint)) {
+            // Create a new constraint that doesn't override select
+            $constraintWithoutSelect = function ($q) use ($constraint, $relatedModelInstance) {
+                $testQuery = $relatedModelInstance->query();
+                $constraint($testQuery);
+
+                // Apply non-select operations
+                foreach ($testQuery->conditions as $condition) {
+                    $q->conditions[] = $condition;
+                }
+                foreach ($testQuery->orderBy as $order) {
+                    $q->orderBy[] = $order;
+                }
+            };
+            $constraintWithoutSelect($query);
         }
 
         $results = $query->get();
@@ -1813,7 +1869,15 @@ class Builder
     }
 
     /**
-     * Add relationships to be eager loaded.
+     * Add relationships to be eager loaded with optional column selection.
+     *
+     * Supports formats:
+     * - 'comments' - load all columns
+     * - 'comments:id,body' - load specific columns
+     * - 'comments.reply' - nested relation, all columns
+     * - 'comments.reply:id,body' - nested relation with column selection
+     *
+     * Note: Column selection is not supported for many-to-many (bindToMany) relations
      *
      * @param string|array $relations
      * @param callable|null $callback
@@ -1822,16 +1886,32 @@ class Builder
     public function embed($relations, ?callable $callback = null): self
     {
         if (is_string($relations)) {
-            $this->eagerLoad[$relations] = $callback;
+            [$relationName, $columns] = $this->parseRelationWithColumns($relations);
+
+            $constraint = !empty($columns)
+                ? $this->createColumnConstraint($callback, $columns)
+                : $callback;
+
+            $this->eagerLoad[$relationName] = $constraint;
             return $this;
         }
 
         if (is_array($relations)) {
             foreach ($relations as $key => $value) {
                 if (is_callable($value)) {
-                    $this->eagerLoad[$key] = $value;
+                    // Format: ['comments' => function($q) { ... }]
+                    [$relationName, $columns] = $this->parseRelationWithColumns($key);
+                    $constraint = !empty($columns)
+                        ? $this->createColumnConstraint($value, $columns)
+                        : $value;
+                    $this->eagerLoad[$relationName] = $constraint;
                 } else {
-                    $this->eagerLoad[$value] = null;
+                    // Format: ['comments:id,body'] or ['comments']
+                    [$relationName, $columns] = $this->parseRelationWithColumns($value);
+                    $constraint = !empty($columns)
+                        ? $this->createColumnConstraint(null, $columns)
+                        : null;
+                    $this->eagerLoad[$relationName] = $constraint;
                 }
             }
         }
