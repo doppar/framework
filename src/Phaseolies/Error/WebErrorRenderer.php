@@ -78,7 +78,7 @@ class WebErrorRenderer
                 class_basename($exception),
                 $errorCode
             ],
-            file_get_contents(__DIR__ . '/error_page_template.blade.php')
+            file_get_contents(__DIR__ . '/error_page_template.html')
         );
     }
 
