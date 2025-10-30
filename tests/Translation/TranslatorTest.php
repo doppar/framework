@@ -54,40 +54,38 @@ class TranslatorTest extends TestCase
 
         $this->assertSame(
             ["auth", "messages", "welcome"],
-            $method->invoke($this->translator, "auth::messages.welcome"),
+            $method->invoke($this->translator, "auth::messages.welcome")
         );
         $this->assertSame(
             ["auth", "*", "plain"],
-            $method->invoke($this->translator, "auth::plain"),
+            $method->invoke($this->translator, "auth::plain")
         );
         $this->assertSame(
             [null, "messages", "welcome"],
-            $method->invoke($this->translator, "messages.welcome"),
+            $method->invoke($this->translator, "messages.welcome")
         );
         $this->assertSame(
             [null, "*", "simple"],
-            $method->invoke($this->translator, "simple"),
+            $method->invoke($this->translator, "simple")
         );
     }
 
     public function testParseNamespacedKeyMethod(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod(
-            "parseNamespacedKey",
-        );
+        $method = new \ReflectionClass($this->translator)->getMethod("parseNamespacedKey");
         $method->setAccessible(true);
 
         $this->assertSame(
             ["auth", "messages", "welcome"],
-            $method->invoke($this->translator, "auth::messages.welcome"),
+            $method->invoke($this->translator, "auth::messages.welcome")
         );
         $this->assertSame(
             ["auth", null, "plain"],
-            $method->invoke($this->translator, "auth::plain"),
+            $method->invoke($this->translator, "auth::plain")
         );
         $this->assertSame(
             [null, "*", "basic"],
-            $method->invoke($this->translator, "basic"),
+            $method->invoke($this->translator, "basic")
         );
     }
 
@@ -126,14 +124,14 @@ class TranslatorTest extends TestCase
             ->method("load")
             ->willReturnMap([
                 ["en", "messages", null, ["welcome" => null]], // missing in en
-                ["fr", "messages", null, ["welcome" => "Bonjour"]],
+                ["fr", "messages", null, ["welcome" => "Bonjour"]]
             ]);
 
         $this->translator->setFallback("fr");
 
         $this->assertSame(
             "Bonjour",
-            $this->translator->get("messages.welcome"),
+            $this->translator->get("messages.welcome")
         );
     }
 
@@ -173,7 +171,7 @@ class TranslatorTest extends TestCase
     {
         $line = "Hello :name, :NAME, and :Name!";
         $result = $this->translator->makeReplacements($line, [
-            "name" => "john",
+            "name" => "john"
         ]);
         $this->assertSame("Hello john, JOHN, and John!", $result);
     }
@@ -200,7 +198,7 @@ class TranslatorTest extends TestCase
             "messages",
             "en",
             "menu.file",
-            [],
+            []
         );
         $this->assertIsArray($result);
         $this->assertArrayHasKey("new", $result);
@@ -218,7 +216,7 @@ class TranslatorTest extends TestCase
             "messages",
             "en",
             "missing.item",
-            [],
+            []
         );
         $this->assertNull($result);
     }
@@ -255,10 +253,10 @@ class TranslatorTest extends TestCase
         $method->setAccessible(true);
 
         $this->assertTrue(
-            $method->invoke($this->translator, null, "messages", "en"),
+            $method->invoke($this->translator, null, "messages", "en")
         );
         $this->assertFalse(
-            $method->invoke($this->translator, null, "other", "en"),
+            $method->invoke($this->translator, null, "other", "en")
         );
     }
 
