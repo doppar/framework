@@ -31,6 +31,28 @@
     }
 
     @custom-variant dark (&:where(.dark, .dark *));
+
+    @layer components {
+        .badge {
+        @apply px-2 py-1 rounded font-medium transition-colors;
+        }
+
+        .badge[data-request-type="GET"] {
+        @apply bg-green-500/10 text-green-500;
+        }
+
+        .badge[data-request-type="POST"] {
+        @apply bg-blue-500/10 text-blue-500;
+        }
+
+        .badge[data-request-type="PUT"] {
+        @apply bg-yellow-500/10 text-yellow-500;
+        }
+
+        .badge[data-request-type="DELETE"] {
+        @apply bg-red-500/10 text-red-500;
+        }
+  }
 </style>
 
 
@@ -87,15 +109,9 @@
         </div>
     </div>
     <!-- endpoints details -->
-    <div class="flex gap-2 items-center border-[1.2px] bg-white/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2  rounded-lg">
-        <span 
-            data-request-type="{{ request_method }}" 
-            class="badge p-1 rounded [&[data-request-type=GET]]:bg-green-500/10 [&[data-request-type=GET]]:text-green-500
-                [&[data-request-type=POST]]:bg-blue-500/10 [&[data-request-type=POST]]:text-blue-500
-                [&[data-request-type=PUT]]:bg-yellow-500/10 [&[data-request-type=PUT]]:text-yellow-500
-                [&[data-request-type=DELETE]]:bg-red-500/10 [&[data-request-type=DELETE]]:text-red-500
-            "
-        >
+    <div
+        class="flex gap-2 items-center border-[1.2px] bg-white/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2  rounded-lg">
+        <span data-request-type="{{ request_method }}" class="badge p-1 rounded">
             {{ request_method }}
         </span>
         <span class="dark:text-neutral-400">{{ request_url }}</span>
@@ -103,8 +119,7 @@
     </div>
     <!-- error backtrace and error previeww -->
     <div class="flex gap-4">
-        <main 
-        class="rounded-lg border-[1.2px] bg-white/[1%]  border-neutral-900/5 dark:border-white/5 p-4">
+        <main class="rounded-lg border-[1.2px] bg-white/[1%]  border-neutral-900/5 dark:border-white/5 p-4">
             <div class="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-900 rounded-md px-2 py-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="size-6">

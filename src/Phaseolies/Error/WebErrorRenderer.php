@@ -15,9 +15,6 @@ class WebErrorRenderer
      */
     public function renderDebug(Throwable $exception): void
     {
-        // dd($exception->getTrace());
-
-
         $errorMessage = $exception->getMessage();
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
