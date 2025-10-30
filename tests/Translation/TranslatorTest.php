@@ -49,9 +49,7 @@ class TranslatorTest extends TestCase
 
     public function testParseKeyForNamespacedKey(): void
     {
-        $method = new \ReflectionClass($this->translator)->getMethod(
-            "parseKey",
-        );
+        $method = new \ReflectionClass($this->translator)->getMethod("parseKey");
         $method->setAccessible(true);
 
         $this->assertSame(
@@ -263,21 +261,21 @@ class TranslatorTest extends TestCase
             $method->invoke($this->translator, null, "other", "en"),
         );
     }
-    
+
     public function testConstructorUsesConfigFallbackLocale(): void
     {
         // Set config fallback locale
         Config::set('app.fallback_locale', 'es');
-    
+
         $loader = $this->createMock(FileLoader::class);
         $translator = new Translator($loader, 'en');
-        
+
         $this->assertEquals('es', $translator->getFallback());
-        
+
         // Clean up
         Config::set('app.fallback_locale', null);
     }
-    
+
     public function testGetWithNestedKeys(): void
     {
         $this->loader->method('load')
@@ -289,12 +287,12 @@ class TranslatorTest extends TestCase
                     ]
                 ]
             ]);
-    
+
         $result = $this->translator->get('messages.user.profile.name');
-    
+
         $this->assertEquals('User Name', $result);
     }
-    
+
     public function testGetWithMultipleReplacements(): void
     {
         $this->loader->method('load')
@@ -303,28 +301,28 @@ class TranslatorTest extends TestCase
                 'age_message' => 'You are :age years old.',
                 'full_message' => 'Hello :name, you are :age years old.'
             ]);
-    
+
         $result1 = $this->translator->get('messages.welcome', ['name' => 'John']);
         $result2 = $this->translator->get('messages.age_message', ['age' => '25']);
         $result3 = $this->translator->get('messages.full_message', ['name' => 'Jane', 'age' => '30']);
-    
+
         $this->assertEquals('Welcome, John!', $result1);
         $this->assertEquals('You are 25 years old.', $result2);
         $this->assertEquals('Hello Jane, you are 30 years old.', $result3);
     }
-    
+
     public function testGetWithCaseReplacements(): void
     {
         $this->loader->method('load')
             ->willReturn([
                 'welcome' => 'Welcome, :Name! Your role is :ROLE.'
             ]);
-    
+
         $result = $this->translator->get('messages.welcome', ['name' => 'john', 'role' => 'admin']);
-    
+
         $this->assertEquals('Welcome, John! Your role is ADMIN.', $result);
     }
-    
+
     public function testGetWithDifferentLocaleParameter(): void
     {
         $this->loader->method('load')
@@ -334,42 +332,42 @@ class TranslatorTest extends TestCase
                 }
                 return ['welcome' => 'Welcome!'];
             });
-    
+
         $result = $this->translator->get('messages.welcome', [], 'es');
-    
+
         $this->assertEquals('¡Bienvenido!', $result);
     }
-    
+
     public function testGetReturnsKeyWhenNoTranslationFoundAnywhere(): void
     {
         $this->loader->method('load')
             ->willReturn([]);
-    
+
         $result = $this->translator->get('messages.nonexistent');
-    
+
         $this->assertEquals('messages.nonexistent', $result);
     }
-    
+
     public function testParseKeyWithNamespacedSingleWord(): void
     {
         $method = new \ReflectionClass($this->translator)->getMethod('parseKey');
         $method->setAccessible(true);
-    
+
         $result = $method->invoke($this->translator, 'package::welcome');
-    
+
         $this->assertEquals(['package', '*', 'welcome'], $result);
     }
-    
+
     public function testParseNamespacedKeyWithInvalidFormat(): void
     {
         $method = new \ReflectionClass($this->translator)->getMethod('parseNamespacedKey');
         $method->setAccessible(true);
-    
+
         $result = $method->invoke($this->translator, 'invalidkey');
-    
+
         $this->assertEquals([null, '*', 'invalidkey'], $result);
     }
-    
+
     public function testGetLineReturnsArrayForNestedTranslation(): void
     {
         $this->loader->method('load')
@@ -379,69 +377,77 @@ class TranslatorTest extends TestCase
                     'email' => 'user@example.com'
                 ]
             ]);
-    
+
         $method = new \ReflectionClass($this->translator)->getMethod('getLine');
         $method->setAccessible(true);
-    
+
         $result = $method->invoke(
-            $this->translator, 
-            null, 'messages', 'en', 'user', []
+            $this->translator,
+            null,
+            'messages',
+            'en',
+            'user',
+            []
         );
-    
+
         $this->assertIsArray($result);
         $this->assertEquals('User Name', $result['name']);
         $this->assertEquals('user@example.com', $result['email']);
     }
-    
+
     public function testGetLineReturnsNullForNonExistentItem(): void
     {
         $this->loader->method('load')
             ->willReturn(['welcome' => 'Welcome!']);
-    
+
         $method = new \ReflectionClass($this->translator)->getMethod('getLine');
         $method->setAccessible(true);
-    
+
         $result = $method->invoke(
-            $this->translator, 
-            null, 'messages', 'en', 'nonexistent', []
+            $this->translator,
+            null,
+            'messages',
+            'en',
+            'nonexistent',
+            []
         );
-    
+
         $this->assertNull($result);
     }
-    
+
     public function testMakeReplacements(): void
     {
         $line = 'Hello :name, you have :count messages.';
         $replace = ['name' => 'John', 'count' => '5'];
-        
+
         $result = $this->translator->makeReplacements($line, $replace);
-    
+
         $this->assertEquals('Hello John, you have 5 messages.', $result);
     }
-    
+
     public function testLoadTranslationsOnlyOnce(): void
     {
         $this->loader->expects($this->once())
             ->method('load')
             ->with('en', 'messages', null)
             ->willReturn(['welcome' => 'Welcome!']);
-    
+
         // Call multiple times - should only load once
         $this->translator->loadTranslations(null, 'messages', 'en');
         $this->translator->loadTranslations(null, 'messages', 'en');
         $this->translator->loadTranslations(null, 'messages', 'en');
-    
+
         // Verify it's loaded
         $reflection = new \ReflectionClass($this->translator);
         $loadedProperty = $reflection->getProperty('loaded');
         $loadedProperty->setAccessible(true);
         $loaded = $loadedProperty->getValue($this->translator);
-        
+
         $this->assertArrayHasKey(null, $loaded);
         $this->assertArrayHasKey('messages', $loaded[null]);
         $this->assertArrayHasKey('en', $loaded[null]['messages']);
     }
-    
+
     public function testGetWithDeeplyNestedKeys(): void
     {
         $this->loader->method('load')
@@ -454,62 +460,62 @@ class TranslatorTest extends TestCase
                     ]
                 ]
             ]);
-    
+
         $result = $this->translator->get('messages.level1.level2.level3.level4');
-    
+
         $this->assertEquals('Deep Value', $result);
     }
-    
+
     public function testGetReturnsEmptyStringForEmptyTranslation(): void
     {
         $this->loader->method('load')
             ->willReturn(['empty' => '']);
-    
+
         $result = $this->translator->get('messages.empty');
-    
+
         $this->assertEquals('', $result);
     }
-    
+
     public function testGetWithSpecialCharactersInReplacements(): void
     {
         $this->loader->method('load')
             ->willReturn([
                 'message' => 'Hello :name! Your email is :email.'
             ]);
-    
+
         $result = $this->translator->get('messages.message', [
             'name' => 'John & Jane',
             'email' => 'test@example.com'
         ]);
-    
+
         $this->assertEquals('Hello John & Jane! Your email is test@example.com.', $result);
     }
-    
+
     public function testGetWithNoFallbackWhenSameAsLocale(): void
     {
         $this->loader->method('load')
             ->willReturn([]); // No translations
-    
+
         $this->translator->setLocale('en');
         $this->translator->setFallback('en'); // Same as locale
-    
+
         $result = $this->translator->get('messages.nonexistent');
-    
+
         $this->assertEquals('messages.nonexistent', $result);
     }
-    
+
     public function testGetWithNullLocaleUsesCurrent(): void
     {
         $this->loader->method('load')
             ->with('fr', 'messages', null)
             ->willReturn(['welcome' => 'Bienvenue!']);
-    
+
         $this->translator->setLocale('fr');
         $result = $this->translator->get('messages.welcome', [], null);
-    
+
         $this->assertEquals('Bienvenue!', $result);
     }
-    
+
     public function testMultipleGroupsAreLoadedSeparately(): void
     {
         $this->loader->expects($this->exactly(2))
@@ -518,22 +524,22 @@ class TranslatorTest extends TestCase
                 ['en', 'messages', null, ['welcome' => 'Welcome!']],
                 ['en', 'validation', null, ['required' => 'This field is required.']]
             ]);
-    
+
         $result1 = $this->translator->get('messages.welcome');
         $result2 = $this->translator->get('validation.required');
-    
+
         $this->assertEquals('Welcome!', $result1);
         $this->assertEquals('This field is required.', $result2);
     }
-    
+
     public function testGetWithNamespace(): void
     {
         $this->loader->method('load')
             ->with('en', 'messages', 'package')
             ->willReturn(['welcome' => 'Package Welcome!']);
-    
+
         $result = $this->translator->get('package::messages.welcome');
-    
+
         $this->assertEquals('Package Welcome!', $result);
     }
 }
