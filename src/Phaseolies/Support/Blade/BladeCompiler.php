@@ -4,21 +4,45 @@ namespace Phaseolies\Support\Blade;
 
 trait BladeCompiler
 {
+    /**
+     * The file extension for Blade templates (e.g., ".blade.php")
+     *
+     * @var string|null
+     */
     protected $fileExtension;
 
+    /**
+     * Path to the view folder containing Blade templates
+     *
+     * @var string|null
+     */
     protected $viewFolder;
 
+    /**
+     * The format used when echoing variables (e.g., 'e(%s)')
+     *
+     * @var string|null
+     */
     protected $echoFormat;
 
+    /**
+     * Custom compiler extensions registered for Blade
+     *
+     * @var array
+     */
     protected $extensions = [];
 
+    /**
+     * Registered Blade directives (e.g., @datetime)
+     *
+     * @var array
+     */
     protected static $directives = [];
 
     /**
      * Compile blade statements.
      *
      * @param string $statement
-     *
      * @return string
      */
     protected function compileStatements($statement): string
@@ -52,7 +76,6 @@ trait BladeCompiler
      * Compile blade comments.
      *
      * @param string $comment
-     *
      * @return string
      */
     protected function compileComments($comment): string
@@ -98,7 +121,6 @@ trait BladeCompiler
      * Compile default echoes.
      *
      * @param string $string
-     *
      * @return string
      */
     public function compileEchoDefaults($string): string
@@ -110,7 +132,6 @@ trait BladeCompiler
      * Compile user-defined extensions.
      *
      * @param string $string
-     *
      * @return string
      */
     protected function compileExtensions($string): string
@@ -126,7 +147,6 @@ trait BladeCompiler
      * Replace @php and @endphp blocks.
      *
      * @param string $string
-     *
      * @return string
      */
     public function replacePhpBlocks($string): string
@@ -143,7 +163,6 @@ trait BladeCompiler
      *
      * @param string|array|null $string
      * @param string $charset
-     *
      * @return string|null
      */
     public function e(mixed $string, ?string $charset = null): ?string

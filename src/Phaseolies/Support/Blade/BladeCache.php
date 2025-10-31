@@ -6,8 +6,18 @@ use RuntimeException;
 
 trait BladeCache
 {
+    /**
+     * Path to the cache folder for compiled Blade templates
+     *
+     * @var string|null
+     */
     protected $cacheFolder;
 
+    /**
+     * Path to the public symlink folder linked to the public directory
+     *
+     * @var string|null
+     */
     protected $publicSymlinkFolder;
 
     /**
@@ -63,7 +73,8 @@ trait BladeCache
     }
 
     /**
-     * Set cache folder location     *
+     * Set cache folder location
+     *
      * @param string $path
      */
     public function setCacheFolder($path): void
@@ -73,6 +84,7 @@ trait BladeCache
 
     /**
      * Set public symlink folder
+     *
      * @param string $path
      */
     public function setSymlinkPathFolder($path): void
