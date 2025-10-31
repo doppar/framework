@@ -8,7 +8,7 @@ use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
-class SanitizerTest extends TestCase
+class RequestValidationTest extends TestCase
 {
     private Sanitizer $sanitizer;
 
