@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Model;
 
 use RuntimeException;
 use Phaseolies\Database\Entity\Model;

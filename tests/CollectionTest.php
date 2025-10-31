@@ -760,4 +760,284 @@ class CollectionTest extends TestCase
 
         return $method->invokeArgs($object, $parameters);
     }
+
+    public function testTakeWithPositiveLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->take(3);
+
+        $this->assertEquals([1, 2, 3], $result->all());
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model), $result->getModel());
+    }
+
+    public function testTakeWithLimitGreaterThanCollectionSize()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3]);
+
+        $result = $collection->take(10);
+
+        $this->assertEquals([1, 2, 3], $result->all());
+    }
+
+    public function testTakeWithZeroLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->take(0);
+
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testTakeWithNegativeLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->take(-2);
+
+        $this->assertEquals([4, 5], $result->all());
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model), $result->getModel());
+    }
+
+    public function testTakeWithLargeNegativeLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3]);
+
+        $result = $collection->take(-5);
+
+        $this->assertEquals([1, 2, 3], $result->all());
+    }
+
+    public function testTakeWithEmptyCollection()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), []);
+
+        $result = $collection->take(3);
+
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testTakeWithModels()
+    {
+        $model1 = $this->makeTestModel(1, "Alice");
+        $model2 = $this->makeTestModel(2, "Bob");
+        $model3 = $this->makeTestModel(3, "Charlie");
+        $model4 = $this->makeTestModel(4, "Diana");
+
+        $collection = new Collection(get_class($model1), [$model1, $model2, $model3, $model4]);
+
+        $result = $collection->take(2);
+
+        $this->assertEquals([$model1, $model2], $result->all());
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model1), $result->getModel());
+    }
+
+    public function testTakeLastWithPositiveLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->takeLast(3);
+
+        $this->assertEquals([3, 4, 5], $result->all());
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model), $result->getModel());
+    }
+
+    public function testTakeLastWithLimitGreaterThanCollectionSize()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3]);
+
+        $result = $collection->takeLast(10);
+
+        $this->assertEquals([1, 2, 3], $result->all());
+    }
+
+    public function testTakeLastWithZeroLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->takeLast(0);
+
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testTakeLastWithNegativeLimit()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5]);
+
+        $result = $collection->takeLast(-2);
+
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testTakeLastWithEmptyCollection()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), []);
+
+        $result = $collection->takeLast(3);
+
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testTakeLastWithModels()
+    {
+        $model1 = $this->makeTestModel(1, "Alice");
+        $model2 = $this->makeTestModel(2, "Bob");
+        $model3 = $this->makeTestModel(3, "Charlie");
+        $model4 = $this->makeTestModel(4, "Diana");
+
+        $collection = new Collection(get_class($model1), [$model1, $model2, $model3, $model4]);
+
+        $result = $collection->takeLast(2);
+
+        $this->assertEquals([$model3, $model4], $result->all());
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model1), $result->getModel());
+    }
+
+    public function testTakeAndTakeLastPreserveKeys()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [
+            'a' => 1,
+            'b' => 2,
+            'c' => 3,
+            'd' => 4,
+            'e' => 5
+        ]);
+
+        // take should preserve keys for positive limits
+        $takeResult = $collection->take(3);
+        $this->assertEquals(['a' => 1, 'b' => 2, 'c' => 3], $takeResult->all());
+
+        // takeLast should preserve keys for positive limits
+        $takeLastResult = $collection->takeLast(3);
+        $this->assertEquals(['c' => 3, 'd' => 4, 'e' => 5], $takeLastResult->all());
+    }
+
+    public function testTakeWithSingleItem()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [42]);
+
+        $result = $collection->take(1);
+
+        $this->assertEquals([42], $result->all());
+    }
+
+    public function testTakeLastWithSingleItem()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [42]);
+
+        $result = $collection->takeLast(1);
+
+        $this->assertEquals([42], $result->all());
+    }
+
+    public function testTakeLastChainability()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // Debug: Check each step
+        $step1 = $collection->takeLast(8);
+        $this->assertEquals([3, 4, 5, 6, 7, 8, 9, 10], $step1->all(), 'Step 1 failed');
+
+        $step2 = $step1->takeLast(5);
+        $this->assertEquals([6, 7, 8, 9, 10], $step2->all(), 'Step 2 failed');
+
+        $step3 = $step2->takeLast(3);
+        $this->assertEquals([8, 9, 10], $step3->all(), 'Step 3 failed');
+
+        // Test the chain
+        $result = $collection->takeLast(8)->takeLast(5)->takeLast(3);
+        $this->assertEquals([8, 9, 10], $result->all());
+    }
+
+    public function testTakeChainability()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // Debug: Check each step
+        $step1 = $collection->take(8);
+        $this->assertEquals([1, 2, 3, 4, 5, 6, 7, 8], $step1->all(), 'Step 1 failed');
+
+        $step2 = $step1->take(5);
+        $this->assertEquals([1, 2, 3, 4, 5], $step2->all(), 'Step 2 failed');
+
+        $step3 = $step2->take(3);
+        $this->assertEquals([1, 2, 3], $step3->all(), 'Step 3 failed');
+
+        // Test the chain
+        $result = $collection->take(8)->take(5)->take(3);
+        $this->assertEquals([1, 2, 3], $result->all());
+    }
+
+    public function testTakeAndTakeLastCombined()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // Take first 8, then last 3 of those
+        $result = $collection->take(8)->takeLast(3);
+
+        $this->assertEquals([6, 7, 8], $result->all());
+
+        // Take last 8, then first 3 of those
+        $result2 = $collection->takeLast(8)->take(3);
+
+        $this->assertEquals([3, 4, 5], $result2->all());
+    }
+
+    public function testTakeWithAssociativeArrays()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Bob'],
+            ['id' => 3, 'name' => 'Charlie'],
+            ['id' => 4, 'name' => 'Diana']
+        ]);
+
+        $result = $collection->take(2);
+
+        $this->assertEquals([
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Bob']
+        ], $result->all());
+    }
+
+    public function testTakeLastWithAssociativeArrays()
+    {
+        $model = $this->makeTestModel(0, "");
+        $collection = new Collection(get_class($model), [
+            ['id' => 1, 'name' => 'Alice'],
+            ['id' => 2, 'name' => 'Bob'],
+            ['id' => 3, 'name' => 'Charlie'],
+            ['id' => 4, 'name' => 'Diana']
+        ]);
+
+        $result = $collection->takeLast(2);
+
+        $this->assertEquals([
+            ['id' => 3, 'name' => 'Charlie'],
+            ['id' => 4, 'name' => 'Diana']
+        ], $result->all());
+    }
 }

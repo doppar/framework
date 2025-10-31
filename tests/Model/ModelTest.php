@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Model;
 
 use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
@@ -327,36 +327,6 @@ class ModelTest extends TestCase
         $this->assertIsArray($array['related']);
         $this->assertEquals('Related', $array['related']['name']);
     }
-
-    // public function testLinkOneRelationship()
-    // {
-    //     $model = new TestModel(['id' => 1]);
-    //     $builder = $model->linkOne(RelatedModel::class, 'test_model_id', 'id');
-
-    //     $this->assertInstanceOf(Builder::class, $builder);
-    //     $this->assertEquals('linkOne', $model->getLastRelationType());
-    //     $this->assertEquals(RelatedModel::class, $model->getLastRelatedModel());
-    //     $this->assertEquals('test_model_id', $model->getLastForeignKey());
-    //     $this->assertEquals('id', $model->getLastLocalKey());
-    // }
-
-    // public function testLinkManyRelationship()
-    // {
-    //     $model = new TestModel(['id' => 1]);
-    //     $builder = $model->linkMany(RelatedModel::class, 'test_model_id', 'id');
-
-    //     $this->assertInstanceOf(Builder::class, $builder);
-    //     $this->assertEquals('linkMany', $model->getLastRelationType());
-    // }
-
-    // public function testBindToRelationship()
-    // {
-    //     $model = new TestModel(['id' => 1]);
-    //     $builder = $model->bindTo(RelatedModel::class, 'test_model_id', 'id');
-
-    //     $this->assertInstanceOf(Builder::class, $builder);
-    //     $this->assertEquals('bindTo', $model->getLastRelationType());
-    // }
 }
 
 class TestModel extends Model

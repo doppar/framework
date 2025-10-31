@@ -581,6 +581,36 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
+     * Take the first or last {$limit} items from the collection.
+     *
+     * @param int $limit
+     * @return static
+     */
+    public function take(int $limit): self
+    {
+        if ($limit < 0) {
+            return $this->takeLast(abs($limit));
+        }
+
+        return new static($this->model, array_slice($this->data, 0, $limit));
+    }
+
+    /**
+     * Take the last {$limit} items from the collection.
+     *
+     * @param int $limit
+     * @return static
+     */
+    public function takeLast(int $limit): self
+    {
+        if ($limit <= 0) {
+            return new static($this->model, []);
+        }
+
+        return new static($this->model, array_slice($this->data, -$limit));
+    }
+
+    /**
      * Ensure the model is preserved when the collection is serialized by cache.
      *
      * @return array
