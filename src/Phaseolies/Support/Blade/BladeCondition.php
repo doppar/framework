@@ -8,7 +8,6 @@ trait BladeCondition
      * Usage: @if ($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileIf($condition): string
@@ -20,7 +19,6 @@ trait BladeCondition
      * Usage: @elseif (condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileElseif($condition): string
@@ -52,7 +50,6 @@ trait BladeCondition
      * Usage: @unless($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileUnless($condition): string
@@ -74,7 +71,6 @@ trait BladeCondition
      * Usage: @isset($variable).
      *
      * @param mixed $variable
-     *
      * @return string
      */
     protected function compileIsset($variable): string
@@ -96,7 +92,6 @@ trait BladeCondition
      * Usage: @switch ($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileSwitch($condition): string
@@ -109,7 +104,6 @@ trait BladeCondition
      * Usage: @case ($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileCase($condition): string
@@ -136,7 +130,6 @@ trait BladeCondition
      * Usage: @break or @break($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileBreak($condition): string
@@ -165,7 +158,6 @@ trait BladeCondition
      * Usage: @continue or @continue($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileContinue($condition): string
@@ -184,7 +176,6 @@ trait BladeCondition
      * Usage: @exit or @exit($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileExit($condition): string
@@ -202,7 +193,6 @@ trait BladeCondition
      * Usage: @php($varName = 'value').
      *
      * @param string $value
-     *
      * @return string
      */
     protected function compilePhp($value): string
@@ -214,7 +204,6 @@ trait BladeCondition
      * Usage: @json($data).
      *
      * @param mixed $data
-     *
      * @return string
      */
     protected function compileJson($data): string
@@ -241,7 +230,6 @@ trait BladeCondition
      * Usage: @unset($var).
      *
      * @param mixed $variable
-     *
      * @return string
      */
     protected function compileUnset($variable): string
@@ -253,7 +241,6 @@ trait BladeCondition
      * Usage: @for ($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileFor($condition): string
@@ -275,7 +262,6 @@ trait BladeCondition
      * Usage: @foreach ($expression).
      *
      * @param mixed $expression
-     *
      * @return string
      */
     protected function compileForeach($expression): string
@@ -305,7 +291,6 @@ trait BladeCondition
      * Usage: @forelse ($condition).
      *
      * @param mixed $expression
-     *
      * @return string
      */
     protected function compileForelse($expression): string
@@ -352,7 +337,6 @@ trait BladeCondition
      * Usage: @while ($condition).
      *
      * @param mixed $condition
-     *
      * @return string
      */
     protected function compileWhile($condition): string
@@ -374,7 +358,6 @@ trait BladeCondition
      * Usage: @extends($parent).
      *
      * @param string $parent
-     *
      * @return string
      */
     protected function compileExtends($parent): string
@@ -390,7 +373,6 @@ trait BladeCondition
      * Usage: @include($view).
      *
      * @param string $view
-     *
      * @return string
      */
     protected function compileInclude($view): string
@@ -411,7 +393,6 @@ trait BladeCondition
      * Usage: @yield($string).
      *
      * @param string $string
-     *
      * @return string
      */
     protected function compileYield($string): string
@@ -423,7 +404,6 @@ trait BladeCondition
      * Usage: @section($name).
      *
      * @param string $name
-     *
      * @return string
      */
     protected function compileSection($name): string
@@ -485,7 +465,6 @@ trait BladeCondition
      * Usage: @method('put').
      *
      * @param string $method
-     *
      * @return string
      */
     protected function compileMethod($method): string
