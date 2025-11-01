@@ -1,11 +1,11 @@
-@empty($traces)
+@if (empty($traces))
     <div class="text-neutral-500 text-sm p-4">No stack trace available</div>
 @else
     <div class="space-y-2">
         @foreach($traces as $index => $trace)
-            @php
+              @php
                 $file = $trace['file'] ?? 'unknown';
-                $line = $trace['line'] ?? 0
+                $line = $trace['line'] ?? 0;
                 $function = $trace['function'] ?? '';
                 $class = $trace['class'] ?? '';
                 $type = $trace['type'] ?? '';
@@ -30,4 +30,4 @@
             </div>
         @endforeach
     </div>
-@endempty
+@endif

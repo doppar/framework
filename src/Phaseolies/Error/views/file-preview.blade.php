@@ -9,7 +9,7 @@
     }
 @endphp
 
-@empty($lines)
+@if(empty($lines))
     <div class="p-3 text-sm text-neutral-500">File preview not available</div>
 @else
     <div class="trace-frame-preview">
@@ -25,4 +25,4 @@
             </div>
         @endforeach
     </div>
-@endempty
+@endif

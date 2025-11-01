@@ -253,7 +253,7 @@
                     </button>
                 </div>
                 <div id="traceFrames">
-                    {{-- @include('trace-frames', ['traces' => $traces]) --}}
+                    @include('trace-frames', ['traces' => $traces])
                 </div>
             </div>
         </main>
