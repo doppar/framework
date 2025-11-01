@@ -69,73 +69,6 @@
         .code-line-content {
             @apply flex-1;
         }
-
-        /* Stack Trace Frame Components */
-        .trace-frame {
-            @apply border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 hover:border-neutral-300 dark:hover:border-neutral-700;
-        }
-
-        .trace-frame-header {
-            @apply flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer;
-        }
-
-        .trace-frame-number {
-            @apply flex items-center justify-center w-8 h-8 bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded font-mono text-xs font-semibold shrink-0;
-        }
-
-        .trace-frame-info {
-            @apply flex-1 min-w-0;
-        }
-
-        .trace-frame-signature {
-            @apply font-mono text-sm font-medium truncate;
-        }
-
-        .trace-frame-path {
-            @apply text-xs text-neutral-500 font-mono truncate;
-        }
-
-        .trace-frame-arrow {
-            @apply w-5 h-5 text-neutral-400 transition-transform duration-200 shrink-0;
-        }
-
-        .trace-frame-content {
-            @apply bg-neutral-50/50 dark:bg-neutral-950/50 border-t border-neutral-200 dark:border-neutral-800;
-        }
-
-        .trace-frame-preview {
-            @apply p-3 font-mono text-xs;
-        }
-
-        /* Vendor Frame */
-        .vendor-frame {
-            @apply opacity-60;
-        }
-
-        .vendor-frame .trace-frame-header {
-            @apply bg-neutral-100/50 dark:bg-neutral-950/50;
-        }
-
-        .vendor-frame .trace-frame-signature {
-            @apply text-neutral-500 dark:text-neutral-600;
-        }
-
-        /* Preview Line Components */
-        .preview-line {
-            @apply flex py-0.5 px-2 text-neutral-600 dark:text-neutral-400;
-        }
-
-        .preview-line-error {
-            @apply flex py-0.5 px-2 bg-red-500/10 border-l-2 border-l-red-500 text-red-700 dark:text-red-400;
-        }
-
-        .preview-line-number {
-            @apply inline-block w-10 text-right pr-3 text-neutral-400 select-none shrink-0;
-        }
-
-        .preview-line-content {
-            @apply flex-1 whitespace-pre;
-        }
     }
 </style>
 
@@ -212,7 +145,16 @@
             {{-- Code Content --}}
             <div class="pt-3 w-full">
 
-                {{-- if we use loops to build lines here, we will get into white spaces issue when dealing with <pre> tag --}}
+                {{--
+                    We avoid rendering each code line directly inside the <pre> tag using Blade loops,
+                    because whitespace and line breaks in HTML can cause unexpected formatting issues
+                    inside <pre>. 
+
+                    Instead, we build the entire block of HTML for code lines as a single string 
+                    ($contents) in PHP, carefully escaping special characters, and then output it 
+                    inside <pre> to preserve the exact formatting.
+                --}}
+
                 @php
                     $contents = [];
 
@@ -227,7 +169,8 @@
                                     '</div>';
                     }
 
-                    // that double quotes here isn't trivial it preserve the structure of the string
+                    // Join all lines preserving structure. 
+                    // Note: Double quotes around the string are important to avoid HTML breaking
                     $contents = implode("\n", $contents);
                 @endphp
 
@@ -236,8 +179,6 @@
                 </pre>
 
             </div>
-
-            {{-- Stack Trace Section --}}
             <div class="mt-6">
                 <div class="flex items-center justify-between mb-3 px-2">
                     <h3 class="text-base font-semibold flex items-center gap-2">
@@ -304,40 +245,4 @@
 
     ThemeManager.init();
 </script>
-
-<script>
-    let allExpanded = false;
-
-    function toggleTraceFrame(index) {
-        const frame = document.querySelector(`[data-frame="${index}"]`);
-        const content = frame.querySelector('.frame-content');
-        const arrow = frame.querySelector('.frame-arrow');
-
-        content.classList.toggle('hidden');
-        arrow.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-    }
-
-    function toggleAllFrames() {
-        const frames = document.querySelectorAll('.trace-frame');
-        const toggleBtn = document.getElementById('toggleAllText');
-
-        allExpanded = !allExpanded;
-
-        frames.forEach((frame) => {
-            const content = frame.querySelector('.frame-content');
-            const arrow = frame.querySelector('.frame-arrow');
-
-            if (allExpanded) {
-                content.classList.remove('hidden');
-                arrow.style.transform = 'rotate(180deg)';
-            } else {
-                content.classList.add('hidden');
-                arrow.style.transform = 'rotate(0deg)';
-            }
-        });
-
-        toggleBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
-    }
-</script>
-
 </html>

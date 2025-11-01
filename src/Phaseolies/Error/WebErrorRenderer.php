@@ -14,14 +14,14 @@ class WebErrorRenderer
      * @param Throwable $exception
      * @return void
      */
-    public function renderDebug(Throwable $exception): void
+    public function renderDebug(Throwable $exception): string
     {
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
 
         $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
         $lines = explode("\n", $fileContent);
-        
+
         $startLine = max(0, $errorLine - 10);
         $endLine = min(count($lines) - 1, $errorLine + 100);
         $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
@@ -49,10 +49,10 @@ class WebErrorRenderer
         $currentDir = __DIR__;
         $relative = str_replace($basePath . '/', '', $currentDir);
         $viewsPath = $relative . '/views';
-        
+
         $controller->setViewFolder($viewsPath);
 
-        echo $controller->render('template', [
+        return $controller->render('template', [
             'error_message'   => $exception->getMessage(),
             'error_file'      => $errorFile,
             'error_line'      => $errorLine,
@@ -73,10 +73,10 @@ class WebErrorRenderer
     private function processTraces(array $traces): array
     {
         $processed = [];
-        
+
         foreach ($traces as $trace) {
             $file = $trace['file'] ?? 'unknown';
-            
+
             $processed[] = [
                 'file' => $file,
                 'short_file' => $this->shortenPath($file),
@@ -87,7 +87,7 @@ class WebErrorRenderer
                 'is_vendor' => strpos($file, 'doppar/framework') !== false,
             ];
         }
-        
+
         return $processed;
     }
 
