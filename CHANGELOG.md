@@ -1,5 +1,14 @@
 # Release Notes
 
+## v3.0.0-beta.1 - 2025-11-01
+
+* [Router Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/96
+* [Sanitizer Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/97
+* Blade condition unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/98
+* collection take() and takeLast() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/99
+* ValidationRule trait exists query replace with entity builder query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/100
+* Feature: added exists_in input validation rule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/101
+
 ## v3.0.0-beta.0 - 2025-10-30
 
 * translation comment doc update and application version unit test issue resolved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/95
