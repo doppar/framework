@@ -211,14 +211,30 @@
 
             {{-- Code Content --}}
             <div class="pt-3 w-full">
+
+                {{-- if we use loops to build lines here, we will get into white spaces issue when dealing with <pre> tag --}}
+                @php
+                    $contents = [];
+
+                    foreach ($code_lines as $line) {
+                        $class = $line['is_error'] ? 'code-line-error' : 'code-line';
+
+                        $content = htmlspecialchars($line['content'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+                        $contents[] = '<div class="' . $class . '">' .
+                                    '<span class="code-line-number">' . $line['number'] . '</span>' .
+                                    '<span class="code-line-content">' . $content . '</span>' .
+                                    '</div>';
+                    }
+
+                    // that double quotes here isn't trivial it preserve the structure of the string
+                    $contents = implode("\n", $contents);
+                @endphp
+
                 <pre>
-                    @foreach($code_lines as $codeLine)
-                        <div class="{{ $codeLine['is_error'] ? 'code-line-error' : 'code-line' }}">
-                            <span class="code-line-number">{{ $codeLine['number'] }}</span>
-                            <span class="code-line-content">{{ $codeLine['content'] }}</span>
-                        </div>
-                    @endforeach
+                    {!! $contents !!}
                 </pre>
+
             </div>
 
             {{-- Stack Trace Section --}}
