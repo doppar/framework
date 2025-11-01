@@ -18,39 +18,48 @@ class WebErrorRenderer
         $errorMessage = $exception->getMessage();
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
-        $trace = $exception->getTrace()[0];
-
-        // dd($trace, $trace['file'], $exception->getTraceAsString());
-
-        $errorTrace = $exception->getTraceAsString();
         $errorCode = $exception->getCode() ?: 500;
 
         $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
-
         $lines = explode("\n", $fileContent);
-
+        
         $startLine = max(0, $errorLine - 10);
         $endLine = min(count($lines) - 1, $errorLine + 100);
         $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
 
-        $highlightedLines = [];
+         $highlightedLines = [];
         foreach ($displayedLines as $index => $line) {
             $lineNumber = $startLine + $index + 1;
             if ($lineNumber == $errorLine) {
                 $highlightedLines[] =
-                    '<div class="inline-flex w-full bg-red-500/10 border-l-2 border-l-red-500 py-0.5">
-                        <span class="w-12 text-right pr-3 text-neutral-500 select-none shrink-0">' . $lineNumber . '</span>
-                        <span class="flex-1">' . htmlspecialchars($line) . '</span>
+                    '<div class="code-line-error">
+                        <span class="code-line-number">' . $lineNumber . '</span>
+                        <span class="code-line-content">' . htmlspecialchars($line) . '</span>
                     </div>';
             } else {
-                $highlightedLines[] = '<div class="inline-flex w-full hover:bg-neutral-100 dark:hover:bg-white/5 py-0.5"><span class="w-12 text-right pr-3 text-neutral-500 select-none shrink-0">' . $lineNumber . '</span><span class="flex-1">' . htmlspecialchars($line) . '</span></div>';
+                $highlightedLines[] = '<div class="code-line"><span class="code-line-number">' . $lineNumber . '</span><span class="code-line-content">' . htmlspecialchars($line) . '</span></div>';
             }
         }
 
         $formattedCode = implode("\n", $highlightedLines);
+
+        // $highlightedLines = [];
+        // foreach ($displayedLines as $index => $line) {
+        //     $lineNumber = $startLine + $index + 1;
+        //     $lineClass = $lineNumber == $errorLine ? 'code-line-error' : 'code-line';
+            
+        //     $highlightedLines[] = sprintf(
+        //         '<div class="%s"><span class="code-line-number">%d</span><span class="code-line-content">%s</span></div>',
+        //         $lineClass,
+        //         $lineNumber,
+        //         htmlspecialchars($line)
+        //     );
+        // }
+
+        // $formattedCode = implode('', $highlightedLines);
+        $traceFramesHtml = $this->buildTraceFrames($exception->getTrace());
+        
         date_default_timezone_set(config('app.timezone'));
-        $fileExtension = pathinfo($errorFile, PATHINFO_EXTENSION);
-        $languageClass = "language-$fileExtension";
 
         if (ob_get_level() > 0) {
             ob_end_clean();
@@ -63,7 +72,6 @@ class WebErrorRenderer
                 '{{ error_line }}',
                 '{{ error_trace }}',
                 '{{ file_content }}',
-                '{{ file_extension }}',
                 '{{ php_version }}',
                 '{{ doppar_version }}',
                 '{{ request_method }}',
@@ -75,33 +83,113 @@ class WebErrorRenderer
                 '{{ status_code }}'
             ],
             [
-                $errorMessage,
-                $errorFile,
+                htmlspecialchars($errorMessage),
+                htmlspecialchars($errorFile),
                 $errorLine,
-                nl2br(htmlspecialchars($errorTrace)),
+                $traceFramesHtml,
                 $formattedCode,
-                $languageClass,
                 PHP_VERSION,
                 Application::VERSION,
-                request()->getMethod(),
-                trim(request()->fullUrl(), '/'),
-                now()->toDayDateTimeString(),
-                $_SERVER['SERVER_SOFTWARE'],
-                php_uname(),
-                class_basename($exception),
+                htmlspecialchars(request()->getMethod()),
+                htmlspecialchars(trim(request()->fullUrl(), '/')),
+                htmlspecialchars(now()->toDayDateTimeString()),
+                htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'),
+                htmlspecialchars(php_uname()),
+                htmlspecialchars(class_basename($exception)),
                 $errorCode
             ],
             file_get_contents(__DIR__ . '/error_page_template.html')
         );
     }
 
-    public function buildTraceFrames(array $traces)
+    private function buildTraceFrames(array $traces): string
     {
-        return array_map(function ($trace) {
-            '<div class="trace-frame">
+        if (empty($traces)) {
+            return '<div class="text-neutral-500 text-sm p-4">No stack trace available</div>';
+        }
 
-            <div>';
-        }, $traces);
+        $html = '<div class="space-y-2">';
+
+        foreach ($traces as $index => $trace) {
+            $file = $trace['file'] ?? 'unknown';
+            $line = $trace['line'] ?? 0;
+            $function = $trace['function'] ?? '';
+            $class = $trace['class'] ?? '';
+            $type = $trace['type'] ?? '';
+
+            $signature = $class ? $class . $type . $function . '()' : $function . '()';
+            $isVendor = strpos($file, 'vendor/') !== false;
+            $vendorClass = $isVendor ? 'vendor-frame' : '';
+            $shortFile = $this->shortenPath($file);
+            $filePreview = $this->getFilePreview($file, $line);
+
+            $html .= sprintf(
+                '<div class="trace-frame %s" data-frame="%d">
+                    <div class="trace-frame-header" onclick="toggleTraceFrame(%d)">
+                        <span class="trace-frame-number">%d</span>
+                        <div class="trace-frame-info">
+                            <div class="trace-frame-signature">%s</div>
+                            <div class="trace-frame-path">%s:%s</div>
+                        </div>
+                        <svg class="trace-frame-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div class="frame-content trace-frame-content hidden">
+                        %s
+                    </div>
+                </div>',
+                $vendorClass,
+                $index,
+                $index,
+                $index + 1,
+                htmlspecialchars($signature),
+                htmlspecialchars($shortFile),
+                $line,
+                $filePreview
+            );
+        }
+
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    private function shortenPath(string $path): string
+    {
+        $basePath = dirname(__DIR__, 3);
+        return str_replace($basePath . '/', '', $path);
+    }
+
+    private function getFilePreview(string $file, int $line): string
+    {
+        if (!file_exists($file) || $line <= 0) {
+            return '<div class="p-3 text-sm text-neutral-500">File preview not available</div>';
+        }
+
+        $lines = file($file);
+        $startLine = max(0, $line - 4);
+        $endLine = min(count($lines), $line + 3);
+
+        $html = '<div class="trace-frame-preview">';
+
+        for ($i = $startLine; $i < $endLine; $i++) {
+            $lineNumber = $i + 1;
+            $lineContent = $lines[$i] ?? '';
+            $isHighlight = $lineNumber === $line;
+            $lineClass = $isHighlight ? 'preview-line-error' : 'preview-line';
+
+            $html .= sprintf(
+                '<div class="%s"><span class="preview-line-number">%d</span><span class="preview-line-content">%s</span></div>',
+                $lineClass,
+                $lineNumber,
+                htmlspecialchars($lineContent)
+            );
+        }
+
+        $html .= '</div>';
+
+        return $html;
     }
 
     /**
