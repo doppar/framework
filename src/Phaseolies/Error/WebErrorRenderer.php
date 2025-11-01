@@ -55,7 +55,15 @@ class WebErrorRenderer
 
         $controller = new Controller;
 
-        $controller->setViewFolder('framework/src/Phaseolies/Error/views'); // keep hard coded for now unitl founding dynamic way!
+        $basePath = base_path();
+        
+        $currentDir = __DIR__;
+
+        $relative = str_replace($basePath . '/', '', $currentDir);
+
+        $viewsPath = $relative . '/views';
+
+        $controller->setViewFolder($viewsPath); // keep hard coded for now unitl founding dynamic way!
 
         echo $controller->render('template', [
             'error_message'   => $errorMessage,
@@ -73,41 +81,6 @@ class WebErrorRenderer
             'exception_class' => class_basename($exception),
             'status_code'     => $errorCode,
         ]);
-        // echo str_replace(
-        //     [
-        //         '{{ error_message }}',
-        //         '{{ error_file }}',
-        //         '{{ error_line }}',
-        //         '{{ error_trace }}',
-        //         '{{ file_content }}',
-        //         '{{ php_version }}',
-        //         '{{ doppar_version }}',
-        //         '{{ request_method }}',
-        //         '{{ request_url }}',
-        //         '{{ timestamp }}',
-        //         '{{ server_software }}',
-        //         '{{ platform }}',
-        //         '{{ exception_class }}',
-        //         '{{ status_code }}'
-        //     ],
-        //     [
-        //         htmlspecialchars($errorMessage),
-        //         htmlspecialchars($errorFile),
-        //         $errorLine,
-        //         $traceFramesHtml,
-        //         $formattedCode,
-        //         PHP_VERSION,
-        //         Application::VERSION,
-        //         htmlspecialchars(request()->getMethod()),
-        //         htmlspecialchars(trim(request()->fullUrl(), '/')),
-        //         htmlspecialchars(now()->toDayDateTimeString()),
-        //         htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'),
-        //         htmlspecialchars(php_uname()),
-        //         htmlspecialchars(class_basename($exception)),
-        //         $errorCode
-        //     ],
-        //     file_get_contents(__DIR__ . '/views/template.blade.php')
-        // );
     }
 
     private function buildTraceFrames(array $traces): string
@@ -168,7 +141,8 @@ class WebErrorRenderer
 
     private function shortenPath(string $path): string
     {
-        $basePath = dirname(__DIR__, 3);
+        $basePath = dirname(__DIR__, 3); // hard coded
+
         return str_replace($basePath . '/', '', $path);
     }
 

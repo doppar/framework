@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Error - {{ error_message }}</title>
+    <title>Error - {!! $error_message  !!}</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <script>
@@ -151,10 +151,10 @@
             class="flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%]  dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
             <div>
                 <div class="dark:text-white text-neutral-950 text-3xl font-bold">
-                    {{ exception_class }}
+                    {!! $exception_class  !!}
                 </div>
                 <div class="dark:text-neutral-300 text-neutral-700 text-2xl">
-                    {{ error_message }}
+                    {!! $error_message  !!}
                 </div>
             </div>
             <div class="ml-auto flex flex-col">
@@ -186,12 +186,12 @@
                     <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
                         <span
                             class="text-neutral-800 dark:text-neutral-500 text-shadow-sm/70 text-shadow-neutral-500/20 blur-[0.3px]">DOPPAR</span>
-                        {{ doppar_version }}
+                        {!! $doppar_version  !!}
                     </div>
                     <div class="px-2">
                         <span
                             class="text-neutral-800 dark:text-neutral-500 text-shadow-sm/70 text-shadow-neutral-500/20 blur-[0.3px]">PHP</span>
-                        {{ php_version }}
+                        {!! $php_version  !!}
                     </div>
                 </div>
             </div>
@@ -200,11 +200,11 @@
     <!-- endpoints details -->
     <div
         class="flex gap-2 items-center border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2  rounded-lg">
-        <span data-request-type="{{ request_method }}" class="badge p-1 rounded">
-            {{ request_method }}
+        <span data-request-type="{!! $request_method  !!}" class="badge p-1 rounded">
+            {!! $request_method  !!}
         </span>
-        <span class="dark:text-neutral-400">{{ request_url }}</span>
-        <span class="ml-auto">{{ timestamp }}</span>
+        <span class="dark:text-neutral-400">{!! $request_url  !!}</span>
+        <span class="ml-auto">{!! $timestamp  !!}</span>
     </div>
     <!-- error backtrace and error previeww -->
     <div class="flex gap-4">
@@ -216,10 +216,10 @@
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
-                {{ error_file }}
+                {!! $error_file  !!}
             </div>
             <div class="pt-3 w-full">
-                <pre>{{ file_content }}</pre>
+                <pre>{!! $file_content  !!}</pre>
             </div>
             <!-- Stack Trace Section -->
             <div class="mt-6">
@@ -237,7 +237,7 @@
                     </button>
                 </div>
                 <div id="traceFrames">
-                    {{ error_trace }}
+                    {!! $error_trace  !!}
                 </div>
             </div>
         </main>
