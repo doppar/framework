@@ -3,6 +3,7 @@
 namespace Phaseolies\Error;
 
 use Phaseolies\Application;
+use Phaseolies\Support\View\View;
 use Throwable;
 
 class WebErrorRenderer
@@ -43,20 +44,6 @@ class WebErrorRenderer
 
         $formattedCode = implode("\n", $highlightedLines);
 
-        // $highlightedLines = [];
-        // foreach ($displayedLines as $index => $line) {
-        //     $lineNumber = $startLine + $index + 1;
-        //     $lineClass = $lineNumber == $errorLine ? 'code-line-error' : 'code-line';
-            
-        //     $highlightedLines[] = sprintf(
-        //         '<div class="%s"><span class="code-line-number">%d</span><span class="code-line-content">%s</span></div>',
-        //         $lineClass,
-        //         $lineNumber,
-        //         htmlspecialchars($line)
-        //     );
-        // }
-
-        // $formattedCode = implode('', $highlightedLines);
         $traceFramesHtml = $this->buildTraceFrames($exception->getTrace());
         
         date_default_timezone_set(config('app.timezone'));
@@ -64,6 +51,8 @@ class WebErrorRenderer
         if (ob_get_level() > 0) {
             ob_end_clean();
         }
+
+        // dd((new View)->render(file_get_contents(__DIR__ . '/views/template.blade.php')));
 
         echo str_replace(
             [
@@ -98,7 +87,7 @@ class WebErrorRenderer
                 htmlspecialchars(class_basename($exception)),
                 $errorCode
             ],
-            file_get_contents(__DIR__ . '/error_page_template.html')
+            file_get_contents(__DIR__ . '/views/template.blade.php')
         );
     }
 
@@ -118,7 +107,10 @@ class WebErrorRenderer
             $type = $trace['type'] ?? '';
 
             $signature = $class ? $class . $type . $function . '()' : $function . '()';
-            $isVendor = strpos($file, 'vendor/') !== false;
+            
+            $isVendor = strpos($file, 'doppar/framework') !== false; // a hack until completing this work, cz the framework code now isn't under vendor, is at framework/*
+            
+            
             $vendorClass = $isVendor ? 'vendor-frame' : '';
             $shortFile = $this->shortenPath($file);
             $filePreview = $this->getFilePreview($file, $line);

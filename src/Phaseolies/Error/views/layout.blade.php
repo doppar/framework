@@ -129,11 +129,23 @@
         .vendor-frame {
             @apply opacity-75;
         }
+        /* Vendor Frame - Dim/Distinguish vendor files */
+    .vendor-frame {
+        @apply opacity-60;
+    }
+
+    .vendor-frame .trace-frame-header {
+        @apply bg-neutral-100/50 dark:bg-neutral-950/50;
+    }
+
+    .vendor-frame .trace-frame-signature {
+        @apply text-neutral-500 dark:text-neutral-600;
+    }
     }
 </style>
 
 <body
-    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-950/95 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
     <div class="top-bar rounded-lg">
         <div
             class="flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%]  dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
