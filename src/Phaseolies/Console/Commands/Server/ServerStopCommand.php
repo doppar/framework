@@ -35,30 +35,30 @@ class ServerStopCommand extends Command
                 $port = filter_var($port, FILTER_VALIDATE_INT);
                 if ($port === false) {
                     $this->displayError('Port must be a valid integer');
-                    return 1;
+                    return Command::FAILURE;
                 }
             }
             if ($port) {
                 $stopped = self::stopServer($port);
                 if (count($stopped) === 0) {
                     $this->displayError("No PHP server found on port $port");
-                    return 1;
+                    return Command::FAILURE;
                 }
 
                 self::displayStopped($stopped);
-                return 0;
+                return Command::SUCCESS;
             }
 
             // Stop all servers
             $stopped = self::stopAllServers();
             if (count($stopped) === 0) {
                 $this->displayError('No background PHP servers were stopped');
-                return 1;
+                return Command::FAILURE;
             }
 
             self::displayStopped($stopped);
             $this->displaySuccess('All matching servers stopped');
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

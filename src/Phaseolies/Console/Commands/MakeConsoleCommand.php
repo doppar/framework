@@ -37,7 +37,7 @@ class MakeConsoleCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Command already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $directoryPath = dirname($filePath);
@@ -53,7 +53,7 @@ class MakeConsoleCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>📌 Command Name:</> <fg=white>doppar:' . $this->convertToKebabCase($className) . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 
@@ -114,7 +114,7 @@ class {$className} extends Command
      */
     protected function handle(): int
     {
-        return 0;
+        return Command::SUCCESS;
     }
 }
 

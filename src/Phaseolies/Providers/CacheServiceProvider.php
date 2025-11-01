@@ -27,12 +27,7 @@ class CacheServiceProvider extends ServiceProvider
         $adapter = $this->createAdapter(config('caching.default', 'file'));
         $cacheStore = new CacheStore($adapter, config('caching.prefix'));
         $this->app->singleton(CacheInterface::class, fn() => $cacheStore);
-
-        // Bind the 'cache' service to a singleton instance of the CacheStore class.
-        // This handles cache facades jobs
-        $this->app->singleton('cache', function () use ($adapter) {
-            return new CacheStore($adapter, config('caching.prefix'));
-        });
+        $this->app->singleton('cache', fn() => $cacheStore);
     }
 
     /**

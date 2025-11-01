@@ -37,7 +37,7 @@ class CronRunCommand extends Command
 
             if (empty($commandsToRun)) {
                 $this->displayInfo('No scheduled commands are ready to run.');
-                return 0;
+                return Command::SUCCESS;
             }
 
             foreach ($commandsToRun as $command) {
@@ -56,7 +56,7 @@ class CronRunCommand extends Command
             }
 
             $this->displaySuccess('Executed ' . count($commandsToRun) . ' scheduled commands');
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

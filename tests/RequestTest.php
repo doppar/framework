@@ -874,37 +874,35 @@ class RequestTest extends TestCase
         $this->assertEquals('test@example.com', $result->email);
     }
 
-    // OK, but there were issues!
-    // Tests: 308, Assertions: 597, Deprecations: 9
-    // public function testBindToWithNestedObjects()
-    // {
-    //     $this->request->merge([
-    //         'user' => [
-    //             'name' => 'test',
-    //             'email' => 'test@example.com',
-    //             'details' => [
-    //                 'age' => 30,
-    //                 'active' => true
-    //             ]
-    //         ]
-    //     ]);
+    public function testBindToWithNestedObjects()
+    {
+        $this->request->merge([
+            'user' => [
+                'name' => 'test',
+                'email' => 'test@example.com',
+                'details' => [
+                    'age' => 30,
+                    'active' => true
+                ]
+            ]
+        ]);
 
-    //     $result = $this->request->bindTo(new UserDTO(), false);
+        $result = $this->request->bindTo(new UserDTO(), false);
 
-    //     $this->assertIsObject($result->user);
-    //     $this->assertEquals('test', $result->user->name);
-    //     $this->assertEquals('test@example.com', $result->user->email);
+        $this->assertIsObject($result->user);
+        $this->assertEquals('test', $result->user->name);
+        $this->assertEquals('test@example.com', $result->user->email);
 
-    //     $this->assertIsArray($result->user->details);
-    //     $this->assertEquals(30, $result->user->details['age']);
-    //     $this->assertTrue($result->user->details['active']);
+        $this->assertIsArray($result->user->details);
+        $this->assertEquals(30, $result->user->details['age']);
+        $this->assertTrue($result->user->details['active']);
 
-    //     $this->assertTrue(property_exists($result->user, 'details'));
-    // }
+        $this->assertTrue(property_exists($result->user, 'details'));
+    }
 
     private function createTestClass(string $property, ?string $type = null): object
     {
-        $code = "return new class() {";
+        $code = "return new #[AllowDynamicProperties] class() {";
         if ($type) {
             $code .= "public $type \$$property;";
         } else {
@@ -916,7 +914,8 @@ class RequestTest extends TestCase
     }
 }
 
-// class UserDTO
-// {
-//     public $user;
-// }
+#[\AllowDynamicProperties]
+class UserDTO
+{
+    public $user;
+}

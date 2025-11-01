@@ -21,8 +21,8 @@ class RawExpression
     /**
      * Create a new raw SQL expression instance.
      *
-     * @param string $value The raw SQL string to be included in queries
-     * @param array $bindings The parameter bindings for the SQL expression
+     * @param string $value
+     * @param array $bindings
      */
     public function __construct(string $value, array $bindings = [])
     {
@@ -34,7 +34,7 @@ class RawExpression
     /**
      * Get the raw SQL expression value.
      *
-     * @return string The raw SQL string
+     * @return string
      */
     public function getValue(): string
     {
@@ -44,7 +44,7 @@ class RawExpression
     /**
      * Get the parameter bindings for the expression.
      *
-     * @return array The parameter bindings
+     * @return array
      */
     public function getBindings(): array
     {
@@ -54,7 +54,7 @@ class RawExpression
     /**
      * Convert the expression to its string representation.
      *
-     * @return string The raw SQL string
+     * @return string
      */
     public function __toString(): string
     {

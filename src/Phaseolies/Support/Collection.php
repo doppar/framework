@@ -4,7 +4,7 @@ namespace Phaseolies\Support;
 
 use Traversable;
 use Ramsey\Collection\Collection as RamseyCollection;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use IteratorAggregate;
 use ArrayIterator;
 use ArrayAccess;
@@ -578,5 +578,87 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function toJson(int $options = 0): string
     {
         return json_encode($this->toArray(), $options);
+    }
+
+    /**
+     * Take the first or last {$limit} items from the collection.
+     *
+     * @param int $limit
+     * @return static
+     */
+    public function take(int $limit): self
+    {
+        if ($limit < 0) {
+            return $this->takeLast(abs($limit));
+        }
+
+        return new static($this->model, array_slice($this->data, 0, $limit));
+    }
+
+    /**
+     * Take the last {$limit} items from the collection.
+     *
+     * @param int $limit
+     * @return static
+     */
+    public function takeLast(int $limit): self
+    {
+        if ($limit <= 0) {
+            return new static($this->model, []);
+        }
+
+        return new static($this->model, array_slice($this->data, -$limit));
+    }
+
+    /**
+     * Ensure the model is preserved when the collection is serialized by cache.
+     *
+     * @return array
+     */
+    public function __serialize(): array
+    {
+        $parent = [];
+
+        // If the parent defines __serialize, merge its payload to avoid losing state.
+        if (method_exists(get_parent_class($this) ?: '', '__serialize')) {
+            $parent = parent::__serialize();
+        }
+
+        $payload = [
+            '__ph_model' => $this->model,
+            '__ph_data' => $this->data,
+        ];
+
+        // Merge parent state (if any) with our own
+        return array_merge($parent, $payload);
+    }
+
+    /**
+     * Restore the model and data when the collection is unserialized by cache.
+     *
+     * @param array $data
+     * @return void
+     */
+    public function __unserialize(array $data): void
+    {
+        // Restore our own state
+        $this->model = $data['__ph_model'] ?? $this->model ?? null;
+        $this->data = $data['__ph_data'] ?? $this->data ?? [];
+
+        // If the parent defines __unserialize, pass remaining data to it
+        if (method_exists(get_parent_class($this) ?: '', '__unserialize')) {
+            unset($data['__ph_model'], $data['__ph_data']);
+            parent::__unserialize($data);
+        }
+    }
+
+    /**
+     * Get the model class name associated to this collection.
+     *
+     * @return ?string
+     */
+    public function getModel(): ?string
+    {
+        return $this->model ?? null;
     }
 }

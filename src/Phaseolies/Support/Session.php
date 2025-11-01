@@ -33,7 +33,7 @@ class Session
     public function __construct()
     {
         $this->data = &$_SESSION;
-        $this->peek = &$_SESSION;
+        $this->peek = $_SESSION;
     }
 
     /**

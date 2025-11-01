@@ -5,14 +5,21 @@ namespace Phaseolies\Database;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Query\Builder;
+use Phaseolies\Database\Entity\Query\Builder as QueryBuilder;
 use Phaseolies\Database\Procedure\ProcedureResult;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Connectors\ConnectionFactory;
 use PDOException;
 use PDO;
+use Phaseolies\Database\Entity\Query\Grammar;
 
 class Database
 {
+    use Grammar {
+        getTableColumnsSql as protected grammarGetTableColumnsSql;
+        processTableColumnsResult as protected grammarProcessTableColumnsResult;
+    }
+
     /**
      * The active PDO connections
      *
@@ -26,6 +33,13 @@ class Database
      * @var array
      */
     protected static $transactions = [];
+
+    /**
+     * The driver instances for each connection
+     *
+     * @var array<string, \Phaseolies\Database\Contracts\Driver\DriverInterface>
+     */
+    protected static $drivers = [];
 
     /**
      * The connection name for this instance
@@ -43,12 +57,44 @@ class Database
     }
 
     /**
+     * Get the SQL query to retrieve table column information
+     *
+     * @param string $tableName
+     * @return string
+     */
+    public function getTableColumnsSql(string $tableName): string
+    {
+        return $this->grammarGetTableColumnsSql($tableName);
+    }
+
+    /**
+     * Process the result to extract column names based on driver
+     *
+     * @param array $result
+     * @return array
+     */
+    public function processTableColumnsResult(array $result): array
+    {
+        return $this->grammarProcessTableColumnsResult($result);
+    }
+
+    /**
+     * Get the driver name for the current connection
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        return $this->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+    }
+
+    /**
      * Get a PDO instance for the specified connection
      *
-     * @param string|null $connection Connection name (null for default)
+     * @param string|null $connection
      * @return PDO
-     * @throws \RuntimeException When database configuration is invalid
-     * @throws \PDOException When connection fails
+     * @throws \RuntimeException
+     * @throws \PDOException
      */
     public static function getPdoInstance(?string $connection = null): PDO
     {
@@ -62,15 +108,23 @@ class Database
             }
 
             try {
-                static::$connections[$connection] = ConnectionFactory::make($config);
+                // Create and store the driver instance
+                $driver = ConnectionFactory::createDriver($config);
+                static::$drivers[$connection] = $driver;
+
+                // Create the connection using the driver
+                static::$connections[$connection] = $driver->connect($config);
             } catch (PDOException $e) {
                 throw new \PDOException(
                     "Failed to connect to database [{$connection}]: " . $e->getMessage(),
-                    (int) $e->getCode()
+                    (int) $e->getCode(),
+                    $e
                 );
             } catch (\RuntimeException $e) {
                 throw new \RuntimeException(
-                    "Database connection error [{$connection}]: " . $e->getMessage()
+                    "Database connection error [{$connection}]: " . $e->getMessage(),
+                    (int) $e->getCode(),
+                    $e
                 );
             }
         }
@@ -86,6 +140,23 @@ class Database
     protected function getPdo(): PDO
     {
         return static::getPdoInstance($this->connection);
+    }
+
+    /**
+     * Get the driver instance for a connection
+     *
+     * @param string|null $connection
+     * @return \Phaseolies\Database\Contracts\Driver\DriverInterface
+     */
+    protected static function getDriverInstance(?string $connection = null)
+    {
+        $connection = $connection ?: config('database.default');
+
+        if (!isset(static::$drivers[$connection])) {
+            static::getPdoInstance($connection);
+        }
+
+        return static::$drivers[$connection];
     }
 
     /**
@@ -204,9 +275,11 @@ class Database
         }
 
         try {
-            $stmt = $this->getPdo()->query("DESCRIBE {$table}");
+            $sql = $this->getTableColumnsSql($table);
+            $stmt = $this->getPdo()->query($sql);
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+            return $this->processTableColumnsResult($result);
         } catch (PDOException $e) {
             throw new PDOException("Failed to get table columns: " . $e->getMessage());
         }
@@ -219,11 +292,11 @@ class Database
      */
     public function getTables(): array
     {
-        $stmt = $this->getPdo()->query("SHOW TABLES");
+        $sql = $this->getTablesSql();
+        $stmt = $this->getPdo()->query($sql);
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
-
 
     /**
      * Check if a table exists in the database
@@ -381,8 +454,26 @@ class Database
      */
     public function execute(string $sql, array $params = []): int
     {
-        $stmt = $this->getPdo()->prepare($sql);
+        $pdo = $this->getPdo();
+        $driver = $this->getDriver();
 
+        // PostgreSQL
+        if ($driver === 'pgsql') {
+            $statements = array_filter(array_map('trim', explode(';', $sql)));
+
+            $rowCount = 0;
+            foreach ($statements as $stmt) {
+                if (!empty($stmt)) {
+                    $statement = $pdo->prepare($stmt);
+                    $statement->execute($params);
+                    $rowCount += $statement->rowCount();
+                }
+            }
+            return $rowCount;
+        }
+
+        // MySQL/SQLite
+        $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
         return $stmt->rowCount();
@@ -391,29 +482,38 @@ class Database
     /**
      * Drop all tables in the database
      *
-     * @return int
+     * @return int Number of dropped tables
      * @throws PDOException
      */
     public function dropAllTables(): int
     {
-        $pdo = $this->getPdo();
+        $driver = static::getDriverInstance($this->connection);
 
-        $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+        return $driver->dropAllTables($this->getPdo());
+    }
 
-        try {
-            $tables = $this->getTables();
+    /**
+     * Disable foreign key constraints
+     *
+     * @return void
+     */
+    public function disableForeignKeyConstraints(): void
+    {
+        $driver = static::getDriverInstance($this->connection);
 
-            if (!empty($tables)) {
-                $pdo->exec('DROP TABLE ' . implode(', ', $tables));
-            }
+        $driver->disableForeignKeyConstraints($this->getPdo());
+    }
 
-            $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+    /**
+     * Enable foreign key constraints
+     *
+     * @return void
+     */
+    public function enableForeignKeyConstraints(): void
+    {
+        $driver = static::getDriverInstance($this->connection);
 
-            return count($tables);
-        } catch (PDOException $e) {
-            $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
-            throw new PDOException("Failed to drop all tables: " . $e->getMessage());
-        }
+        $driver->enableForeignKeyConstraints($this->getPdo());
     }
 
     /**
@@ -436,17 +536,30 @@ class Database
      */
     public function table(string $table): Builder
     {
-        return new Builder($table, $this->getPdo());
+        $driver = self::getDriverInstance($this->connection);
+
+        return new Builder($table, $this->getPdo(), $driver);
     }
 
     /**
      * Get a connection instance for the specified connection name
      *
-     * @param string|null $name Connection name (null for default)
+     * @param string|null $name
      * @return self
      */
     public function connection(?string $name = null): self
     {
         return new static($name);
+    }
+
+    /**
+     * Get the query builder instance
+     *
+     * @param string $table
+     * @return QueryBuilder
+     */
+    public function bucket(string $table): QueryBuilder
+    {
+        return new QueryBuilder($this->getPdo(), $table);
     }
 }

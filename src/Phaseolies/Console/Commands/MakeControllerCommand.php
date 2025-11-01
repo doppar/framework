@@ -35,7 +35,7 @@ class MakeControllerCommand extends Command
             // Validate options
             if ($error = $this->validateControllerOptions($isInvokable, $isResource, $isApi, $isComplete)) {
                 $this->displayError($error);
-                return 1;
+                return Command::FAILURE;
             }
 
             [$namespace, $filePath, $className] = $this->resolveNamespacesAndPaths($name, $isApi);
@@ -43,7 +43,7 @@ class MakeControllerCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Controller already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $this->createDirIfMissing(dirname($filePath));
@@ -63,7 +63,7 @@ class MakeControllerCommand extends Command
             $this->newLine();
             $this->outputType($isInvokable, $isResource, $isApi, $isComplete);
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

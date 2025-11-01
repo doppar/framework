@@ -22,8 +22,8 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles an incoming request and verifies the CSRF token.
      *
-     * @param Request $request The incoming request instance.
-     * @param Closure $next The next middleware or request handler.
+     * @param Request $request
+     * @param \Closure(\Phaseolies\Http\Request) $next
      * @return \Phaseolies\Http\Response
      * @throws HttpException
      */
@@ -47,7 +47,7 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Checks if the request is a modifying request (POST, PUT, PATCH, DELETE).
      *
-     * @param Request $request The incoming request instance.
+     * @param Request $request
      * @return bool
      */
     protected function isReading(Request $request): bool
@@ -162,7 +162,7 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles CSRF validation errors.
      *
-     * @param string $message The error message.
+     * @param string $message
      * @return Response
      * @throws TokenMismatchException
      */

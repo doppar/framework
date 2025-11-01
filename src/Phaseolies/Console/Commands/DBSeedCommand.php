@@ -36,7 +36,7 @@ class DBSeedCommand extends Command
 
                 if (!class_exists($seederClass)) {
                     $this->displayError('Seeder not found: ' . $seedName);
-                    return 1;
+                    return Command::FAILURE;
                 }
 
                 $seeder = new $seederClass();
@@ -49,7 +49,7 @@ class DBSeedCommand extends Command
             $this->newLine();
             $this->displaySuccess('Seeds executed successfully');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 }

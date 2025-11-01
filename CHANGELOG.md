@@ -1,5 +1,161 @@
 # Release Notes
 
+## v3.0.0-beta.1 - 2025-11-01
+
+* [Router Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/96
+* [Sanitizer Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/97
+* Blade condition unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/98
+* collection take() and takeLast() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/99
+* ValidationRule trait exists query replace with entity builder query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/100
+* Feature: added exists_in input validation rule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/101
+
+## v3.0.0-beta.0 - 2025-10-30
+
+* translation comment doc update and application version unit test issue resolved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/95
+
+## v2.9.6-beta.19 - 2025-10-30
+
+* [New Command] Get model creatable properties for quick setup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/88
+* [Unit Test] Config and Translator Unit Test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/89
+* syntax error, unexpected token -> PHP8.3 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/90
+* unit test file namespace update for builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/91
+* Application class unit test initialized by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/92
+* [Tests] Harmonize the url for windows tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/93
+* [Entity Builder] relationship specific column selection enhancement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/94
+
+## v2.9.6-beta.18 - 2025-10-28
+
+* [fix] Multilevel relationship search for entity builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/86
+* [Entity ORM] Relationship Unit Test with SQLite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/87
+
+## v2.9.6-beta.17 - 2025-10-28
+
+* [Entity Builder] nested relationship support for relationship exists method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/85
+
+## v2.9.6-beta.16 - 2025-10-28
+
+* Entity builder count quote method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/82
+* [Entity Builder] Nested relation count support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/83
+* [Entity Builder] comment updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/84
+
+## v2.9.6-beta.15 - 2025-10-28
+
+* whereLinked() driver based support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/80
+* remove case-sensitive search support from whereLike by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/81
+
+## v2.9.6-beta.14 - 2025-10-27
+
+* [Readme] Remove badges by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/76
+* README.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/77
+* Fix: N+1 query issues for nested relation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/78
+* [Entity ORM] new method embedCount() to count relational model: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/79
+
+## v2.9.6-beta.13 - 2025-10-26
+
+* [Entity Builder] aggregate trait namespace update by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/74
+* [CacheStore] Fix model serialize by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/75
+
+## v2.9.6-beta.12 - 2025-10-26
+
+* [Entity Builder] aggregate function query support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/73
+
+## v2.9.6-beta.11 - 2025-10-25
+
+* [Tests] Add some builder tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/68
+* Optimized pagination query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/69
+* Introduce Entity Builder (Fluent Query Builder Interface) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/70
+* Copied all the necessary function from ORM builder to Query Builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/71
+* [Entity Builder] Uni test: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/72
+
+## v2.9.6-beta.10 - 2025-10-23
+
+* Prevent Double Eager Loading During Count & Pagination by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/67
+
+## v2.9.6-beta.9 - 2025-10-23
+
+* many to many relationship non primary key table handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/66
+
+## v2.9.6-beta.8 - 2025-10-23
+
+* [Console] Refactor AddColumnMigrationCommand by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/59
+* Enhance Blueprint with additional commonly used column types by [@tareqsifat](https://github.com/tareqsifat) in https://github.com/doppar/framework/pull/56
+* [Console] Add "uri:" to --complete make:controller by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/60
+* [Database] Driver-Agnostic WHERE LIKE Implementation for Like operation by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/61
+* [Builder] orPresent() and orAbsent() query builder methods for relationship existence conditions by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/62
+* Add Support for Passing where() and orWhere() Callbacks as Parameters by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/63
+* Builder with search() Method and Fix whereLike / orWhereLike Issues by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/64
+* Refactor ORM Namespace: Replace “Eloquent” with “Entity” for Doppar’s Official ORM Layer by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/65
+
+## v2.9.6-beta.7 - 2025-10-21
+
+* Fix: Resolved issues with previous request session input and peek message clearance. by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/58
+
+## v2.9.6-beta.6 - 2025-10-21
+
+* Refactored code of query grammar class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/54
+* Remove duplicate object creation to maintain singleton object by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/55
+* remove messagebag clear code after validation passed: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/57
+
+## v2.9.6-beta.5 - 2025-10-20
+
+* [enhancement] old form input remove way improved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/49
+* [Routing] rate limit option to attribute based routing: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/51
+* [Support] Added before, after, between function in Str Service by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/50
+* [Support] Added isJson function in Str Service by [@Sajid-al-islam](https://github.com/Sajid-al-islam) in https://github.com/doppar/framework/pull/53
+* [Database] Implemented PostgreSQL support  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/52
+
+## v2.9.6-beta.4 - 2025-10-19
+
+* [enhancement] Set proper exception message to response body by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/47
+* route:list command to display registerd route by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/48
+
+## v2.9.6-beta.3 - 2025-10-18
+
+* [SQLite] fix unique constraint + tests by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/43
+* Unit testing a nested DTO object with BindPayload and Router attributes, and making the class final by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/44
+* [feat] Exclude sensitive input fields from being stored in the session by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/45
+* [feat] before-exception hook for improved exception logging by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/46
+
+## v2.9.6-beta.2 - 2025-10-16
+
+* [feat] update BindPayload code and add new Bind() attr:  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/42
+
+## v2.9.6-beta.1 - 2025-10-16
+
+* composer.json "minimum-stability": "stable", to "minimum-stability": "dev" by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/41
+
+## 2.9.6-beta - 2025-10-16
+
+### What's Changed
+
+* doppar installer class system requirements by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/40
+
+**Full Changelog**: https://github.com/doppar/framework/compare/2.9.5-beta...2.9.6-beta
+
+## 2.9.5-beta - 2025-10-16
+
+### What's Changed
+
+* New command to install a package dynamically by user prompts by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/36
+* [fix] whereDateTimeBetween() function and console progress and table generation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/37
+* [BindPayload] Introduce to bind payload attribute by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/38
+* [fix] Upsert issue resolved for SQLite and pgsql driver  by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/39
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v2.9.5.6...2.9.5-beta
+
+## v2.9.5.6 - 2025-10-15
+
+* Heartbeat remove from atomic lock: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/26
+* [Console] Fix server:stop on Mac by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/27
+* error page design improved for dark mode and set error information in… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/29
+* [Authenticate] Fix multiple user version verification by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/28
+* version check variable non-static to static by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/30
+* [ErrorHandler] Refactor with Factory & Strategy patterns by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/31
+* [Database] Add SQLite support by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/12
+* [Database] Unit test for missing method by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/33
+* [Database] Fix SQLite sqrt() error : use PHP instead of SQL by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/34
+* unit test of some model method like original attr dirty attr savemany etc by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/35
+
 ## v2.9.5.5 - 2025-10-13
 
 * [Atomic Lock] Concurrent-Safe Atomic Locks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/24

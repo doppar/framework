@@ -11,42 +11,79 @@ trait Directives
      * Extend this class (Add custom directives).
      *
      * @param Closure $compiler
+     * @return void
      */
     public function extend(Closure $compiler): void
     {
         $this->extensions[] = $compiler;
     }
 
-    public function compileAuth()
+    /**
+     * Compile the @auth directive.
+     *
+     * @return string
+     */
+    public function compileAuth(): string
     {
         return "<?php if(\Phaseolies\Support\Facades\Auth::check()): ?>";
     }
 
-    public function compileEndauth()
+    /**
+     * Compile the @endauth directive.
+     *
+     * @return string
+     */
+    public function compileEndauth(): string
     {
         return "<?php endif; ?>";
     }
 
-    public function compileGuest()
+    /**
+     * Compile the @guest directive.
+     *
+     * @return string
+     */
+    public function compileGuest(): string
     {
         return "<?php if(!\Phaseolies\Support\Facades\Auth::check()): ?>";
     }
 
-    public function compileEndguest()
+    /**
+     * Compile the @endguest directive.
+     *
+     * @return string
+     */
+    public function compileEndguest(): string
     {
         return "<?php endif; ?>";
     }
 
-    public function compileErrors()
+    /**
+     * Compile the @errors directive.
+     *
+     * @return string
+     */
+    public function compileErrors(): string
     {
         return "<?php if(session()->has('errors')): ?>";
     }
 
-    public function compileEnderrors()
+    /**
+     * Compile the @enderrors directive.
+     *
+     * @return string
+     */
+    public function compileEnderrors(): string
     {
         return "<?php endif; ?>";
     }
 
+    /**
+     * Compile the @error directive.
+     *
+     * @param string $key
+     * @return string
+     */
     public function compileError($key): string
     {
         $key = trim($key, "()'\"");
@@ -54,6 +91,11 @@ trait Directives
         return "<?php if(\$message = session()->getPeek('$key')): ?>";
     }
 
+    /**
+     * Compile the @enderror directive.
+     *
+     * @return string
+     */
     public function compileEnderror(): string
     {
         return "<?php endif; ?>";

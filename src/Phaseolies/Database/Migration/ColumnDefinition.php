@@ -2,6 +2,9 @@
 
 namespace Phaseolies\Database\Migration;
 
+use Phaseolies\Database\Query\RawExpression;
+use PDO;
+
 class ColumnDefinition
 {
     /** @var string The name of the column */
@@ -16,7 +19,7 @@ class ColumnDefinition
     /**
      * Create a new column definition instance.
      *
-     * @param array $attributes The column attributes including name and type
+     * @param array $attributes
      */
     public function __construct(array $attributes = [])
     {
@@ -39,14 +42,19 @@ class ColumnDefinition
 
     /**
      * Set a default value for the column.
-     * Converts boolean false to 0 for database compatibility.
      *
-     * @param mixed $value The default value
+     * @param mixed $value
      * @return self
      */
     public function default($value): self
     {
-        $this->attributes['default'] = $value === false ? 0 : $value;
+        $driver = $this->getDriver();
+
+        if ($driver === 'pgsql' && is_bool($value)) {
+            $this->attributes['default'] = new RawExpression($value ? 'TRUE' : 'FALSE');
+        } else {
+            $this->attributes['default'] = $value === false ? 0 : $value;
+        }
 
         return $this;
     }
@@ -103,15 +111,21 @@ class ColumnDefinition
     /**
      * Convert the column definition to its SQL representation.
      *
-     * @return string The SQL column definition
+     * @return string
      */
     public function toSql(): string
     {
-        $sql = $this->name . ' ' . $this->getTypeDefinition();
+        $grammar = $this->getGrammar();
+        $sql = $this->name . ' ' . $grammar->getTypeDefinition($this);
 
         // Add PRIMARY KEY constraint if specified
         if (isset($this->attributes['primary']) && $this->attributes['primary']) {
             $sql .= ' PRIMARY KEY';
+        }
+
+        // Add UNIQUE constraint if grammar requires it in column definition
+        if (!empty($this->attributes['unique']) && $grammar->shouldAddUniqueInColumnDefinition()) {
+            $sql .= ' UNIQUE';
         }
 
         // Add NULL/NOT NULL constraint
@@ -129,82 +143,30 @@ class ColumnDefinition
             $sql .= " DEFAULT {$default}";
         }
 
-        // adding AFTER clause if specified
-        if (isset($this->attributes['after'])) {
-            $sql .= " AFTER {$this->attributes['after']}";
+        if ((!$this->getDriver()) === 'pgsql') {
+            if (isset($this->attributes['after'])) {
+                $sql .= " AFTER {$this->attributes['after']}";
+            }
         }
 
         return $sql;
     }
 
     /**
-     * Get the SQL type definition for the column.
+     * Get the appropriate grammar instance based on the database driver.
      *
-     * @return string The SQL type definition
+     * @return Grammars\Grammar
      */
-    protected function getTypeDefinition(): string
+    protected function getGrammar(): Grammars\Grammar
     {
-        // Mapping of abstract types to concrete SQL types
-        $map = [
-            'id' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'bigIncrements' => 'BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY',
-            'string' => 'VARCHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'char' => 'CHAR(' . ($this->attributes['length'] ?? 255) . ')',
-            'text' => 'TEXT',
-            'mediumText' => 'MEDIUMTEXT',
-            'longText' => 'LONGTEXT',
-            'tinyText' => 'TINYTEXT',
-            'boolean' => 'TINYINT(1)',
-            'json' => 'JSON',
-            'jsonb' => 'JSON',
-            'integer' => 'INT',
-            'tinyInteger' => 'TINYINT',
-            'smallInteger' => 'SMALLINT',
-            'mediumInteger' => 'MEDIUMINT',
-            'bigInteger' => 'BIGINT',
-            'unsignedInteger' => 'INT UNSIGNED',
-            'unsignedTinyInteger' => 'TINYINT UNSIGNED',
-            'unsignedSmallInteger' => 'SMALLINT UNSIGNED',
-            'unsignedMediumInteger' => 'MEDIUMINT UNSIGNED',
-            'unsignedBigInteger' => 'BIGINT UNSIGNED',
-            'float' => 'FLOAT',
-            'double' => 'DOUBLE' .
-                (isset($this->attributes['precision']) ?
-                    "({$this->attributes['precision']}" .
-                    (isset($this->attributes['scale']) ? ",{$this->attributes['scale']})" : ")")
-                    : ''),
-            'decimal' => 'DECIMAL(' .
-                ($this->attributes['precision'] ?? 10) . ',' .
-                ($this->attributes['scale'] ?? 2) . ')',
-            'date' => 'DATE',
-            'dateTime' => 'DATETIME',
-            'dateTimeTz' => 'DATETIME',
-            'time' => 'TIME',
-            'timeTz' => 'TIME',
-            'timestamp' => 'TIMESTAMP',
-            'timestampTz' => 'TIMESTAMP',
-            'year' => 'YEAR',
-            'binary' => 'BLOB',
-            'tinyBlob' => 'TINYBLOB',
-            'mediumBlob' => 'MEDIUMBLOB',
-            'longBlob' => 'LONGBLOB',
-            'enum' => 'ENUM(' . $this->getEnumValues() . ')',
-            'set' => 'SET(' . $this->getEnumValues() . ')',
-            'geometry' => 'GEOMETRY',
-            'point' => 'POINT',
-            'lineString' => 'LINESTRING',
-            'polygon' => 'POLYGON',
-            'geometryCollection' => 'GEOMETRYCOLLECTION',
-            'multiPoint' => 'MULTIPOINT',
-            'multiLineString' => 'MULTILINESTRING',
-            'multiPolygon' => 'MULTIPOLYGON',
-            'uuid' => 'CHAR(36)',
-            'ipAddress' => 'VARCHAR(45)',
-            'macAddress' => 'VARCHAR(17)',
-        ];
+        $driver = $this->getDriver();
 
-        // Return the mapped type or fall back to uppercase version of the type
-        return $map[$this->type] ?? strtoupper($this->type);
+        return match ($driver) {
+            'mysql' => new Grammars\MySQLGrammar(),
+            'sqlite' => new Grammars\SQLiteGrammar(),
+            'pgsql' => new Grammars\PostgreSQLGrammar(),
+            default => throw new \RuntimeException("Unsupported database driver: {$driver}"),
+        };
     }
 
     /**
@@ -221,5 +183,17 @@ class ColumnDefinition
         return implode(',', array_map(function ($value) {
             return "'" . addslashes($value) . "'";
         }, $this->attributes['values']));
+    }
+
+    /**
+     * Get the current PDO driver
+     *
+     * @return string
+     */
+    public function getDriver(): string
+    {
+        $connection = app('db')->getConnection();
+
+        return strtolower($connection->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
 }

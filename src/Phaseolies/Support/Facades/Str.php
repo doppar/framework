@@ -29,6 +29,11 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\StringService highlightKeyword(string $input, string $keyword, string $tag = 'strong'): string
  * @method static \Phaseolies\Support\StringService suffixAppend(string $input, string $suffix): string
  * @method static \Phaseolies\Support\StringService removeSuffix(string $input, string $suffix): string
+ * @method static \Phaseolies\Support\StringService after(string $subject, string $search): string
+ * @method static \Phaseolies\Support\StringService before(string $subject, string $search): string
+ * @method static \Phaseolies\Support\StringService between(string $subject, string $from, string $to): string
+ * @method static \Phaseolies\Support\StringService isJson(string $value): string
+ * @method static \Phaseolies\Support\StringService urlHarmonize(string $url): string
  * @see \Phaseolies\Support\StringService
  */
 

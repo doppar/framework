@@ -38,7 +38,7 @@ class MakeMiddlewareCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Middleware already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             // Create directory if needed
@@ -56,7 +56,7 @@ class MakeMiddlewareCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>🔒 Class:</> <fg=white>' . $className . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

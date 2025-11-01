@@ -26,9 +26,9 @@ class MigrationRepository
 
     /**
      * Creates the migrations table in the database
-     * The table has two columns:
-     * - migration: string - stores the migration filename
-     * - batch: integer - stores the batch number when the migration was run
+     *
+     * @param string|null $connection
+     * @return void
      */
     public function create(?string $connection = null): void
     {
@@ -68,7 +68,7 @@ class MigrationRepository
     /**
      * Logs a migration file as having been run
      *
-     * @param string $file The migration filename to log
+     * @param string $file
      * @param string|null $connection
      */
     public function log(string $file, ?string $connection = null): void
@@ -85,7 +85,7 @@ class MigrationRepository
      * Gets the next batch number for new migrations
      *
      * @param string|null $connection
-     * @return int The next batch number (increments the highest existing batch number)
+     * @return int
      */
     protected function getNextBatchNumber(?string $connection = null): int
     {

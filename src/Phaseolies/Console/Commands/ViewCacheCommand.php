@@ -50,7 +50,7 @@ class ViewCacheCommand extends Command
             // Show results
             $this->showResults($results, count($viewFiles));
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 

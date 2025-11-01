@@ -21,6 +21,8 @@ class ErrorHandler
         set_exception_handler(function ($exception) {
             self::logException($exception);
 
+            self::triggerBeforeException($exception);
+
             $handler = ErrorHandlerFactory::getSupportedHandler();
 
             if ($handler) {
@@ -98,5 +100,29 @@ class ErrorHandler
                 throw new \ErrorException("A fatal error occurred: " . $error['message']);
             }
         });
+    }
+
+    /**
+     * Executes the hook before the main error handling flow begins
+     *
+     * @param Throwable $exception
+     * @return void
+     */
+    protected static function triggerBeforeException(Throwable $exception): void
+    {
+        $beforeExceptionClass = \App\Http\Exceptions\BeforeExceptionHandler::class;
+
+        if (class_exists($beforeExceptionClass)) {
+            $before = app($beforeExceptionClass);
+
+            if ($before->supports()) {
+                $response = app('response');
+                $statusCode = $exception instanceof \Phaseolies\Http\Exceptions\HttpException
+                    ? $exception->getStatusCode()
+                    : 500;
+                $response->setExceptionError($exception, $statusCode);
+                $before->handle($exception);
+            }
+        }
     }
 }

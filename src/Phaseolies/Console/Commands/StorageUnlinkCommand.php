@@ -34,13 +34,13 @@ class StorageUnlinkCommand extends Command
             if (!is_link($linkPath)) {
                 $this->displayWarning('No symbolic link found at:');
                 $this->line('<fg=white>' . $linkPath . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             if (@unlink($linkPath)) {
                 $this->displaySuccess('Symbolic link removed successfully');
                 $this->line('<fg=yellow>🗑️  Removed:</> <fg=white>' . $linkPath . '</>');
-                return 0;
+                return Command::SUCCESS;
             }
 
             throw new RuntimeException('Failed to remove symbolic link');

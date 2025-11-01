@@ -221,7 +221,7 @@ class Container implements ArrayAccess
      */
     public function build(string $concrete, array $parameters = []): object
     {
-        if (is_subclass_of($concrete, \Phaseolies\Database\Eloquent\Model::class)) {
+        if (is_subclass_of($concrete, \Phaseolies\Database\Entity\Model::class)) {
             return new $concrete(...$parameters);
         }
 

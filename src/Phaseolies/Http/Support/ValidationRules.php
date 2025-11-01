@@ -3,7 +3,6 @@
 namespace Phaseolies\Http\Support;
 
 use Phaseolies\Translation\Translator;
-use Phaseolies\Database\Database;
 
 trait ValidationRules
 {
@@ -14,6 +13,7 @@ trait ValidationRules
 
     /**
      * Set the translator
+     *
      * @param Translator $translator
      * @return void
      */
@@ -25,10 +25,10 @@ trait ValidationRules
     /**
      * Get the translated error message for a validation rule.
      *
-     * @param string $rule The validation rule key
-     * @param string $fieldName The field name being validated
-     * @param array $replace Additional replacement parameters
-     * @return string The translated error message
+     * @param string $rule
+     * @param string $fieldName
+     * @param array $replace
+     * @return string
      */
     protected function getErrorMessage(string $rule, string $fieldName, array $replace = [])
     {
@@ -54,6 +54,7 @@ trait ValidationRules
 
     /**
      * Get fallback error message
+     *
      * @param string $rule
      * @return string
      */
@@ -61,6 +62,7 @@ trait ValidationRules
     {
         $defaultMessages = [
             'required' => 'The :attribute field is required.',
+            'exists_in' => 'The selected :attribute is invalid.',
         ];
 
         return $defaultMessages[$rule] ?? 'Validation failed.';
@@ -69,8 +71,8 @@ trait ValidationRules
     /**
      * Get the displayable name of the attribute.
      *
-     * @param string $fieldName The field name
-     * @return string The displayable attribute name
+     * @param string $fieldName
+     * @return string
      */
     protected function getAttributeName(string $fieldName): string
     {
@@ -86,11 +88,11 @@ trait ValidationRules
     /**
      * Validate a field based on the given rule.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name to validate.
-     * @param string $rule The validation rule.
-     * @param mixed $ruleValue The value associated with the rule (e.g., min:6 => 6).
-     * @return string|null The error message if validation fails, otherwise null.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $rule
+     * @param mixed $ruleValue
+     * @return string|null
      */
     protected function sanitizeUserRequest(
         array $input,
@@ -229,6 +231,12 @@ trait ValidationRules
                         ]);
                     }
                     break;
+
+                case 'exists_in':
+                    if (!$this->isRecordExists($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('exists_in', $fieldName);
+                    }
+                    break;
             }
         }
 
@@ -238,10 +246,10 @@ trait ValidationRules
     /**
      * Check if a field value matches another field's value.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name to validate.
-     * @param string $otherField The field to compare against.
-     * @return bool True if values match, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $otherField
+     * @return bool
      */
     protected function isSameAs(array $input, string $fieldName, string $otherField): bool
     {
@@ -254,47 +262,51 @@ trait ValidationRules
     /**
      * Check if the field value is an integer.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @return bool True if the field value is an integer, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
      */
     protected function isInteger(array $input, string $fieldName): bool
     {
         $value = $input[$fieldName] ?? '';
+
         return filter_var($value, FILTER_VALIDATE_INT) !== false;
     }
 
     /**
      * Check if the field value is a float with the specified decimal places.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param int $decimalPlaces The number of decimal places.
-     * @return bool True if the field value is a valid float with the specified decimal places, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param int $decimalPlaces
+     * @return bool
      */
     protected function isFloat(array $input, string $fieldName, int $decimalPlaces): bool
     {
         $value = $input[$fieldName] ?? '';
+
         if (!is_numeric($value)) {
             return false;
         }
 
         // Check if the number of decimal places matches the rule
         $decimalPart = explode('.', $value)[1] ?? '';
+
         return strlen($decimalPart) <= $decimalPlaces;
     }
 
     /**
      * Check if the field value is between the given range.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $ruleValue The range (e.g., "2,5").
-     * @return bool True if the field value is within the range, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
      */
     protected function isBetween(array $input, string $fieldName, string $ruleValue): bool
     {
         $value = $input[$fieldName] ?? '';
+
         if (!is_numeric($value)) {
             return false;
         }
@@ -309,94 +321,104 @@ trait ValidationRules
     /**
      * Check if the field value is nullable (null or empty).
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @return bool True if the field value is null or empty, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
      */
     protected function isNullable(array $input, string $fieldName): bool
     {
         $value = $input[$fieldName] ?? '';
+
         return $value === null || $value === '';
     }
 
     /**
      * Check if the field is a valid date.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @return bool True if the field is a valid date, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
      */
     protected function isDateValid(array $input, string $fieldName): bool
     {
         $date = $input[$fieldName] ?? '';
+
         return strtotime($date) !== false;
     }
 
     /**
      * Check if the field value is greater than or equal to the given date.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $ruleValue The date to compare against.
-     * @return bool True if the field value is greater than or equal to the given date, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
      */
     protected function isDateGreaterThanOrEqual(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) >= strtotime($compareDate);
     }
 
     /**
      * Check if the field value is less than or equal to the given date.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $ruleValue The date to compare against.
-     * @return bool True if the field value is less than or equal to the given date, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
      */
     protected function isDateLessThanOrEqual(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) <= strtotime($compareDate);
     }
 
     /**
      * Check if the field value is greater than the given date.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $ruleValue The date to compare against.
-     * @return bool True if the field value is greater than the given date, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
      */
     protected function isDateGreaterThan(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) > strtotime($compareDate);
     }
 
     /**
      * Check if the field value is less than the given date.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $ruleValue The date to compare against.
-     * @return bool True if the field value is less than the given date, false otherwise.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
      */
     protected function isDateLessThan(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) < strtotime($compareDate);
     }
 
     /**
      * Check if the field is a file field.
      *
-     * @param string $fieldName The field name.
-     * @return bool True if the field is a file field, false otherwise.
+     * @param string $fieldName
+     * @return bool
      */
     protected function isFileField(string $fieldName): bool
     {
@@ -406,10 +428,10 @@ trait ValidationRules
     /**
      * Validate a file field based on the given rule.
      *
-     * @param string $fieldName The file field name.
-     * @param string $rule The validation rule.
-     * @param mixed $ruleValue The value associated with the rule.
-     * @return string|null The error message if validation fails, otherwise null.
+     * @param string $fieldName
+     * @param string $rule
+     * @param mixed $ruleValue
+     * @return string|null
      */
     protected function validateFile(string $fieldName, string $rule, mixed $ruleValue = null): ?string
     {
@@ -491,7 +513,7 @@ trait ValidationRules
     /**
      * Parse the dimensions rule value.
      *
-     * @param string $ruleValue The dimensions rule value.
+     * @param string $ruleValue
      * @return array<string, int>|null The parsed dimensions or null if invalid.
      */
     protected function parseDimensionsRule(string $ruleValue): ?array
@@ -512,8 +534,8 @@ trait ValidationRules
     /**
      * Parse the size rule value.
      *
-     * @param string $ruleValue The size rule value.
-     * @return int The size in bytes.
+     * @param string $ruleValue
+     * @return int
      */
     protected function parseSizeRule(string $ruleValue): int
     {
@@ -535,8 +557,8 @@ trait ValidationRules
     /**
      * Format bytes into a human-readable format.
      *
-     * @param int $bytes The size in bytes.
-     * @return string The formatted size.
+     * @param int $bytes
+     * @return string
      */
     protected function formatBytes(int $bytes): string
     {
@@ -554,8 +576,8 @@ trait ValidationRules
     /**
      * Check if a required field is empty.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
+     * @param array $input
+     * @param string $fieldName
      * @return bool
      */
     protected function isEmptyFieldRequired(array $input, string $fieldName): bool
@@ -566,9 +588,9 @@ trait ValidationRules
     /**
      * Check if a field value is less than the minimum length.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param int $value The minimum length.
+     * @param array $input
+     * @param string $fieldName
+     * @param int $value
      * @return bool
      */
     protected function isLessThanMin(array $input, string $fieldName, int $value): bool
@@ -579,9 +601,9 @@ trait ValidationRules
     /**
      * Check if a field value exceeds the maximum length.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param int $value The maximum length.
+     * @param array $input
+     * @param string $fieldName
+     * @param int $value
      * @return bool
      */
     protected function isMoreThanMax(array $input, string $fieldName, int $value): bool
@@ -591,46 +613,64 @@ trait ValidationRules
 
     /**
      * Check duplicate records exists or not
-     * @param mixed $pdo
+     *
      * @param mixed $tableName
      * @param mixed $fieldName
      * @param mixed $fieldValue
      * @return bool
      */
-    public function checkRecordExists($pdo, $tableName, $fieldName, $fieldValue): bool
+    public function checkRecordExists($tableName, $fieldName, $fieldValue): bool
     {
         try {
-            $sql = "SELECT 1 FROM `$tableName` WHERE `$fieldName` = :fieldValue LIMIT 1";
-            $stmt = $pdo->prepare($sql);
-            $stmt->bindParam(':fieldValue', $fieldValue);
-            $stmt->execute();
-
-            return $stmt->fetchColumn() !== false;
+            return (bool) db()->bucket($tableName)
+                ->where($fieldName, $fieldValue)
+                ->exists();
         } catch (\PDOException $e) {
             return false;
         }
     }
 
     /**
+     * Check if a record exists in the database
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
+     */
+    protected function isRecordExists(array $input, string $fieldName, string $ruleValue): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        if (empty($value)) {
+            return false;
+        }
+
+        $parts = explode(',', $ruleValue);
+        $tableName = trim($parts[0]);
+        $columnName = trim($parts[1] ?? 'id');
+
+        return $this->checkRecordExists($tableName, $columnName, $value);
+    }
+
+    /**
      * Check if a record is unique.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
-     * @param string $value The table name.
+     * @param array $input
+     * @param string $fieldName
+     * @param string $value
      * @return bool
      */
     protected function isRecordUnique(array $input, string $fieldName, string $value): bool
     {
-        $pdo = Database::getPdoInstance();
-
-        return $this->checkRecordExists($pdo, $value, $fieldName, $input[$fieldName]);
+        return $this->checkRecordExists($value, $fieldName, $input[$fieldName]);
     }
 
     /**
      * Validate if the email is valid.
      *
-     * @param array $input The input data.
-     * @param string $fieldName The field name.
+     * @param array $input
+     * @param string $fieldName
      * @return bool
      */
     protected function isEmailValid(array $input, string $fieldName): bool
@@ -643,7 +683,7 @@ trait ValidationRules
     /**
      * Remove underscores from a string and capitalize words.
      *
-     * @param string $string The input string.
+     * @param string $string
      * @return string
      */
     protected function _removeUnderscore(string $string): string
@@ -654,7 +694,7 @@ trait ValidationRules
     /**
      * Remove the suffix from a rule string.
      *
-     * @param string $string The rule string.
+     * @param string $string
      * @return string
      */
     protected function _removeRuleSuffix(string $string): string
@@ -665,7 +705,7 @@ trait ValidationRules
     /**
      * Get the suffix from a rule string.
      *
-     * @param string $string The rule string.
+     * @param string $string
      * @return string|null
      */
     protected function _getRuleSuffix(string $string): ?string

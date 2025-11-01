@@ -36,7 +36,6 @@ final class Config
 
     /**
      * Initialize the configuration system.
-     * Loads the configuration from cache if available, otherwise loads from source files.
      *
      * @return void
      */
@@ -50,7 +49,6 @@ final class Config
 
     /**
      * Generate a unique cache key based on all configuration files.
-     * Includes both file content (md5) and last modification time.
      *
      * @return string
      */
@@ -72,7 +70,6 @@ final class Config
 
     /**
      * Load all configuration files from the source directory.
-     * Automatically caches the loaded configuration.
      *
      * @return void
      */
@@ -109,7 +106,6 @@ final class Config
 
     /**
      * Write the current configuration to cache.
-     * Uses a temporary file and rename to avoid race conditions.
      *
      * @return void
      */
@@ -165,8 +161,8 @@ final class Config
     /**
      * Get a configuration value using dot notation.
      *
-     * @param string $key Dot notation key
-     * @param mixed $default Default value if key not found
+     * @param string $key
+     * @param mixed $default
      * @return mixed
      */
     public static function get(string $key, mixed $default = null): mixed
@@ -191,8 +187,8 @@ final class Config
     /**
      * Set a configuration value using dot notation.
      *
-     * @param string $key Dot notation key
-     * @param mixed $value Value to set
+     * @param string $key
+     * @param mixed $value
      * @return void
      */
     public static function set(string $key, mixed $value): void
