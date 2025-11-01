@@ -3,6 +3,7 @@
 namespace Phaseolies\Error;
 
 use Phaseolies\Application;
+use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Support\View\View;
 use Throwable;
 
@@ -23,12 +24,12 @@ class WebErrorRenderer
 
         $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
         $lines = explode("\n", $fileContent);
-        
+
         $startLine = max(0, $errorLine - 10);
         $endLine = min(count($lines) - 1, $errorLine + 100);
         $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
 
-         $highlightedLines = [];
+        $highlightedLines = [];
         foreach ($displayedLines as $index => $line) {
             $lineNumber = $startLine + $index + 1;
             if ($lineNumber == $errorLine) {
@@ -45,50 +46,68 @@ class WebErrorRenderer
         $formattedCode = implode("\n", $highlightedLines);
 
         $traceFramesHtml = $this->buildTraceFrames($exception->getTrace());
-        
+
         date_default_timezone_set(config('app.timezone'));
 
         if (ob_get_level() > 0) {
             ob_end_clean();
         }
 
-        // dd((new View)->render(file_get_contents(__DIR__ . '/views/template.blade.php')));
+        $controller = new Controller;
 
-        echo str_replace(
-            [
-                '{{ error_message }}',
-                '{{ error_file }}',
-                '{{ error_line }}',
-                '{{ error_trace }}',
-                '{{ file_content }}',
-                '{{ php_version }}',
-                '{{ doppar_version }}',
-                '{{ request_method }}',
-                '{{ request_url }}',
-                '{{ timestamp }}',
-                '{{ server_software }}',
-                '{{ platform }}',
-                '{{ exception_class }}',
-                '{{ status_code }}'
-            ],
-            [
-                htmlspecialchars($errorMessage),
-                htmlspecialchars($errorFile),
-                $errorLine,
-                $traceFramesHtml,
-                $formattedCode,
-                PHP_VERSION,
-                Application::VERSION,
-                htmlspecialchars(request()->getMethod()),
-                htmlspecialchars(trim(request()->fullUrl(), '/')),
-                htmlspecialchars(now()->toDayDateTimeString()),
-                htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'),
-                htmlspecialchars(php_uname()),
-                htmlspecialchars(class_basename($exception)),
-                $errorCode
-            ],
-            file_get_contents(__DIR__ . '/views/template.blade.php')
-        );
+        $controller->setViewFolder('framework/src/Phaseolies/Error/views'); // keep hard coded for now unitl founding dynamic way!
+
+        echo $controller->render('template', [
+            'error_message'   => $errorMessage,
+            'error_file'      => $errorFile,
+            'error_line'      => $errorLine,
+            'error_trace'     => $traceFramesHtml,
+            'file_content'    => $formattedCode,
+            'php_version'     => PHP_VERSION,
+            'doppar_version'  => Application::VERSION,
+            'request_method'  => request()->getMethod(),
+            'request_url'     => trim(request()->fullUrl(), '/'),
+            'timestamp'       => now()->toDayDateTimeString(),
+            'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+            'platform'        => php_uname(),
+            'exception_class' => class_basename($exception),
+            'status_code'     => $errorCode,
+        ]);
+        // echo str_replace(
+        //     [
+        //         '{{ error_message }}',
+        //         '{{ error_file }}',
+        //         '{{ error_line }}',
+        //         '{{ error_trace }}',
+        //         '{{ file_content }}',
+        //         '{{ php_version }}',
+        //         '{{ doppar_version }}',
+        //         '{{ request_method }}',
+        //         '{{ request_url }}',
+        //         '{{ timestamp }}',
+        //         '{{ server_software }}',
+        //         '{{ platform }}',
+        //         '{{ exception_class }}',
+        //         '{{ status_code }}'
+        //     ],
+        //     [
+        //         htmlspecialchars($errorMessage),
+        //         htmlspecialchars($errorFile),
+        //         $errorLine,
+        //         $traceFramesHtml,
+        //         $formattedCode,
+        //         PHP_VERSION,
+        //         Application::VERSION,
+        //         htmlspecialchars(request()->getMethod()),
+        //         htmlspecialchars(trim(request()->fullUrl(), '/')),
+        //         htmlspecialchars(now()->toDayDateTimeString()),
+        //         htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'),
+        //         htmlspecialchars(php_uname()),
+        //         htmlspecialchars(class_basename($exception)),
+        //         $errorCode
+        //     ],
+        //     file_get_contents(__DIR__ . '/views/template.blade.php')
+        // );
     }
 
     private function buildTraceFrames(array $traces): string
@@ -107,10 +126,10 @@ class WebErrorRenderer
             $type = $trace['type'] ?? '';
 
             $signature = $class ? $class . $type . $function . '()' : $function . '()';
-            
+
             $isVendor = strpos($file, 'doppar/framework') !== false; // a hack until completing this work, cz the framework code now isn't under vendor, is at framework/*
-            
-            
+
+
             $vendorClass = $isVendor ? 'vendor-frame' : '';
             $shortFile = $this->shortenPath($file);
             $filePreview = $this->getFilePreview($file, $line);
