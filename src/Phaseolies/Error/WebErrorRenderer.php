@@ -18,11 +18,17 @@ class WebErrorRenderer
         $errorMessage = $exception->getMessage();
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
+        $trace = $exception->getTrace()[0];
+
+        // dd($trace, $trace['file'], $exception->getTraceAsString());
+
         $errorTrace = $exception->getTraceAsString();
         $errorCode = $exception->getCode() ?: 500;
 
         $fileContent = file_exists($errorFile) ? file_get_contents($errorFile) : 'File not found.';
+
         $lines = explode("\n", $fileContent);
+
         $startLine = max(0, $errorLine - 10);
         $endLine = min(count($lines) - 1, $errorLine + 100);
         $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
@@ -31,9 +37,13 @@ class WebErrorRenderer
         foreach ($displayedLines as $index => $line) {
             $lineNumber = $startLine + $index + 1;
             if ($lineNumber == $errorLine) {
-                $highlightedLines[] = '<span class="line-number highlight">' . $lineNumber . '</span><span class="highlight">' . htmlspecialchars($line) . '</span>';
+                $highlightedLines[] =
+                    '<div class="inline-flex w-full bg-red-500/10 border-l-2 border-l-red-500 py-0.5">
+                        <span class="w-12 text-right pr-3 text-neutral-500 select-none shrink-0">' . $lineNumber . '</span>
+                        <span class="flex-1">' . htmlspecialchars($line) . '</span>
+                    </div>';
             } else {
-                $highlightedLines[] = '<span class="line-number">' . $lineNumber . '</span>' . htmlspecialchars($line);
+                $highlightedLines[] = '<div class="inline-flex w-full hover:bg-neutral-100 dark:hover:bg-white/5 py-0.5"><span class="w-12 text-right pr-3 text-neutral-500 select-none shrink-0">' . $lineNumber . '</span><span class="flex-1">' . htmlspecialchars($line) . '</span></div>';
             }
         }
 
@@ -83,6 +93,15 @@ class WebErrorRenderer
             ],
             file_get_contents(__DIR__ . '/error_page_template.html')
         );
+    }
+
+    public function buildTraceFrames(array $traces)
+    {
+        return array_map(function ($trace) {
+            '<div class="trace-frame">
+
+            <div>';
+        }, $traces);
     }
 
     /**

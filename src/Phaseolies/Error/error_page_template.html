@@ -52,6 +52,9 @@
         .badge[data-request-type="DELETE"] {
             @apply bg-red-500/10 text-red-500;
         }
+        .trace-frame{
+            @apply text-red-500;
+        }
   }
 </style>
 
@@ -119,18 +122,29 @@
     </div>
     <!-- error backtrace and error previeww -->
     <div class="flex gap-4">
-        <main class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%]  border-neutral-900/5 dark:border-white/5 p-2">
+        <main class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
             <div class="flex items-center gap-2 bg-neutral-100 dark:bg-white/5 rounded-md px-2 py-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
                   <path stroke-linecap="round" stroke-linejoin="round" d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
-
                 {{ error_file }}
             </div>
             <div class="pt-3 w-full">
-                <pre>
-                    {{ file_content }}
-                </pre>
+                <pre>{{ file_content }}</pre>
+            </div>
+            <!-- Stack Trace Section -->
+            <div class="mt-6">
+                <div class="flex items-center justify-between mb-3 px-2">
+                    <h3 class="text-base font-semibold flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                        Stack Trace
+                    </h3>
+                </div>
+                <div class="bg-neutral-50 dark:bg-neutral-950 rounded p-3 font-mono text-xs overflow-auto">
+                    <pre class="whitespace-pre-wrap text-neutral-700 dark:text-neutral-300">{{ error_trace }}</pre>
+                </div>
             </div>
         </main>
     </div>
