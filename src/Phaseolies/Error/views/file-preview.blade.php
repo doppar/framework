@@ -7,7 +7,10 @@
         $endLine = min(count($fileLines), $line + 3);
         $lines = array_slice($fileLines, $startLine, $endLine - $startLine);
     }
+
+    info($file);
 @endphp
+
 
 @if(empty($lines))
     <div class="p-3 text-sm text-neutral-500">File preview not available</div>
@@ -25,4 +28,5 @@
             </div>
         @endforeach
     </div>
+    @unset($file)
 @endif
