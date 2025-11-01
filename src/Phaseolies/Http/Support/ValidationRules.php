@@ -62,6 +62,7 @@ trait ValidationRules
     {
         $defaultMessages = [
             'required' => 'The :attribute field is required.',
+            'exists_in' => 'The selected :attribute is invalid.',
         ];
 
         return $defaultMessages[$rule] ?? 'Validation failed.';
@@ -230,6 +231,12 @@ trait ValidationRules
                         ]);
                     }
                     break;
+
+                case 'exists_in':
+                    if (!$this->isRecordExists($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('exists_in', $fieldName);
+                    }
+                    break;
             }
         }
 
@@ -335,6 +342,7 @@ trait ValidationRules
     protected function isDateValid(array $input, string $fieldName): bool
     {
         $date = $input[$fieldName] ?? '';
+
         return strtotime($date) !== false;
     }
 
@@ -349,7 +357,9 @@ trait ValidationRules
     protected function isDateGreaterThanOrEqual(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) >= strtotime($compareDate);
     }
 
@@ -364,7 +374,9 @@ trait ValidationRules
     protected function isDateLessThanOrEqual(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) <= strtotime($compareDate);
     }
 
@@ -396,7 +408,9 @@ trait ValidationRules
     protected function isDateLessThan(array $input, string $fieldName, string $ruleValue): bool
     {
         $date = $input[$fieldName] ?? '';
+
         $compareDate = $ruleValue === 'today' ? date('Y-m-d') : $ruleValue;
+
         return strtotime($date) < strtotime($compareDate);
     }
 
@@ -614,6 +628,29 @@ trait ValidationRules
         } catch (\PDOException $e) {
             return false;
         }
+    }
+
+    /**
+     * Check if a record exists in the database
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
+     */
+    protected function isRecordExists(array $input, string $fieldName, string $ruleValue): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        if (empty($value)) {
+            return false;
+        }
+
+        $parts = explode(',', $ruleValue);
+        $tableName = trim($parts[0]);
+        $columnName = trim($parts[1] ?? 'id');
+
+        return $this->checkRecordExists($tableName, $columnName, $value);
     }
 
     /**
