@@ -1293,6 +1293,13 @@ class Router extends Kernel
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
 
+            // Handle #[Model] attribute - HIGHEST PRIORITY
+            $modelResult = $this->handleModelAttribute($parameter, $routeParams);
+            if ($modelResult['handled']) {
+                $dependencies[] = $modelResult['instance'];
+                continue;
+            }
+
             // Handle #[BindPayload()]
             $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
             if ($payloadResult['handled']) {
@@ -1391,5 +1398,78 @@ class Router extends Kernel
         $instance = $app->make($abstract);
 
         return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Handle Model attribute for automatic model binding
+     *
+     * @param \ReflectionParameter $parameter
+     * @param array $routeParams
+     * @return array
+     * @throws \Exception
+     */
+    private function handleModelAttribute(\ReflectionParameter $parameter, array $routeParams): array
+    {
+        $modelAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Model::class);
+
+        if (empty($modelAttributes)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        // Ensure parameter has a type hint
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception(
+                "Parameter '\$$paramName' must have a class type hint when using #[Model] attribute"
+            );
+        }
+
+        $modelClass = $paramType->getName();
+        $modelAttribute = $modelAttributes[0]->newInstance();
+        $classToResolve = $modelAttribute->class ?? $modelClass;
+        $column = $modelAttribute->column ?? 'id';
+        $exception = $modelAttribute->exception;
+
+        if (!isset($routeParams[$paramName])) {
+            throw new \Exception(
+                "Route parameter '\$$paramName' not found in URL for model binding"
+            );
+        }
+
+        $value = $routeParams[$paramName];
+        $instance = $this->resolveModelInstance($classToResolve, $column, $value, $exception);
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Resolve a model instance from the database
+     *
+     * @param string $modelClass
+     * @param string $column
+     * @param mixed $value
+     * @param bool $exception
+     * @return Model
+     * @throws \Exception
+     */
+    private function resolveModelInstance(string $modelClass, string $column, mixed $value, bool $exception): ?Model
+    {
+        if ($column === 'id') {
+            $instance = $modelClass::find($value);
+        } elseif ($column !== 'id') {
+            $instance = $modelClass::where($column, $value)->first();
+        } else {
+            throw new \Exception(
+                "Model class '$modelClass' does not have a suitable method for model binding"
+            );
+        }
+
+        if (!$instance && $exception) {
+            abort(404, "$modelClass not found with $column = $value");
+        }
+
+        return $instance;
     }
 }
