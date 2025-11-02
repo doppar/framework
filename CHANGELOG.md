@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.2 - 2025-11-02
+
+* URI Prefix and Class Middleware Support for Attribute-Based Routing by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/103
+* New #[Model] Attribute for Route Model Binding by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/104
+
 ## v3.0.0-beta.1 - 2025-11-01
 
 * [Router Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/96
