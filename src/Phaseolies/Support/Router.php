@@ -1428,8 +1428,16 @@ class Router extends Kernel
 
         $modelClass = $paramType->getName();
         $modelAttribute = $modelAttributes[0]->newInstance();
-        $classToResolve = $modelAttribute->class ?? $modelClass;
-        $column = $modelAttribute->column ?? 'id';
+
+        $modelInstance = app($modelClass);
+        $modelRouteKey = $modelInstance->getRouteKeyName();
+        $modelPrimaryKey = $modelInstance->getPrimaryKey();
+
+        // First giving priority to global model key name
+        $column = $modelRouteKey === $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
+
+        // If #[Model] contains column, forcefully overriding previous colum
+        $column = $modelAttribute->column !== $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
         $exception = $modelAttribute->exception;
 
         if (!isset($routeParams[$paramName])) {
@@ -1439,7 +1447,7 @@ class Router extends Kernel
         }
 
         $value = $routeParams[$paramName];
-        $instance = $this->resolveModelInstance($classToResolve, $column, $value, $exception);
+        $instance = $this->resolveModelInstance($modelClass, $column, $value, $modelPrimaryKey, $exception);
 
         return ['handled' => true, 'instance' => $instance];
     }
@@ -1450,15 +1458,21 @@ class Router extends Kernel
      * @param string $modelClass
      * @param string $column
      * @param mixed $value
+     * @param string $modelPrimaryKey
      * @param bool $exception
      * @return Model
      * @throws \Exception
      */
-    private function resolveModelInstance(string $modelClass, string $column, mixed $value, bool $exception): ?Model
-    {
-        if ($column === 'id') {
+    private function resolveModelInstance(
+        string $modelClass,
+        string $column,
+        mixed $value,
+        string $modelPrimaryKey,
+        bool $exception
+    ): ?Model {
+        if ($column === $modelPrimaryKey) {
             $instance = $modelClass::find($value);
-        } elseif ($column !== 'id') {
+        } elseif ($column !== $modelPrimaryKey) {
             $instance = $modelClass::where($column, $value)->first();
         } else {
             throw new \Exception(
