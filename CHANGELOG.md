@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.3 - 2025-11-02
+
+* Support for Dynamic Route Model Binding Column Override by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/105
+
 ## v3.0.0-beta.2 - 2025-11-02
 
 * URI Prefix and Class Middleware Support for Attribute-Based Routing by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/103
