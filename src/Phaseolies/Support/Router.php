@@ -323,11 +323,31 @@ class Router extends Kernel
     {
         $reflection = new \ReflectionClass($controllerClass);
 
+        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Utilities\Attributes\Mapper::class);
+        $classPrefix = null;
+        $classMiddleware = [];
+
+        if (!empty($mapperAttributes)) {
+            $mapper = $mapperAttributes[0]->newInstance();
+            $classPrefix = $mapper->prefix;
+            $classMiddleware = $mapper->middleware ?? [];
+        }
+
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
                 $route = $attribute->newInstance();
+
+                // Apply class prefix to route URI
+                if ($classPrefix) {
+                    $route->uri = '/' . trim($classPrefix, '/') . '/' . ltrim($route->uri, '/');
+                    $route->uri = rtrim($route->uri, '/') ?: '/';
+                }
+
+                $mergedMiddleware = array_merge($classMiddleware, $route->middleware ?? []);
+                $route->middleware = $mergedMiddleware;
+
                 $this->registerAttributeRoute($controllerClass, $method->getName(), $route);
             }
         }
