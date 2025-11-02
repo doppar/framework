@@ -1456,10 +1456,10 @@ class Router extends Kernel
      */
     private function resolveModelInstance(string $modelClass, string $column, mixed $value, bool $exception): ?Model
     {
-        if ($column !== 'id') {
-            $instance = $modelClass::where($column, $value)->first();
-        } elseif ($column === 'id') {
+        if ($column === 'id') {
             $instance = $modelClass::find($value);
+        } elseif ($column !== 'id') {
+            $instance = $modelClass::where($column, $value)->first();
         } else {
             throw new \Exception(
                 "Model class '$modelClass' does not have a suitable method for model binding"
