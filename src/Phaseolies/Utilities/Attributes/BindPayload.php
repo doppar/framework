@@ -6,6 +6,6 @@ namespace Phaseolies\Utilities\Attributes;
 final class BindPayload
 {
     public function __construct(
-        public bool $strict = true,
+        public bool $strict = false,
     ) {}
 }
