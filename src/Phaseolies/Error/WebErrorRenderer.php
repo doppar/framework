@@ -80,7 +80,12 @@ class WebErrorRenderer
         $processed = [];
 
         foreach ($traces as $trace) {
-            $file = $trace['file'] ?? 'unknown';
+
+            if (!array_key_exists('file', $trace)) {
+                continue;
+            }
+
+            $file = $trace['file'];
 
             $processed[] = [
                 'file' => $file,
@@ -90,10 +95,30 @@ class WebErrorRenderer
                 'class' => $trace['class'] ?? '',
                 'type' => $trace['type'] ?? '',
                 'is_vendor' => strpos($file, 'doppar/framework') !== false,
+                'lines' => $this->buildTraceFrameContent($trace),
             ];
         }
 
         return $processed;
+    }
+
+    private function buildTraceFrameContent(array $trace)
+    {
+        if (!file_exists($trace['file']) || $trace['line'] <= 0) {
+            return [];
+        }
+
+        $fileLines = file($trace['file']);
+
+        $startLine = max(0, $trace['line'] - 4);
+        $endLine = min(count($fileLines), $trace['line'] + 3);
+
+
+        $lines = array_slice($fileLines, $startLine, $endLine - $startLine);
+
+        array_map(fn($line) => Highlighter::make($line), $lines);
+
+        return $lines;
     }
 
     private function shortenPath(string $path): string
@@ -118,8 +143,6 @@ class WebErrorRenderer
                 '</div>';
         }
 
-        // Join all lines preserving structure. 
-        // Note: Double quotes around the string are important to avoid HTML breaking
         return implode("\n", $contents);
     }
 

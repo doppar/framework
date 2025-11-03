@@ -31,31 +31,51 @@
 
 
         /*  Highlighting Colors - Light Mode */
-        --color-hl-tag: #9ca3af;
-        --color-hl-variable: #0d9488;
-        --color-hl-string: #2563eb;
-        --color-hl-definition: #9333ea;
-        --color-hl-modifier: #9333ea;
-        --color-hl-keyword: #ec4899;
-        --color-hl-literal: #16a34a;
-        --color-hl-comment: #9ca3af;
-        --color-hl-number: #ea580c;
-        --color-hl-default: #111827;
+        --color-hl-tag: #6c7086;
+        /* Muted gray for tags */
+        --color-hl-variable: #fe640b;
+        /* Orange for variables */
+        --color-hl-string: #7287fd;
+        /* Soft blue for strings */
+        --color-hl-definition: #8839ef;
+        /* Purple for classes/functions */
+        --color-hl-modifier: #df8e1d;
+        /* Yellow for modifiers */
+        --color-hl-keyword: #d20f39;
+        /* Red for keywords */
+        --color-hl-literal: #40a02b;
+        /* Green for literals */
+        --color-hl-comment: #9ca0b0;
+        /* Light gray for comments */
+        --color-hl-number: #fe640b;
+        /* Orange for numbers */
+        --color-hl-default: #4c4f69;
+        /* Dark gray default */
     }
 
     @layer theme {
         .dark {
             /* Highlighting Colors - Dark Mode */
-            --color-hl-tag: #6b7280;
-            --color-hl-variable: #5eead4;
-            --color-hl-string: #60a5fa;
-            --color-hl-definition: #c084fc;
-            --color-hl-modifier: #c084fc;
-            --color-hl-keyword: #f472b6;
-            --color-hl-literal: #4ade80;
-            --color-hl-comment: #6b7280;
-            --color-hl-number: #fb923c;
-            --color-hl-default: #f9fafb;
+            --color-hl-tag: #565f89;
+            /* Muted blue-gray */
+            --color-hl-variable: #ff9e64;
+            /* Warm orange */
+            --color-hl-string: #9ece6a;
+            /* Fresh green */
+            --color-hl-definition: #7aa2f7;
+            /* Sky blue */
+            --color-hl-modifier: #bb9af7;
+            /* Soft purple */
+            --color-hl-keyword: #f7768e;
+            /* Coral pink */
+            --color-hl-literal: #9ece6a;
+            /* Fresh green */
+            --color-hl-comment: #565f89;
+            /* Muted blue-gray */
+            --color-hl-number: #ff9e64;
+            /* Warm orange */
+            --color-hl-default: #c0caf5;
+            /* Light blue-white */
         }
     }
 
@@ -103,8 +123,8 @@
 </style>
 
 <body
-    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
-
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200"
+>
     {{-- Top Bar --}}
     <div class="top-bar rounded-lg">
         <div
@@ -143,10 +163,10 @@
                 <div
                     class="rounded-md flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
                     <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
-                        <span class="text-neutral-800 dark:text-neutral-500">DOPPAR</span> {{ $doppar_version }}
+                        <span class="text-neutral-800 dark:text-neutral-500 pr-2">DOPPAR</span> {{ $doppar_version }}
                     </div>
                     <div class="px-2">
-                        <span class="text-neutral-800 dark:text-neutral-500">PHP</span> {{ $php_version }}
+                        <span class="text-neutral-800 dark:text-neutral-500 pr-2">PHP</span> {{ $php_version }}
                     </div>
                 </div>
             </div>
