@@ -30,7 +30,7 @@
         --color-primary-fg: --color-neutral-50;
 
 
-        /* Syntax Highlighting Colors - Light Mode */
+        /*  Highlighting Colors - Light Mode */
         --color-hl-tag: #9ca3af;
         --color-hl-variable: #0d9488;
         --color-hl-string: #2563eb;
@@ -45,7 +45,7 @@
 
     @layer theme {
         .dark {
-            /* Syntax Highlighting Colors - Dark Mode */
+            /* Highlighting Colors - Dark Mode */
             --color-hl-tag: #6b7280;
             --color-hl-variable: #5eead4;
             --color-hl-string: #60a5fa;
@@ -179,16 +179,6 @@
 
             {{-- Code Content --}}
             <div class="pt-3 w-full">
-
-                {{--
-                    We avoid rendering each code line directly inside the <pre> tag using Blade loops,
-                    because whitespace and line breaks in HTML can cause unexpected formatting issues
-                    inside <pre>. 
-
-                    Instead, we build the entire block of HTML for code lines as a single string 
-                    ($contents) in PHP, carefully escaping special characters, and then output it 
-                    inside <pre> to preserve the exact formatting.
-                --}}
 
                 <pre>
                     {!! $contents !!}
