@@ -46,13 +46,13 @@ class WebErrorRenderer
         }
 
         $controller = new Controller();
-        
+
         $basePath = base_path();
-        
+
         $currentDir = __DIR__;
-        
+
         $relative = str_replace($basePath . '/', '', $currentDir);
-        
+
         $viewsPath = $relative . '/views';
 
         $controller->setViewFolder($viewsPath);
@@ -61,7 +61,7 @@ class WebErrorRenderer
             'error_message'   => $exception->getMessage(),
             'error_file'      => $errorFile,
             'error_line'      => $errorLine,
-            'code_lines'      => $codeLines,
+            'contents'      => $this->buildContents($codeLines),
             'traces'          => $traces,
             'php_version'     => PHP_VERSION,
             'doppar_version'  => Application::VERSION,
@@ -100,6 +100,27 @@ class WebErrorRenderer
     {
         $basePath = base_path();
         return str_replace($basePath . '/', '', $path);
+    }
+
+    private function buildContents($codeLines)
+    {
+        $contents = [];
+
+        foreach ($codeLines as $line) {
+            $class = $line['is_error'] ? 'code-line-error' : 'code-line';
+
+            // Highlight the code tokens 
+            $content = Highlighter::make($line['content']);
+
+            $contents[] = '<div class="' . $class . '">' .
+                '<span class="code-line-number">' . $line['number'] . '</span>' .
+                '<span class="code-line-content">' . $content . '</span>' .
+                '</div>';
+        }
+
+        // Join all lines preserving structure. 
+        // Note: Double quotes around the string are important to avoid HTML breaking
+        return implode("\n", $contents);
     }
 
     /**

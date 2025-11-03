@@ -15,7 +15,7 @@
                 theme === 'dark' ||
                 (theme === 'system' &&
                     window.matchMedia('(prefers-color-scheme: dark)')
-                        .matches)
+                    .matches)
             ) {
                 document.documentElement.classList.add('dark')
             }
@@ -28,7 +28,37 @@
     @theme {
         --color-primary: --color-neutral-50;
         --color-primary-fg: --color-neutral-50;
+
+
+        /* Syntax Highlighting Colors - Light Mode */
+        --color-hl-tag: #9ca3af;
+        --color-hl-variable: #0d9488;
+        --color-hl-string: #2563eb;
+        --color-hl-definition: #9333ea;
+        --color-hl-modifier: #9333ea;
+        --color-hl-keyword: #ec4899;
+        --color-hl-literal: #16a34a;
+        --color-hl-comment: #9ca3af;
+        --color-hl-number: #ea580c;
+        --color-hl-default: #111827;
     }
+
+    @layer theme {
+        .dark {
+            /* Syntax Highlighting Colors - Dark Mode */
+            --color-hl-tag: #6b7280;
+            --color-hl-variable: #5eead4;
+            --color-hl-string: #60a5fa;
+            --color-hl-definition: #c084fc;
+            --color-hl-modifier: #c084fc;
+            --color-hl-keyword: #f472b6;
+            --color-hl-literal: #4ade80;
+            --color-hl-comment: #6b7280;
+            --color-hl-number: #fb923c;
+            --color-hl-default: #f9fafb;
+        }
+    }
+
 
     @custom-variant dark (&:where(.dark, .dark *));
 
@@ -72,11 +102,13 @@
     }
 </style>
 
-<body class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
-    
+<body
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
+
     {{-- Top Bar --}}
     <div class="top-bar rounded-lg">
-        <div class="flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
+        <div
+            class="flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
             <div>
                 <div class="dark:text-white text-neutral-950 text-3xl font-bold">
                     {{ $exception_class }}
@@ -108,7 +140,8 @@
                     </button>
                 </div>
                 {{-- Versions --}}
-                <div class="rounded-md flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
+                <div
+                    class="rounded-md flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
                     <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
                         <span class="text-neutral-800 dark:text-neutral-500">DOPPAR</span> {{ $doppar_version }}
                     </div>
@@ -121,7 +154,8 @@
     </div>
 
     {{-- Request Details --}}
-    <div class="flex gap-2 items-center border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2 rounded-lg">
+    <div
+        class="flex gap-2 items-center border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2 rounded-lg">
         <span data-request-type="{{ $request_method }}" class="badge p-1 rounded">
             {{ $request_method }}
         </span>
@@ -131,7 +165,8 @@
 
     {{-- Main Content --}}
     <div class="flex gap-4">
-        <main class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
+        <main
+            class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
             {{-- File Header --}}
             <div class="flex items-center gap-2 bg-neutral-100 dark:bg-white/5 rounded-md px-2 py-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -154,25 +189,6 @@
                     ($contents) in PHP, carefully escaping special characters, and then output it 
                     inside <pre> to preserve the exact formatting.
                 --}}
-
-                @php
-                    $contents = [];
-
-                    foreach ($code_lines as $line) {
-                        $class = $line['is_error'] ? 'code-line-error' : 'code-line';
-
-                        $content = htmlspecialchars($line['content'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-
-                        $contents[] = '<div class="' . $class . '">' .
-                                    '<span class="code-line-number">' . $line['number'] . '</span>' .
-                                    '<span class="code-line-content">' . $content . '</span>' .
-                                    '</div>';
-                    }
-
-                    // Join all lines preserving structure. 
-                    // Note: Double quotes around the string are important to avoid HTML breaking
-                    $contents = implode("\n", $contents);
-                @endphp
 
                 <pre>
                     {!! $contents !!}
@@ -245,4 +261,5 @@
 
     ThemeManager.init();
 </script>
+
 </html>
