@@ -27,6 +27,7 @@ class WebErrorRenderer
         $displayedLines = array_slice($lines, $startLine, $endLine - $startLine + 1);
 
         $codeLines = [];
+
         foreach ($displayedLines as $index => $line) {
             $lineNumber = $startLine + $index + 1;
             $codeLines[] = [
@@ -44,10 +45,14 @@ class WebErrorRenderer
             ob_end_clean();
         }
 
-        $controller = new Controller;
+        $controller = new Controller();
+        
         $basePath = base_path();
+        
         $currentDir = __DIR__;
+        
         $relative = str_replace($basePath . '/', '', $currentDir);
+        
         $viewsPath = $relative . '/views';
 
         $controller->setViewFolder($viewsPath);
