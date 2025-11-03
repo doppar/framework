@@ -79,6 +79,8 @@ class WebErrorRenderer
     {
         $processed = [];
 
+        // dd($traces);
+
         foreach ($traces as $trace) {
 
             if (!array_key_exists('file', $trace)) {
@@ -116,10 +118,9 @@ class WebErrorRenderer
 
         $lines = array_slice($fileLines, $startLine, $endLine - $startLine);
 
-        array_map(fn($line) => Highlighter::make($line), $lines);
-
-        return $lines;
+        return array_map(fn($line) => Highlighter::make($line), $lines);
     }
+
 
     private function shortenPath(string $path): string
     {
