@@ -2,13 +2,18 @@
 
 namespace Tests\Unit\Builder;
 
+use Tests\Support\Model\MockUser;
+use Tests\Support\Model\MockPost;
+use Tests\Support\Model\MockComment;
+use Tests\Support\Model\MockCategory;
 use Tests\Support\MockContainer;
-use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use PDO;
+
+use function PHPUnit\Framework\assertEquals;
 
 class RelationshipSpecificColumnSelectionTest extends TestCase
 {
@@ -20,7 +25,6 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
 
         $this->createTestTables();
         $this->setupDatabaseConnections();
@@ -49,7 +53,8 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 title TEXT NOT NULL,
-                content TEXT
+                content TEXT,
+                status BOOLEAN DEFAULT 1
             )
         ");
 
@@ -58,8 +63,24 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
             CREATE TABLE comments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 post_id INTEGER,
+                user_id INTEGER,
                 body TEXT NOT NULL,
                 approved BOOLEAN DEFAULT 0
+            )
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE tags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL
+            )
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE post_tag (
+                post_id INTEGER,
+                tag_id INTEGER,
+                created_at TEXT
             )
         ");
 
@@ -71,17 +92,33 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         ");
 
         $this->pdo->exec("
-            INSERT INTO posts (user_id, title, content) VALUES 
-            (1, 'First Post', 'Content 1'),
-            (1, 'Second Post', 'Content 2'),
-            (2, 'Jane Post', 'Content 3')
+           INSERT INTO posts (user_id, title, content, status) VALUES 
+            (1, 'First Post', 'Content 1', 1),
+            (1, 'Second Post', 'Content 2', 0),
+            (1, 'Jane Post', 'Content 3', 1)
         ");
 
         $this->pdo->exec("
-            INSERT INTO comments (post_id, body, approved) VALUES 
-            (1, 'Great post!', 1),
-            (1, 'Nice work', 0),
-            (2, 'Interesting', 1)
+            INSERT INTO comments (post_id, user_id, body, approved) VALUES 
+            (1, 1, 'Great post!', 1),
+            (1, 2, 'Nice work', 0),
+            (2, 1, 'Interesting', 1),
+            (3, 2, 'Amazing', 1)
+        ");
+
+        $this->pdo->exec("
+            INSERT INTO tags (name) VALUES 
+            ('PHP'),
+            ('Doppar'),
+            ('Testing')
+        ");
+
+        $this->pdo->exec("
+            INSERT INTO post_tag (post_id, tag_id) VALUES 
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (3, 3)
         ");
     }
 
@@ -127,7 +164,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
     /**
      * Helper to create a new builder
      */
-    private function createBuilder(string $table = 'users', string $model = MockUserAnother::class): Builder
+    private function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
     {
         return new Builder($this->pdo, $table, $model, 15);
     }
@@ -158,9 +195,36 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         return $eagerLoad;
     }
 
+
+    /**
+     * Helper to get builder limit for assertion
+     */
+    private function getBuilderLimit(Builder $builder): ?int
+    {
+        $reflection = new \ReflectionClass($builder);
+        $property = $reflection->getProperty('limit');
+        $property->setAccessible(true);
+        $limit = $property->getValue($builder);
+        $property->setAccessible(false);
+        return $limit;
+    }
+
+    /**
+     * Helper to get builder fields for assertion
+     */
+    private function getBuilderFields(Builder $builder): array
+    {
+        $reflection = new \ReflectionClass($builder);
+        $property = $reflection->getProperty('fields');
+        $property->setAccessible(true);
+        $fields = $property->getValue($builder);
+        $property->setAccessible(false);
+        return $fields;
+    }
+
     public function testEmbedWithNestedRelationColumnSelection()
     {
-        $builder = $this->createBuilder('users', MockUserAnother::class);
+        $builder = $this->createBuilder('users', MockUser::class);
 
         // Test nested relation with column selection on the final relation
         $builder->embed('posts.comments:id,body');
@@ -175,7 +239,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedWithWildcardColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         $builder->embed('tags*');
 
@@ -186,7 +250,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testComplexEmbedScenario()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test the exact scenario from your example
         $builder->select('id', 'title', 'user_id', 'category_id')
@@ -216,7 +280,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertArrayHasKey('count:comments', $eagerLoad);
 
         // Verify comments constraint includes column selection
-        $testQuery = MockPostAnother::query();
+        $testQuery = MockPost::query();
         $eagerLoad['comments']($testQuery);
 
         $this->assertEquals(['id', 'body', 'created_at'], $this->getBuilderFields($testQuery));
@@ -228,7 +292,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedCountWithColumnSelectionNotSupported()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Column selection should not affect count operations
         // The :id,body should be ignored for counts
@@ -242,7 +306,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testParseRelationWithColumns()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test the helper method directly using reflection
         $reflection = new \ReflectionClass($builder);
@@ -267,7 +331,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedWithColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test column selection with specific columns
         $builder->embed('comments:id,body,created_at');
@@ -278,7 +342,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertIsCallable($eagerLoad['comments']);
 
         // Verify the callback selects the specified columns
-        $testQuery = $this->createBuilder('comments', MockCommentAnother::class);
+        $testQuery = $this->createBuilder('comments', MockComment::class);
         $eagerLoad['comments']($testQuery);
 
         $this->assertEquals(['id', 'body', 'created_at'], $this->getBuilderFields($testQuery));
@@ -286,7 +350,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedWithColumnSelectionAndCallback()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test column selection combined with additional constraints
         $builder->embed('comments:id,body,created_at', function ($query) {
@@ -299,7 +363,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertIsCallable($eagerLoad['comments']);
 
         // Verify both column selection and constraints are applied
-        $testQuery = $this->createBuilder('comments', MockCommentAnother::class);
+        $testQuery = $this->createBuilder('comments', MockComment::class);
         $eagerLoad['comments']($testQuery);
 
         $this->assertEquals(['id', 'body', 'created_at'], $this->getBuilderFields($testQuery));
@@ -314,7 +378,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedWithArrayColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test multiple relations with column selection in array format
         $builder->embed([
@@ -335,12 +399,12 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertIsCallable($eagerLoad['category']);
 
         // Test comments constraint
-        $testCommentsQuery = $this->createBuilder('comments', MockCommentAnother::class);
+        $testCommentsQuery = $this->createBuilder('comments', MockComment::class);
         $eagerLoad['comments']($testCommentsQuery);
         $this->assertEquals(['id', 'body', 'created_at'], $this->getBuilderFields($testCommentsQuery));
 
         // Test user constraint
-        $testUserQuery = $this->createBuilder('users', MockUserAnother::class);
+        $testUserQuery = $this->createBuilder('users', MockUser::class);
         $eagerLoad['user']($testUserQuery);
         $this->assertEquals(['id', 'name'], $this->getBuilderFields($testUserQuery));
 
@@ -352,7 +416,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedCountWithColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test embedCount with column selection (columns should be ignored for counts)
         $builder->embedCount('comments:id,body,created_at');
@@ -368,7 +432,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testEmbedCountWithCallbackAndColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test embedCount with callback and column selection
         $builder->embedCount('comments:id,body', function ($query) {
@@ -381,7 +445,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertIsCallable($eagerLoad['count:comments:id,body']);
 
         // Verify the callback is applied (column selection should be ignored for counts)
-        $testQuery = $this->createBuilder('comments', MockCommentAnother::class);
+        $testQuery = $this->createBuilder('comments', MockComment::class);
         $eagerLoad['count:comments:id,body']($testQuery);
 
         // Count queries should not be affected by column selection
@@ -392,7 +456,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testLimitInEmbedCallback()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test that limit works in embed callbacks
         $builder->embed('comments:id,body', function ($query) {
@@ -407,7 +471,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertIsCallable($eagerLoad['comments']);
 
         // Verify limit is applied in the callback
-        $testQuery = $this->createBuilder('comments', MockCommentAnother::class);
+        $testQuery = $this->createBuilder('comments', MockComment::class);
         $eagerLoad['comments']($testQuery);
 
         $this->assertEquals(2, $this->getBuilderLimit($testQuery));
@@ -416,7 +480,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
     public function testExistsWithColumnSelection()
     {
-        $builder = $this->createBuilder('posts', MockPostAnother::class);
+        $builder = $this->createBuilder('posts', MockPost::class);
 
         // Test that exists() method works with the query
         $builder->select('id', 'title')
@@ -432,187 +496,4 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $conditions = $this->getBuilderConditions($builder);
         $this->assertCount(1, $conditions);
     }
-
-    /**
-     * Helper to get builder limit for assertion
-     */
-    private function getBuilderLimit(Builder $builder): ?int
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('limit');
-        $property->setAccessible(true);
-        $limit = $property->getValue($builder);
-        $property->setAccessible(false);
-        return $limit;
-    }
-
-    /**
-     * Helper to get builder fields for assertion
-     */
-    private function getBuilderFields(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('fields');
-        $property->setAccessible(true);
-        $fields = $property->getValue($builder);
-        $property->setAccessible(false);
-        return $fields;
-    }
-}
-
-// ==================== SIMPLIFIED MOCK MODELS ====================
-
-class MockCategory extends Model
-{
-    protected $table = 'categories';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
-}
-
-class MockRoleAnother extends Model
-{
-    protected $table = 'roles';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
-}
-
-class MockUserAnother extends Model
-{
-    protected $table = 'users';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
-
-    public function posts()
-    {
-        $this->setLastRelationType('linkMany');
-        $this->setLastRelatedModel(MockPostAnother::class);
-        $this->setLastForeignKey('user_id');
-        $this->setLastLocalKey('id');
-        return $this->linkMany(MockPostAnother::class, 'user_id', 'id');
-    }
-
-    public function comments()
-    {
-        $this->setLastRelationType('linkMany');
-        $this->setLastRelatedModel(MockCommentAnother::class);
-        $this->setLastForeignKey('user_id');
-        $this->setLastLocalKey('id');
-        return $this->linkMany(MockCommentAnother::class, 'user_id', 'id');
-    }
-
-    protected function setLastRelationType($type)
-    {
-        $this->lastRelationType = $type;
-    }
-    protected function setLastRelatedModel($model)
-    {
-        $this->lastRelatedModel = $model;
-    }
-    protected function setLastForeignKey($key)
-    {
-        $this->lastForeignKey = $key;
-    }
-    protected function setLastLocalKey($key)
-    {
-        $this->lastLocalKey = $key;
-    }
-
-    public function getLastRelationType(): string
-    {
-        return $this->lastRelationType ?? '';
-    }
-    public function getLastRelatedModel(): string
-    {
-        return $this->lastRelatedModel ?? '';
-    }
-    public function getLastForeignKey(): string
-    {
-        return $this->lastForeignKey ?? '';
-    }
-    public function getLastLocalKey(): string
-    {
-        return $this->lastLocalKey ?? '';
-    }
-}
-
-class MockPostAnother extends Model
-{
-    protected $table = 'posts';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
-
-    public function comments()
-    {
-        $this->setLastRelationType('linkMany');
-        $this->setLastRelatedModel(MockCommentAnother::class);
-        $this->setLastForeignKey('post_id');
-        $this->setLastLocalKey('id');
-        return $this->linkMany(MockCommentAnother::class, 'post_id', 'id');
-    }
-
-    public function user()
-    {
-        $this->setLastRelationType('bindTo');
-        $this->setLastRelatedModel(MockUserAnother::class);
-        $this->setLastForeignKey('user_id');
-        $this->setLastLocalKey('user_id');
-        return $this->bindTo(MockUserAnother::class, 'user_id', 'id');
-    }
-
-    public function likes()
-    {
-        $this->setLastRelationType('linkMany');
-        $this->setLastRelatedModel(MockLikeAnother::class);
-        $this->setLastForeignKey('post_id');
-        $this->setLastLocalKey('id');
-        return $this->linkMany(MockLikeAnother::class, 'post_id', 'id');
-    }
-
-    protected function setLastRelationType($type)
-    {
-        $this->lastRelationType = $type;
-    }
-    protected function setLastRelatedModel($model)
-    {
-        $this->lastRelatedModel = $model;
-    }
-    protected function setLastForeignKey($key)
-    {
-        $this->lastForeignKey = $key;
-    }
-    protected function setLastLocalKey($key)
-    {
-        $this->lastLocalKey = $key;
-    }
-
-    public function getLastRelationType(): string
-    {
-        return $this->lastRelationType ?? '';
-    }
-    public function getLastRelatedModel(): string
-    {
-        return $this->lastRelatedModel ?? '';
-    }
-    public function getLastForeignKey(): string
-    {
-        return $this->lastForeignKey ?? '';
-    }
-    public function getLastLocalKey(): string
-    {
-        return $this->lastLocalKey ?? '';
-    }
-}
-
-class MockCommentAnother extends Model
-{
-    protected $table = 'comments';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
-}
-
-class MockLikeAnother extends Model
-{
-    protected $table = 'likes';
-    protected $primaryKey = 'id';
-    protected $connection = 'default';
 }
