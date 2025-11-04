@@ -155,11 +155,10 @@ class Application extends Container
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
-     * - Loading configuration.
-     * - Registering and booting core service providers.
      * - Setting up exception handling.
+     * - Loading configuration.
      * - Defining necessary folder paths.
-     * - Detecting if the application is running in the console.
+     * - Registering and booting core service providers.
      */
     public function __construct()
     {
