@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Requests;
 
 use Phaseolies\Utilities\CookieUpdater;
 use Phaseolies\Http\Response\Cookie;

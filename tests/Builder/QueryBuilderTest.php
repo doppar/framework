@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Builder;
 
 use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\Collection;
