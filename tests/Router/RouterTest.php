@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Router;
 
 use Tests\Support\MockContainer;
 use Tests\Support\Kernel;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Requests;
 
 use Phaseolies\Cache\RateLimiter;
 use Phaseolies\Cache\RateLimit;

@@ -10,8 +10,8 @@ class RequestAbortion
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
-     * @param int $code The HTTP status code.
-     * @param string $message The optional error message.
+     * @param int $code
+     * @param string $message
      * @param array $headers
      * @return void
      * @throws HttpException
@@ -46,9 +46,9 @@ class RequestAbortion
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition The condition to check.
-     * @param int $code The HTTP status code.
-     * @param string $message The optional error message.
+     * @param bool $condition
+     * @param int $code
+     * @param string $message
      * @param array $headers
      * @return void
      * @throws HttpException
