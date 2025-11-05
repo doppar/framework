@@ -205,6 +205,7 @@
                 </pre>
 
             </div>
+            
             <div class="mt-6">
                 <div class="flex items-center justify-between mb-3 px-2">
                     <h3 class="text-base font-semibold flex items-center gap-2">
@@ -222,6 +223,10 @@
                 <div id="traceFrames">
                     @include('trace-frames', ['traces' => $traces])
                 </div>
+            </div>
+
+            <div id="headers">
+                @include('headers',['headers' => $headers])    
             </div>
         </main>
     </div>

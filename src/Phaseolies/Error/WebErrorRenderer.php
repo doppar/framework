@@ -38,9 +38,7 @@ class WebErrorRenderer
             ];
         }
 
-        $traces = Frame::extractFramesCollectionFromEngine($exception->getTrace());
 
-    
         date_default_timezone_set(config('app.timezone'));
 
         if (ob_get_level() > 0) {
@@ -60,11 +58,12 @@ class WebErrorRenderer
         $controller->setViewFolder($viewsPath);
 
         return $controller->render('template', [
+            'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
+            'headers'         => [],
             'error_message'   => $exception->getMessage(),
             'error_file'      => $errorFile,
             'error_line'      => $errorLine,
-            'contents'      => $this->buildContents($codeLines),
-            'traces'          => $traces,
+            'contents'        => $this->buildContents($codeLines),
             'php_version'     => PHP_VERSION,
             'doppar_version'  => Application::VERSION,
             'request_method'  => request()->getMethod(),
@@ -77,58 +76,6 @@ class WebErrorRenderer
         ]);
     }
 
-    private function processTraces(array $traces): array
-    {
-        $processed = [];
-
-        // dd($traces);
-
-
-
-        foreach ($traces as $trace) {
-
-            if (!array_key_exists('file', $trace)) {
-                continue;
-            }
-
-            $file = $trace['file'];
-
-            $processed[] = [
-                'file' => $file,
-                'short_file' => $this->shortenPath($file),
-                'line' => $trace['line'] ?? 0,
-                'function' => $trace['function'] ?? '',
-                'class' => $trace['class'] ?? '',
-                'type' => $trace['type'] ?? '',
-                'is_vendor' => strpos($file, 'doppar/framework') !== false,
-                'lines' => $this->buildTraceFrameContent($trace),
-            ];
-        }
-
-        return $processed;
-    }
-
-    private function buildTraceFrameContent(array $trace)
-    {
-        if (!file_exists($trace['file']) || $trace['line'] <= 0) {
-            return [];
-        }
-
-        $fileLines = file($trace['file']);
-
-        $startLine = max(0, $trace['line'] - 4);
-        $endLine = min(count($fileLines), $trace['line'] + 3);
-
-
-        return  array_slice($fileLines, $startLine, $endLine - $startLine);
-    }
-
-
-    private function shortenPath(string $path): string
-    {
-        $basePath = base_path();
-        return str_replace($basePath . '/', '', $path);
-    }
 
     private function buildContents($codeLines)
     {
