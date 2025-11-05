@@ -1097,7 +1097,45 @@ class Router extends Kernel
 
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
+        // Check if method should be wrapped in a transaction
+        $transactionConfig = $this->getTransactionConfig($reflector, $actionMethod);
+
+        if ($transactionConfig) {
+            return $this->executeInTransaction(
+                $controllerInstance,
+                $actionMethod,
+                $actionDependencies,
+                $transactionConfig['connection'],
+                $transactionConfig['attempts']
+            );
+        }
+
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Execute a controller action within a database transaction
+     *
+     * @param object $controllerInstance
+     * @param string $actionMethod
+     * @param array $actionDependencies
+     * @param string|null $connection
+     * @param int $attempts
+     * @return mixed
+     * @throws \Throwable
+     */
+    protected function executeInTransaction(
+        object $controllerInstance,
+        string $actionMethod,
+        array $actionDependencies,
+        ?string $connection,
+        int $attempts
+    ): mixed {
+        $db = new \Phaseolies\Database\Database($connection);
+
+        return $db->transaction(function () use ($controllerInstance, $actionMethod, $actionDependencies) {
+            return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+        }, $attempts);
     }
 
     /**
@@ -1485,5 +1523,28 @@ class Router extends Kernel
         }
 
         return $instance;
+    }
+
+    /**
+     * Check if method has Transaction attribute
+     *
+     * @param \ReflectionClass $reflector
+     * @param string $actionMethod
+     * @return array|null [connection, attempts] or null
+     */
+    protected function getTransactionConfig(\ReflectionClass $reflector, string $actionMethod): ?array
+    {
+        $method = $reflector->getMethod($actionMethod);
+        $methodAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Transaction::class);
+
+        if (!empty($methodAttributes)) {
+            $transaction = $methodAttributes[0]->newInstance();
+            return [
+                'connection' => $transaction->connection,
+                'attempts' => $transaction->attempts
+            ];
+        }
+
+        return null;
     }
 }
