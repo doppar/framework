@@ -28,10 +28,6 @@ class Highlighter
                     $skipFirst = false;
                     continue;
                 }
-                // we can't highlight html 
-                if ($id === T_INLINE_HTML) {
-                    continue;
-                }
 
                 $class = match ($id) {
                     T_OPEN_TAG, T_CLOSE_TAG => 'text-hl-tag',

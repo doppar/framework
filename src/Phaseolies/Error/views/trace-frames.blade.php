@@ -44,7 +44,11 @@
                                 class="flex py-0.5 px-2 {{ $isHighlight ? 'bg-red-500/10 border-l-2 border-l-red-500 text-red-700 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400' }}">
                                 <span
                                     class="inline-block w-10 text-right pr-3 text-neutral-400 select-none shrink-0">{{ $lineNumber }}</span>
-                                <span class="flex-1 whitespace-pre">{!! $lineContent !!}</span>
+                                <span class="flex-1 whitespace-pre">
+                                    <pre>
+                                        {!! $lineContent !!}
+                                    </pre>
+                                </span>
                             </div>
                         @endforeach
                     </div>

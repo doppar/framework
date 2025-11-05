@@ -3,6 +3,7 @@
 namespace Phaseolies\Error;
 
 use Phaseolies\Application;
+use Phaseolies\Error\Traces\Frame;
 use Phaseolies\Http\Controllers\Controller;
 use Throwable;
 
@@ -37,7 +38,7 @@ class WebErrorRenderer
             ];
         }
 
-        $traces = $this->processTraces($exception->getTrace());
+        $traces = Frame::collectionFromEngine($exception->getTrace());
 
         date_default_timezone_set(config('app.timezone'));
 
@@ -81,6 +82,8 @@ class WebErrorRenderer
 
         // dd($traces);
 
+
+
         foreach ($traces as $trace) {
 
             if (!array_key_exists('file', $trace)) {
@@ -116,9 +119,7 @@ class WebErrorRenderer
         $endLine = min(count($fileLines), $trace['line'] + 3);
 
 
-        $lines = array_slice($fileLines, $startLine, $endLine - $startLine);
-
-        return array_map(fn($line) => Highlighter::make($line), $lines);
+        return  array_slice($fileLines, $startLine, $endLine - $startLine);
     }
 
 
@@ -135,7 +136,6 @@ class WebErrorRenderer
         foreach ($codeLines as $line) {
             $class = $line['is_error'] ? 'code-line-error' : 'code-line';
 
-            // Highlight the code tokens 
             $content = Highlighter::make($line['content']);
 
             $contents[] = '<div class="' . $class . '">' .
