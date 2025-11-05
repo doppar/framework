@@ -59,7 +59,7 @@ class WebErrorRenderer
 
         return $controller->render('template', [
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
-            'headers'         => [],
+            'headers'         => ($this->getHeaders()),
             'error_message'   => $exception->getMessage(),
             'error_file'      => $errorFile,
             'error_line'      => $errorLine,
@@ -74,6 +74,13 @@ class WebErrorRenderer
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
         ]);
+    }
+
+    private function getHeaders()
+    {
+        return array_map(function (array $header) {
+            return implode(', ', $header);
+        }, request()->headers->all());
     }
 
 

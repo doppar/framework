@@ -225,7 +225,7 @@
                 </div>
             </div>
 
-            <div id="headers">
+            <div id="headers" class="my-4">
                 @include('headers',['headers' => $headers])    
             </div>
         </main>
