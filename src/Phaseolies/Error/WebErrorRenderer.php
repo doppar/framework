@@ -38,8 +38,9 @@ class WebErrorRenderer
             ];
         }
 
-        $traces = Frame::collectionFromEngine($exception->getTrace());
+        $traces = Frame::extractFramesCollectionFromEngine($exception->getTrace());
 
+    
         date_default_timezone_set(config('app.timezone'));
 
         if (ob_get_level() > 0) {

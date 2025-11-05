@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Error\Traces;
 
+use Phaseolies\Error\Highlighter;
+
 class Frame
 {
     private string $file;
@@ -72,7 +74,7 @@ class Frame
         return $this->hasFile() && file_exists($this->file);
     }
 
-    public static function collectionFromEngine(array $traces)
+    public static function extractFramesCollectionFromEngine(array $traces)
     {
         $frames = [];
 
@@ -86,7 +88,7 @@ class Frame
             $frames[] = $frame;
         }
 
-        return dd($frames);
+        return $frames;
     }
 
     public function getCodeLines(): array
@@ -111,37 +113,51 @@ class Frame
         return $this->class . $this->type . $this->function . '()';
     }
 
-    public function toArray(): array
-    {
-        return [
-            'file' => $this->file,
-            'short_file' => $this->getShortFile(),
-            'line' => $this->line,
-            'function' => $this->function,
-            'class' => $this->class,
-            'type' => $this->type,
-            'is_vendor' => $this->isVendor(),
-            'lines' => $this->getCodeLines(),
-            'call_signature' => $this->getCallSignature(),
-        ];
-    }
-
     public static function fromTrace(array $trace): self
     {
         return new self($trace);
     }
 
-
-    public static function collectionToArray(array $traces): array
+    public function getCodeLinesContent(): string
     {
-        return array_map(
-            fn(Frame $frame) => $frame->toArray(),
-            self::collection($traces)
-        );
+        if (!$this->fileExists() || $this->getLine() <= 0) {
+            return '<div class="text-neutral-500 text-sm p-2">No code available</div>';
+        }
+
+        $fileLines = file($this->getFile());
+
+        $start = max(0, $this->getLine() - 4);
+        $end = min(count($fileLines), $this->getLine() + 3);
+
+        $output = [];
+
+        for ($i = $start; $i < $end; $i++) {
+            $number = $i + 1;
+
+            $highlight = $number === $this->getLine();
+
+            $classes = $highlight
+                ? 'bg-red-500/10 border-l-2 border-l-red-500 text-red-700 dark:text-red-400'
+                : 'text-neutral-600 dark:text-neutral-400';
+
+            $output[] = sprintf(
+                '<div class="flex py-0.5 px-2 %s">
+                <span class="inline-block w-10 text-right pr-3 text-neutral-400 select-none shrink-0">%d</span>
+                <code class="flex-1 whitespace-pre font-mono text-xs">%s</code>
+            </div>',
+                $classes,
+                $number,
+                Highlighter::make($fileLines[$i])
+            );
+        }
+
+        return implode("\n", $output);
     }
 
-    public static function collectionForView(array $traces): array
+
+    // https://www.php.net/manual/en/language.oop5.magic.php#object.set-state
+    public static function __set_state($data): Frame
     {
-        return self::collection($traces);
+        return new self($data);
     }
 }

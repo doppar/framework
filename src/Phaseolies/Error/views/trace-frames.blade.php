@@ -3,27 +3,23 @@
 @else
     <div class="space-y-2">
         @foreach ($traces as $index => $trace)
-            @php
-                $trace['line'] = $trace['line'] ?? 0;
-                $function = $trace['function'] ?? '';
-                $class = $trace['class'] ?? '';
-                $type = $trace['type'] ?? '';
-                $signature = $class ? $class . $type . $function . '()' : $function . '()';
-            @endphp
-
-            <div class="frame border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 hover:border-neutral-300 dark:hover:border-neutral-700 {{ $trace['is_vendor'] ? 'opacity-60' : '' }}"
-                data-frame="{{ $index }}">
-                <div class="frame-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
-                    onclick="toggleTraceFrame({{ $index }})">
+            <div 
+                class="frame border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 hover:border-neutral-300 dark:hover:border-neutral-700 "
+                data-frame="{{ $index }}"
+            >
+                <div 
+                    class="frame-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
+                    onclick="toggleTraceFrame({{ $index }})"
+                >
                     <span
                         class="frame-number flex items-center justify-center w-8 h-8 bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded font-mono text-xs font-semibold shrink-0">{{ $index + 1 }}</span>
                     <div class="flex-1 min-w-0">
                         <div
-                            class="font-mono text-sm font-medium truncate {{ $trace['is_vendor'] ? 'text-neutral-500 dark:text-neutral-600' : '' }}">
-                            {{ $signature }}</div>
+                            class="font-mono text-sm font-medium truncate ">
+                            {{ $trace->getCallSignature() }}</div>
                         <div class="text-xs text-neutral-500 font-mono truncate">
                             <div class="text-xs text-neutral-500 font-mono truncate">
-                                {{ ($trace['short_file'] ?? $trace['file']) . ':' . $trace['line'] }}
+                                {{ $trace->getShortFile() }}
                             </div>
                         </div>
                     </div>
@@ -35,22 +31,7 @@
                 <div
                     class="frame-content bg-neutral-50/50 dark:bg-neutral-950/50 border-t border-neutral-200 dark:border-neutral-800 hidden frame-content trace-frame-content">
                     <div class="p-3 font-mono text-xs">
-                        @foreach ($trace['lines'] as $idx => $lineContent)
-                            @php
-                                $lineNumber = max(0, $trace['line'] - 4) + $idx + 1;
-                                $isHighlight = $lineNumber === $trace['line'];
-                            @endphp
-                            <div
-                                class="flex py-0.5 px-2 {{ $isHighlight ? 'bg-red-500/10 border-l-2 border-l-red-500 text-red-700 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-400' }}">
-                                <span
-                                    class="inline-block w-10 text-right pr-3 text-neutral-400 select-none shrink-0">{{ $lineNumber }}</span>
-                                <span class="flex-1 whitespace-pre">
-                                    <pre>
-                                        {!! $lineContent !!}
-                                    </pre>
-                                </span>
-                            </div>
-                        @endforeach
+                        {!! $trace->getCodeLinesContent() !!}
                     </div>
                 </div>
             </div>
