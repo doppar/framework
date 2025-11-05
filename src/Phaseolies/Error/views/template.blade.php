@@ -123,8 +123,7 @@
 </style>
 
 <body
-    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200"
->
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
     {{-- Top Bar --}}
     <div class="top-bar rounded-lg">
         <div
@@ -205,7 +204,7 @@
                 </pre>
 
             </div>
-            
+
             <div class="mt-6">
                 <div class="flex items-center justify-between mb-3 px-2">
                     <h3 class="text-base font-semibold flex items-center gap-2">
@@ -215,7 +214,7 @@
                         </svg>
                         Stack Trace
                     </h3>
-                    <button onclick="toggleAllFrames()"
+                    <button id="toggleAllFramesBtn"
                         class="text-sm px-3 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-200">
                         <span id="toggleAllText">Expand All</span>
                     </button>
@@ -226,7 +225,7 @@
             </div>
 
             <div id="headers" class="my-4">
-                @include('headers',['headers' => $headers])    
+                @include('headers', ['headers' => $headers])
             </div>
         </main>
     </div>
@@ -276,5 +275,88 @@
 
     ThemeManager.init();
 </script>
+
+<script>
+    function setupAccordion(containerSelector, options = {}) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+
+        const headerSelector = options.headerSelector || '.accordion-header';
+        const contentSelector = options.contentSelector || '.accordion-content';
+        const arrowSelector = options.arrowSelector || '.accordion-arrow';
+        const toggleAllBtnSelector = options.toggleAllBtnSelector;
+
+        const headers = container.querySelectorAll(headerSelector);
+
+        headers.forEach(header => {
+            header.setAttribute('tabindex', '0');
+            header.setAttribute('role', 'button');
+            header.setAttribute('aria-expanded', 'false');
+
+            header.addEventListener('click', () => toggleSection(header));
+            header.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleSection(header);
+                }
+            });
+        });
+
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            if (!content) return;
+
+            const arrow = header.querySelector(arrowSelector);
+            const isExpanded = !content.classList.contains('hidden');
+
+            content.classList.toggle('hidden');
+            header.setAttribute('aria-expanded', isExpanded ? 'false' : 'true');
+            if (arrow) arrow.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
+        // Toggle all logic for multi-accordion (optional)
+        if (toggleAllBtnSelector) {
+            const toggleAllBtn = document.querySelector(toggleAllBtnSelector);
+            if (!toggleAllBtn) return;
+
+            let allExpanded = false;
+
+            toggleAllBtn.addEventListener('click', () => {
+                allExpanded = !allExpanded;
+
+                headers.forEach(header => {
+                    const content = header.nextElementSibling;
+                    const arrow = header.querySelector(arrowSelector);
+                    if (!content || !arrow) return;
+
+                    if (allExpanded) {
+                        content.classList.remove('hidden');
+                        header.setAttribute('aria-expanded', 'true');
+                        arrow.style.transform = 'rotate(180deg)';
+                    } else {
+                        content.classList.add('hidden');
+                        header.setAttribute('aria-expanded', 'false');
+                        arrow.style.transform = 'rotate(0deg)';
+                    }
+                });
+
+                toggleAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        setupAccordion('#single-accordion-container');
+
+        setupAccordion('.frames-container', {
+            headerSelector: '.frame-header',
+            contentSelector: '.frame-content',
+            arrowSelector: '.frame-arrow',
+            toggleAllBtnSelector: '#toggleAllFramesBtn',
+        });
+    });
+</script>
+
+
 
 </html>
