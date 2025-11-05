@@ -323,11 +323,31 @@ class Router extends Kernel
     {
         $reflection = new \ReflectionClass($controllerClass);
 
+        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Utilities\Attributes\Mapper::class);
+        $classPrefix = null;
+        $classMiddleware = [];
+
+        if (!empty($mapperAttributes)) {
+            $mapper = $mapperAttributes[0]->newInstance();
+            $classPrefix = $mapper->prefix;
+            $classMiddleware = $mapper->middleware ?? [];
+        }
+
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
                 $route = $attribute->newInstance();
+
+                // Apply class prefix to route URI
+                if ($classPrefix) {
+                    $route->uri = '/' . trim($classPrefix, '/') . '/' . ltrim($route->uri, '/');
+                    $route->uri = rtrim($route->uri, '/') ?: '/';
+                }
+
+                $mergedMiddleware = array_merge($classMiddleware, $route->middleware ?? []);
+                $route->middleware = $mergedMiddleware;
+
                 $this->registerAttributeRoute($controllerClass, $method->getName(), $route);
             }
         }
@@ -1077,7 +1097,45 @@ class Router extends Kernel
 
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
+        // Check if method should be wrapped in a transaction
+        $transactionConfig = $this->getTransactionConfig($reflector, $actionMethod);
+
+        if ($transactionConfig) {
+            return $this->executeInTransaction(
+                $controllerInstance,
+                $actionMethod,
+                $actionDependencies,
+                $transactionConfig['connection'],
+                $transactionConfig['attempts']
+            );
+        }
+
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Execute a controller action within a database transaction
+     *
+     * @param object $controllerInstance
+     * @param string $actionMethod
+     * @param array $actionDependencies
+     * @param string|null $connection
+     * @param int $attempts
+     * @return mixed
+     * @throws \Throwable
+     */
+    protected function executeInTransaction(
+        object $controllerInstance,
+        string $actionMethod,
+        array $actionDependencies,
+        ?string $connection,
+        int $attempts
+    ): mixed {
+        $db = new \Phaseolies\Database\Database($connection);
+
+        return $db->transaction(function () use ($controllerInstance, $actionMethod, $actionDependencies) {
+            return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+        }, $attempts);
     }
 
     /**
@@ -1273,6 +1331,13 @@ class Router extends Kernel
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
 
+            // Handle #[Model] attribute - HIGHEST PRIORITY
+            $modelResult = $this->handleModelAttribute($parameter, $routeParams);
+            if ($modelResult['handled']) {
+                $dependencies[] = $modelResult['instance'];
+                continue;
+            }
+
             // Handle #[BindPayload()]
             $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
             if ($payloadResult['handled']) {
@@ -1371,5 +1436,115 @@ class Router extends Kernel
         $instance = $app->make($abstract);
 
         return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Handle Model attribute for automatic model binding
+     *
+     * @param \ReflectionParameter $parameter
+     * @param array $routeParams
+     * @return array
+     * @throws \Exception
+     */
+    private function handleModelAttribute(\ReflectionParameter $parameter, array $routeParams): array
+    {
+        $modelAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Model::class);
+
+        if (empty($modelAttributes)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        // Ensure parameter has a type hint
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception(
+                "Parameter '\$$paramName' must have a class type hint when using #[Model] attribute"
+            );
+        }
+
+        $modelClass = $paramType->getName();
+        $modelAttribute = $modelAttributes[0]->newInstance();
+
+        $modelInstance = app($modelClass);
+        $modelRouteKey = $modelInstance->getRouteKeyName();
+        $modelPrimaryKey = $modelInstance->getPrimaryKey();
+
+        // First giving priority to global model key name
+        $column = $modelRouteKey === $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
+
+        // If #[Model] contains column, forcefully overriding previous colum
+        $column = $modelAttribute->column !== $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
+        $exception = $modelAttribute->exception;
+
+        if (!isset($routeParams[$paramName])) {
+            throw new \Exception(
+                "Route parameter '\$$paramName' not found in URL for model binding"
+            );
+        }
+
+        $value = $routeParams[$paramName];
+        $instance = $this->resolveModelInstance($modelClass, $column, $value, $modelPrimaryKey, $exception);
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Resolve a model instance from the database
+     *
+     * @param string $modelClass
+     * @param string $column
+     * @param mixed $value
+     * @param string $modelPrimaryKey
+     * @param bool $exception
+     * @return Model
+     * @throws \Exception
+     */
+    private function resolveModelInstance(
+        string $modelClass,
+        string $column,
+        mixed $value,
+        string $modelPrimaryKey,
+        bool $exception
+    ): ?Model {
+        if ($column === $modelPrimaryKey) {
+            $instance = $modelClass::find($value);
+        } elseif ($column !== $modelPrimaryKey) {
+            $instance = $modelClass::where($column, $value)->first();
+        } else {
+            throw new \Exception(
+                "Model class '$modelClass' does not have a suitable method for model binding"
+            );
+        }
+
+        if (!$instance && $exception) {
+            abort(404, "$modelClass not found with $column = $value");
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Check if method has Transaction attribute
+     *
+     * @param \ReflectionClass $reflector
+     * @param string $actionMethod
+     * @return array|null [connection, attempts] or null
+     */
+    protected function getTransactionConfig(\ReflectionClass $reflector, string $actionMethod): ?array
+    {
+        $method = $reflector->getMethod($actionMethod);
+        $methodAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Transaction::class);
+
+        if (!empty($methodAttributes)) {
+            $transaction = $methodAttributes[0]->newInstance();
+            return [
+                'connection' => $transaction->connection,
+                'attempts' => $transaction->attempts
+            ];
+        }
+
+        return null;
     }
 }

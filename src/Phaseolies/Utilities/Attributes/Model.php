@@ -3,9 +3,10 @@
 namespace Phaseolies\Utilities\Attributes;
 
 #[\Attribute(\Attribute::TARGET_PARAMETER)]
-final class BindPayload
+final class Model
 {
     public function __construct(
-        public bool $strict = false,
+        public readonly ?string $column = 'id',
+        public readonly bool $exception = false,
     ) {}
 }
