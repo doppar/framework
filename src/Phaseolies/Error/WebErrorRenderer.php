@@ -38,24 +38,25 @@ class WebErrorRenderer
             ];
         }
 
+        $user = null;
+        try {
+            $user = auth()->user();
+        } catch (\Throwable $e) {
+            // Ignore, because auth might not be available in error context
+            $user = null;
+        }
+
+        $userInfo = $user ? [
+            'id' => $user->id,
+            'email' => $user->email ?? 'N/A',
+        ] : null;
+
 
         date_default_timezone_set(config('app.timezone'));
 
-        if (ob_get_level() > 0) {
-            ob_end_clean();
-        }
+        $mdReport = new ExceptionMarkdownReport($exception, request());
 
-        $controller = new Controller();
-
-        $basePath = base_path();
-
-        $currentDir = __DIR__;
-
-        $relative = str_replace($basePath . '/', '', $currentDir);
-
-        $viewsPath = $relative . '/views';
-
-        $controller->setViewFolder($viewsPath);
+        $controller = $this->setupController();
 
         return $controller->render('template', [
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
@@ -70,80 +71,35 @@ class WebErrorRenderer
             'request_method'  => request()->getMethod(),
             'request_url'     => trim(request()->fullUrl(), '/'),
             'timestamp'       => now()->toDayDateTimeString(),
+            // 
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
             'platform'        => php_uname(),
+            'memory_usage'    => memory_get_usage(true),
+            'peak_memory_usage' => memory_get_peak_usage(true),
+            'request_body'    => request()->except(['password', 'password_confirmation', 'token']),
+            'user_info'       => $userInfo,
+            // 
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
-            'md_content' => $this->collectMarkdownContents($exception),
+            'md_content' => $mdReport->generate(),
         ]);
     }
 
-    private function collectMarkdownContents(?Throwable $exception = null): string
+    private function setupController(): Controller
     {
-        if (! $exception) {
-            return '';
-        }
 
-        $errorFile = $exception->getFile();
-        $errorLine = $exception->getLine();
-        $errorMessage = $exception->getMessage();
-        $trace = $exception->getTraceAsString();
+        $controller = new Controller();
 
-        $request = request();
+        $relative = str_replace(base_path() . '/', '', __DIR__);
 
-        $md = [];
-        $md[] = "# ParseError – Internal Server Error";
-        $md[] = '';
-        $md[] = "**Message:** {$errorMessage}";
-        $md[] = "**File:** `{$errorFile}`";
-        $md[] = "**Line:** `{$errorLine}`";
-        $md[] = '';
-        $md[] = "---";
-        $md[] = '';
-        $md[] = "## Environment";
-        $md[] = "- **PHP:** " . PHP_VERSION;
-        $md[] = "- **Doppar:** " . Application::VERSION;
-        $md[] = "- **Server:** " . ($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown');
-        $md[] = "- **Platform:** " . php_uname();
-        $md[] = "- **Timestamp:** " . now()->toDayDateTimeString();
-        $md[] = '';
-        $md[] = "## Request";
-        $md[] = "- **Method:** " . $request->getMethod();
-        $md[] = "- **URL:** " . $request->fullUrl();
-        $md[] = '';
-        $md[] = "### Headers";
-        foreach ($request->headers->all() as $key => $values) {
-            $joined = implode(', ', $values);
-            $md[] = "- **{$key}:** {$joined}";
-        }
-        $md[] = '';
-        $md[] = "## Code Context";
-        if (file_exists($errorFile)) {
-            $file = file($errorFile);
-            $start = max(0, $errorLine - 5);
-            $slice = array_slice($file, $start, 10, true);
-            $codeBlock = '';
-            foreach ($slice as $lineNumber => $lineContent) {
-                $prefix = ($lineNumber + 1 == $errorLine) ? '>> ' : '   ';
-                $codeBlock .= $prefix . ($lineNumber + 1) . ' ' . rtrim($lineContent) . "\n";
-            }
-            $md[] = "```php";
-            $md[] = trim($codeBlock);
-            $md[] = "```";
-        } else {
-            $md[] = "_File not found._";
-        }
-        $md[] = '';
-        $md[] = "## Stack Trace";
-        $md[] = "```";
-        $md[] = trim($trace);
-        $md[] = "```";
+        $viewsPath = $relative . '/views';
 
-        return implode("\n", $md);
+        $controller->setViewFolder($viewsPath);
+
+        return $controller;
     }
 
-
-    private function getHeaders()
+    private function getHeaders(): array
     {
         return array_map(function (array $header) {
             return implode(', ', $header);
@@ -156,6 +112,12 @@ class WebErrorRenderer
         return [
             'params' => request()->getRouteParams()
         ];
+    }
+
+    private function getAuthContext(): array
+    {
+
+        return [];
     }
 
     private function buildContents($codeLines)
