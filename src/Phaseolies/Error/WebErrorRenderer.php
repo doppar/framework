@@ -77,116 +77,12 @@ class WebErrorRenderer
             'peack_memory_usage' => memory_get_peak_usage(true),
             'request_body'    => request()->except(['password', 'password_confirmation', 'token']),
             'user_info'       => $userInfo,
-            // 
-            'session_data'    => $this->getSessionData(),
-            'cookies_data'    => $this->getCookiesData(),
-            // 
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
             'md_content' => $mdReport->generate(),
         ]);
     }
 
-
-    /**
-     * Get session data with sensitive information hidden
-     *
-     * @return array
-     */
-    private function getSessionData(): array
-    {
-        try {
-            // Check if session is started
-            if (session_status() === PHP_SESSION_ACTIVE) {
-                $sessionData = $_SESSION ?? [];
-
-                // Try to get session from request helper if available
-                if (function_exists('request') && method_exists(request(), 'session')) {
-                    try {
-                        $sessionData = request()->session()->all() ?? $sessionData;
-                    } catch (\Exception $e) {
-                        // Continue with $_SESSION
-                    }
-                }
-
-                // Remove sensitive data
-                $sensitiveKeys = ['password', 'token', 'api_key', 'secret', '_token', 'csrf_token', 'auth_password'];
-                foreach ($sensitiveKeys as $key) {
-                    if (isset($sessionData[$key])) {
-                        $sessionData[$key] = '***HIDDEN***';
-                    }
-                }
-
-                // Also check nested arrays
-                foreach ($sessionData as $key => &$value) {
-                    if (is_array($value)) {
-                        foreach ($sensitiveKeys as $sensitiveKey) {
-                            if (isset($value[$sensitiveKey])) {
-                                $value[$sensitiveKey] = '***HIDDEN***';
-                            }
-                        }
-                    }
-                }
-
-                return [
-                    'id' => session_id() ?: null,
-                    'data' => $sessionData,
-                    'has_session' => true,
-                ];
-            }
-
-            return ['has_session' => false];
-        } catch (\Exception $e) {
-            return ['has_session' => false, 'error' => $e->getMessage()];
-        }
-    }
-
-    /**
-     * Get cookies data with sensitive information hidden
-     *
-     * @return array
-     */
-    private function getCookiesData(): array
-    {
-        try {
-            // Try to get cookies from request helper first
-            $cookies = [];
-            if (function_exists('request') && method_exists(request(), 'cookies')) {
-                try {
-                    $cookies = request()->cookies->all() ?? [];
-                } catch (\Exception $e) {
-                    // Fall back to $_COOKIE
-                }
-            }
-
-            // Fallback to $_COOKIE if request cookies not available
-            if (empty($cookies)) {
-                $cookies = $_COOKIE ?? [];
-            }
-
-            // Remove sensitive cookies
-            $sensitiveCookies = ['password', 'token', 'api_key', 'secret', 'auth_token', 'auth_password'];
-            $filteredCookies = [];
-
-            foreach ($cookies as $key => $value) {
-                $lowerKey = strtolower($key);
-                $isSensitive = false;
-
-                foreach ($sensitiveCookies as $sensitive) {
-                    if (strpos($lowerKey, $sensitive) !== false) {
-                        $isSensitive = true;
-                        break;
-                    }
-                }
-
-                $filteredCookies[$key] = $isSensitive ? '***HIDDEN***' : $value;
-            }
-
-            return $filteredCookies;
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
 
     private function setupController(): Controller
     {
