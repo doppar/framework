@@ -5,7 +5,7 @@
     <div class="space-y-2">
       @foreach ($traces as $index => $trace)
       <div
-        class="frame border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 hover:border-neutral-300 dark:hover:border-neutral-700"
+        class="frame border border-neutral-200 dark:border-neutral-800 border-dashed rounded-lg overflow-hidden transition-all duration-200"
         data-frame="{{ $index }}"
       >
         <div data-open-by-default class="frame-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer">
@@ -22,7 +22,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </div>
-        <div class="frame-content bg-neutral-50/50 dark:bg-neutral-950/30 border-t border-neutral-200 dark:border-neutral-800 hidden"
+        <div class="frame-content bg-neutral-50/50 dark:bg-neutral-950/30 border-t border-dashed border-neutral-200 dark:border-neutral-800 hidden"
           role="region">
           <div class="p-3 font-mono text-xs">
             {!! $trace->getCodeLinesContent() !!}

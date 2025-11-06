@@ -4,7 +4,7 @@
     class=" dark:bg-neutral-900 bg-neutral-900/[1%]"
 >
     <div
-        class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 hover:border-neutral-300 dark:hover:border-neutral-700"
+        class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 border-dashed"
     >
         {{-- header area --}}
         <div
@@ -24,7 +24,7 @@
             </svg>
         </div>
         {{-- contaainer area --}}
-        <div class="accordion-content bg-white dark:bg-neutral-950/30 border-t border-neutral-200 dark:border-neutral-800 hidden"
+        <div class="accordion-content bg-white dark:bg-neutral-950/30 border-t border-dashed  border-neutral-200 dark:border-neutral-800 hidden"
             role="region" aria-labelledby="accordion-header">
             <div class="p-3 font-mono">
                 @foreach ($headers as $header_name => $header)
