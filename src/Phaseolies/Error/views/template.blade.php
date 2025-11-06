@@ -29,88 +29,73 @@
         --color-primary: --color-neutral-50;
         --color-primary-fg: --color-neutral-50;
 
-
         /*  Highlighting Colors - Light Mode */
         --color-hl-tag: #6c7086;
-        /* Muted gray for tags */
         --color-hl-variable: #fe640b;
-        /* Orange for variables */
         --color-hl-string: #7287fd;
-        /* Soft blue for strings */
         --color-hl-definition: #8839ef;
-        /* Purple for classes/functions */
         --color-hl-modifier: #df8e1d;
-        /* Yellow for modifiers */
         --color-hl-keyword: #d20f39;
-        /* Red for keywords */
         --color-hl-literal: #40a02b;
-        /* Green for literals */
         --color-hl-comment: #9ca0b0;
-        /* Light gray for comments */
         --color-hl-number: #fe640b;
-        /* Orange for numbers */
         --color-hl-default: #4c4f69;
-        /* Dark gray default */
     }
 
     @layer theme {
         .dark {
             /* Highlighting Colors - Dark Mode */
             --color-hl-tag: #565f89;
-            /* Muted blue-gray */
             --color-hl-variable: #ff9e64;
-            /* Warm orange */
             --color-hl-string: #9ece6a;
-            /* Fresh green */
             --color-hl-definition: #7aa2f7;
-            /* Sky blue */
             --color-hl-modifier: #bb9af7;
-            /* Soft purple */
             --color-hl-keyword: #f7768e;
-            /* Coral pink */
             --color-hl-literal: #9ece6a;
-            /* Fresh green */
             --color-hl-comment: #565f89;
-            /* Muted blue-gray */
             --color-hl-number: #ff9e64;
-            /* Warm orange */
             --color-hl-default: #c0caf5;
-            /* Light blue-white */
         }
     }
-
 
     @custom-variant dark (&:where(.dark, .dark *));
 
     @layer components {
         .badge {
-            @apply px-2 py-1 rounded font-medium transition-colors;
+            @apply px-2 py-1 rounded font-medium transition-all duration-200;
         }
 
         .badge[data-request-type="GET"] {
-            @apply bg-green-500/10 text-green-500;
+            @apply bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20;
         }
 
         .badge[data-request-type="POST"] {
-            @apply bg-blue-500/10 text-blue-500;
+            @apply bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20;
         }
 
         .badge[data-request-type="PUT"] {
-            @apply bg-yellow-500/10 text-yellow-500;
+            @apply bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20;
         }
 
         .badge[data-request-type="DELETE"] {
-            @apply bg-red-500/10 text-red-500;
+            @apply bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20;
         }
 
         /* Code Line Components */
         .code-line {
-            @apply inline-flex w-full ;
+            @apply inline-flex w-full transition-colors duration-150;
         }
 
         .code-line-error {
-            @apply inline-flex w-full bg-red-500/10 border-l-2 border-l-red-500 py-0.5;
+            animation: pulse-slow 2s ease-in-out infinite;
+            @apply inline-flex w-full bg-red-500/10 border-l-4 border-l-red-500 py-0.5;
         }
+
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
 
         .code-line-number {
             @apply w-12 text-right pr-3 text-neutral-500 select-none shrink-0;
@@ -121,67 +106,77 @@
         }
 
         .info-card {
-            @apply rounded-md border-[1.2px] dark:bg-neutral-950/30 bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4;
+            @apply rounded-lg border-[1.2px] dark:bg-neutral-950/30 bg-neutral-50/50 backdrop-blur-sm dark:border-white/5 border-neutral-900/5 p-4 transition-all duration-200 hover:shadow-lg hover:scale-[1.01];
         }
 
         .info-label {
-            @apply text-sm text-neutral-600 dark:text-neutral-400 font-medium mb-1;
+            @apply text-xs text-neutral-600 dark:text-neutral-400 font-medium mb-1 uppercase tracking-wider;
         }
 
         .info-value {
-            @apply text-neutral-900 dark:text-neutral-100;
+            @apply text-neutral-900 dark:text-neutral-100 font-medium;
         }
     }
 </style>
 
 <body
-    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-6 min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
+    
     {{-- Top Bar --}}
-    <div class="top-bar rounded-md">
-        <div
-            class="flex border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4 rounded-md">
-            <div>
-                <div class="dark:text-white text-neutral-950 text-3xl font-bold">
-                    {{ $exception_class }}
+    <div class="top-bar rounded-lg mb-6 group">
+        <div class="relative overflow-hidden border-[1.2px] border-dashed dark:bg-gradient-to-br dark:from-red-500/5 dark:to-transparent bg-gradient-to-br from-red-500/3 to-transparent dark:border-red-500/20 border-red-500/30 p-6 rounded-lg transition-all duration-300 hover:shadow-2xl hover:shadow-red-500/10">
+            {{-- Animated background blur --}}
+            <div class="absolute -top-24 -right-24 w-64 h-64 bg-red-500/20 rounded-full blur-3xl animate-pulse opacity-50"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-start gap-4 relative z-10">
+                {{-- Error Icon --}}
+                <div class="flex-shrink-0 p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/20 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
                 </div>
-                <div class="dark:text-neutral-300 text-neutral-700 text-2xl">
-                    {{ $error_message }}
-                </div>
-            </div>
-            <div class="ml-auto flex flex-col">
-                <div class="ml-auto flex gap-1">
-                    <button id="themeToggle"
-                        class="p-2 cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
-                        aria-label="Toggle theme">
-                        <svg id="sunIcon" class="hidden dark:block w-5 h-5" xmlns="http://www.w3.org/2000/svg"
-                            fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                        </svg>
-                        <svg id="moonIcon" class="block dark:hidden size-5" xmlns="http://www.w3.org/2000/svg"
-                            fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-                        </svg>
-                    </button>
-                    <button id="copyToClipBoard"
-                        class="p-2 cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors"
-                        title="Copy as markdown">
-                        <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
-                        </svg>
-                    </button>
-                </div>
-                {{-- Versions --}}
-                <div
-                    class="rounded-md flex border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
-                    <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
-                        <span class="text-neutral-800 dark:text-neutral-500 pr-2">DOPPAR</span> {{ $doppar_version }}
+                
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-bold text-red-600 dark:text-red-400 mb-2 tracking-wide uppercase">
+                        {{ $exception_class }}
                     </div>
-                    <div class="px-2">
-                        <span class="text-neutral-800 dark:text-neutral-500 pr-2">PHP</span> {{ $php_version }}
+                    <h1 class="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mb-1 break-words leading-tight">
+                        {{ $error_message }}
+                    </h1>
+                </div>
+
+                <div class="flex flex-col items-end gap-3">
+                    <div class="flex gap-2">
+                        <button id="themeToggle" class="p-2.5 cursor-pointer rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-95 border border-neutral-200 dark:border-white/10" aria-label="Toggle theme">
+                            <svg id="sunIcon" class="hidden dark:block w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                            </svg>
+                            <svg id="moonIcon" class="block dark:hidden size-5" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                            </svg>
+                        </button>
+                        <button id="copyToClipBoard" class="p-2.5 cursor-pointer rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-95 border border-neutral-200 dark:border-white/10" title="Copy as markdown">
+                            <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
+                            </svg>
+                        </button>
+                    </div>
+                    {{-- Versions --}}
+                    <div class="rounded-lg flex border-[1.2px] border-dashed dark:bg-white/[2%] bg-neutral-900/[2%] text-sm py-1.5 border-neutral-900/10 px-3 dark:border-white/10">
+                        <div class="pl-1 pr-3 border-r border-neutral-900/10 dark:border-white/10">
+                            <span class="text-neutral-600 dark:text-neutral-500 pr-2 text-xs">DOPPAR</span>
+                            <span class="font-semibold">{{ $doppar_version }}</span>
+                        </div>
+                        <div class="px-3">
+                            <span class="text-neutral-600 dark:text-neutral-500 pr-2 text-xs">PHP</span>
+                            <span class="font-semibold">{{ $php_version }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -189,47 +184,48 @@
     </div>
 
     {{-- Request Details --}}
-    <div
-        class="flex gap-2 items-center border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2 rounded-md">
-        <span data-request-type="{{ $request_method }}" class="badge p-1 rounded">
+    <div class="flex flex-wrap gap-3 items-center border-[1.2px] border-dashed dark:bg-white/[2%] bg-neutral-50/50 backdrop-blur-sm my-5 dark:border-white/10 border-neutral-900/10 p-3 rounded-lg hover:shadow-lg transition-all duration-200">
+        <span data-request-type="{{ $request_method }}" class="badge px-3 py-1.5 rounded-md font-semibold">
             {{ $request_method }}
         </span>
-        <span class="dark:text-neutral-400">{{ $request_url }}</span>
-        <span class="ml-auto text-sm text-neutral-600 dark:text-neutral-400">{{ $timestamp }}</span>
+        <span class="dark:text-neutral-300 text-neutral-700 font-mono text-sm flex-1 min-w-0 truncate">{{ $request_url }}</span>
+        <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {{ $timestamp }}
+        </div>
     </div>
 
     {{-- Main Content --}}
-    <div class="flex flex-col gap-4">
-        <main
-            class="rounded-md border-[1.2px] border-dashed w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
+    <div class="flex flex-col gap-5">
+        <main class="rounded-lg border-[1.2px] border-dashed w-full dark:bg-white/[2%] bg-neutral-50/50 backdrop-blur-sm border-neutral-900/10 dark:border-white/10 p-4 hover:shadow-xl transition-all duration-300">
             {{-- File Header --}}
-            <div class="flex items-center gap-2 bg-neutral-100 dark:bg-white/5 rounded-md px-2 py-1">
+            <div class="flex items-center gap-3 bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-white/10 dark:to-white/5 rounded-lg px-4 py-3 mb-4 border border-neutral-200 dark:border-white/10">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                    stroke="currentColor" class="size-6">
+                    stroke="currentColor" class="size-6 text-blue-500">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
-                {{ $error_file }}
+                <span class="font-mono text-sm">{{ $error_file }}</span>
             </div>
 
             {{-- Code Content --}}
-            <div class="pt-3 w-full">
-                <pre 
-                    class="[&_.code-line:nth-child(odd)]:bg-neutral-950/20"
-                >{!! $contents !!}</pre>
+            <div class="rounded-lg overflow-hidden border border-neutral-200 dark:border-white/10">
+                <pre class="[&_.code-line:nth-child(odd)]:bg-neutral-100/30 [&_.code-line:nth-child(odd)]:dark:bg-neutral-950/30 overflow-x-auto p-4">{!! $contents !!}</pre>
             </div>
 
-            <div class="mt-6">
-                <div class="flex items-center justify-between mb-3 px-2">
-                    <h3 class="text-base font-semibold flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4 px-2">
+                    <h3 class="text-lg font-bold flex items-center gap-3">
+                        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                         Stack Trace
                     </h3>
                     <button id="toggleAllFramesBtn"
-                        class="text-sm px-3 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors duration-200">
+                        class="text-sm px-4 py-2 rounded-lg cursor-pointer hover:scale-105 transition-all duration-200 bg-neutral-100 dark:bg-white/5 border border-dashed dark:border-white/10 border-neutral-900/10 font-medium hover:bg-neutral-200 dark:hover:bg-white/10">
                         <span id="toggleAllText">Expand All</span>
                     </button>
                 </div>
@@ -237,25 +233,26 @@
                     @include('trace-frames', ['traces' => $traces])
                 </div>
             </div>
-
         </main>
-        <div id="headers" class="my-4">
+
+        <div id="headers" class="my-2">
             @include('headers', ['headers' => $headers])
         </div>
     </div>
+
     {{-- System & User Info Grid --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 my-6">
         {{-- System Information --}}
         <div class="info-card">
-            <div class="flex items-center gap-2 mb-3">
+            <div class="flex items-center gap-2 mb-4">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
                     </path>
                 </svg>
-                <h3 class="font-semibold">System</h3>
+                <h3 class="font-bold text-base">System</h3>
             </div>
-            <div class="space-y-2 text-sm">
+            <div class="space-y-3 text-sm">
                 <div>
                     <div class="info-label">Server</div>
                     <div class="info-value truncate">{{ $server_software }}</div>
@@ -269,14 +266,14 @@
 
         {{-- Memory Usage --}}
         <div class="info-card">
-            <div class="flex items-center gap-2 mb-3">
+            <div class="flex items-center gap-2 mb-4">
                 <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
-                <h3 class="font-semibold">Memory</h3>
+                <h3 class="font-bold text-base">Memory</h3>
             </div>
-            <div class="space-y-2 text-sm">
+            <div class="space-y-3 text-sm">
                 <div>
                     <div class="info-label">Current Usage</div>
                     <div class="info-value">{{ number_format($memory_usage / 1024 / 1024, 2) }} MB</div>
@@ -290,15 +287,15 @@
 
         {{-- User Information --}}
         <div class="info-card">
-            <div class="flex items-center gap-2 mb-3">
+            <div class="flex items-center gap-2 mb-4">
                 <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
-                <h3 class="font-semibold">User</h3>
+                <h3 class="font-bold text-base">User</h3>
             </div>
             @if ($user_info)
-                <div class="space-y-2 text-sm">
+                <div class="space-y-3 text-sm">
                     <div>
                         <div class="info-label">ID</div>
                         <div class="info-value">{{ $user_info['id'] }}</div>
@@ -309,8 +306,11 @@
                     </div>
                 </div>
             @else
-                <div class="text-sm text-neutral-500 dark:text-neutral-400">
-                    No authenticated user
+                <div class="flex flex-col items-center justify-center py-4 text-neutral-500 dark:text-neutral-400">
+                    <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                    </svg>
+                    <p class="text-sm font-mono">// NO USER</p>
                 </div>
             @endif
         </div>
@@ -325,27 +325,27 @@
                         d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
                     </path>
                 </svg>
-                <h3 class="font-semibold">Request Body</h3>
+                <h3 class="font-bold text-base">Request Body</h3>
             </div>
             @if (!empty($request_body))
                 <button
-                    class="accordion-header text-sm px-3 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">
+                    class="accordion-header text-sm px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all duration-200 border border-neutral-200 dark:border-white/10">
                     <span class="accordion-arrow inline-block transition-transform duration-200">▼</span>
                 </button>
             @endif
         </div>
         @if (!empty($request_body))
             <div class="accordion-content hidden">
-                <pre class="text-sm bg-neutral-50 dark:bg-white/5 rounded-md p-3 overflow-x-auto"><code>{{ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                <pre class="text-sm bg-neutral-100 dark:bg-white/5 rounded-lg p-4 overflow-x-auto border border-neutral-200 dark:border-white/10"><code>{{ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
             </div>
         @else
-            <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
-                <svg class="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-600">
+                <svg class="w-16 h-16 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                         d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
                     </path>
                 </svg>
-                <p class="text-sm font-mono">// EMPTY REQUEST BODY</p>
+                <p class="text-base font-mono font-semibold">// EMPTY REQUEST BODY</p>
             </div>
         @endif
     </div>
@@ -357,28 +357,25 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
             </svg>
-            <h3 class="font-semibold">Routing</h3>
+            <h3 class="font-bold text-base">Routing</h3>
         </div>
 
         {{-- Controller & Middleware Info --}}
         @if (!empty($routing['controller']) || !empty($routing['middleware']))
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 @if (!empty($routing['controller']))
-                    <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-3">
-                        <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">
-                            Controller</div>
-                        <div class="font-mono text-sm break-all">{{ $routing['controller'] }}</div>
+                    <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                        <div class="info-label">Controller</div>
+                        <div class="font-mono text-sm break-all font-medium">{{ $routing['controller'] }}</div>
                     </div>
                 @endif
 
                 @if (!empty($routing['middleware']))
-                    <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-3">
-                        <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">
-                            Middleware</div>
-                        <div class="flex flex-wrap gap-1">
+                    <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                        <div class="info-label">Middleware</div>
+                        <div class="flex flex-wrap gap-2">
                             @foreach ($routing['middleware'] as $mw)
-                                <span
-                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400">{{ $mw }}</span>
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">{{ $mw }}</span>
                             @endforeach
                         </div>
                     </div>
@@ -388,27 +385,24 @@
 
         {{-- Route Parameters --}}
         <div>
-            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Route Parameters
-            </div>
+            <div class="info-label mb-3">Route Parameters</div>
             @if (!empty($routing['params']))
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     @foreach ($routing['params'] as $key => $value)
-                        <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-2">
-                            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">{{ $key }}
-                            </div>
-                            <div class="font-mono text-sm text-neutral-900 dark:text-neutral-100">{{ $value }}
-                            </div>
+                        <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{{ $key }}</div>
+                            <div class="font-mono text-sm text-neutral-900 dark:text-neutral-100 font-semibold">{{ $value }}</div>
                         </div>
                     @endforeach
                 </div>
             @else
-                <div class="flex flex-col items-center justify-center py-6 text-neutral-400 dark:text-neutral-600">
-                    <svg class="w-10 h-10 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
+                    <svg class="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                             d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
                         </path>
                     </svg>
-                    <p class="text-sm font-mono">// NO ROUTE PARAMETERS</p>
+                    <p class="text-base font-mono font-semibold">// NO ROUTE PARAMETERS</p>
                 </div>
             @endif
         </div>
@@ -470,18 +464,25 @@
         try {
             await navigator.clipboard.writeText(mdContent);
 
-            // Visual feedback
+            // Visual feedback with success animation
             const btn = this;
             const originalHTML = btn.innerHTML;
             btn.innerHTML =
                 '<svg class="size-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            btn.classList.add('bg-green-500/10');
 
             setTimeout(() => {
                 btn.innerHTML = originalHTML;
+                btn.classList.remove('bg-green-500/10');
             }, 2000);
         } catch (err) {
             console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard');
+            // Show error feedback
+            const btn = this;
+            btn.classList.add('bg-red-500/10');
+            setTimeout(() => {
+                btn.classList.remove('bg-red-500/10');
+            }, 1000);
         }
     });
 </script>
@@ -564,7 +565,10 @@
                     }
                 });
 
-                toggleAllBtn.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+                const text = document.getElementById('toggleAllText');
+                if (text) {
+                    text.textContent = allExpanded ? 'Collapse All' : 'Expand All';
+                }
             });
         }
     }
@@ -572,7 +576,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         setupAccordion('#single-accordion-container');
 
-        setupAccordion('.frames-container', {
+        setupAccordion('body', {
             headerSelector: '.frame-header',
             contentSelector: '.frame-content',
             arrowSelector: '.frame-arrow',
@@ -580,12 +584,12 @@
         });
 
         // Setup accordion for request body
-        const requestBodyCard = document.querySelector('.info-card:has(#request-body-content)');
-        if (requestBodyCard) {
-            setupAccordion(requestBodyCard.parentElement);
-        }
+        setupAccordion('body', {
+            headerSelector: '.accordion-header',
+            contentSelector: '.accordion-content',
+            arrowSelector: '.accordion-arrow',
+        });
     });
 </script>
-
 
 </html>
