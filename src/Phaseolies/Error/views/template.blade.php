@@ -87,15 +87,14 @@
         }
 
         .code-line-error {
+            @apply inline-flex w-full bg-red-500/10 border-l-4 border-l-red-500 py-0.5 ;
             animation: pulse-slow 2s ease-in-out infinite;
-            @apply inline-flex w-full bg-red-500/10 border-l-4 border-l-red-500 py-0.5;
         }
 
         @keyframes pulse-slow {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.8; }
         }
-
 
         .code-line-number {
             @apply w-12 text-right pr-3 text-neutral-500 select-none shrink-0;
@@ -408,6 +407,100 @@
         </div>
     </div>
 
+    {{-- Session & Cookies Grid --}}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        {{-- Session Data --}}
+        <div class="info-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                    <h3 class="font-bold text-base">Session</h3>
+                    @if(!empty($session_data['has_session']) && $session_data['has_session'])
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">Active</span>
+                    @endif
+                </div>
+                @if(!empty($session_data['data']))
+                    <button class="session-accordion-header text-sm px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all duration-200 border border-neutral-200 dark:border-white/10">
+                        <span class="session-accordion-arrow inline-block transition-transform duration-200">▼</span>
+                    </button>
+                @endif
+            </div>
+
+            @if(!empty($session_data['has_session']) && $session_data['has_session'])
+                @if(!empty($session_data['id']))
+                    <div class="mb-3">
+                        <div class="info-label">Session ID</div>
+                        <div class="font-mono text-xs text-neutral-700 dark:text-neutral-300 break-all bg-neutral-100 dark:bg-white/5 px-2 py-1 rounded border border-neutral-200 dark:border-white/10">{{ $session_data['id'] }}</div>
+                    </div>
+                @endif
+
+                @if(!empty($session_data['data']))
+                    <div class="session-accordion-content hidden">
+                        <div class="info-label mb-2">Session Data</div>
+                        <pre class="text-xs bg-neutral-100 dark:bg-white/5 rounded-lg p-3 overflow-x-auto border border-neutral-200 dark:border-white/10 max-h-64"><code>{{ json_encode($session_data['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+                    </div>
+                @else
+                    <div class="flex flex-col items-center justify-center py-6 text-neutral-400 dark:text-neutral-600">
+                        <svg class="w-10 h-10 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                        </svg>
+                        <p class="text-sm font-mono font-semibold">// EMPTY SESSION</p>
+                    </div>
+                @endif
+            @else
+                <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
+                    <svg class="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                    </svg>
+                    <p class="text-sm font-mono font-semibold">// NO ACTIVE SESSION</p>
+                </div>
+            @endif
+        </div>
+
+        {{-- Cookies Data --}}
+        <div class="info-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="font-bold text-base">Cookies</h3>
+                    @if(!empty($cookies_data))
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">{{ count($cookies_data) }}</span>
+                    @endif
+                </div>
+                @if(!empty($cookies_data))
+                    <button class="cookies-accordion-header text-sm px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all duration-200 border border-neutral-200 dark:border-white/10">
+                        <span class="cookies-accordion-arrow inline-block transition-transform duration-200">▼</span>
+                    </button>
+                @endif
+            </div>
+
+            @if(!empty($cookies_data))
+                <div class="cookies-accordion-content hidden">
+                    <div class="info-label mb-2">Cookies Data</div>
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
+                        @foreach($cookies_data as $key => $value)
+                            <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-2 border border-neutral-200 dark:border-white/10">
+                                <div class="text-xs text-neutral-500 dark:text-neutral-400 font-semibold mb-1">{{ $key }}</div>
+                                <div class="font-mono text-xs text-neutral-900 dark:text-neutral-100 break-all">{{ $value }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
+                    <svg class="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                    </svg>
+                    <p class="text-sm font-mono font-semibold">// NO COOKIES</p>
+                </div>
+            @endif
+        </div>
+    </div>
+
     {{-- Hidden markdown content for clipboard --}}
     <textarea id="mdContent" class="hidden">{{ $md_content }}</textarea>
 </body>
@@ -588,6 +681,20 @@
             headerSelector: '.accordion-header',
             contentSelector: '.accordion-content',
             arrowSelector: '.accordion-arrow',
+        });
+
+        // Setup accordion for session
+        setupAccordion('body', {
+            headerSelector: '.session-accordion-header',
+            contentSelector: '.session-accordion-content',
+            arrowSelector: '.session-accordion-arrow',
+        });
+
+        // Setup accordion for cookies
+        setupAccordion('body', {
+            headerSelector: '.cookies-accordion-header',
+            contentSelector: '.cookies-accordion-content',
+            arrowSelector: '.cookies-accordion-arrow',
         });
     });
 </script>
