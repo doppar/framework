@@ -121,7 +121,7 @@
         }
 
         .info-card {
-            @apply rounded-lg border-[1.2px] dark:bg-neutral-950/30 bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4;
+            @apply rounded-md border-[1.2px] dark:bg-neutral-950/30 bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4;
         }
 
         .info-label {
@@ -135,11 +135,11 @@
 </style>
 
 <body
-    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
+    class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-4 min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
     {{-- Top Bar --}}
-    <div class="top-bar rounded-lg">
+    <div class="top-bar rounded-md">
         <div
-            class="flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4 rounded-lg">
+            class="flex border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4 rounded-md">
             <div>
                 <div class="dark:text-white text-neutral-950 text-3xl font-bold">
                     {{ $exception_class }}
@@ -176,7 +176,7 @@
                 </div>
                 {{-- Versions --}}
                 <div
-                    class="rounded-md flex border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
+                    class="rounded-md flex border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] text-sm py-1 border-neutral-900/4 px-2 mt-4 dark:border-white/4">
                     <div class="pl-1 pr-2 border-r border-neutral-900/4 dark:border-white/4">
                         <span class="text-neutral-800 dark:text-neutral-500 pr-2">DOPPAR</span> {{ $doppar_version }}
                     </div>
@@ -190,7 +190,7 @@
 
     {{-- Request Details --}}
     <div
-        class="flex gap-2 items-center border-[1.2px] dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2 rounded-lg">
+        class="flex gap-2 items-center border-[1.2px] border-dashed dark:bg-white/[1%] bg-neutral-900/[1%] my-5 dark:border-white/4 border-neutral-900/4 p-2 rounded-md">
         <span data-request-type="{{ $request_method }}" class="badge p-1 rounded">
             {{ $request_method }}
         </span>
@@ -201,7 +201,7 @@
     {{-- Main Content --}}
     <div class="flex flex-col gap-4">
         <main
-            class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
+            class="rounded-md border-[1.2px] border-dashed w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
             {{-- File Header --}}
             <div class="flex items-center gap-2 bg-neutral-100 dark:bg-white/5 rounded-md px-2 py-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
