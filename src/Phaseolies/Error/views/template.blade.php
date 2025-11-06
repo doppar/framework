@@ -183,7 +183,7 @@
     </div>
 
     {{-- Main Content --}}
-    <div class="flex gap-4">
+    <div class="flex flex-col gap-4">
         <main
             class="rounded-lg border-[1.2px] w-full dark:bg-white/[1%] bg-neutral-900/[1%] border-neutral-900/5 dark:border-white/5 p-2">
             {{-- File Header --}}
@@ -224,10 +224,10 @@
                 </div>
             </div>
 
-            <div id="headers" class="my-4">
-                @include('headers', ['headers' => $headers])
-            </div>
         </main>
+        <div id="headers" class="my-4">
+            @include('headers', ['headers' => $headers])
+        </div>
     </div>
 </body>
 
@@ -291,7 +291,22 @@
         headers.forEach(header => {
             header.setAttribute('tabindex', '0');
             header.setAttribute('role', 'button');
-            header.setAttribute('aria-expanded', 'false');
+
+            const content = header.nextElementSibling;
+            if (!content) return;
+
+            const openByDefault =
+                container.dataset.openByDefault !== undefined ||
+                header.dataset.openByDefault !== undefined;
+
+            if (openByDefault) {
+                content.classList.remove('hidden');
+                header.setAttribute('aria-expanded', 'true');
+                const arrow = header.querySelector(arrowSelector);
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            } else {
+                header.setAttribute('aria-expanded', 'false');
+            }
 
             header.addEventListener('click', () => toggleSection(header));
             header.addEventListener('keydown', e => {
@@ -314,7 +329,6 @@
             if (arrow) arrow.style.transform = isExpanded ? 'rotate(0deg)' : 'rotate(180deg)';
         }
 
-        // Toggle all logic for multi-accordion (optional)
         if (toggleAllBtnSelector) {
             const toggleAllBtn = document.querySelector(toggleAllBtnSelector);
             if (!toggleAllBtn) return;
@@ -356,7 +370,6 @@
         });
     });
 </script>
-
 
 
 </html>
