@@ -22,7 +22,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </div>
-        <div class="frame-content bg-neutral-50/50 dark:bg-neutral-950/50 border-t border-neutral-200 dark:border-neutral-800 hidden"
+        <div class="frame-content bg-neutral-50/50 dark:bg-neutral-950/30 border-t border-neutral-200 dark:border-neutral-800 hidden"
           role="region">
           <div class="p-3 font-mono text-xs">
             {!! $trace->getCodeLinesContent() !!}

@@ -24,7 +24,7 @@
             </svg>
         </div>
         {{-- contaainer area --}}
-        <div class="accordion-content bg-white dark:bg-neutral-950/50 border-t border-neutral-200 dark:border-neutral-800 hidden"
+        <div class="accordion-content bg-white dark:bg-neutral-950/30 border-t border-neutral-200 dark:border-neutral-800 hidden"
             role="region" aria-labelledby="accordion-header">
             <div class="p-3 font-mono">
                 @foreach ($headers as $header_name => $header)
