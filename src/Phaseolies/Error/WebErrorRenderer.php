@@ -38,19 +38,24 @@ class WebErrorRenderer
             ];
         }
 
-        // $user = auth()->user();
+        $user = auth()->user();
 
-        // $userInfo = $user ? [
-        //     'id' => $user->id,
-        //     'email' => $user->email ?? 'N/A',
-        // ] : null;
+        $userInfo = $user ? [
+            'id' => $user->id,
+            'email' => $user->email ?? 'N/A',
+        ] : null;
 
 
         date_default_timezone_set(config('app.timezone'));
 
+        
         $mdReport = new ExceptionMarkdownReport($exception, request());
-
+        
+        // setup the controller to point out to different views location 
         $controller = $this->setupController();
+        
+        // to start a fresh view 
+        $this->clearOutputBufferIfActive();
 
         return $controller->render('template', [
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
@@ -69,9 +74,9 @@ class WebErrorRenderer
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
             'platform'        => php_uname(),
             'memory_usage'    => memory_get_usage(true),
-            'peak_memory_usage' => memory_get_peak_usage(true),
+            'peack_memory_usage' => memory_get_peak_usage(true),
             'request_body'    => request()->except(['password', 'password_confirmation', 'token']),
-            // 'user_info'       => $userInfo,
+            'user_info'       => $userInfo,
             // 
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
@@ -100,6 +105,13 @@ class WebErrorRenderer
         }, request()->headers->all());
     }
 
+
+    function clearOutputBufferIfActive(): void
+    {
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
 
     public function getRouteDetails(): array
     {

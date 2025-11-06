@@ -119,6 +119,18 @@
         .code-line-content {
             @apply flex-1;
         }
+
+        .info-card {
+            @apply rounded-lg border-[1.2px] dark:bg-neutral-950/50 bg-neutral-900/[1%] dark:border-white/4 border-neutral-900/4 p-4;
+        }
+
+        .info-label {
+            @apply text-sm text-neutral-600 dark:text-neutral-400 font-medium mb-1;
+        }
+
+        .info-value {
+            @apply text-neutral-900 dark:text-neutral-100;
+        }
     }
 </style>
 
@@ -137,8 +149,8 @@
                 </div>
             </div>
             <div class="ml-auto flex flex-col">
-                <div class="ml-auto">
-                    <button id="themeToggle" class="p-2 cursor-pointer rounded-md" aria-label="Toggle theme">
+                <div class="ml-auto flex gap-1">
+                    <button id="themeToggle" class="p-2 cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors" aria-label="Toggle theme">
                         <svg id="sunIcon" class="hidden dark:block w-5 h-5" xmlns="http://www.w3.org/2000/svg"
                             fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -150,7 +162,7 @@
                                 d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
                         </svg>
                     </button>
-                    <button id="copyToClipBoard" class="p-2 cursor-pointer rounded-md" title="copy as markdown">
+                    <button id="copyToClipBoard" class="p-2 cursor-pointer rounded-md hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors" title="Copy as markdown">
                         <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                             stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -179,7 +191,7 @@
             {{ $request_method }}
         </span>
         <span class="dark:text-neutral-400">{{ $request_url }}</span>
-        <span class="ml-auto">{{ $timestamp }}</span>
+        <span class="ml-auto text-sm text-neutral-600 dark:text-neutral-400">{{ $timestamp }}</span>
     </div>
 
     {{-- Main Content --}}
@@ -198,11 +210,7 @@
 
             {{-- Code Content --}}
             <div class="pt-3 w-full">
-
-                <pre>
-                    {!! $contents !!}
-                </pre>
-
+                <pre>{!! $contents !!}</pre>
             </div>
 
             <div class="mt-6">
@@ -228,8 +236,162 @@
         <div id="headers" class="my-4">
             @include('headers', ['headers' => $headers])
         </div>
-        
     </div>
+        {{-- System & User Info Grid --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+        {{-- System Information --}}
+        <div class="info-card">
+            <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                </svg>
+                <h3 class="font-semibold">System</h3>
+            </div>
+            <div class="space-y-2 text-sm">
+                <div>
+                    <div class="info-label">Server</div>
+                    <div class="info-value truncate">{{ $server_software }}</div>
+                </div>
+                <div>
+                    <div class="info-label">Platform</div>
+                    <div class="info-value truncate">{{ $platform }}</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Memory Usage --}}
+        <div class="info-card">
+            <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <h3 class="font-semibold">Memory</h3>
+            </div>
+            <div class="space-y-2 text-sm">
+                <div>
+                    <div class="info-label">Current Usage</div>
+                    <div class="info-value">{{ number_format($memory_usage / 1024 / 1024, 2) }} MB</div>
+                </div>
+                <div>
+                    <div class="info-label">Peak Usage</div>
+                    <div class="info-value">{{ number_format($peack_memory_usage / 1024 / 1024, 2) }} MB</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- User Information --}}
+        <div class="info-card">
+            <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <h3 class="font-semibold">User</h3>
+            </div>
+            @if($user_info)
+            <div class="space-y-2 text-sm">
+                <div>
+                    <div class="info-label">ID</div>
+                    <div class="info-value">{{ $user_info['id'] }}</div>
+                </div>
+                <div>
+                    <div class="info-label">Email</div>
+                    <div class="info-value truncate">{{ $user_info['email'] }}</div>
+                </div>
+            </div>
+            @else
+            <div class="text-sm text-neutral-500 dark:text-neutral-400">
+                No authenticated user
+            </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Request Body --}}
+    <div class="info-card mb-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
+                </svg>
+                <h3 class="font-semibold">Request Body</h3>
+            </div>
+            @if(!empty($request_body))
+            <button class="accordion-header text-sm px-3 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">
+                <span class="accordion-arrow inline-block transition-transform duration-200">▼</span>
+            </button>
+            @endif
+        </div>
+        @if(!empty($request_body))
+        <div class="accordion-content hidden">
+            <pre class="text-sm bg-neutral-50 dark:bg-white/5 rounded-md p-3 overflow-x-auto"><code>{{ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
+        </div>
+        @else
+        <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
+            <svg class="w-12 h-12 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+            </svg>
+            <p class="text-sm font-mono">// EMPTY REQUEST BODY</p>
+        </div>
+        @endif
+    </div>
+
+    {{-- Routing Details --}}
+    <div class="info-card mb-5">
+        <div class="flex items-center gap-2 mb-4">
+            <svg class="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+            <h3 class="font-semibold">Routing</h3>
+        </div>
+        
+        {{-- Controller & Middleware Info --}}
+        @if(!empty($routing['controller']) || !empty($routing['middleware']))
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            @if(!empty($routing['controller']))
+            <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-3">
+                <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">Controller</div>
+                <div class="font-mono text-sm break-all">{{ $routing['controller'] }}</div>
+            </div>
+            @endif
+            
+            @if(!empty($routing['middleware']))
+            <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-3">
+                <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">Middleware</div>
+                <div class="flex flex-wrap gap-1">
+                    @foreach($routing['middleware'] as $mw)
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400">{{ $mw }}</span>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        {{-- Route Parameters --}}
+        <div>
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-2 uppercase tracking-wider">Route Parameters</div>
+            @if(!empty($routing['params']))
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                @foreach($routing['params'] as $key => $value)
+                <div class="bg-neutral-50 dark:bg-white/5 rounded-md p-2">
+                    <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">{{ $key }}</div>
+                    <div class="font-mono text-sm text-neutral-900 dark:text-neutral-100">{{ $value }}</div>
+                </div>
+                @endforeach
+            </div>
+            @else
+            <div class="flex flex-col items-center justify-center py-6 text-neutral-400 dark:text-neutral-600">
+                <svg class="w-10 h-10 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                </svg>
+                <p class="text-sm font-mono">// NO ROUTE PARAMETERS</p>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Hidden markdown content for clipboard --}}
+    <textarea id="mdContent" class="hidden">{{ $md_content }}</textarea>
 </body>
 
 <script>
@@ -275,6 +437,28 @@
     };
 
     ThemeManager.init();
+
+    // Copy to Clipboard functionality
+    document.getElementById('copyToClipBoard')?.addEventListener('click', async function() {
+        const mdContent = document.getElementById('mdContent')?.value;
+        if (!mdContent) return;
+
+        try {
+            await navigator.clipboard.writeText(mdContent);
+            
+            // Visual feedback
+            const btn = this;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<svg class="size-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+        }
+    });
 </script>
 
 <script>
@@ -369,6 +553,12 @@
             arrowSelector: '.frame-arrow',
             toggleAllBtnSelector: '#toggleAllFramesBtn',
         });
+
+        // Setup accordion for request body
+        const requestBodyCard = document.querySelector('.info-card:has(#request-body-content)');
+        if (requestBodyCard) {
+            setupAccordion(requestBodyCard.parentElement);
+        }
     });
 </script>
 
