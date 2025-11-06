@@ -38,18 +38,12 @@ class WebErrorRenderer
             ];
         }
 
-        $user = null;
-        try {
-            $user = auth()->user();
-        } catch (\Throwable $e) {
-            // Ignore, because auth might not be available in error context
-            $user = null;
-        }
+        // $user = auth()->user();
 
-        $userInfo = $user ? [
-            'id' => $user->id,
-            'email' => $user->email ?? 'N/A',
-        ] : null;
+        // $userInfo = $user ? [
+        //     'id' => $user->id,
+        //     'email' => $user->email ?? 'N/A',
+        // ] : null;
 
 
         date_default_timezone_set(config('app.timezone'));
@@ -77,7 +71,7 @@ class WebErrorRenderer
             'memory_usage'    => memory_get_usage(true),
             'peak_memory_usage' => memory_get_peak_usage(true),
             'request_body'    => request()->except(['password', 'password_confirmation', 'token']),
-            'user_info'       => $userInfo,
+            // 'user_info'       => $userInfo,
             // 
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
