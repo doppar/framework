@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.0.0-beta.5 - 2025-11-06
+
+* Nested relationship deep unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/108
+* Unit test for abort() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/109
+* #[Transaction] New transanction attribute to reduces boilerplate by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/110
+
 ## v3.0.0-beta.4 - 2025-11-03
 
 * auth stub updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/106
