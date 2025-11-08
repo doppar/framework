@@ -11,4 +11,8 @@ class MockTag extends Model
     protected $primaryKey = 'id';
 
     protected $connection = 'default';
+
+    protected $timeStamps = false;
+
+    protected $creatable = ['name'];
 }

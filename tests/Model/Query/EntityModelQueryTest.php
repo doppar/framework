@@ -1109,4 +1109,13 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertCount(1, $posts);
     }
+
+    public function testSave(): void
+    {
+        $tag = new MockTag();
+        $tag->name = 'Awesome Doppar';
+        $tag->save();
+
+        $this->assertEquals('Awesome Doppar', $tag->name);
+    }
 }
