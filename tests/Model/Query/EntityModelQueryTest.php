@@ -777,4 +777,126 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertCount(3, $users, 'Collection should contain exactly three items.');
     }
+
+    public function testWhereDate(): void
+    {
+        // Where date equals a specific date
+        $users = MockUser::query()
+            ->whereDate('created_at', '2024-01-02')
+            ->get();
+
+        // we have only 1 user that is created 2024-01-02
+        $this->assertCount(1, $users);
+
+        // Where date is greater than a specific date
+        $users = MockUser::query()
+            ->whereDate('created_at', '>', '2023-01-01')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereDate('created_at', '<', '2023-01-01')
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereMonth(): void
+    {
+        $users = MockUser::query()
+            ->whereMonth('created_at', 1)
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereMonth('created_at', 2)
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereYear(): void
+    {
+        // Where year is 2023
+        $users = MockUser::query()
+            ->whereYear('created_at', 2023)
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        // Where year is greater than 2020
+        $users = MockUser::query()
+            ->whereYear('created_at', '>', 2020)
+            ->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereDay(): void
+    {
+        $users = MockUser::query()
+            ->whereDay('created_at', 1)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = MockUser::query()
+            ->whereDay('created_at',  2)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = MockUser::query()
+            ->whereDay('created_at', 3)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = MockUser::query()
+            ->whereDay('created_at', 4)
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereTime(): void
+    {
+        $users = MockUser::query()
+            ->whereTime('created_at', '>', '14:00:00')
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = MockUser::query()
+            ->whereTime('created_at', '=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereTime('created_at', '>=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereTime('created_at', '<=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereTime('created_at', '<=', '11:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereTime('created_at', '>=', '11:00:00')
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
 }
