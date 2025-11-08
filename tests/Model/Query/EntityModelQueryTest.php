@@ -443,11 +443,13 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals('John Doe', $user->name);
     }
 
-    public function TestDirectFirstMethodCall(): void
+    public function TestFirst(): void
     {
-        $user = MockUser::first();
+        $user = MockUser::first(); // first() from model class
+        $userFromBuilderClass = MockUser::where('id', 1)->first(); // first() calling from builder class
 
         $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('John Doe', $userFromBuilderClass->name);
     }
 
     public function testGroupBy(): void
@@ -455,5 +457,99 @@ class EntityModelQueryTest extends TestCase
         $user = MockUser::orderBy('id', 'desc')->groupBy('name')->get();
 
         $this->assertCount(3, $user);
+    }
+
+    public function testRandom(): void
+    {
+        $user = MockUser::random(10)->get();
+
+        $this->assertCount(3, $user);
+    }
+
+    public function testToSql(): void
+    {
+        $user = MockUser::where('status', 'active')->toSql();
+
+        $this->assertEquals('SELECT * FROM users WHERE status = ?', $user);
+    }
+
+    public function testFind(): void
+    {
+        $user = MockUser::where('status', 'active')->find(1); // find() from builder class
+        $userFromModel = MockUser::find(1); // find() from model class
+
+        $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('John Doe', $userFromModel->name);
+    }
+
+    public function testFindWithArrayParams(): void
+    {
+        $users = MockUser::find([1, 2, 3]);
+
+        $this->assertInstanceOf(Collection::class, $users);
+        $this->assertIsArray($users->toArray());
+    }
+
+    public function testCount(): void
+    {
+        $user = MockUser::count(); // count() from model class
+        $user2 = MockUser::orderBy('id', 'desc')->groupBy('name')->count(); // count() from builder class
+        $user3 = MockUser::where('status', 'active')->count(); // count() from builder class
+
+        $this->assertEquals(3, $user);
+        $this->assertEquals(3, $user2);
+        $this->assertEquals(2, $user3); // we have 2 active users
+    }
+
+    public function testNewest()
+    {
+        $newestFirst = MockUser::newest()->first();
+
+        $this->assertEquals('Bob Wilson', $newestFirst->name);
+
+        $newestFirstAsPerName = MockUser::newest('name')->first();
+
+        $this->assertEquals('John Doe', $newestFirstAsPerName->name);
+    }
+
+    public function testOldest()
+    {
+        $oldestFirst = MockUser::oldest()->first();
+
+        $this->assertEquals('John Doe', $oldestFirst->name);
+
+        $oldestFirstAsPerName = MockUser::oldest('name')->first();
+
+        $this->assertEquals('Bob Wilson', $oldestFirstAsPerName->name);
+    }
+
+    public function testSelectWithSpecificColumnsReturnsOnlyThoseFields()
+    {
+        // Selecting specific columns using an array
+        $users = MockUser::select(['name', 'email'])->get();
+
+        // Selecting specific columns using multiple arguments
+        $users2 = MockUser::select('name', 'email')->get();
+
+        // Simulated expected output after applying select('name', 'email')
+        $expectedSelected = [
+            ['name' => 'John Doe', 'email' => 'john@example.com'],
+            ['name' => 'Jane Smith', 'email' => 'jane@example.com'],
+            ['name' => 'Bob Wilson', 'email' => 'bob@example.com'],
+        ];
+
+        $this->assertIsArray($users->toArray(), 'Result of select()->get() should be an array.');
+        $this->assertCount(3, $users, 'Should return three user records.');
+
+        foreach ($users as $user) {
+            $this->assertArrayHasKey('name', $user);
+            $this->assertArrayHasKey('email', $user);
+
+            // Make sure no extra keys are present
+            $this->assertSame(['name', 'email'], array_keys($user->toArray()), 'Only name and email should be selected.');
+        }
+
+        $this->assertEquals($users, $users2, 'Selecting with array and multiple args should yield identical results.');
+        $this->assertEquals($expectedSelected, $users->toArray(), 'Selected fields should match expected trimmed data.');
     }
 }
