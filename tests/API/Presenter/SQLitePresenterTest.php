@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit\Presenter;
+namespace Tests\Unit\API\Presenter;
 
 use Tests\Support\Presenter\MockUserPresenter;
 use Tests\Support\Presenter\MockPostPresenter;
