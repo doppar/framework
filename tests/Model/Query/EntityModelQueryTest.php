@@ -1035,4 +1035,78 @@ class EntityModelQueryTest extends TestCase
         $this->assertCount(1, $posts);
         $this->assertEquals(1, $posts->toArray()[0]['id']);
     }
+
+    public function testNestedWhere()
+    {
+        $posts = MockPost::query()
+            ->where('status', true)
+            ->where(function ($query) {
+                $query->where('views', '>', 100)
+                    ->orWhere(function ($q) {
+                        $q->whereYear('created_at', 2024)
+                            ->whereIn('user_id', [1, 2, 3]);
+                    });
+            })
+            ->get();
+
+        // All three posts (id 1, 3, 4) satisfy the query → count = 3
+        $this->assertCount(3, $posts);
+    }
+
+    public function testIf(): void
+    {
+        $posts = MockPost::query()
+            // Executes because true
+            ->if(true, function ($query) {
+                $query->whereDate('created_at', '2024-01-01');
+            })
+            ->get();
+
+        $this->assertCount(1, $posts);
+
+        $posts = MockPost::query()
+            // Does not execute because 0 is falsy
+            ->if(false, function ($query) {
+                $query->whereDate('created_at', '2024-01-01');
+            })
+            ->get();
+
+        $this->assertCount(4, $posts);
+
+        $posts = MockPost::query()
+            ->if(
+                true,
+                // If search is provided, filter by title
+                fn($q) => $q->whereLike('title', 'First Post'),
+
+                // If no search is provided, filter by featured status
+                fn($q) => $q->where('status', '=', true)
+            )
+            ->get();
+
+        $this->assertCount(1, $posts);
+    }
+
+    public function testQueryBinding(): void
+    {
+        // we have 3 active post
+        $posts = MockPost::active()->get();
+
+        $this->assertCount(3, $posts);
+
+        // we have 3 inactive post
+        $posts = MockPost::inactive()->get();
+
+        $this->assertCount(1, $posts);
+
+        // query binding with passing parameter
+        $posts = MockPost::filter(true)->get();
+
+        $this->assertCount(3, $posts);
+
+        // query binding with passing parameter
+        $posts = MockPost::filter(false)->get();
+
+        $this->assertCount(1, $posts);
+    }
 }
