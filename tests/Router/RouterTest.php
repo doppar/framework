@@ -334,9 +334,9 @@ class RouterTest extends TestCase
     {
         $callback = fn() => 'any response';
 
-        $_SERVER['REQUEST_METHOD'] = 'POST';
-        $request = new Request();
+        $_SERVER['REQUEST_METHOD'] = 'GET';
 
+        $request = new Request();
         $container = Container::getInstance();
         $container->bind('request', fn() => $request);
 
@@ -349,8 +349,9 @@ class RouterTest extends TestCase
         $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
-        $this->assertArrayHasKey('POST', $routes);
-        $this->assertArrayHasKey('/test', $routes['POST']);
+        $this->assertEquals('GET', $request->getMethod());
+        $this->assertArrayHasKey('GET', $routes);
+        $this->assertArrayHasKey('/test', $routes['GET']);
     }
 
     public function testRedirectMethodRegistersRedirectRoute(): void

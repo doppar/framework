@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\API\Presenter;
 
 use Phaseolies\Support\Presenter\Presenter;
 use PHPUnit\Framework\TestCase;
