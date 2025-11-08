@@ -1198,4 +1198,115 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertEquals('Aliba', $tag->name);
     }
+
+    public function testUpdateOrCreate(): void
+    {
+        // First create tag
+        MockTag::create([
+            'name' => 'Awesome Doppar'
+        ]);
+
+        $tag = MockTag::updateOrCreate(
+            ['name' => 'Awesome Doppar'],
+            ['name' => 'Doppar']
+        );
+
+        // Should updated with the value "Doppar"
+        $this->assertEquals('Doppar', $tag->name);
+
+        $tag = MockTag::updateOrIgnore(
+            ['name' => 'Doppar'],
+            ['name' => 'For Ignore Test']
+        );
+
+        // Should ignore
+        $this->assertEquals('For Ignore Test', $tag->name);
+        $this->assertNotEquals('Doppar', $tag->name);
+    }
+
+    public function testFill(): void
+    {
+        $tag = MockTag::find(1);
+        $tag->fill([
+            'name' => 'Doppar Updated',
+        ]);
+        $tag->save();
+
+        $this->assertEquals('Doppar Updated', $tag->name);
+    }
+
+    public function testUpsert(): void
+    {
+        $tag = [
+            [
+                "name" => "Mahedi"
+            ],
+            [
+                "name" => "Aaliba"
+            ],
+        ];
+
+        $affectedRows = MockTag::query()->upsert(
+            $tag,
+            "id",  // Unique constraint
+            ["name"], // Only update the "name" column if exists
+            true      // Ignore errors (e.g., duplicate key)
+        );
+
+        $this->assertEquals(2, $affectedRows);
+    }
+
+    public function testSaveMany(): void
+    {
+        $tag = MockTag::saveMany([
+            ['name' => 'John'],
+            ['name' => 'John Another'],
+        ]);
+
+        $this->assertEquals(2, $tag);
+
+        $tag = MockTag::saveMany([
+            ['name' => 'John'],
+            ['name' => 'John Another'],
+            ['name' => 'John Another One'],
+        ]);
+
+        $this->assertEquals(3, $tag);
+
+        $tag = MockTag::saveMany([
+            ['name' => 'John'],
+            ['name' => 'John Another'],
+            ['name' => 'John Another One'],
+        ], 1); // saveMany with chunk
+
+        $this->assertEquals(3, $tag);
+    }
+
+    public function testDelete(): void
+    {
+        $tag = MockTag::saveMany([
+            ['name' => 'John'],
+            ['name' => 'John Another'],
+            ['name' => 'John Another One'],
+        ]);
+
+        $tag = MockTag::newest()->first();
+
+        $bool = $tag->delete();
+
+        $this->assertTrue($bool);
+    }
+
+    public function testPurge(): void
+    {
+        $tag = MockTag::saveMany([
+            ['name' => 'John'],
+            ['name' => 'John Another'],
+            ['name' => 'John Another One'],
+        ]);
+
+        $tag = MockTag::purge(7);
+
+        $this->assertEquals(1, $tag);
+    }
 }
