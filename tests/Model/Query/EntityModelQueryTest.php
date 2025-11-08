@@ -523,7 +523,7 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals('Bob Wilson', $oldestFirstAsPerName->name);
     }
 
-    public function testSelectWithSpecificColumnsReturnsOnlyThoseFields()
+    public function testSelect()
     {
         // Selecting specific columns using an array
         $users = MockUser::select(['name', 'email'])->get();
@@ -551,5 +551,96 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertEquals($users, $users2, 'Selecting with array and multiple args should yield identical results.');
         $this->assertEquals($expectedSelected, $users->toArray(), 'Selected fields should match expected trimmed data.');
+    }
+
+    public function testOmit(): void
+    {
+        $users = MockUser::omit('created_at', 'status')->get();
+
+        // -- Exclude age and email using array syntax
+        $users2 = MockUser::omit(['age', 'email'])->get();
+
+        // -- Expected results after omitting created_at and status
+        $expectedOmit1 = [
+            ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com', 'age' => 30],
+            ['id' => 2, 'name' => 'Jane Smith', 'email' => 'jane@example.com', 'age' => 25],
+            ['id' => 3, 'name' => 'Bob Wilson', 'email' => 'bob@example.com', 'age' => 35],
+        ];
+
+        // -- Expected results after omitting age and email
+        $expectedOmit2 = [
+            ['id' => 1, 'name' => 'John Doe', 'status' => 'active', 'created_at' => '2024-01-01 10:00:00'],
+            ['id' => 2, 'name' => 'Jane Smith', 'status' => 'active', 'created_at' => '2024-01-02 10:00:00'],
+            ['id' => 3, 'name' => 'Bob Wilson', 'status' => 'inactive', 'created_at' => '2024-01-03 10:00:00'],
+        ];
+
+        // Ensure we get a collection or iterable object
+        $this->assertIsIterable($users, 'omit()->get() should return iterable results.');
+        $this->assertCount(3, $users, 'Should return three user records.');
+
+        // Verify omitted fields are not present in first omit()
+        foreach ($users as $user) {
+            $data = method_exists($user, 'toArray') ? $user->toArray() : (array) $user;
+
+            $this->assertArrayNotHasKey('created_at', $data, 'created_at should be omitted.');
+            $this->assertArrayNotHasKey('status', $data, 'status should be omitted.');
+
+            // Optional: make sure the remaining fields exist
+            $this->assertArrayHasKey('id', $data);
+            $this->assertArrayHasKey('name', $data);
+            $this->assertArrayHasKey('email', $data);
+            $this->assertArrayHasKey('age', $data);
+        }
+
+        // Verify omitted fields are not present in second omit()
+        foreach ($users2 as $user) {
+            $data = method_exists($user, 'toArray') ? $user->toArray() : (array) $user;
+
+            $this->assertArrayNotHasKey('age', $data, 'age should be omitted.');
+            $this->assertArrayNotHasKey('email', $data, 'email should be omitted.');
+
+            $this->assertArrayHasKey('id', $data);
+            $this->assertArrayHasKey('name', $data);
+            $this->assertArrayHasKey('status', $data);
+            $this->assertArrayHasKey('created_at', $data);
+        }
+
+        $this->assertEquals($expectedOmit1, $users->toArray(), 'First omit() result should match expected data.');
+        $this->assertEquals($expectedOmit2, $users2->toArray(), 'Second omit() result should match expected data.');
+    }
+
+    public function testSelectRaw(): void
+    {
+        $user = MockUser::selectRaw('COUNT(*) as users_count')->first();
+
+        $this->assertEquals(3, $user->users_count);
+    }
+
+    public function testGroupByRaw(): void
+    {
+        $user = MockUser::query()
+            ->where('status', 'active')
+            ->groupByRaw('status')
+            ->get();
+
+        // Should get one result (representing the “active” group).
+        $this->assertCount(1, $user);
+    }
+
+    public function testWhereLike(): void
+    {
+        $users = MockUser::whereLike('name', 'j')->get();
+
+        // We have jane and john
+        $this->assertCount(2, $users);
+    }
+
+    public function testWhereRaw(): void
+    {
+        $users = MockUser::query()
+            ->whereRaw('LOWER(name) LIKE LOWER(?)', ['%john%'])
+            ->get();
+
+        $this->assertCount(1, $users);
     }
 }
