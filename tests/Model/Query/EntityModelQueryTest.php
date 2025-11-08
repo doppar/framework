@@ -171,7 +171,7 @@ class EntityModelQueryTest extends TestCase
         }
     }
 
-    public function testAllMethod()
+    public function testAll()
     {
         //  0 => array:6 [
         //     "id" => 1
@@ -331,7 +331,7 @@ class EntityModelQueryTest extends TestCase
         }
     }
 
-    public function testOrderByWithLimitTest()
+    public function testOrderByWithLimit()
     {
         $users = MockUser::where('status', 'active')
             ->orderBy('name')
@@ -344,5 +344,58 @@ class EntityModelQueryTest extends TestCase
         foreach ($users[0] as $user) {
             $this->assertEquals('Jane Smith', $user->name);
         }
+    }
+
+    public function testFirstWithWhere()
+    {
+        $user = MockUser::where('status', 'active')->orderBy('name')->first();
+        $this->assertEquals('Jane Smith', $user->name);
+    }
+
+    public function testDebug()
+    {
+        $user = MockUser::where('status', 'active')->orderBy('name')->debug();
+        $this->assertIsArray($user, 'Debug output should be an array.');
+
+        // Check that all expected keys exist
+        $expectedKeys = [
+            'sql',
+            'bindings',
+            'select',
+            'where',
+            'order',
+            'group',
+            'limit',
+            'offset',
+            'joins',
+            'eager_load'
+        ];
+
+        // Validate SQL structure
+        $this->assertEquals(
+            'SELECT * FROM users WHERE status = ? ORDER BY name ASC',
+            $user['sql'],
+            'SQL statement does not match expected query.'
+        );
+
+        // Validate bindings
+        $this->assertIsArray($user['bindings']);
+        $this->assertCount(1, $user['bindings']);
+        $this->assertEquals('active', $user['bindings'][0]);
+
+        // Validate where clause
+        $this->assertIsArray($user['where']);
+        $this->assertEquals(['AND', 'status', '=', 'active'], $user['where'][0]);
+
+        // Validate order clause
+        $this->assertIsArray($user['order']);
+        $this->assertEquals(['name', 'ASC'], $user['order'][0]);
+
+        // Validate optional fields
+        $this->assertEmpty($user['group']);
+        $this->assertNull($user['limit']);
+        $this->assertNull($user['offset']);
+        $this->assertEmpty($user['joins']);
+        $this->assertEmpty($user['eager_load']);
     }
 }
