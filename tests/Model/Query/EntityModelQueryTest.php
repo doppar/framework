@@ -1118,4 +1118,84 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertEquals('Awesome Doppar', $tag->name);
     }
+
+    public function testCreate(): void
+    {
+        $tag = MockTag::create([
+            'name' => 'Awesome Doppar'
+        ]);
+
+        $this->assertEquals('Awesome Doppar', $tag->name);
+    }
+
+    public function testFirstOrCreate(): void
+    {
+        // First create tag
+        MockTag::create([
+            'name' => 'Awesome Doppar'
+        ]);
+
+        $tag = MockTag::firstOrCreate(
+            ['name' => 'Awesome Doppar'],
+            ['name' => 'Doppar']
+        );
+
+        $this->assertEquals('Awesome Doppar', $tag->name);
+    }
+
+    public function testFork(): void
+    {
+        $tag = MockTag::find(1);
+        $newTag = $tag->fork();
+        $newTag->name = 'Copy of ' . $tag->name;
+        $newTag->save();
+
+        $this->assertEquals('Copy of PHP', $newTag->name);
+    }
+
+    public function testUpdate(): void
+    {
+        $tag = MockTag::find(1);
+        $tag->name = 'Nure';
+        $tag->save();
+
+        $this->assertEquals('Nure', $tag->name);
+
+        $tag = MockTag::find(1)
+            ->update([
+                'name' => 'Nure'
+            ]);
+
+        $this->assertTrue($tag);
+    }
+
+    public function testDirtyAttributes(): void
+    {
+        $tag = MockTag::find(1);
+        $tag->name = 'Nure';
+        $dirty = $tag->getDirtyAttributes();
+
+        $this->assertEquals(['name' => 'Nure'], $dirty);
+
+        $tag = MockTag::find(1);
+        // No dirty attributes
+        $dirty = $tag->getDirtyAttributes();
+
+        $this->assertIsArray($dirty);
+        $this->assertEquals([], $dirty);
+    }
+
+    public function testTap(): void
+    {
+        $tag = tap(
+            MockTag::find(1),
+            function ($tag) {
+                $tag->update([
+                    'name' => 'Aliba'
+                ]);
+            }
+        );
+
+        $this->assertEquals('Aliba', $tag->name);
+    }
 }
