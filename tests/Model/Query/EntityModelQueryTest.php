@@ -398,4 +398,62 @@ class EntityModelQueryTest extends TestCase
         $this->assertEmpty($user['joins']);
         $this->assertEmpty($user['eager_load']);
     }
+
+    public function testDumpSql()
+    {
+        $builder = MockUser::where('status', 'active')->orderBy('name')->dumpSql();
+
+        $this->assertInstanceOf(
+            \Phaseolies\Database\Entity\Builder::class,
+            $builder,
+            'dumpSql() should return a Builder instance.'
+        );
+    }
+
+    public function testwithMemoryUsage()
+    {
+        $memoryUsages = MockUser::where('status', 'active')->orderBy('name')->get()->withMemoryUsage();
+
+        $this->assertIsNotFloat($memoryUsages);
+        $this->assertGreaterThan(2, $memoryUsages);
+    }
+
+    public function testToArray(): void
+    {
+        $user = MockUser::where('status', 'active')
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->toArray();
+
+        $this->assertIsArray($user);
+    }
+
+    public function TestDynamicWhere(): void
+    {
+        $user = MockUser::whereName('John Doe')->first();
+
+        $this->assertEquals('John Doe', $user->name);
+    }
+
+    public function TestMultipleDynamicWhere(): void
+    {
+        $user = MockUser::whereName('John Doe')->whereStatus('active')->first();
+
+        $this->assertEquals('John Doe', $user->name);
+    }
+
+    public function TestDirectFirstMethodCall(): void
+    {
+        $user = MockUser::first();
+
+        $this->assertEquals('John Doe', $user->name);
+    }
+
+    public function testGroupBy(): void
+    {
+        $user = MockUser::orderBy('id', 'desc')->groupBy('name')->get();
+
+        $this->assertCount(3, $user);
+    }
 }
