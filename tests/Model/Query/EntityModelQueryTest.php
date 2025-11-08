@@ -643,4 +643,49 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertCount(1, $users);
     }
+
+    public function testOrderByRaw(): void
+    {
+        $user = MockUser::query()
+            ->orderByRaw('id DESC, name ASC')
+            ->get();
+
+        $this->assertCount(3, $user);
+    }
+
+    public function testGroupByRawComplex(): void
+    {
+        $user = MockUser::query()
+            ->selectRaw("COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month")
+            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->orderByRaw('year DESC, month DESC')
+            ->get();
+
+        $expected = [
+            [
+                'total' => 3,
+                'year' => '2024',
+                'month' => '01',
+            ],
+        ];
+
+        $this->assertIsIterable($user, 'Query should return iterable results.');
+        $this->assertCount(1, $user, 'Should group into one year-month pair.');
+
+        $row = $user[0] ?? (array) $user->first();
+        $this->assertEquals($expected[0]['total'], $row['total']);
+        $this->assertEquals($expected[0]['year'], $row['year']);
+        $this->assertEquals($expected[0]['month'], $row['month']);
+    }
+
+    public function testExists(): void
+    {
+        $user = MockUser::where('id', 1)->exists();
+
+        $this->assertTrue($user);
+
+        $user = MockUser::where('id', 10)->exists();
+
+        $this->assertFalse($user);
+    }
 }
