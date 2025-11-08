@@ -688,4 +688,93 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertFalse($user);
     }
+
+    public function testWhereIn(): void
+    {
+        $users = MockUser::whereIn('id', [1, 2, 3])->get();
+
+        $this->assertCount(3, $users);
+
+        // With non-exists users
+        $users = MockUser::whereIn('id', [1, 2, 3, 100])->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereBetween()
+    {
+        $users = MockUser::query()
+            ->whereBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = MockUser::query()
+            ->whereBetween('created_at', ['2024-01-01', '2025-04-29'])
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::whereBetween('id', [1, 10])->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereNotBetween(): void
+    {
+        $users = MockUser::query()
+            ->whereNotBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereNotBetween('created_at', ['2024-01-01', '2025-04-29'])
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = MockUser::whereNotBetween('id', [1, 10])->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testPluck(): void
+    {
+        $users = MockUser::query()->pluck('name');
+
+        $this->assertInstanceOf(
+            \Phaseolies\Support\Collection::class,
+            $users,
+            'pluck() should return a Collection.'
+        );
+
+        $this->assertEquals(
+            ['John Doe', 'Jane Smith', 'Bob Wilson'],
+            $users->toArray(),
+            'pluck() should return an array of names in the correct order.'
+        );
+
+        $this->assertCount(3, $users, 'Collection should contain exactly three items.');
+
+        // pluck with key value pair
+        $users = MockUser::query()->pluck('name', 'email');
+        $this->assertInstanceOf(
+            \Phaseolies\Support\Collection::class,
+            $users,
+            'pluck() should return a Collection.'
+        );
+
+        $this->assertEquals(
+            [
+                'john@example.com' => 'John Doe',
+                'jane@example.com' => 'Jane Smith',
+                'bob@example.com' => 'Bob Wilson',
+            ],
+            $users->toArray(),
+            'pluck() with key-value should return email => name mapping.'
+        );
+
+        $this->assertCount(3, $users, 'Collection should contain exactly three items.');
+    }
 }
