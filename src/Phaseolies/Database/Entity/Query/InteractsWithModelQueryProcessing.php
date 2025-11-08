@@ -29,8 +29,8 @@ trait InteractsWithModelQueryProcessing
 
         return new Builder(
             Database::getPdoInstance($connection),
-            $model->table,
-            get_class($model),
+            $model->getTable(),
+            static::class,
             $model->pageSize
         );
     }
@@ -77,7 +77,7 @@ trait InteractsWithModelQueryProcessing
     {
         $query = static::query();
 
-        $key = (new static())->primaryKey;
+        $key = (new static())->getKeyName();
 
         if (is_array($primaryKey)) {
             $models = $query->whereIn($key, $primaryKey)->get();
