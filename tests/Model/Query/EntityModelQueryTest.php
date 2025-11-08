@@ -126,7 +126,7 @@ class EntityModelQueryTest extends TestCase
         $this->pdo->exec("
             INSERT INTO tags (name) VALUES 
             ('PHP'),
-            ('Laravel'),
+            ('Doppar'),
             ('Testing'),
             ('Database')
         ");
@@ -898,5 +898,141 @@ class EntityModelQueryTest extends TestCase
             ->get();
 
         $this->assertCount(0, $users);
+    }
+
+    public function testWhereToday(): void
+    {
+        $users = MockUser::whereToday('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereYesterday(): void
+    {
+        $users = MockUser::whereYesterday('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereThisMonth(): void
+    {
+        $users = MockUser::whereThisMonth('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereLastMonth(): void
+    {
+        $users = MockUser::whereLastMonth('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereThisYear(): void
+    {
+        $users = MockUser::whereThisYear('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereLastYear(): void
+    {
+        $users = MockUser::whereLastYear('created_at')->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereDateBetween(): void
+    {
+        $users = MockUser::query()
+            ->whereDateBetween('created_at', '2023-01-01', '2025-01-31')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = MockUser::query()
+            ->whereDateBetween('created_at', '2023-01-01', '2023-01-31')
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereDateTimeBetween(): void
+    {
+        $users = MockUser::query()
+            ->whereDateTimeBetween('created_at', '2025-01-01 00:00:00', '2025-10-31 13:59:59')
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = MockUser::query()
+            ->whereDateTimeBetween('created_at', '2023-01-01 00:00:00', '2025-10-31 13:59:59')
+            ->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testILike(): void
+    {
+        $users = MockUser::query()
+            ->iLike('name', '%john%')
+            ->orderBy('name', 'desc')
+            ->get();
+
+        $this->assertCount(1, $users);
+    }
+
+    public function testMatch(): void
+    {
+        $posts = MockPost::match(['user_id' => 1])->get();
+
+        $this->assertCount(3, $posts);
+
+        // We have 2 post views greater than 100 and status 1
+        $posts = MockPost::match([
+            'user_id' => [1, 2, 3],
+            function ($query) {
+                $query->where('views', '>', 100)
+                    ->where('status', 1);
+            }
+        ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $this->assertCount(2, $posts);
+    }
+
+    public function testSearch(): void
+    {
+        $posts = MockPost::query()
+            ->search(attributes: [
+                'title',
+                'user.name',
+                'tags.name',
+                'comments.body'
+            ], searchTerm: 'Great post') // search by title has 1 post
+            ->get();
+
+        $this->assertCount(1, $posts);
+
+        // INSERT INTO post_tag (post_id, tag_id, created_at) VALUES 
+        //     (1, 1, '2024-01-01 11:00:00'),
+        //     (1, 2, '2024-01-01 11:00:00'), // this should come in search, that means we will get post ID 1
+        //     (2, 1, '2024-01-02 11:00:00'),
+        //     (3, 3, '2024-01-03 11:00:00'),
+        //     (4, 4, '2024-01-04 11:00:00')
+
+        // Doppar tag ID is 2
+        $posts = MockPost::query()
+            ->search(attributes: [
+                'title',
+                'user.name',
+                'tags.name',
+                'comments.body'
+            ], searchTerm: 'Doppar') // search by tag name, many to many relationship
+            ->get();
+
+        $this->assertCount(1, $posts);
+        $this->assertEquals(1, $posts->toArray()[0]['id']);
     }
 }
