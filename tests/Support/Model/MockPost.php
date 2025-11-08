@@ -26,8 +26,8 @@ class MockPost extends Model
         $this->setLastRelationType('bindTo');
         $this->setLastRelatedModel(MockUser::class);
         $this->setLastForeignKey('user_id');
-        $this->setLastLocalKey('user_id');
-        return $this->bindTo(MockUser::class, 'user_id', 'id');
+        $this->setLastLocalKey('id');
+        return $this->bindTo(MockUser::class, 'id', 'user_id');
     }
 
     public function likes()
