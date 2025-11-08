@@ -171,7 +171,7 @@ class EntityModelQueryTest extends TestCase
         }
     }
 
-    public function testPresenterMakeMethodWithSingleModel()
+    public function testAllMethod()
     {
         //  0 => array:6 [
         //     "id" => 1
@@ -317,5 +317,32 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals(4, $posts->count()); // we have 4 posts
         $this->assertEquals(5, $comments->count()); // we have 5 comments
         $this->assertEquals(4, $tags->count()); // we have 5 comments
+
+        // Since this is a collection, we can convert this collection to array
+        $this->assertIsArray($users->toArray());
+        $this->assertIsArray($posts->toArray());
+        $this->assertIsArray($comments->toArray());
+        $this->assertIsArray($tags->toArray());
+
+        // Since this is a collection, we should access this collection properties as an object
+        foreach ($users->takeLast(1) as $user) {
+            $this->assertEquals('Bob Wilson', $user->name); // Last user is = Bob Wilson
+            $this->assertEquals(3, $user->id);
+        }
+    }
+
+    public function testOrderByWithLimitTest()
+    {
+        $users = MockUser::where('status', 'active')
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
+
+        // Jane Smith should come first then John Doe
+        // And we have 2 active users
+        $this->assertCount(2, $users);
+        foreach ($users[0] as $user) {
+            $this->assertEquals('Jane Smith', $user->name);
+        }
     }
 }
