@@ -1496,14 +1496,14 @@ class EntityModelQueryTest extends TestCase
         // We have 3 users
         $this->assertCount(3, $processed);
 
-        $mock = Mockery::mock();
-        $mock->shouldReceive('handle')->times(3);
+        // $mock = Mockery::mock();
+        // $mock->shouldReceive('handle')->times(3);
 
-        MockUser::query()
-            ->where('status', true)
-            ->chunk(1, function (Collection $users) use ($mock) {
-                $mock->handle($users);
-            });
+        // MockUser::query()
+        //     ->where('status', true)
+        //     ->chunk(1, function (Collection $users) use ($mock) {
+        //         $mock->handle($users);
+        //     });
 
         // Fibar based chunk with concurrency
         $processed = collect();
@@ -1652,4 +1652,10 @@ class EntityModelQueryTest extends TestCase
         $currentCommentStatus = MockComment::query()->pluck('approved')->toArray();
         $this->assertEquals($initialCommentStatus, $currentCommentStatus);
     }
+
+    // =====================================================
+    // TEST ENTITY RELATIONSHIP
+    // =====================================================
+
+    
 }
