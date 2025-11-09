@@ -1532,5 +1532,60 @@ class EntityModelQueryTest extends TestCase
 
         // Assert that all 3 users were processed
         $this->assertCount(3, $processed);
+
+        // Fibar based cursor
+        $processed = collect();
+
+        MockUser::query()
+            ->fcursor(function ($user) use (&$processed) {
+                $processed->push($user->id);
+            });
+
+        // Assert that all 3 users were processed
+        $this->assertCount(3, $processed);
+    }
+
+    public function testStream(): void
+    {
+        $processed = collect();
+
+        $users = MockUser::query()
+            ->stream(3);
+
+        foreach ($users as $user) {
+            $processed->push($user->id);
+        }
+
+        $this->assertCount(3, $processed);
+
+        // Fibar based stream
+        $processed = collect();
+        foreach (
+            MockUser::query()
+                ->fstream(3, fn($user) => strtoupper($user->name))
+            as $userName
+        ) {
+            $processed->push($user->id);
+        }
+
+        $this->assertCount(3, $processed);
+    }
+
+    public function testBatch(): void
+    {
+        $processed = collect();
+
+        MockUser::query()
+            ->batch(
+                chunkSize: 500,
+                batchProcessor: function ($batch) use (&$processed) {
+                    foreach ($batch as $user) {
+                        $processed->push($user->id);
+                    }
+                },
+                batchSize: 1000
+            );
+
+        $this->assertCount(3, $processed);
     }
 }
