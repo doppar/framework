@@ -302,7 +302,7 @@ class EntityBuilderQueryTest extends TestCase
         //     "name" => "Database"
         //   ]
         // ]
-        $tags = MockTag::all(); // 4 tags
+        $tags = db()->bucket('tags')->get(); // 4 tags
 
 
         $this->assertCount(3, $users); // we have 3 users
