@@ -1309,4 +1309,173 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertEquals(1, $tag);
     }
+
+    public function testAggregate(): void
+    {
+        $sum = MockPost::sum('views'); // 500
+        $avg = MockPost::avg('views'); // 125
+        $max = MockPost::max('views'); // 200.0
+        $min = MockPost::min('views'); // 50.0
+        $stdDev = MockPost::stdDev('views'); // 55.901699437495
+        $variance = MockPost::variance('views'); // 3125.0
+
+        $this->assertEquals(500, $sum);
+        $this->assertEquals(125, $avg);
+        $this->assertEquals(200.0, $max);
+        $this->assertEquals(50.0, $min);
+        $this->assertEquals(55.9, number_format($stdDev, 1));
+        $this->assertEquals(3125.0, $variance);
+    }
+
+    public function testDistinct(): void
+    {
+        $posts = MockPost::query()->distinct('user_id');
+
+        $this->assertEquals([1, 2], $posts->toArray());
+    }
+
+    public function testConditionalGroupBy(): void
+    {
+        $posts = MockPost::query()
+            ->select(['user_id', 'SUM(views * views) as total_views'])
+            ->groupBy('user_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'total_views' => 35000],
+            ['user_id' => 2, 'total_views' => 40000],
+        ], $posts->toArray());
+    }
+
+    public function testColumnIncrement(): void
+    {
+        $post = MockPost::find(1);
+        $post->increment('views'); // Increments by 1 by default
+
+        $this->assertEquals(101, $post->views);
+        $post->increment('views', 10); // Increments by 10 + 1 = 11
+
+        $this->assertEquals(111, $post->views); // 111
+    }
+
+    public function testColumnDecrement(): void
+    {
+        $post = MockPost::find(1);
+        $post->decrement('views');
+
+        $this->assertEquals(99, $post->views);
+        $post->decrement('views', 10);
+
+        $this->assertEquals(89, $post->views);
+
+        $this->assertEquals(1, $post->user_id);
+
+        $post->decrement('views', 1, [
+            'created_at' => date('Y-m-d H:i:s'),
+            'user_id' => 2
+        ]);
+
+        $this->assertEquals(2, $post->user_id);
+
+        $post->decrement('views', 1, [
+            'created_at' => '2024-01-01 11:00:00',
+            'user_id' => 1
+        ]);
+
+        $this->assertEquals(1, $post->user_id);
+        $this->assertEquals('2024-01-01 11:00:00', $post->created_at);
+    }
+
+    public function testWithCollection(): void
+    {
+        $users = MockUser::all()
+            ->map(function ($item) {
+                return [
+                    'name' => $item->name
+                ];
+            });
+
+        $this->assertEquals([
+            ['name' => 'John Doe'],
+            ['name' => 'Jane Smith'],
+            ['name' => 'Bob Wilson'],
+        ], $users->toArray());
+    }
+
+    public function testMapWithPropertySortcut(): void
+    {
+        // map() with Property Shortcut
+        $users = MockUser::all();
+        $names = $users->map->name;
+
+        $this->assertEquals([
+            'John Doe',
+            'Jane Smith',
+            'Bob Wilson',
+        ], $names->toArray());
+    }
+
+    public function testCollectionFilter(): void
+    {
+        $posts = MockPost::all()
+            ->map(function ($item) {
+                return [
+                    'title' => $item->title,
+                    'status' => $item->status
+                ];
+            })
+            ->filter(function ($item) {
+                return $item['status'] === 1;
+            });
+
+        $this->assertEquals([
+            ['title' => 'First Post', 'status' => 1],
+            ['title' => 'Jane Post',  'status' => 1],
+            ['title' => 'Third Post', 'status' => 1],
+        ], $posts->toArray());
+    }
+
+    public function testOffsetQuery(): void
+    {
+        $users = MockUser::query()
+            ->select('name')
+            ->offset(1)  // Skip the first 1 record
+            ->limit(2)  // Retrieve the next 2 records
+            ->get();
+
+        $this->assertEquals([
+            // ['name' => 'John Doe'], // Should missing from result
+            ['name' => 'Jane Smith'],
+            ['name' => 'Bob Wilson'],
+        ], $users->toArray());
+    }
+
+    public function testEntityORMJoin(): void
+    {
+        $users = MockUser::query()
+            ->select('posts.user_id', 'users.name as user_name')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+            ['user_id' => 2, 'user_name' => 'Jane Smith'],
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+        ], $users->toArray());
+
+        $users = MockUser::query()
+            ->select('posts.user_id', 'users.name as user_name', 'comments.body')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->join('comments', 'posts.id', '=', 'comments.post_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Great post!'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Nice work'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Interesting'],
+            ['user_id' => 2, 'user_name' => 'Jane Smith', 'body' => 'Amazing'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Awesome'],
+        ], $users->toArray());
+    }
 }
