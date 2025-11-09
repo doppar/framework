@@ -2362,4 +2362,201 @@ class EntityModelQueryTest extends TestCase
             ],
         ], $tag->toArray());
     }
+
+    public function testPresent()
+    {
+        // Retrieve all posts that have at least one comment...
+        // post id 4 comment has missing
+        $posts = MockPost::query()->present('comments')->get();
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "status" => 0,
+                "views" => 50,
+                "created_at" => "2024-01-02 11:00:00",
+            ],
+            [
+                "id" => 3,
+                "user_id" => 2,
+                "title" => "Jane Post",
+                "content" => "Content 3",
+                "status" => 1,
+                "views" => 200,
+                "created_at" => "2024-01-03 11:00:00",
+            ],
+        ], $posts->toArray());
+
+        $posts = MockPost::query()->absent('comments')->get();
+        $this->assertEquals([
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "status" => 1,
+                "views" => 150,
+                "created_at" => "2024-01-04 11:00:00",
+            ],
+        ], $posts->toArray());
+
+        $posts = MockPost::query()
+            ->present('comments', function ($query) {
+                $query->where('body', 'Great post!');
+            })
+            ->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+            ],
+        ], $posts->toArray());
+    }
+
+    public function testIfExists()
+    {
+        // Retrieve all posts that have at least one comment...
+        // post id 4 comment has missing
+        $posts = MockPost::query()->ifExists('comments')->get();
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "status" => 0,
+                "views" => 50,
+                "created_at" => "2024-01-02 11:00:00",
+            ],
+            [
+                "id" => 3,
+                "user_id" => 2,
+                "title" => "Jane Post",
+                "content" => "Content 3",
+                "status" => 1,
+                "views" => 200,
+                "created_at" => "2024-01-03 11:00:00",
+            ],
+        ], $posts->toArray());
+
+        $posts = MockPost::query()->ifNotExists('comments')->get();
+        $this->assertEquals([
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "status" => 1,
+                "views" => 150,
+                "created_at" => "2024-01-04 11:00:00",
+            ],
+        ], $posts->toArray());
+
+        $posts = MockPost::query()
+            ->ifExists('comments', function ($query) {
+                $query->where('body', 'Great post!');
+            })
+            ->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+            ],
+        ], $posts->toArray());
+    }
+
+    public function testNestedEmbedCondition(): void
+    {
+        $users = MockUser::query()
+            ->ifExists('posts.comments', function ($query) {
+                $query->where('body', 'Great post!'); // user_id 1 did this comment
+            })
+            ->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "name" => "John Doe",
+                "email" => "john@example.com",
+                "age" => 30,
+                "status" => "active",
+                "created_at" => "2024-01-01 10:00:00",
+            ],
+        ], $users->toArray());
+    }
+
+    public function testWhereLinked(): void
+    {
+        // Find users who have at least one published post
+        // User ID 1 and 2 have posts only
+        $users = MockUser::query()
+            ->whereLinked('posts', 'status', true)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "name" => "John Doe",
+                "email" => "john@example.com",
+                "age" => 30,
+                "status" => "active",
+                "created_at" => "2024-01-01 10:00:00",
+            ],
+            [
+                "id" => 2,
+                "name" => "Jane Smith",
+                "email" => "jane@example.com",
+                "age" => 25,
+                "status" => "active",
+                "created_at" => "2024-01-02 10:00:00",
+            ],
+        ], $users->toArray());
+
+        // Only User ID 1 have inactive posts only
+        $users = MockUser::whereLinked('posts', 'status', false)->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "name" => "John Doe",
+                "email" => "john@example.com",
+                "age" => 30,
+                "status" => "active",
+                "created_at" => "2024-01-01 10:00:00",
+            ],
+        ], $users->toArray());
+    }
 }
