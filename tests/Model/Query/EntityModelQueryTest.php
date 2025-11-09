@@ -2559,4 +2559,52 @@ class EntityModelQueryTest extends TestCase
             ],
         ], $users->toArray());
     }
+
+    public function testLink(): void
+    {
+        $post = MockPost::find(1);
+        $post->tags()->link([1, 2, 3]);
+
+        $tagIds = $post->tags->pluck('id')->sort()->values()->toArray();
+        $this->assertEquals([1, 1, 2, 2, 3], $tagIds);
+
+        // previouly 2 now will be 5
+        $post = MockPost::find(1);
+        $this->assertCount(5, $post->tags);
+
+        $post = MockPost::find(1);
+        $post->tags()->link([1, 2, 3]);
+        $this->assertCount(8, $post->tags);
+    }
+
+    public function testUnlink(): void
+    {
+        $post = MockPost::find(1);
+        $post->tags()->unlink([1, 2, 3]);
+
+        $tagIds = $post->tags->pluck('id')->sort()->values()->toArray();
+
+        $this->assertEquals([], $tagIds);
+
+        // previouly 2 now will be 5
+        $post = MockPost::find(1);
+        $this->assertCount(0, $post->tags);
+
+        $post = MockPost::find(1);
+        $post->tags()->link([1, 2, 3]);
+        $this->assertCount(3, $post->tags);
+    }
+
+    public function testPostTagRelateMethod()
+    {
+        $post = MockPost::find(1);
+        $post->tags()->relate([1, 2, 3]);
+        $this->assertEquals([1, 2, 3], $post->tags->pluck('id')->sort()->values()->toArray());
+        $this->assertCount(1, $post->tags);
+
+        $changes = $post->tags()->relate([1, 2, 4]);
+        $this->assertEquals([4], array_keys($changes['attached']));
+        $this->assertEquals([2], array_keys($changes['detached']));
+        $this->assertEquals([], $changes['updated']);
+    }
 }
