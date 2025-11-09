@@ -2,26 +2,17 @@
 
 namespace Tests\Unit\Model;
 
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Phaseolies\Database\Entity\Model;
-use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use Phaseolies\Cache\CacheStore;
 use PHPUnit\Framework\TestCase;
 use PDO;
+use Tests\Support\Model\MockHook;
 
 class EntityModelHookTest extends TestCase
 {
-    private CacheStore $cache;
-    private ArrayAdapter $adapter;
     private $pdo;
 
     protected function setUp(): void
     {
-        $this->adapter = new ArrayAdapter();
-        $this->cache = new CacheStore($this->adapter, 'hook_test_');
-
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -46,7 +37,7 @@ class EntityModelHookTest extends TestCase
         ");
 
         $this->pdo->exec("
-            INSERT INTO users (name) VALUES
+            INSERT INTO hooks (name) VALUES
             ('John Doe'),
             ('Jane Smith'),
             ('Bob Wilson')
@@ -81,5 +72,73 @@ class EntityModelHookTest extends TestCase
         } catch (\ReflectionException $e) {
             $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
         }
+    }
+
+    public function testModelBootingHook(): void
+    {
+        MockHook::$wasCalledBeforeBooting = false;
+
+        // Creating a new record should trigger the [booting] hook
+        MockHook::create(['name' => 'Hook Test']);
+
+        $this->assertTrue(MockHook::$wasCalledBeforeBooting, 'booting hook should have fired');
+    }
+
+    public function testAfterCreatedHook(): void
+    {
+        MockHook::$wasCalledAfterCreated = false;
+
+        // Creating a new record should trigger the [after_created] hook
+        MockHook::create(['name' => 'Hook Test']);
+
+        $this->assertTrue(MockHook::$wasCalledAfterCreated, 'after_created hook should have fired');
+    }
+
+    public function testAfterUpdatedHook(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        // Updating a new record should trigger the [after_updated] hook
+        $hook = MockHook::find(1);
+        $hook->name = "Updated Hook";
+        $hook->save();
+
+        $this->assertTrue(MockHook::$wasCalledAfterUpdated, 'after_updated hook should have fired');
+    }
+
+    public function testAfterDeletedHook(): void
+    {
+        MockHook::$wasCalledAfterDeleted = false;
+
+        // Deleting a new record should trigger the [after_deleted] hook
+        MockHook::find(2)->delete();
+
+        // But intentionally we set handler when as false,
+        // So this hook [after_deleted] will not trigger
+        // So we will get false value for this MockHook::$wasCalledAfterDeleted
+        $this->assertFalse(MockHook::$wasCalledAfterDeleted, 'after_deleted hook should have fired');
+    }
+
+    public function testAfterCreateWithoutdHook(): void
+    {
+        MockHook::$wasCalledAfterCreated = false;
+
+        // Disable hooks for this operation
+        MockHook::withoutHook()->create(['name' => 'Hook Test']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterCreated, 'after_created hook should have fired');
+    }
+
+    public function testAfterUpdatedWithoutHook(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::find(1);
+        // Disable hooks for this operation
+        $hook->withoutHook();
+        $hook->name = "Updated Hook";
+        $hook->save();
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated, 'after_updated hook should have fired');
     }
 }
