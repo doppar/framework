@@ -9,6 +9,7 @@ class MockComment extends Model
     protected $table = 'comments';
     protected $primaryKey = 'id';
     protected $connection = 'default';
+    protected $timeStamps = false;
 
     public function post()
     {

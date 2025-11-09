@@ -12,6 +12,23 @@ class MockPost extends Model
 
     protected $connection = 'default';
 
+    protected $timeStamps = false;
+
+    public function __active($query)
+    {
+        return $query->where('status', true);
+    }
+
+    public function __inactive($query)
+    {
+        return $query->where('status', false);
+    }
+
+    public function __filter($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
     public function comments()
     {
         $this->setLastRelationType('linkMany');

@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit\Http\Response;
+namespace Tests\Unit;
 
 use ReflectionClass;
 use Phaseolies\Session\MessageBag;
