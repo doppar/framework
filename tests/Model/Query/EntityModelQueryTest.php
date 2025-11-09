@@ -1839,4 +1839,49 @@ class EntityModelQueryTest extends TestCase
             ],
         ], $user);
     }
+
+    public function testLinkOneLazyLoad(): void
+    {
+        $user = MockUser::find(1);
+
+        $posts = $user->posts;
+        $this->assertCount(3, $posts);
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "status" => 0,
+                "views" => 50,
+                "created_at" => "2024-01-02 11:00:00",
+            ],
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "status" => 1,
+                "views" => 150,
+                "created_at" => "2024-01-04 11:00:00",
+            ],
+        ], $posts->toArray());
+
+
+        $activePosts = $user->posts()->where('status', true)->get(); // should get 2
+        $this->assertCount(2, $activePosts);
+
+        $activePosts = $user->posts()->where('status', false)->get(); // should get 1
+        $this->assertCount(1, $activePosts);
+    }
 }
