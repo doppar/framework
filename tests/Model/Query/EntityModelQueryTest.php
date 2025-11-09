@@ -1657,5 +1657,186 @@ class EntityModelQueryTest extends TestCase
     // TEST ENTITY RELATIONSHIP
     // =====================================================
 
-    
+    public function testLinkOneRelationship(): void
+    {
+        // Test Eager Loading
+        $user = MockUser::embed('posts')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "John Doe",
+            "email" => "john@example.com",
+            "age" => 30,
+            "status" => "active",
+            "created_at" => "2024-01-01 10:00:00",
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                    "content" => "Content 1",
+                    "status" => 1,
+                    "views" => 100,
+                    "created_at" => "2024-01-01 11:00:00",
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                    "content" => "Content 2",
+                    "status" => 0,
+                    "views" => 50,
+                    "created_at" => "2024-01-02 11:00:00",
+                ],
+                [
+                    "id" => 4,
+                    "user_id" => 1,
+                    "title" => "Third Post",
+                    "content" => "Content 4",
+                    "status" => 1,
+                    "views" => 150,
+                    "created_at" => "2024-01-04 11:00:00",
+                ],
+            ]
+        ], $user->toArray());
+
+        // Test Eager Loading with specific column selection
+        // ID, USER_ID should automatically load
+        $user = MockUser::embed('posts:title')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "John Doe",
+            "email" => "john@example.com",
+            "age" => 30,
+            "status" => "active",
+            "created_at" => "2024-01-01 10:00:00",
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                ],
+                [
+                    "id" => 4,
+                    "user_id" => 1,
+                    "title" => "Third Post",
+                ],
+            ]
+        ], $user->toArray());
+
+
+        // Test Nested Eager Loading with multiple relationship and specific column selection
+        $user = MockUser::omit('created_at')->embed(['comments:body', 'posts.comments:body'])->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "John Doe",
+            "email" => "john@example.com",
+            "age" => 30,
+            "status" => "active",
+            // "created_at" => "2024-01-01 10:00:00", // created_at should be ommited
+            "comments" => [
+                ["body" => "Great post!", "user_id" => 1, "id" => 1],
+                ["body" => "Interesting", "user_id" => 1, "id" => 3],
+            ],
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                    "content" => "Content 1",
+                    "status" => 1,
+                    "views" => 100,
+                    "created_at" => "2024-01-01 11:00:00",
+                    "comments" => [
+                        ["body" => "Great post!", "post_id" => 1, "id" => 1],
+                        ["body" => "Nice work", "post_id" => 1, "id" => 2],
+                        ["body" => "Awesome", "post_id" => 1, "id" => 5],
+                    ],
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                    "content" => "Content 2",
+                    "status" => 0,
+                    "views" => 50,
+                    "created_at" => "2024-01-02 11:00:00",
+                    "comments" => [
+                        ["body" => "Interesting", "post_id" => 2, "id" => 3],
+                    ],
+                ],
+                [
+                    "id" => 4,
+                    "user_id" => 1,
+                    "title" => "Third Post",
+                    "content" => "Content 4",
+                    "status" => 1,
+                    "views" => 150,
+                    "created_at" => "2024-01-04 11:00:00",
+                    "comments" => [],
+                ],
+            ],
+        ], $user->toArray());
+
+        // Eager loading with relationship count
+        $user = MockUser::omit('created_at')
+            ->embedCount('comments')
+            ->embed(['comments:body', 'posts.comments:body'])
+            ->find(1)
+            ->toArray();
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "John Doe",
+            "email" => "john@example.com",
+            "age" => 30,
+            "status" => "active",
+            "comments_count" => 2,
+            "comments" => [
+                ["body" => "Great post!", "user_id" => 1, "id" => 1],
+                ["body" => "Interesting", "user_id" => 1, "id" => 3],
+            ],
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                    "content" => "Content 1",
+                    "status" => 1,
+                    "views" => 100,
+                    "created_at" => "2024-01-01 11:00:00",
+                    "comments" => [
+                        ["body" => "Great post!", "post_id" => 1, "id" => 1],
+                        ["body" => "Nice work", "post_id" => 1, "id" => 2],
+                        ["body" => "Awesome", "post_id" => 1, "id" => 5],
+                    ],
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                    "content" => "Content 2",
+                    "status" => 0,
+                    "views" => 50,
+                    "created_at" => "2024-01-02 11:00:00",
+                    "comments" => [
+                        ["body" => "Interesting", "post_id" => 2, "id" => 3],
+                    ],
+                ],
+                [
+                    "id" => 4,
+                    "user_id" => 1,
+                    "title" => "Third Post",
+                    "content" => "Content 4",
+                    "status" => 1,
+                    "views" => 150,
+                    "created_at" => "2024-01-04 11:00:00",
+                    "comments" => [],
+                ],
+            ],
+        ], $user);
+    }
 }
