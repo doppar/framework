@@ -2128,8 +2128,11 @@ class EntityModelQueryTest extends TestCase
                 "tags_count" => 1,
             ],
         ], $posts->toArray());
+    }
 
-        // Complex bindTo with relationship and relatinship count
+    public function testLinkMany(): void
+    {
+        // Complex linkMany relationship and relatinship count
         $posts = MockPost::query()
             ->where('id', 1)
             ->select('id', 'title', 'user_id')
@@ -2184,5 +2187,179 @@ class EntityModelQueryTest extends TestCase
                 "name" => "John Doe",
             ],
         ], $posts->toArray());
+    }
+
+    public function testBindToMany(): void
+    {
+        // Complex linkMany relationship and relatinship count
+        $posts = MockPost::query()
+            ->select('id', 'title', 'user_id')
+            ->embed('tags')
+            ->embedCount('comments')
+            ->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "title" => "First Post",
+                "user_id" => 1,
+                "comments_count" => 3,
+                "tags" => [
+                    [
+                        "id" => 1,
+                        "name" => "PHP",
+                        "pivot" => (object)[
+                            "post_id" => 1,
+                            "tag_id" => 1,
+                            "created_at" => "2024-01-01 11:00:00",
+                        ],
+                    ],
+                    [
+                        "id" => 2,
+                        "name" => "Doppar",
+                        "pivot" => (object)[
+                            "post_id" => 1,
+                            "tag_id" => 2,
+                            "created_at" => "2024-01-01 11:00:00",
+                        ],
+                    ],
+                ],
+            ],
+            [
+                "id" => 2,
+                "title" => "Second Post",
+                "user_id" => 1,
+                "comments_count" => 1,
+                "tags" => [
+                    [
+                        "id" => 1,
+                        "name" => "PHP",
+                        "pivot" => (object)[
+                            "post_id" => 2,
+                            "tag_id" => 1,
+                            "created_at" => "2024-01-02 11:00:00",
+                        ],
+                    ],
+                ],
+            ],
+            [
+                "id" => 3,
+                "title" => "Jane Post",
+                "user_id" => 2,
+                "comments_count" => 1,
+                "tags" => [
+                    [
+                        "id" => 3,
+                        "name" => "Testing",
+                        "pivot" => (object)[
+                            "post_id" => 3,
+                            "tag_id" => 3,
+                            "created_at" => "2024-01-03 11:00:00",
+                        ],
+                    ],
+                ],
+            ],
+            [
+                "id" => 4,
+                "title" => "Third Post",
+                "user_id" => 1,
+                "comments_count" => 0,
+                "tags" => [
+                    [
+                        "id" => 4,
+                        "name" => "Database",
+                        "pivot" => (object)[
+                            "post_id" => 4,
+                            "tag_id" => 4,
+                            "created_at" => "2024-01-04 11:00:00",
+                        ],
+                    ],
+                ],
+            ],
+        ], $posts->toArray());
+    }
+
+    public function testBindToManyWithTags(): void
+    {
+        $tag = MockTag::embed('posts')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "PHP",
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                    "content" => "Content 1",
+                    "status" => 1,
+                    "views" => 100,
+                    "created_at" => "2024-01-01 11:00:00",
+                    "pivot" => (object)[
+                        "post_id" => 1,
+                        "tag_id" => 1,
+                        "created_at" => "2024-01-01 11:00:00",
+                    ],
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                    "content" => "Content 2",
+                    "status" => 0,
+                    "views" => 50,
+                    "created_at" => "2024-01-02 11:00:00",
+                    "pivot" => (object)[
+                        "post_id" => 2,
+                        "tag_id" => 1,
+                        "created_at" => "2024-01-02 11:00:00",
+                    ],
+                ],
+            ],
+        ], $tag->toArray());
+
+        $tag = MockTag::embedCount('posts')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "PHP",
+            "posts_count" => 2,
+        ], $tag->toArray());
+
+        $tag = MockTag::embedCount('posts.comments')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "name" => "PHP",
+            "posts" => [
+                [
+                    "id" => 1,
+                    "user_id" => 1,
+                    "title" => "First Post",
+                    "content" => "Content 1",
+                    "status" => 1,
+                    "views" => 100,
+                    "created_at" => "2024-01-01 11:00:00",
+                    "pivot" => (object)[
+                        "post_id" => 1,
+                        "tag_id" => 1,
+                        "created_at" => "2024-01-01 11:00:00",
+                    ],
+                    "comments_count" => 3,
+                ],
+                [
+                    "id" => 2,
+                    "user_id" => 1,
+                    "title" => "Second Post",
+                    "content" => "Content 2",
+                    "status" => 0,
+                    "views" => 50,
+                    "created_at" => "2024-01-02 11:00:00",
+                    "pivot" => (object)[
+                        "post_id" => 2,
+                        "tag_id" => 1,
+                        "created_at" => "2024-01-02 11:00:00",
+                    ],
+                    "comments_count" => 1,
+                ],
+            ],
+        ], $tag->toArray());
     }
 }
