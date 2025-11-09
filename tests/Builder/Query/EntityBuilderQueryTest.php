@@ -2,23 +2,15 @@
 
 namespace Tests\Unit\Builder\Query;
 
-use Tests\Support\Presenter\MockUserPresenter;
-use Tests\Support\Presenter\MockPostPresenter;
-use Tests\Support\Model\MockUser;
-use Tests\Support\Model\MockTag;
-use Tests\Support\Model\MockPost;
-use Tests\Support\Model\MockComment;
 use Tests\Support\MockContainer;
 use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Support\Presenter\PresenterBundle;
-use Phaseolies\Support\Facades\DB;
 use Phaseolies\Support\Collection;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
+use Phaseolies\Auth\Security\PasswordHashing;
 use PHPUnit\Framework\TestCase;
 use PDO;
-use Mockery;
 
 class EntityBuilderQueryTest extends TestCase
 {
@@ -31,6 +23,7 @@ class EntityBuilderQueryTest extends TestCase
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => UrlGenerator::class);
         $container->bind('db', fn() => new Database('default'));
+        $container->bind('hash', PasswordHashing::class);
 
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -396,1171 +389,711 @@ class EntityBuilderQueryTest extends TestCase
         $this->assertEquals('SELECT * FROM users WHERE status = ?', $user);
     }
 
-    // public function testFindWithArrayParams(): void
-    // {
-    //     $users = MockUser::find([1, 2, 3]);
+    public function testCount(): void
+    {
+        $user = db()->bucket('users')->count(); // count() from model class
+        $user2 = db()->bucket('users')->orderBy('id', 'desc')->groupBy('name')->count(); // count() from builder class
+        $user3 = db()->bucket('users')->where('status', 'active')->count(); // count() from builder class
+
+        $this->assertEquals(3, $user);
+        $this->assertEquals(3, $user2);
+        $this->assertEquals(2, $user3); // we have 2 active users
+    }
+
+    public function testNewest()
+    {
+        $newestFirst = db()->bucket('users')->newest()->first();
+
+        $this->assertEquals('Bob Wilson', $newestFirst->name);
+
+        $newestFirstAsPerName = db()->bucket('users')->newest('name')->first();
+
+        $this->assertEquals('John Doe', $newestFirstAsPerName->name);
+    }
+
+    public function testOldest()
+    {
+        $oldestFirst = db()->bucket('users')->oldest()->first();
+
+        $this->assertEquals('John Doe', $oldestFirst->name);
+
+        $oldestFirstAsPerName = db()->bucket('users')->oldest('name')->first();
+
+        $this->assertEquals('Bob Wilson', $oldestFirstAsPerName->name);
+    }
+
+    public function testSelect()
+    {
+        // Selecting specific columns using an array
+        $users = db()->bucket('users')->select(['name', 'email'])->get();
+
+        // Selecting specific columns using multiple arguments
+        $users2 = db()->bucket('users')->select('name', 'email')->get();
+
+        // Simulated expected output after applying select('name', 'email')
+        $expectedSelected = [
+            ['name' => 'John Doe', 'email' => 'john@example.com'],
+            ['name' => 'Jane Smith', 'email' => 'jane@example.com'],
+            ['name' => 'Bob Wilson', 'email' => 'bob@example.com'],
+        ];
+
+        $this->assertCount(3, $users, 'Should return three user records.');
+
+        foreach ($users as $user) {
+            $this->assertArrayHasKey('name', $user);
+            $this->assertArrayHasKey('email', $user);
+        }
+
+        $this->assertEquals($users, $users2, 'Selecting with array and multiple args should yield identical results.');
+        $this->assertEquals($expectedSelected, $users->toArray(), 'Selected fields should match expected trimmed data.');
+    }
+
+    public function testOmit(): void
+    {
+        $users = db()->bucket('users')->omit('created_at', 'status')->get();
+
+        // -- Exclude age and email using array syntax
+        $users2 = db()->bucket('users')->omit(['age', 'email'])->get();
+
+        // -- Expected results after omitting created_at and status
+        $expectedOmit1 = [
+            ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com', 'age' => 30],
+            ['id' => 2, 'name' => 'Jane Smith', 'email' => 'jane@example.com', 'age' => 25],
+            ['id' => 3, 'name' => 'Bob Wilson', 'email' => 'bob@example.com', 'age' => 35],
+        ];
+
+        // -- Expected results after omitting age and email
+        $expectedOmit2 = [
+            ['id' => 1, 'name' => 'John Doe', 'status' => 'active', 'created_at' => '2024-01-01 10:00:00'],
+            ['id' => 2, 'name' => 'Jane Smith', 'status' => 'active', 'created_at' => '2024-01-02 10:00:00'],
+            ['id' => 3, 'name' => 'Bob Wilson', 'status' => 'inactive', 'created_at' => '2024-01-03 10:00:00'],
+        ];
+
+        // Ensure we get a collection or iterable object
+        $this->assertIsIterable($users, 'omit()->get() should return iterable results.');
+        $this->assertCount(3, $users, 'Should return three user records.');
+
+        // Verify omitted fields are not present in first omit()
+        foreach ($users as $user) {
+            $data = $user;
+
+            $this->assertArrayNotHasKey('created_at', $data, 'created_at should be omitted.');
+            $this->assertArrayNotHasKey('status', $data, 'status should be omitted.');
+
+            // Optional: make sure the remaining fields exist
+            $this->assertArrayHasKey('id', $data);
+            $this->assertArrayHasKey('name', $data);
+            $this->assertArrayHasKey('email', $data);
+            $this->assertArrayHasKey('age', $data);
+        }
+
+        // Verify omitted fields are not present in second omit()
+        foreach ($users2 as $user) {
+            $data = $user;
+
+            $this->assertArrayNotHasKey('age', $data, 'age should be omitted.');
+            $this->assertArrayNotHasKey('email', $data, 'email should be omitted.');
+
+            $this->assertArrayHasKey('id', $data);
+            $this->assertArrayHasKey('name', $data);
+            $this->assertArrayHasKey('status', $data);
+            $this->assertArrayHasKey('created_at', $data);
+        }
+
+        $this->assertEquals($expectedOmit1, $users->toArray(), 'First omit() result should match expected data.');
+        $this->assertEquals($expectedOmit2, $users2->toArray(), 'Second omit() result should match expected data.');
+    }
+
+    public function testSelectRaw(): void
+    {
+        $user = db()->bucket('users')->selectRaw('COUNT(*) as users_count')->first();
+
+        $this->assertEquals(3, $user->users_count);
+    }
+
+    public function testGroupByRaw(): void
+    {
+        $user = db()->bucket('users')
+            ->where('status', 'active')
+            ->groupByRaw('status')
+            ->get();
 
-    //     $this->assertInstanceOf(Collection::class, $users);
-    //     $this->assertIsArray($users->toArray());
-    // }
-
-    // public function testCount(): void
-    // {
-    //     $user = MockUser::count(); // count() from model class
-    //     $user2 = MockUser::orderBy('id', 'desc')->groupBy('name')->count(); // count() from builder class
-    //     $user3 = MockUser::where('status', 'active')->count(); // count() from builder class
-
-    //     $this->assertEquals(3, $user);
-    //     $this->assertEquals(3, $user2);
-    //     $this->assertEquals(2, $user3); // we have 2 active users
-    // }
-
-    // public function testNewest()
-    // {
-    //     $newestFirst = MockUser::newest()->first();
-
-    //     $this->assertEquals('Bob Wilson', $newestFirst->name);
-
-    //     $newestFirstAsPerName = MockUser::newest('name')->first();
-
-    //     $this->assertEquals('John Doe', $newestFirstAsPerName->name);
-    // }
-
-    // public function testOldest()
-    // {
-    //     $oldestFirst = MockUser::oldest()->first();
-
-    //     $this->assertEquals('John Doe', $oldestFirst->name);
-
-    //     $oldestFirstAsPerName = MockUser::oldest('name')->first();
-
-    //     $this->assertEquals('Bob Wilson', $oldestFirstAsPerName->name);
-    // }
-
-    // public function testSelect()
-    // {
-    //     // Selecting specific columns using an array
-    //     $users = MockUser::select(['name', 'email'])->get();
-
-    //     // Selecting specific columns using multiple arguments
-    //     $users2 = MockUser::select('name', 'email')->get();
-
-    //     // Simulated expected output after applying select('name', 'email')
-    //     $expectedSelected = [
-    //         ['name' => 'John Doe', 'email' => 'john@example.com'],
-    //         ['name' => 'Jane Smith', 'email' => 'jane@example.com'],
-    //         ['name' => 'Bob Wilson', 'email' => 'bob@example.com'],
-    //     ];
-
-    //     $this->assertIsArray($users->toArray(), 'Result of select()->get() should be an array.');
-    //     $this->assertCount(3, $users, 'Should return three user records.');
-
-    //     foreach ($users as $user) {
-    //         $this->assertArrayHasKey('name', $user);
-    //         $this->assertArrayHasKey('email', $user);
-
-    //         // Make sure no extra keys are present
-    //         $this->assertSame(['name', 'email'], array_keys($user->toArray()), 'Only name and email should be selected.');
-    //     }
-
-    //     $this->assertEquals($users, $users2, 'Selecting with array and multiple args should yield identical results.');
-    //     $this->assertEquals($expectedSelected, $users->toArray(), 'Selected fields should match expected trimmed data.');
-    // }
-
-    // public function testOmit(): void
-    // {
-    //     $users = MockUser::omit('created_at', 'status')->get();
-
-    //     // -- Exclude age and email using array syntax
-    //     $users2 = MockUser::omit(['age', 'email'])->get();
-
-    //     // -- Expected results after omitting created_at and status
-    //     $expectedOmit1 = [
-    //         ['id' => 1, 'name' => 'John Doe', 'email' => 'john@example.com', 'age' => 30],
-    //         ['id' => 2, 'name' => 'Jane Smith', 'email' => 'jane@example.com', 'age' => 25],
-    //         ['id' => 3, 'name' => 'Bob Wilson', 'email' => 'bob@example.com', 'age' => 35],
-    //     ];
-
-    //     // -- Expected results after omitting age and email
-    //     $expectedOmit2 = [
-    //         ['id' => 1, 'name' => 'John Doe', 'status' => 'active', 'created_at' => '2024-01-01 10:00:00'],
-    //         ['id' => 2, 'name' => 'Jane Smith', 'status' => 'active', 'created_at' => '2024-01-02 10:00:00'],
-    //         ['id' => 3, 'name' => 'Bob Wilson', 'status' => 'inactive', 'created_at' => '2024-01-03 10:00:00'],
-    //     ];
-
-    //     // Ensure we get a collection or iterable object
-    //     $this->assertIsIterable($users, 'omit()->get() should return iterable results.');
-    //     $this->assertCount(3, $users, 'Should return three user records.');
-
-    //     // Verify omitted fields are not present in first omit()
-    //     foreach ($users as $user) {
-    //         $data = method_exists($user, 'toArray') ? $user->toArray() : (array) $user;
-
-    //         $this->assertArrayNotHasKey('created_at', $data, 'created_at should be omitted.');
-    //         $this->assertArrayNotHasKey('status', $data, 'status should be omitted.');
-
-    //         // Optional: make sure the remaining fields exist
-    //         $this->assertArrayHasKey('id', $data);
-    //         $this->assertArrayHasKey('name', $data);
-    //         $this->assertArrayHasKey('email', $data);
-    //         $this->assertArrayHasKey('age', $data);
-    //     }
-
-    //     // Verify omitted fields are not present in second omit()
-    //     foreach ($users2 as $user) {
-    //         $data = method_exists($user, 'toArray') ? $user->toArray() : (array) $user;
-
-    //         $this->assertArrayNotHasKey('age', $data, 'age should be omitted.');
-    //         $this->assertArrayNotHasKey('email', $data, 'email should be omitted.');
-
-    //         $this->assertArrayHasKey('id', $data);
-    //         $this->assertArrayHasKey('name', $data);
-    //         $this->assertArrayHasKey('status', $data);
-    //         $this->assertArrayHasKey('created_at', $data);
-    //     }
-
-    //     $this->assertEquals($expectedOmit1, $users->toArray(), 'First omit() result should match expected data.');
-    //     $this->assertEquals($expectedOmit2, $users2->toArray(), 'Second omit() result should match expected data.');
-    // }
-
-    // public function testSelectRaw(): void
-    // {
-    //     $user = MockUser::selectRaw('COUNT(*) as users_count')->first();
-
-    //     $this->assertEquals(3, $user->users_count);
-    // }
-
-    // public function testGroupByRaw(): void
-    // {
-    //     $user = MockUser::query()
-    //         ->where('status', 'active')
-    //         ->groupByRaw('status')
-    //         ->get();
-
-    //     // Should get one result (representing the “active” group).
-    //     $this->assertCount(1, $user);
-    // }
-
-    // public function testWhereLike(): void
-    // {
-    //     $users = MockUser::whereLike('name', 'j')->get();
-
-    //     // We have jane and john
-    //     $this->assertCount(2, $users);
-    // }
+        // Should get one result (representing the “active” group).
+        $this->assertCount(1, $user);
+    }
 
-    // public function testWhereRaw(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereRaw('LOWER(name) LIKE LOWER(?)', ['%john%'])
-    //         ->get();
+    public function testWhereLike(): void
+    {
+        $users = db()->bucket('users')->whereLike('name', 'j')->get();
 
-    //     $this->assertCount(1, $users);
-    // }
+        // We have jane and john
+        $this->assertCount(2, $users);
+    }
 
-    // public function testOrderByRaw(): void
-    // {
-    //     $user = MockUser::query()
-    //         ->orderByRaw('id DESC, name ASC')
-    //         ->get();
+    public function testWhereRaw(): void
+    {
+        $users = db()->bucket('users')
+            ->whereRaw('LOWER(name) LIKE LOWER(?)', ['%john%'])
+            ->get();
 
-    //     $this->assertCount(3, $user);
-    // }
-
-    // public function testGroupByRawComplex(): void
-    // {
-    //     $user = MockUser::query()
-    //         ->selectRaw("COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month")
-    //         ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
-    //         ->orderByRaw('year DESC, month DESC')
-    //         ->get();
-
-    //     $expected = [
-    //         [
-    //             'total' => 3,
-    //             'year' => '2024',
-    //             'month' => '01',
-    //         ],
-    //     ];
-
-    //     $this->assertIsIterable($user, 'Query should return iterable results.');
-    //     $this->assertCount(1, $user, 'Should group into one year-month pair.');
-
-    //     $row = $user[0] ?? (array) $user->first();
-    //     $this->assertEquals($expected[0]['total'], $row['total']);
-    //     $this->assertEquals($expected[0]['year'], $row['year']);
-    //     $this->assertEquals($expected[0]['month'], $row['month']);
-    // }
-
-    // public function testExists(): void
-    // {
-    //     $user = MockUser::where('id', 1)->exists();
-
-    //     $this->assertTrue($user);
-
-    //     $user = MockUser::where('id', 10)->exists();
-
-    //     $this->assertFalse($user);
-    // }
-
-    // public function testWhereIn(): void
-    // {
-    //     $users = MockUser::whereIn('id', [1, 2, 3])->get();
-
-    //     $this->assertCount(3, $users);
-
-    //     // With non-exists users
-    //     $users = MockUser::whereIn('id', [1, 2, 3, 100])->get();
-
-    //     $this->assertCount(3, $users);
-    // }
-
-    // public function testWhereBetween()
-    // {
-    //     $users = MockUser::query()
-    //         ->whereBetween('created_at', ['2025-02-29', '2025-04-29'])
-    //         ->get();
-
-    //     $this->assertCount(0, $users);
-
-    //     $users = MockUser::query()
-    //         ->whereBetween('created_at', ['2024-01-01', '2025-04-29'])
-    //         ->get();
-
-    //     $this->assertCount(3, $users);
-
-    //     $users = MockUser::whereBetween('id', [1, 10])->get();
-
-    //     $this->assertCount(3, $users);
-    // }
-
-    // public function testWhereNotBetween(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereNotBetween('created_at', ['2025-02-29', '2025-04-29'])
-    //         ->get();
-
-    //     $this->assertCount(3, $users);
-
-    //     $users = MockUser::query()
-    //         ->whereNotBetween('created_at', ['2024-01-01', '2025-04-29'])
-    //         ->get();
-
-    //     $this->assertCount(0, $users);
-
-    //     $users = MockUser::whereNotBetween('id', [1, 10])->get();
-
-    //     $this->assertCount(0, $users);
-    // }
-
-    // public function testPluck(): void
-    // {
-    //     $users = MockUser::query()->pluck('name');
-
-    //     $this->assertInstanceOf(
-    //         \Phaseolies\Support\Collection::class,
-    //         $users,
-    //         'pluck() should return a Collection.'
-    //     );
-
-    //     $this->assertEquals(
-    //         ['John Doe', 'Jane Smith', 'Bob Wilson'],
-    //         $users->toArray(),
-    //         'pluck() should return an array of names in the correct order.'
-    //     );
-
-    //     $this->assertCount(3, $users, 'Collection should contain exactly three items.');
-
-    //     // pluck with key value pair
-    //     $users = MockUser::query()->pluck('name', 'email');
-    //     $this->assertInstanceOf(
-    //         \Phaseolies\Support\Collection::class,
-    //         $users,
-    //         'pluck() should return a Collection.'
-    //     );
-
-    //     $this->assertEquals(
-    //         [
-    //             'john@example.com' => 'John Doe',
-    //             'jane@example.com' => 'Jane Smith',
-    //             'bob@example.com' => 'Bob Wilson',
-    //         ],
-    //         $users->toArray(),
-    //         'pluck() with key-value should return email => name mapping.'
-    //     );
-
-    //     $this->assertCount(3, $users, 'Collection should contain exactly three items.');
-    // }
-
-    // public function testWhereDate(): void
-    // {
-    //     // Where date equals a specific date
-    //     $users = MockUser::query()
-    //         ->whereDate('created_at', '2024-01-02')
-    //         ->get();
-
-    //     // we have only 1 user that is created 2024-01-02
-    //     $this->assertCount(1, $users);
+        $this->assertCount(1, $users);
+    }
 
-    //     // Where date is greater than a specific date
-    //     $users = MockUser::query()
-    //         ->whereDate('created_at', '>', '2023-01-01')
-    //         ->get();
+    public function testOrderByRaw(): void
+    {
+        $user = db()->bucket('users')
+            ->orderByRaw('id DESC, name ASC')
+            ->get();
 
-    //     $this->assertCount(3, $users);
+        $this->assertCount(3, $user);
+    }
 
-    //     $users = MockUser::query()
-    //         ->whereDate('created_at', '<', '2023-01-01')
-    //         ->get();
+    public function testGroupByRawComplex(): void
+    {
+        $user = db()->bucket('users')
+            ->selectRaw("COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month")
+            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->orderByRaw('year DESC, month DESC')
+            ->get();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $expected = [
+            [
+                'total' => 3,
+                'year' => '2024',
+                'month' => '01',
+            ],
+        ];
 
-    // public function testWhereMonth(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereMonth('created_at', 1)
-    //         ->get();
+        $this->assertIsIterable($user, 'Query should return iterable results.');
+        $this->assertCount(1, $user, 'Should group into one year-month pair.');
 
-    //     $this->assertCount(3, $users);
+        $row = $user[0] ?? (array) $user->first();
+        $this->assertEquals($expected[0]['total'], $row['total']);
+        $this->assertEquals($expected[0]['year'], $row['year']);
+        $this->assertEquals($expected[0]['month'], $row['month']);
+    }
 
-    //     $users = MockUser::query()
-    //         ->whereMonth('created_at', 2)
-    //         ->get();
+    public function testExists(): void
+    {
+        $user = db()->bucket('users')->where('id', 1)->exists();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $this->assertTrue($user);
 
-    // public function testWhereYear(): void
-    // {
-    //     // Where year is 2023
-    //     $users = MockUser::query()
-    //         ->whereYear('created_at', 2023)
-    //         ->get();
+        $user = db()->bucket('users')->where('id', 10)->exists();
 
-    //     $this->assertCount(0, $users);
+        $this->assertFalse($user);
+    }
 
-    //     // Where year is greater than 2020
-    //     $users = MockUser::query()
-    //         ->whereYear('created_at', '>', 2020)
-    //         ->get();
+    public function testWhereIn(): void
+    {
+        $users = db()->bucket('users')->whereIn('id', [1, 2, 3])->get();
 
-    //     $this->assertCount(3, $users);
-    // }
+        $this->assertCount(3, $users);
 
-    // public function testWhereDay(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereDay('created_at', 1)
-    //         ->get();
+        // With non-exists users
+        $users = db()->bucket('users')->whereIn('id', [1, 2, 3, 100])->get();
 
-    //     $this->assertCount(1, $users);
+        $this->assertCount(3, $users);
+    }
 
-    //     $users = MockUser::query()
-    //         ->whereDay('created_at',  2)
-    //         ->get();
+    public function testWhereBetween()
+    {
+        $users = db()->bucket('users')
+            ->whereBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->get();
 
-    //     $this->assertCount(1, $users);
+        $this->assertCount(0, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereDay('created_at', 3)
-    //         ->get();
+        $users = db()->bucket('users')
+            ->whereBetween('created_at', ['2024-01-01', '2025-04-29'])
+            ->get();
 
-    //     $this->assertCount(1, $users);
+        $this->assertCount(3, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereDay('created_at', 4)
-    //         ->get();
+        $users = db()->bucket('users')->whereBetween('id', [1, 10])->get();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $this->assertCount(3, $users);
+    }
 
-    // public function testWhereTime(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '>', '14:00:00')
-    //         ->get();
+    public function testWhereNotBetween(): void
+    {
+        $users = db()->bucket('users')
+            ->whereNotBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->get();
 
-    //     $this->assertCount(0, $users);
+        $this->assertCount(3, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '=', '10:00:00')
-    //         ->get();
+        $users = db()->bucket('users')
+            ->whereNotBetween('created_at', ['2024-01-01', '2025-04-29'])
+            ->get();
 
-    //     $this->assertCount(3, $users);
+        $this->assertCount(0, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '>=', '10:00:00')
-    //         ->get();
+        $users = db()->bucket('users')->whereNotBetween('id', [1, 10])->get();
 
-    //     $this->assertCount(3, $users);
+        $this->assertCount(0, $users);
+    }
 
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '<=', '10:00:00')
-    //         ->get();
+    public function testWhereDate(): void
+    {
+        // Where date equals a specific date
+        $users = db()->bucket('users')
+            ->whereDate('created_at', '2024-01-02')
+            ->get();
 
-    //     $this->assertCount(3, $users);
+        // we have only 1 user that is created 2024-01-02
+        $this->assertCount(1, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '<=', '11:00:00')
-    //         ->get();
+        // Where date is greater than a specific date
+        $users = db()->bucket('users')
+            ->whereDate('created_at', '>', '2023-01-01')
+            ->get();
 
-    //     $this->assertCount(3, $users);
+        $this->assertCount(3, $users);
 
-    //     $users = MockUser::query()
-    //         ->whereTime('created_at', '>=', '11:00:00')
-    //         ->get();
+        $users = db()->bucket('users')
+            ->whereDate('created_at', '<', '2023-01-01')
+            ->get();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $this->assertCount(0, $users);
+    }
 
-    // public function testWhereToday(): void
-    // {
-    //     $users = MockUser::whereToday('created_at')->get();
+    public function testWhereMonth(): void
+    {
+        $users = db()->bucket('users')
+            ->whereMonth('created_at', 1)
+            ->get();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $this->assertCount(3, $users);
 
-    // public function testWhereYesterday(): void
-    // {
-    //     $users = MockUser::whereYesterday('created_at')->get();
+        $users = db()->bucket('users')
+            ->whereMonth('created_at', 2)
+            ->get();
 
-    //     $this->assertCount(0, $users);
-    // }
+        $this->assertCount(0, $users);
+    }
 
-    // public function testWhereThisMonth(): void
-    // {
-    //     $users = MockUser::whereThisMonth('created_at')->get();
+    public function testWhereYear(): void
+    {
+        // Where year is 2023
+        $users = db()->bucket('users')
+            ->whereYear('created_at', 2023)
+            ->get();
 
-    //     $this->assertCount(0, $users);
-    // }
-
-    // public function testWhereLastMonth(): void
-    // {
-    //     $users = MockUser::whereLastMonth('created_at')->get();
-
-    //     $this->assertCount(0, $users);
-    // }
-
-    // public function testWhereThisYear(): void
-    // {
-    //     $users = MockUser::whereThisYear('created_at')->get();
-
-    //     $this->assertCount(0, $users);
-    // }
-
-    // public function testWhereLastYear(): void
-    // {
-    //     $users = MockUser::whereLastYear('created_at')->get();
-
-    //     $this->assertCount(3, $users);
-    // }
-
-    // public function testWhereDateBetween(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereDateBetween('created_at', '2023-01-01', '2025-01-31')
-    //         ->get();
-
-    //     $this->assertCount(3, $users);
-
-    //     $users = MockUser::query()
-    //         ->whereDateBetween('created_at', '2023-01-01', '2023-01-31')
-    //         ->get();
-
-    //     $this->assertCount(0, $users);
-    // }
-
-    // public function testWhereDateTimeBetween(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->whereDateTimeBetween('created_at', '2025-01-01 00:00:00', '2025-10-31 13:59:59')
-    //         ->get();
-
-    //     $this->assertCount(0, $users);
-
-    //     $users = MockUser::query()
-    //         ->whereDateTimeBetween('created_at', '2023-01-01 00:00:00', '2025-10-31 13:59:59')
-    //         ->get();
-
-    //     $this->assertCount(3, $users);
-    // }
-
-    // public function testILike(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->iLike('name', '%john%')
-    //         ->orderBy('name', 'desc')
-    //         ->get();
-
-    //     $this->assertCount(1, $users);
-    // }
-
-    // public function testMatch(): void
-    // {
-    //     $posts = MockPost::match(['user_id' => 1])->get();
-
-    //     $this->assertCount(3, $posts);
-
-    //     // We have 2 post views greater than 100 and status 1
-    //     $posts = MockPost::match([
-    //         'user_id' => [1, 2, 3],
-    //         function ($query) {
-    //             $query->where('views', '>', 100)
-    //                 ->where('status', 1);
-    //         }
-    //     ])
-    //         ->orderBy('created_at', 'desc')
-    //         ->get();
-
-    //     $this->assertCount(2, $posts);
-    // }
-
-    // public function testSearch(): void
-    // {
-    //     $posts = MockPost::query()
-    //         ->search(attributes: [
-    //             'title',
-    //             'user.name',
-    //             'tags.name',
-    //             'comments.body'
-    //         ], searchTerm: 'Great post') // search by title has 1 post
-    //         ->get();
-
-    //     $this->assertCount(1, $posts);
-
-    //     // INSERT INTO post_tag (post_id, tag_id, created_at) VALUES 
-    //     //     (1, 1, '2024-01-01 11:00:00'),
-    //     //     (1, 2, '2024-01-01 11:00:00'), // this should come in search, that means we will get post ID 1
-    //     //     (2, 1, '2024-01-02 11:00:00'),
-    //     //     (3, 3, '2024-01-03 11:00:00'),
-    //     //     (4, 4, '2024-01-04 11:00:00')
-
-    //     // Doppar tag ID is 2
-    //     $posts = MockPost::query()
-    //         ->search(attributes: [
-    //             'title',
-    //             'user.name',
-    //             'tags.name',
-    //             'comments.body'
-    //         ], searchTerm: 'Doppar') // search by tag name, many to many relationship
-    //         ->get();
-
-    //     $this->assertCount(1, $posts);
-    //     $this->assertEquals(1, $posts->toArray()[0]['id']);
-    // }
-
-    // public function testNestedWhere()
-    // {
-    //     $posts = MockPost::query()
-    //         ->where('status', true)
-    //         ->where(function ($query) {
-    //             $query->where('views', '>', 100)
-    //                 ->orWhere(function ($q) {
-    //                     $q->whereYear('created_at', 2024)
-    //                         ->whereIn('user_id', [1, 2, 3]);
-    //                 });
-    //         })
-    //         ->get();
-
-    //     // All three posts (id 1, 3, 4) satisfy the query → count = 3
-    //     $this->assertCount(3, $posts);
-    // }
-
-    // public function testIf(): void
-    // {
-    //     $posts = MockPost::query()
-    //         // Executes because true
-    //         ->if(true, function ($query) {
-    //             $query->whereDate('created_at', '2024-01-01');
-    //         })
-    //         ->get();
-
-    //     $this->assertCount(1, $posts);
-
-    //     $posts = MockPost::query()
-    //         // Does not execute because 0 is falsy
-    //         ->if(false, function ($query) {
-    //             $query->whereDate('created_at', '2024-01-01');
-    //         })
-    //         ->get();
-
-    //     $this->assertCount(4, $posts);
-
-    //     $posts = MockPost::query()
-    //         ->if(
-    //             true,
-    //             // If search is provided, filter by title
-    //             fn($q) => $q->whereLike('title', 'First Post'),
-
-    //             // If no search is provided, filter by featured status
-    //             fn($q) => $q->where('status', '=', true)
-    //         )
-    //         ->get();
-
-    //     $this->assertCount(1, $posts);
-    // }
-
-    // public function testQueryBinding(): void
-    // {
-    //     // we have 3 active post
-    //     $posts = MockPost::active()->get();
-
-    //     $this->assertCount(3, $posts);
-
-    //     // we have 3 inactive post
-    //     $posts = MockPost::inactive()->get();
-
-    //     $this->assertCount(1, $posts);
-
-    //     // query binding with passing parameter
-    //     $posts = MockPost::filter(true)->get();
-
-    //     $this->assertCount(3, $posts);
-
-    //     // query binding with passing parameter
-    //     $posts = MockPost::filter(false)->get();
-
-    //     $this->assertCount(1, $posts);
-    // }
-
-    // public function testSave(): void
-    // {
-    //     $tag = new MockTag();
-    //     $tag->name = 'Awesome Doppar';
-    //     $tag->save();
-
-    //     $this->assertEquals('Awesome Doppar', $tag->name);
-    // }
-
-    // public function testCreate(): void
-    // {
-    //     $tag = MockTag::create([
-    //         'name' => 'Awesome Doppar'
-    //     ]);
-
-    //     $this->assertEquals('Awesome Doppar', $tag->name);
-    // }
-
-    // public function testFirstOrCreate(): void
-    // {
-    //     // First create tag
-    //     MockTag::create([
-    //         'name' => 'Awesome Doppar'
-    //     ]);
-
-    //     $tag = MockTag::firstOrCreate(
-    //         ['name' => 'Awesome Doppar'],
-    //         ['name' => 'Doppar']
-    //     );
-
-    //     $this->assertEquals('Awesome Doppar', $tag->name);
-    // }
-
-    // public function testFork(): void
-    // {
-    //     $tag = MockTag::find(1);
-    //     $newTag = $tag->fork();
-    //     $newTag->name = 'Copy of ' . $tag->name;
-    //     $newTag->save();
-
-    //     $this->assertEquals('Copy of PHP', $newTag->name);
-    // }
-
-    // public function testUpdate(): void
-    // {
-    //     $tag = MockTag::find(1);
-    //     $tag->name = 'Nure';
-    //     $tag->save();
-
-    //     $this->assertEquals('Nure', $tag->name);
-
-    //     $tag = MockTag::find(1)
-    //         ->update([
-    //             'name' => 'Nure'
-    //         ]);
-
-    //     $this->assertTrue($tag);
-    // }
-
-    // public function testDirtyAttributes(): void
-    // {
-    //     $tag = MockTag::find(1);
-    //     $tag->name = 'Nure';
-    //     $dirty = $tag->getDirtyAttributes();
-
-    //     $this->assertEquals(['name' => 'Nure'], $dirty);
-
-    //     $tag = MockTag::find(1);
-    //     // No dirty attributes
-    //     $dirty = $tag->getDirtyAttributes();
-
-    //     $this->assertIsArray($dirty);
-    //     $this->assertEquals([], $dirty);
-    // }
-
-    // public function testTap(): void
-    // {
-    //     $tag = tap(
-    //         MockTag::find(1),
-    //         function ($tag) {
-    //             $tag->update([
-    //                 'name' => 'Aliba'
-    //             ]);
-    //         }
-    //     );
-
-    //     $this->assertEquals('Aliba', $tag->name);
-    // }
-
-    // public function testUpdateOrCreate(): void
-    // {
-    //     // First create tag
-    //     MockTag::create([
-    //         'name' => 'Awesome Doppar'
-    //     ]);
-
-    //     $tag = MockTag::updateOrCreate(
-    //         ['name' => 'Awesome Doppar'],
-    //         ['name' => 'Doppar']
-    //     );
-
-    //     // Should updated with the value "Doppar"
-    //     $this->assertEquals('Doppar', $tag->name);
-
-    //     $tag = MockTag::updateOrIgnore(
-    //         ['name' => 'Doppar'],
-    //         ['name' => 'For Ignore Test']
-    //     );
-
-    //     // Should ignore
-    //     $this->assertEquals('For Ignore Test', $tag->name);
-    //     $this->assertNotEquals('Doppar', $tag->name);
-    // }
-
-    // public function testFill(): void
-    // {
-    //     $tag = MockTag::find(1);
-    //     $tag->fill([
-    //         'name' => 'Doppar Updated',
-    //     ]);
-    //     $tag->save();
-
-    //     $this->assertEquals('Doppar Updated', $tag->name);
-    // }
-
-    // public function testUpsert(): void
-    // {
-    //     $tag = [
-    //         [
-    //             "name" => "Mahedi"
-    //         ],
-    //         [
-    //             "name" => "Aaliba"
-    //         ],
-    //     ];
-
-    //     $affectedRows = MockTag::query()->upsert(
-    //         $tag,
-    //         "id",  // Unique constraint
-    //         ["name"], // Only update the "name" column if exists
-    //         true      // Ignore errors (e.g., duplicate key)
-    //     );
-
-    //     $this->assertEquals(2, $affectedRows);
-    // }
-
-    // public function testSaveMany(): void
-    // {
-    //     $tag = MockTag::saveMany([
-    //         ['name' => 'John'],
-    //         ['name' => 'John Another'],
-    //     ]);
-
-    //     $this->assertEquals(2, $tag);
-
-    //     $tag = MockTag::saveMany([
-    //         ['name' => 'John'],
-    //         ['name' => 'John Another'],
-    //         ['name' => 'John Another One'],
-    //     ]);
-
-    //     $this->assertEquals(3, $tag);
-
-    //     $tag = MockTag::saveMany([
-    //         ['name' => 'John'],
-    //         ['name' => 'John Another'],
-    //         ['name' => 'John Another One'],
-    //     ], 1); // saveMany with chunk
-
-    //     $this->assertEquals(3, $tag);
-    // }
-
-    // public function testDelete(): void
-    // {
-    //     $tag = MockTag::saveMany([
-    //         ['name' => 'John'],
-    //         ['name' => 'John Another'],
-    //         ['name' => 'John Another One'],
-    //     ]);
-
-    //     $tag = MockTag::newest()->first();
-
-    //     $bool = $tag->delete();
-
-    //     $this->assertTrue($bool);
-    // }
-
-    // public function testPurge(): void
-    // {
-    //     $tag = MockTag::saveMany([
-    //         ['name' => 'John'],
-    //         ['name' => 'John Another'],
-    //         ['name' => 'John Another One'],
-    //     ]);
-
-    //     $tag = MockTag::purge(7);
-
-    //     $this->assertEquals(1, $tag);
-    // }
-
-    // public function testAggregate(): void
-    // {
-    //     $sum = MockPost::sum('views'); // 500
-    //     $avg = MockPost::avg('views'); // 125
-    //     $max = MockPost::max('views'); // 200.0
-    //     $min = MockPost::min('views'); // 50.0
-    //     $stdDev = MockPost::stdDev('views'); // 55.901699437495
-    //     $variance = MockPost::variance('views'); // 3125.0
-
-    //     $this->assertEquals(500, $sum);
-    //     $this->assertEquals(125, $avg);
-    //     $this->assertEquals(200.0, $max);
-    //     $this->assertEquals(50.0, $min);
-    //     $this->assertEquals(55.9, number_format($stdDev, 1));
-    //     $this->assertEquals(3125.0, $variance);
-    // }
-
-    // public function testDistinct(): void
-    // {
-    //     $posts = MockPost::query()->distinct('user_id');
-
-    //     $this->assertEquals([1, 2], $posts->toArray());
-    // }
-
-    // public function testConditionalGroupBy(): void
-    // {
-    //     $posts = MockPost::query()
-    //         ->select(['user_id', 'SUM(views * views) as total_views'])
-    //         ->groupBy('user_id')
-    //         ->get();
-
-    //     $this->assertEquals([
-    //         ['user_id' => 1, 'total_views' => 35000],
-    //         ['user_id' => 2, 'total_views' => 40000],
-    //     ], $posts->toArray());
-    // }
-
-    // public function testColumnIncrement(): void
-    // {
-    //     $post = MockPost::find(1);
-    //     $post->increment('views'); // Increments by 1 by default
-
-    //     $this->assertEquals(101, $post->views);
-    //     $post->increment('views', 10); // Increments by 10 + 1 = 11
-
-    //     $this->assertEquals(111, $post->views); // 111
-    // }
-
-    // public function testColumnDecrement(): void
-    // {
-    //     $post = MockPost::find(1);
-    //     $post->decrement('views');
-
-    //     $this->assertEquals(99, $post->views);
-    //     $post->decrement('views', 10);
-
-    //     $this->assertEquals(89, $post->views);
-
-    //     $this->assertEquals(1, $post->user_id);
-
-    //     $post->decrement('views', 1, [
-    //         'created_at' => date('Y-m-d H:i:s'),
-    //         'user_id' => 2
-    //     ]);
-
-    //     $this->assertEquals(2, $post->user_id);
-
-    //     $post->decrement('views', 1, [
-    //         'created_at' => '2024-01-01 11:00:00',
-    //         'user_id' => 1
-    //     ]);
-
-    //     $this->assertEquals(1, $post->user_id);
-    //     $this->assertEquals('2024-01-01 11:00:00', $post->created_at);
-    // }
-
-    // public function testWithCollection(): void
-    // {
-    //     $users = MockUser::all()
-    //         ->map(function ($item) {
-    //             return [
-    //                 'name' => $item->name
-    //             ];
-    //         });
-
-    //     $this->assertEquals([
-    //         ['name' => 'John Doe'],
-    //         ['name' => 'Jane Smith'],
-    //         ['name' => 'Bob Wilson'],
-    //     ], $users->toArray());
-    // }
-
-    // public function testMapWithPropertySortcut(): void
-    // {
-    //     // map() with Property Shortcut
-    //     $users = MockUser::all();
-    //     $names = $users->map->name;
-
-    //     $this->assertEquals([
-    //         'John Doe',
-    //         'Jane Smith',
-    //         'Bob Wilson',
-    //     ], $names->toArray());
-    // }
-
-    // public function testCollectionFilter(): void
-    // {
-    //     $posts = MockPost::all()
-    //         ->map(function ($item) {
-    //             return [
-    //                 'title' => $item->title,
-    //                 'status' => $item->status
-    //             ];
-    //         })
-    //         ->filter(function ($item) {
-    //             return $item['status'] === 1;
-    //         });
-
-    //     $this->assertEquals([
-    //         ['title' => 'First Post', 'status' => 1],
-    //         ['title' => 'Jane Post',  'status' => 1],
-    //         ['title' => 'Third Post', 'status' => 1],
-    //     ], $posts->toArray());
-    // }
-
-    // public function testOffsetQuery(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->select('name')
-    //         ->offset(1)  // Skip the first 1 record
-    //         ->limit(2)  // Retrieve the next 2 records
-    //         ->get();
-
-    //     $this->assertEquals([
-    //         // ['name' => 'John Doe'], // Should missing from result
-    //         ['name' => 'Jane Smith'],
-    //         ['name' => 'Bob Wilson'],
-    //     ], $users->toArray());
-    // }
-
-    // public function testEntityORMJoin(): void
-    // {
-    //     $users = MockUser::query()
-    //         ->select('posts.user_id', 'users.name as user_name')
-    //         ->join('posts', 'users.id', '=', 'posts.user_id')
-    //         ->get();
-
-    //     $this->assertEquals([
-    //         ['user_id' => 1, 'user_name' => 'John Doe'],
-    //         ['user_id' => 1, 'user_name' => 'John Doe'],
-    //         ['user_id' => 2, 'user_name' => 'Jane Smith'],
-    //         ['user_id' => 1, 'user_name' => 'John Doe'],
-    //     ], $users->toArray());
-
-    //     $users = MockUser::query()
-    //         ->select('posts.user_id', 'users.name as user_name', 'comments.body')
-    //         ->join('posts', 'users.id', '=', 'posts.user_id')
-    //         ->join('comments', 'posts.id', '=', 'comments.post_id')
-    //         ->get();
-
-    //     $this->assertEquals([
-    //         ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Great post!'],
-    //         ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Nice work'],
-    //         ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Interesting'],
-    //         ['user_id' => 2, 'user_name' => 'Jane Smith', 'body' => 'Amazing'],
-    //         ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Awesome'],
-    //     ], $users->toArray());
-    // }
-
-    // public function testChunk(): void
-    // {
-    //     $processed = collect();
-
-    //     MockUser::query()
-    //         ->chunk(1, function (Collection $users) use (&$processed) {
-    //             foreach ($users as $user) {
-    //                 $processed->push($user->id);
-    //             }
-    //         });
-
-    //     // We have 3 users
-    //     $this->assertCount(3, $processed);
-
-    //     // $mock = Mockery::mock();
-    //     // $mock->shouldReceive('handle')->times(3);
-
-    //     // MockUser::query()
-    //     //     ->where('status', true)
-    //     //     ->chunk(1, function (Collection $users) use ($mock) {
-    //     //         $mock->handle($users);
-    //     //     });
-
-    //     // Fibar based chunk with concurrency
-    //     $processed = collect();
-
-    //     MockUser::query()
-    //         ->fchunk(
-    //             chunkSize: 100,
-    //             processor: function (Collection $users) use (&$processed) {
-    //                 foreach ($users as $user) {
-    //                     $processed->push($user->id);
-    //                 }
-    //             },
-    //             concurrency: 4
-    //         );
-
-    //     // We have 3 users
-    //     $this->assertCount(3, $processed);
-    // }
-
-    // public function testCursor(): void
-    // {
-    //     $processed = collect();
-
-    //     MockUser::query()
-    //         ->cursor(function ($user) use (&$processed) {
-    //             $processed->push($user->id);
-    //         });
-
-    //     // Assert that all 3 users were processed
-    //     $this->assertCount(3, $processed);
-
-    //     // Fibar based cursor
-    //     $processed = collect();
-
-    //     MockUser::query()
-    //         ->fcursor(function ($user) use (&$processed) {
-    //             $processed->push($user->id);
-    //         });
-
-    //     // Assert that all 3 users were processed
-    //     $this->assertCount(3, $processed);
-    // }
-
-    // public function testStream(): void
-    // {
-    //     $processed = collect();
-
-    //     $users = MockUser::query()
-    //         ->stream(3);
-
-    //     foreach ($users as $user) {
-    //         $processed->push($user->id);
-    //     }
-
-    //     $this->assertCount(3, $processed);
-
-    //     // Fibar based stream
-    //     $processed = collect();
-    //     foreach (
-    //         MockUser::query()
-    //             ->fstream(3, fn($user) => strtoupper($user->name))
-    //         as $userName
-    //     ) {
-    //         $processed->push($user->id);
-    //     }
-
-    //     $this->assertCount(3, $processed);
-    // }
-
-    // public function testBatch(): void
-    // {
-    //     $processed = collect();
-
-    //     MockUser::query()
-    //         ->batch(
-    //             chunkSize: 500,
-    //             batchProcessor: function ($batch) use (&$processed) {
-    //                 foreach ($batch as $user) {
-    //                     $processed->push($user->id);
-    //                 }
-    //             },
-    //             batchSize: 1000
-    //         );
-
-    //     $this->assertCount(3, $processed);
-    // }
-
-    // public function testTransactionWhenNoException()
-    // {
-    //     // Run transaction
-    //     DB::transaction(function () {
-    //         // Update all active users
-    //         MockUser::where('status', 'active')->get()->each(function ($user) {
-    //             $user->update(['age' => $user->age + 1]);
-    //         });
-
-    //         // Approve all comments
-    //         MockComment::where('approved', 0)->update(['approved' => 1]);
-
-    //         // Increment views of all posts
-    //         MockPost::get()->each(function ($post) {
-    //             $post->increment('views', 10);
-    //         });
-    //     }, 3); // Retry up to 3 times if deadlock occurs
-
-    //     // Assert: Users updated
-    //     $updatedAges = MockUser::where('status', 'active')->pluck('age')->toArray();
-    //     $this->assertEquals([31, 26], $updatedAges); // John:30→31, Jane:25→26
-
-    //     // Assert: Comments approved
-    //     $approvedComments = MockComment::where('approved', 0)->count();
-    //     $this->assertEquals(0, $approvedComments);
-
-    //     // Assert: Posts views incremented
-    //     $postViews = MockPost::query()->pluck('views')->toArray();
-    //     $this->assertEquals([110, 60, 210, 160], $postViews);
-    // }
-
-    // public function testTransactionOnException()
-    // {
-    //     $initialUserAges = MockUser::query()->pluck('age')->toArray();
-    //     $initialCommentStatus = MockComment::query()->pluck('approved')->toArray();
-
-    //     // Run transaction and throw exception
-    //     try {
-    //         DB::transaction(function () {
-    //             // Update users
-    //             MockUser::where('status', 'active')->get()->each(function ($user) {
-    //                 $user->update(['age' => $user->age + 10]);
-    //             });
-
-    //             // Approve comments
-    //             MockComment::where('approved', 0)->update(['approved' => 1]);
-
-    //             // Simulate failure
-    //             throw new \Exception('Simulated failure');
-    //         }, 3);
-    //     } catch (\Exception $e) {
-    //         // Expected exception
-    //     }
-
-    //     // Changes rolled back
-    //     $currentUserAges = MockUser::query()->pluck('age')->toArray();
-    //     $this->assertEquals($initialUserAges, $currentUserAges);
-
-    //     $currentCommentStatus = MockComment::query()->pluck('approved')->toArray();
-    //     $this->assertEquals($initialCommentStatus, $currentCommentStatus);
-    // }
+        $this->assertCount(0, $users);
+
+        // Where year is greater than 2020
+        $users = db()->bucket('users')
+            ->whereYear('created_at', '>', 2020)
+            ->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereDay(): void
+    {
+        $users = db()->bucket('users')
+            ->whereDay('created_at', 1)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = db()->bucket('users')
+            ->whereDay('created_at',  2)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = db()->bucket('users')
+            ->whereDay('created_at', 3)
+            ->get();
+
+        $this->assertCount(1, $users);
+
+        $users = db()->bucket('users')
+            ->whereDay('created_at', 4)
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereTime(): void
+    {
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '>', '14:00:00')
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '>=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '<=', '10:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '<=', '11:00:00')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = db()->bucket('users')
+            ->whereTime('created_at', '>=', '11:00:00')
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereToday(): void
+    {
+        $users = db()->bucket('users')->whereToday('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereYesterday(): void
+    {
+        $users = db()->bucket('users')->whereYesterday('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereThisMonth(): void
+    {
+        $users = db()->bucket('users')->whereThisMonth('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereLastMonth(): void
+    {
+        $users = db()->bucket('users')->whereLastMonth('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereThisYear(): void
+    {
+        $users = db()->bucket('users')->whereThisYear('created_at')->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereLastYear(): void
+    {
+        $users = db()->bucket('users')->whereLastYear('created_at')->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testWhereDateBetween(): void
+    {
+        $users = db()->bucket('users')
+            ->whereDateBetween('created_at', '2023-01-01', '2025-01-31')
+            ->get();
+
+        $this->assertCount(3, $users);
+
+        $users = db()->bucket('users')
+            ->whereDateBetween('created_at', '2023-01-01', '2023-01-31')
+            ->get();
+
+        $this->assertCount(0, $users);
+    }
+
+    public function testWhereDateTimeBetween(): void
+    {
+        $users = db()->bucket('users')
+            ->whereDateTimeBetween('created_at', '2025-01-01 00:00:00', '2025-10-31 13:59:59')
+            ->get();
+
+        $this->assertCount(0, $users);
+
+        $users = db()->bucket('users')
+            ->whereDateTimeBetween('created_at', '2023-01-01 00:00:00', '2025-10-31 13:59:59')
+            ->get();
+
+        $this->assertCount(3, $users);
+    }
+
+    public function testNestedWhere()
+    {
+        $posts = db()->bucket('posts')
+            ->where('status', true)
+            ->where(function ($query) {
+                $query->where('views', '>', 100)
+                    ->orWhere(function ($q) {
+                        $q->whereYear('created_at', 2024)
+                            ->whereIn('user_id', [1, 2, 3]);
+                    });
+            })
+            ->get();
+
+        // All three posts (id 1, 3, 4) satisfy the query → count = 3
+        $this->assertCount(3, $posts);
+    }
+
+    public function testIf(): void
+    {
+        $posts = db()->bucket('posts')
+            // Executes because true
+            ->if(true, function ($query) {
+                $query->whereDate('created_at', '2024-01-01');
+            })
+            ->get();
+
+        $this->assertCount(1, $posts);
+
+        $posts = db()->bucket('posts')
+            // Does not execute because 0 is falsy
+            ->if(false, function ($query) {
+                $query->whereDate('created_at', '2024-01-01');
+            })
+            ->get();
+
+        $this->assertCount(4, $posts);
+
+        $posts = db()->bucket('posts')
+            ->if(
+                true,
+                // If search is provided, filter by title
+                fn($q) => $q->whereLike('title', 'First Post'),
+
+                // If no search is provided, filter by featured status
+                fn($q) => $q->where('status', '=', true)
+            )
+            ->get();
+
+        $this->assertCount(1, $posts);
+    }
+
+    public function testInsert(): void
+    {
+        db()->bucket('tags')
+            ->insert([
+                'name' => 'Bucket'
+            ]);
+
+        $tag = db()->bucket('tags')->newest()->first();
+
+        $this->assertEquals('Bucket', $tag->name);
+    }
+
+    public function testInsertMany(): void
+    {
+        db()->bucket('tags')->insertMany([
+            [
+                'name' => 'Introducing Doppar',
+            ],
+            [
+                'name' => 'Entity Builder Deep Dive',
+            ],
+            [
+                'name' => 'Working with Multiple Connections',
+            ],
+        ], 1);
+
+        $tag = db()->bucket('tags')->newest()->first();
+
+        $this->assertEquals('Working with Multiple Connections', $tag->name);
+    }
+
+    public function testUpdate(): void
+    {
+        db()->bucket('tags')
+            ->where('id', 1)
+            ->update([
+                'name' => 'Bucket Updated'
+            ]);
+
+        $tag = db()->bucket('tags')->whereName('Bucket Updated')->exists();
+
+        $this->assertTrue($tag);
+    }
+
+    public function testUpsert(): void
+    {
+        $users = [
+            [
+                "name" => "Mahedi",
+                "email" => "mahedi@doppar.com",
+                "age" => 20,
+                'status' => 1,
+                'created_at' => now()
+            ],
+            [
+                "name" => "Aaliba",
+                "email" => "aliba@doppar.com",
+                "age" => 20,
+                'status' => 1,
+                'created_at' => now()
+            ],
+            [
+                "name" => "Mahedi",
+                "email" => "mahedi@doppar.com",
+                "age" => 20,
+                'status' => 1,
+                'created_at' => now()
+            ],
+        ];
+
+        $affectedRows = db()->bucket('users')
+            ->upsert(
+                $users,
+                "email",  // Unique constraint
+                ["name"], // Only update the "name" column if exists
+                true      // Ignore errors (e.g., duplicate key)
+            );
+
+        $this->assertEquals(2, $affectedRows);
+    }
+
+    public function testDelete(): void
+    {
+        $tag = db()->bucket('comments')->where('id', 1)->delete();
+
+        $this->assertTrue($tag);
+    }
+
+    public function testAggregate(): void
+    {
+        $sum = db()->bucket('posts')->sum('views'); // 500
+        $avg = db()->bucket('posts')->avg('views'); // 125
+        $max = db()->bucket('posts')->max('views'); // 200.0
+        $min = db()->bucket('posts')->min('views'); // 50.0
+        $stdDev = db()->bucket('posts')->stdDev('views'); // 55.901699437495
+        $variance = db()->bucket('posts')->variance('views'); // 3125.0
+
+        $this->assertEquals(500, $sum);
+        $this->assertEquals(125, $avg);
+        $this->assertEquals(200.0, $max);
+        $this->assertEquals(50.0, $min);
+        $this->assertEquals(55.9, number_format($stdDev, 1));
+        $this->assertEquals(3125.0, $variance);
+    }
+
+    public function testDistinct(): void
+    {
+        $posts = db()->bucket('posts')->distinct('user_id');
+
+        $this->assertEquals([1, 2], $posts->toArray());
+    }
+
+    public function testConditionalGroupBy(): void
+    {
+        $posts = db()->bucket('posts')
+            ->select(['user_id', 'SUM(views * views) as total_views'])
+            ->groupBy('user_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'total_views' => 35000],
+            ['user_id' => 2, 'total_views' => 40000],
+        ], $posts->toArray());
+    }
+
+    public function testWithCollection(): void
+    {
+        $users = db()->bucket('users')->get()
+            ->map(function ($item) {
+                return [
+                    'name' => $item['name']
+                ];
+            });
+
+        $this->assertEquals([
+            ['name' => 'John Doe'],
+            ['name' => 'Jane Smith'],
+            ['name' => 'Bob Wilson'],
+        ], $users->toArray());
+    }
+
+    public function testMapWithPropertySortcut(): void
+    {
+        // map() with Property Shortcut
+        $users = db()->bucket('users')->get();
+        $names = $users->map->name;
+
+        $this->assertEquals([
+            'John Doe',
+            'Jane Smith',
+            'Bob Wilson',
+        ], $names->toArray());
+    }
+
+    public function testCollectionFilter(): void
+    {
+        $posts = db()->bucket('posts')->get()
+            ->map(function ($item) {
+                return [
+                    'title' => $item['title'],
+                    'status' => $item['status']
+                ];
+            })
+            ->filter(function ($item) {
+                return $item['status'] === 1;
+            });
+
+        $this->assertEquals([
+            ['title' => 'First Post', 'status' => 1],
+            ['title' => 'Jane Post',  'status' => 1],
+            ['title' => 'Third Post', 'status' => 1],
+        ], $posts->toArray());
+    }
+
+    public function testOffsetQuery(): void
+    {
+        $users = db()->bucket('users')
+            ->select('name')
+            ->offset(1)  // Skip the first 1 record
+            ->limit(2)  // Retrieve the next 2 records
+            ->get();
+
+        $this->assertEquals([
+            // ['name' => 'John Doe'], // Should missing from result
+            ['name' => 'Jane Smith'],
+            ['name' => 'Bob Wilson'],
+        ], $users->toArray());
+    }
+
+    public function testEntityBuilderJoin(): void
+    {
+        $users = db()->bucket('users')
+            ->select('posts.user_id', 'users.name as user_name')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+            ['user_id' => 2, 'user_name' => 'Jane Smith'],
+            ['user_id' => 1, 'user_name' => 'John Doe'],
+        ], $users->toArray());
+
+        $users = db()->bucket('users')
+            ->select('posts.user_id', 'users.name as user_name', 'comments.body')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->join('comments', 'posts.id', '=', 'comments.post_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Great post!'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Nice work'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Interesting'],
+            ['user_id' => 2, 'user_name' => 'Jane Smith', 'body' => 'Amazing'],
+            ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Awesome'],
+        ], $users->toArray());
+    }
 }

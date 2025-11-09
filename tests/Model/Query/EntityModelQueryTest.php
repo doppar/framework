@@ -2,15 +2,12 @@
 
 namespace Tests\Unit\Model\Query;
 
-use Tests\Support\Presenter\MockUserPresenter;
-use Tests\Support\Presenter\MockPostPresenter;
 use Tests\Support\Model\MockUser;
 use Tests\Support\Model\MockTag;
 use Tests\Support\Model\MockPost;
 use Tests\Support\Model\MockComment;
 use Tests\Support\MockContainer;
 use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Support\Presenter\PresenterBundle;
 use Phaseolies\Support\Facades\DB;
 use Phaseolies\Support\Collection;
 use Phaseolies\Http\Request;
@@ -18,7 +15,6 @@ use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use PDO;
-use Mockery;
 
 class EntityModelQueryTest extends TestCase
 {
