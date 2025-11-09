@@ -432,21 +432,21 @@ class EntityModelQueryTest extends TestCase
         $this->assertIsArray($user);
     }
 
-    public function TestDynamicWhere(): void
+    public function testDynamicWhere(): void
     {
         $user = MockUser::whereName('John Doe')->first();
 
         $this->assertEquals('John Doe', $user->name);
     }
 
-    public function TestMultipleDynamicWhere(): void
+    public function testMultipleDynamicWhere(): void
     {
         $user = MockUser::whereName('John Doe')->whereStatus('active')->first();
 
         $this->assertEquals('John Doe', $user->name);
     }
 
-    public function TestFirst(): void
+    public function testFirst(): void
     {
         $user = MockUser::first(); // first() from model class
         $userFromBuilderClass = MockUser::where('id', 1)->first(); // first() calling from builder class

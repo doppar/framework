@@ -328,156 +328,73 @@ class EntityBuilderQueryTest extends TestCase
         $this->assertIsArray($tags->toArray());
     }
 
-    // public function testOrderByWithLimit()
-    // {
-    //     $users = MockUser::where('status', 'active')
-    //         ->orderBy('name')
-    //         ->limit(10)
-    //         ->get();
+    public function testOrderByWithLimit()
+    {
+        $users = db()->bucket('users')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
 
-    //     // Jane Smith should come first then John Doe
-    //     // And we have 2 active users
-    //     $this->assertCount(2, $users);
-    //     foreach ($users[0] as $user) {
-    //         $this->assertEquals('Jane Smith', $user->name);
-    //     }
-    // }
+        // And we have 2 active users
+        $this->assertCount(2, $users);
+    }
 
-    // public function testFirstWithWhere()
-    // {
-    //     $user = MockUser::where('status', 'active')->orderBy('name')->first();
-    //     $this->assertEquals('Jane Smith', $user->name);
-    // }
+    public function testFirstWithWhere()
+    {
+        $user = db()->bucket('users')->where('status', 'active')->orderBy('name')->first();
+        $this->assertEquals('Jane Smith', $user->name);
+    }
 
-    // public function testDebug()
-    // {
-    //     $user = MockUser::where('status', 'active')->orderBy('name')->debug();
-    //     $this->assertIsArray($user, 'Debug output should be an array.');
+    public function testToArray(): void
+    {
+        $user = db()->bucket('users')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->toArray();
 
-    //     // Check that all expected keys exist
-    //     $expectedKeys = [
-    //         'sql',
-    //         'bindings',
-    //         'select',
-    //         'where',
-    //         'order',
-    //         'group',
-    //         'limit',
-    //         'offset',
-    //         'joins',
-    //         'eager_load'
-    //     ];
+        $this->assertIsArray($user);
+    }
 
-    //     // Validate SQL structure
-    //     $this->assertEquals(
-    //         'SELECT * FROM users WHERE status = ? ORDER BY name ASC',
-    //         $user['sql'],
-    //         'SQL statement does not match expected query.'
-    //     );
+    public function testDynamicWhere(): void
+    {
+        $user = db()->bucket('users')->whereName('John Doe')->first();
 
-    //     // Validate bindings
-    //     $this->assertIsArray($user['bindings']);
-    //     $this->assertCount(1, $user['bindings']);
-    //     $this->assertEquals('active', $user['bindings'][0]);
+        $this->assertEquals('John Doe', $user->name);
+    }
 
-    //     // Validate where clause
-    //     $this->assertIsArray($user['where']);
-    //     $this->assertEquals(['AND', 'status', '=', 'active'], $user['where'][0]);
+    public function testMultipleDynamicWhere(): void
+    {
+        $user = db()->bucket('users')
+            ->whereName('John Doe')->whereStatus('active')->first();
 
-    //     // Validate order clause
-    //     $this->assertIsArray($user['order']);
-    //     $this->assertEquals(['name', 'ASC'], $user['order'][0]);
+        $this->assertEquals('John Doe', $user->name);
+    }
 
-    //     // Validate optional fields
-    //     $this->assertEmpty($user['group']);
-    //     $this->assertNull($user['limit']);
-    //     $this->assertNull($user['offset']);
-    //     $this->assertEmpty($user['joins']);
-    //     $this->assertEmpty($user['eager_load']);
-    // }
+    public function testFirst(): void
+    {
+        $user = db()->bucket('users')->first();
+        $userFromBuilderClass = db()->bucket('users')->where('id', 1)->first();
+        $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('John Doe', $userFromBuilderClass->name);
+    }
 
-    // // public function testDumpSql()
-    // // {
-    // //     $builder = MockUser::where('status', 'active')->orderBy('name')->dumpSql();
+    public function testGroupBy(): void
+    {
+        $user = db()->bucket('users')
+            ->orderBy('id', 'desc')->groupBy('name')->get();
 
-    // //     $this->assertInstanceOf(
-    // //         \Phaseolies\Database\Entity\Builder::class,
-    // //         $builder,
-    // //         'dumpSql() should return a Builder instance.'
-    // //     );
-    // // }
+        $this->assertCount(3, $user);
+    }
 
-    // public function testwithMemoryUsage()
-    // {
-    //     $memoryUsages = MockUser::where('status', 'active')->orderBy('name')->get()->withMemoryUsage();
+    public function testToSql(): void
+    {
+        $user = db()->bucket('users')->where('status', 'active')->toSql();
 
-    //     $this->assertIsNotFloat($memoryUsages);
-    //     $this->assertGreaterThan(2, $memoryUsages);
-    // }
-
-    // public function testToArray(): void
-    // {
-    //     $user = MockUser::where('status', 'active')
-    //         ->orderBy('name')
-    //         ->limit(10)
-    //         ->get()
-    //         ->toArray();
-
-    //     $this->assertIsArray($user);
-    // }
-
-    // public function TestDynamicWhere(): void
-    // {
-    //     $user = MockUser::whereName('John Doe')->first();
-
-    //     $this->assertEquals('John Doe', $user->name);
-    // }
-
-    // public function TestMultipleDynamicWhere(): void
-    // {
-    //     $user = MockUser::whereName('John Doe')->whereStatus('active')->first();
-
-    //     $this->assertEquals('John Doe', $user->name);
-    // }
-
-    // public function TestFirst(): void
-    // {
-    //     $user = MockUser::first(); // first() from model class
-    //     $userFromBuilderClass = MockUser::where('id', 1)->first(); // first() calling from builder class
-
-    //     $this->assertEquals('John Doe', $user->name);
-    //     $this->assertEquals('John Doe', $userFromBuilderClass->name);
-    // }
-
-    // public function testGroupBy(): void
-    // {
-    //     $user = MockUser::orderBy('id', 'desc')->groupBy('name')->get();
-
-    //     $this->assertCount(3, $user);
-    // }
-
-    // public function testRandom(): void
-    // {
-    //     $user = MockUser::random(10)->get();
-
-    //     $this->assertCount(3, $user);
-    // }
-
-    // public function testToSql(): void
-    // {
-    //     $user = MockUser::where('status', 'active')->toSql();
-
-    //     $this->assertEquals('SELECT * FROM users WHERE status = ?', $user);
-    // }
-
-    // public function testFind(): void
-    // {
-    //     $user = MockUser::where('status', 'active')->find(1); // find() from builder class
-    //     $userFromModel = MockUser::find(1); // find() from model class
-
-    //     $this->assertEquals('John Doe', $user->name);
-    //     $this->assertEquals('John Doe', $userFromModel->name);
-    // }
+        $this->assertEquals('SELECT * FROM users WHERE status = ?', $user);
+    }
 
     // public function testFindWithArrayParams(): void
     // {
