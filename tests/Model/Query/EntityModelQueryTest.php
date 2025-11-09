@@ -11,6 +11,7 @@ use Tests\Support\Model\MockComment;
 use Tests\Support\MockContainer;
 use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\Presenter\PresenterBundle;
+use Phaseolies\Support\Facades\DB;
 use Phaseolies\Support\Collection;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Database;
@@ -29,6 +30,7 @@ class EntityModelQueryTest extends TestCase
         $container = new Container();
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => UrlGenerator::class);
+        $container->bind('db', fn() => new Database('default'));
 
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -1587,5 +1589,67 @@ class EntityModelQueryTest extends TestCase
             );
 
         $this->assertCount(3, $processed);
+    }
+
+    public function testTransactionWhenNoException()
+    {
+        // Run transaction
+        DB::transaction(function () {
+            // Update all active users
+            MockUser::where('status', 'active')->get()->each(function ($user) {
+                $user->update(['age' => $user->age + 1]);
+            });
+
+            // Approve all comments
+            MockComment::where('approved', 0)->update(['approved' => 1]);
+
+            // Increment views of all posts
+            MockPost::get()->each(function ($post) {
+                $post->increment('views', 10);
+            });
+        }, 3); // Retry up to 3 times if deadlock occurs
+
+        // Assert: Users updated
+        $updatedAges = MockUser::where('status', 'active')->pluck('age')->toArray();
+        $this->assertEquals([31, 26], $updatedAges); // John:30→31, Jane:25→26
+
+        // Assert: Comments approved
+        $approvedComments = MockComment::where('approved', 0)->count();
+        $this->assertEquals(0, $approvedComments);
+
+        // Assert: Posts views incremented
+        $postViews = MockPost::query()->pluck('views')->toArray();
+        $this->assertEquals([110, 60, 210, 160], $postViews);
+    }
+
+    public function testTransactionOnException()
+    {
+        $initialUserAges = MockUser::query()->pluck('age')->toArray();
+        $initialCommentStatus = MockComment::query()->pluck('approved')->toArray();
+
+        // Run transaction and throw exception
+        try {
+            DB::transaction(function () {
+                // Update users
+                MockUser::where('status', 'active')->get()->each(function ($user) {
+                    $user->update(['age' => $user->age + 10]);
+                });
+
+                // Approve comments
+                MockComment::where('approved', 0)->update(['approved' => 1]);
+
+                // Simulate failure
+                throw new \Exception('Simulated failure');
+            }, 3);
+        } catch (\Exception $e) {
+            // Expected exception
+        }
+
+        // Changes rolled back
+        $currentUserAges = MockUser::query()->pluck('age')->toArray();
+        $this->assertEquals($initialUserAges, $currentUserAges);
+
+        $currentCommentStatus = MockComment::query()->pluck('approved')->toArray();
+        $this->assertEquals($initialCommentStatus, $currentCommentStatus);
     }
 }

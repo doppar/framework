@@ -12,6 +12,8 @@ class MockPost extends Model
 
     protected $connection = 'default';
 
+    protected $timeStamps = false;
+
     public function __active($query)
     {
         return $query->where('status', true);
