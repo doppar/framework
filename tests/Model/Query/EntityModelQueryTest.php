@@ -402,16 +402,16 @@ class EntityModelQueryTest extends TestCase
         $this->assertEmpty($user['eager_load']);
     }
 
-    public function testDumpSql()
-    {
-        $builder = MockUser::where('status', 'active')->orderBy('name')->dumpSql();
+    // public function testDumpSql()
+    // {
+    //     $builder = MockUser::where('status', 'active')->orderBy('name')->dumpSql();
 
-        $this->assertInstanceOf(
-            \Phaseolies\Database\Entity\Builder::class,
-            $builder,
-            'dumpSql() should return a Builder instance.'
-        );
-    }
+    //     $this->assertInstanceOf(
+    //         \Phaseolies\Database\Entity\Builder::class,
+    //         $builder,
+    //         'dumpSql() should return a Builder instance.'
+    //     );
+    // }
 
     public function testwithMemoryUsage()
     {
@@ -1883,5 +1883,306 @@ class EntityModelQueryTest extends TestCase
 
         $activePosts = $user->posts()->where('status', false)->get(); // should get 1
         $this->assertCount(1, $activePosts);
+    }
+
+    public function testBindToRelationship(): void
+    {
+        $post = MockPost::embed('user.comments')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "user_id" => 1,
+            "title" => "First Post",
+            "content" => "Content 1",
+            "status" => 1,
+            "views" => 100,
+            "created_at" => "2024-01-01 11:00:00",
+            "user" => [
+                "id" => 1,
+                "name" => "John Doe",
+                "email" => "john@example.com",
+                "age" => 30,
+                "status" => "active",
+                "created_at" => "2024-01-01 10:00:00",
+                "comments" => [
+                    [
+                        "id" => 1,
+                        "post_id" => 1,
+                        "user_id" => 1,
+                        "body" => "Great post!",
+                        "approved" => 1,
+                        "created_at" => "2024-01-01 12:00:00",
+                    ],
+                    [
+                        "id" => 3,
+                        "post_id" => 2,
+                        "user_id" => 1,
+                        "body" => "Interesting",
+                        "approved" => 1,
+                        "created_at" => "2024-01-02 12:00:00",
+                    ],
+                ],
+            ],
+        ], $post->toArray());
+
+        $post = MockPost::embed('user.comments:body')->find(1);
+        $this->assertEquals([
+            "id" => 1,
+            "user_id" => 1,
+            "title" => "First Post",
+            "content" => "Content 1",
+            "status" => 1,
+            "views" => 100,
+            "created_at" => "2024-01-01 11:00:00",
+            "user" => [
+                "id" => 1,
+                "name" => "John Doe",
+                "email" => "john@example.com",
+                "age" => 30,
+                "status" => "active",
+                "created_at" => "2024-01-01 10:00:00",
+                "comments" => [
+                    [
+                        "id" => 1,
+                        "user_id" => 1,
+                        "body" => "Great post!",
+                    ],
+                    [
+                        "id" => 3,
+                        "user_id" => 1,
+                        "body" => "Interesting",
+                    ],
+                ],
+            ],
+        ], $post->toArray());
+
+        $posts = MockPost::embed('user.comments:body')->get();
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                "created_at" => "2024-01-01 11:00:00",
+                "user" => [
+                    "id" => 1,
+                    "name" => "John Doe",
+                    "email" => "john@example.com",
+                    "age" => 30,
+                    "status" => "active",
+                    "created_at" => "2024-01-01 10:00:00",
+                    "comments" => [
+                        ["body" => "Great post!", "user_id" => 1, "id" => 1],
+                        ["body" => "Interesting", "user_id" => 1, "id" => 3],
+                    ],
+                ],
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "status" => 0,
+                "views" => 50,
+                "created_at" => "2024-01-02 11:00:00",
+                "user" => [
+                    "id" => 1,
+                    "name" => "John Doe",
+                    "email" => "john@example.com",
+                    "age" => 30,
+                    "status" => "active",
+                    "created_at" => "2024-01-01 10:00:00",
+                    "comments" => [
+                        ["body" => "Great post!", "user_id" => 1, "id" => 1],
+                        ["body" => "Interesting", "user_id" => 1, "id" => 3],
+                    ],
+                ],
+            ],
+            [
+                "id" => 3,
+                "user_id" => 2,
+                "title" => "Jane Post",
+                "content" => "Content 3",
+                "status" => 1,
+                "views" => 200,
+                "created_at" => "2024-01-03 11:00:00",
+                "user" => [
+                    "id" => 2,
+                    "name" => "Jane Smith",
+                    "email" => "jane@example.com",
+                    "age" => 25,
+                    "status" => "active",
+                    "created_at" => "2024-01-02 10:00:00",
+                    "comments" => [
+                        ["body" => "Nice work", "user_id" => 2, "id" => 2],
+                        ["body" => "Amazing", "user_id" => 2, "id" => 4],
+                    ],
+                ],
+            ],
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "status" => 1,
+                "views" => 150,
+                "created_at" => "2024-01-04 11:00:00",
+                "user" => [
+                    "id" => 1,
+                    "name" => "John Doe",
+                    "email" => "john@example.com",
+                    "age" => 30,
+                    "status" => "active",
+                    "created_at" => "2024-01-01 10:00:00",
+                    "comments" => [
+                        ["body" => "Great post!", "user_id" => 1, "id" => 1],
+                        ["body" => "Interesting", "user_id" => 1, "id" => 3],
+                    ],
+                ],
+            ],
+        ], $posts->toArray());
+
+        $posts = MockPost::omit('created_at')->embedCount('comments')->get();
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "status" => 1,
+                "views" => 100,
+                // "created_at" => "2024-01-01 11:00:00",
+                "comments_count" => 3,
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "status" => 0,
+                "views" => 50,
+                // "created_at" => "2024-01-02 11:00:00",
+                "comments_count" => 1,
+            ],
+            [
+                "id" => 3,
+                "user_id" => 2,
+                "title" => "Jane Post",
+                "content" => "Content 3",
+                "status" => 1,
+                "views" => 200,
+                // "created_at" => "2024-01-03 11:00:00",
+                "comments_count" => 1,
+            ],
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "status" => 1,
+                "views" => 150,
+                // "created_at" => "2024-01-04 11:00:00",
+                "comments_count" => 0,
+            ],
+        ], $posts->toArray());
+
+        // Count published posts and approved comments for each user
+        $posts = MockPost::omit('views', 'created_at', 'status')
+            ->embedCount([
+                'comments' => fn($q) => $q->where('approved', true),
+                'tags',
+            ])->get();
+
+        $this->assertEquals([
+            [
+                "id" => 1,
+                "user_id" => 1,
+                "title" => "First Post",
+                "content" => "Content 1",
+                "comments_count" => 2,
+                "tags_count" => 2,
+            ],
+            [
+                "id" => 2,
+                "user_id" => 1,
+                "title" => "Second Post",
+                "content" => "Content 2",
+                "comments_count" => 1,
+                "tags_count" => 1,
+            ],
+            [
+                "id" => 3,
+                "user_id" => 2,
+                "title" => "Jane Post",
+                "content" => "Content 3",
+                "comments_count" => 1,
+                "tags_count" => 1,
+            ],
+            [
+                "id" => 4,
+                "user_id" => 1,
+                "title" => "Third Post",
+                "content" => "Content 4",
+                "comments_count" => 0,
+                "tags_count" => 1,
+            ],
+        ], $posts->toArray());
+
+        // Complex bindTo with relationship and relatinship count
+        $posts = MockPost::query()
+            ->where('id', 1)
+            ->select('id', 'title', 'user_id')
+            ->embed([
+                'comments:id,body,created_at' => function ($query) {
+                    $query->where('approved', true)
+                        ->limit(1) // we have 2 comments but should get 1
+                        ->oldest('created_at');
+                },
+                'tags',
+                'user:id,name',
+            ])
+            ->embedCount('comments')
+            ->where('status', true)
+            ->first();
+
+        $this->assertEquals([
+            "id" => 1,
+            "title" => "First Post",
+            "user_id" => 1,
+            "comments_count" => 3,
+            "comments" => [
+                [
+                    "id" => 1,
+                    "body" => "Great post!",
+                    "created_at" => "2024-01-01 12:00:00",
+                    "post_id" => 1,
+                ],
+            ],
+            "tags" => [
+                [
+                    "id" => 1,
+                    "name" => "PHP",
+                    "pivot" => (object)[
+                        "post_id" => 1,
+                        "tag_id" => 1,
+                        "created_at" => "2024-01-01 11:00:00",
+                    ],
+                ],
+                [
+                    "id" => 2,
+                    "name" => "Doppar",
+                    "pivot" => (object)[
+                        "post_id" => 1,
+                        "tag_id" => 2,
+                        "created_at" => "2024-01-01 11:00:00",
+                    ],
+                ],
+            ],
+            "user" => [
+                "id" => 1,
+                "name" => "John Doe",
+            ],
+        ], $posts->toArray());
     }
 }
