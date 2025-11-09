@@ -5,8 +5,11 @@ namespace Tests\Unit\Model\Query;
 use Tests\Support\Presenter\MockUserPresenter;
 use Tests\Support\Presenter\MockPostPresenter;
 use Tests\Support\Model\MockUser;
+use Tests\Support\Model\MockTag;
 use Tests\Support\Model\MockPost;
+use Tests\Support\Model\MockComment;
 use Tests\Support\MockContainer;
+use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\Presenter\PresenterBundle;
 use Phaseolies\Support\Collection;
 use Phaseolies\Http\Request;
@@ -14,9 +17,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use PDO;
-use Phaseolies\Support\UrlGenerator;
-use Tests\Support\Model\MockComment;
-use Tests\Support\Model\MockTag;
+use Mockery;
 
 class EntityModelQueryTest extends TestCase
 {
@@ -1477,5 +1478,59 @@ class EntityModelQueryTest extends TestCase
             ['user_id' => 2, 'user_name' => 'Jane Smith', 'body' => 'Amazing'],
             ['user_id' => 1, 'user_name' => 'John Doe',  'body' => 'Awesome'],
         ], $users->toArray());
+    }
+
+    public function testChunk(): void
+    {
+        $processed = collect();
+
+        MockUser::query()
+            ->chunk(1, function (Collection $users) use (&$processed) {
+                foreach ($users as $user) {
+                    $processed->push($user->id);
+                }
+            });
+
+        // We have 3 users
+        $this->assertCount(3, $processed);
+
+        $mock = Mockery::mock();
+        $mock->shouldReceive('handle')->times(3);
+
+        MockUser::query()
+            ->where('status', true)
+            ->chunk(1, function (Collection $users) use ($mock) {
+                $mock->handle($users);
+            });
+
+        // Fibar based chunk with concurrency
+        $processed = collect();
+
+        MockUser::query()
+            ->fchunk(
+                chunkSize: 100,
+                processor: function (Collection $users) use (&$processed) {
+                    foreach ($users as $user) {
+                        $processed->push($user->id);
+                    }
+                },
+                concurrency: 4
+            );
+
+        // We have 3 users
+        $this->assertCount(3, $processed);
+    }
+
+    public function testCursor(): void
+    {
+        $processed = collect();
+
+        MockUser::query()
+            ->cursor(function ($user) use (&$processed) {
+                $processed->push($user->id);
+            });
+
+        // Assert that all 3 users were processed
+        $this->assertCount(3, $processed);
     }
 }
