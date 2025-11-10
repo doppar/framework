@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Error;
+namespace Phaseolies\Error\Utils;
 
 class Highlighter
 {

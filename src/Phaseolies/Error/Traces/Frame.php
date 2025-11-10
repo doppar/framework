@@ -2,7 +2,7 @@
 
 namespace Phaseolies\Error\Traces;
 
-use Phaseolies\Error\Highlighter;
+use Phaseolies\Error\Utils\Highlighter;
 
 class Frame
 {
@@ -113,9 +113,9 @@ class Frame
         return $this->class . $this->type . $this->function . '()';
     }
 
-    public static function fromTrace(array $trace): self
+    public static function fromTrace(array $trace): static
     {
-        return new self($trace);
+        return new static($trace);
     }
 
     public function getCodeLinesContent(): string
@@ -158,6 +158,6 @@ class Frame
     // https://www.php.net/manual/en/language.oop5.magic.php#object.set-state
     public static function __set_state($data): Frame
     {
-        return new self($data);
+        return new static($data);
     }
 }

@@ -4,6 +4,8 @@ namespace Phaseolies\Error;
 
 use Phaseolies\Application;
 use Phaseolies\Error\Traces\Frame;
+use Phaseolies\Error\Utils\ExceptionMarkdownReport;
+use Phaseolies\Error\Utils\Highlighter;
 use Phaseolies\Http\Controllers\Controller;
 use Throwable;
 
@@ -118,12 +120,6 @@ class WebErrorRenderer
         return [
             'params' => request()->getRouteParams()
         ];
-    }
-
-    private function getAuthContext(): array
-    {
-
-        return [];
     }
 
     private function buildContents($codeLines)

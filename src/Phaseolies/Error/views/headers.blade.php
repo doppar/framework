@@ -16,7 +16,7 @@
         >
             <div class="flex-1 min-w-0">
                 <div class="font-mono text-lg font-bold truncate">Headers</div>
-                <div class="text-xs text-neutral-500 font-mono truncate">expand to see all headers</div>
+                <div class="text-xs text-neutral-500 font-mono truncate">HTTP Request Headers</div>
             </div>
             <svg class="accordion-arrow w-5 h-5 text-neutral-400 transition-transform duration-200 shrink-0"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
