@@ -6,7 +6,7 @@ namespace Phaseolies\Utilities\Attributes;
 final class Model
 {
     public function __construct(
-        public readonly ?string $column = 'id',
+        public readonly ?string $column = null,
         public readonly bool $exception = false,
     ) {}
 }

@@ -1471,11 +1471,7 @@ class Router extends Kernel
         $modelRouteKey = $modelInstance->getRouteKeyName();
         $modelPrimaryKey = $modelInstance->getPrimaryKey();
 
-        // First giving priority to global model key name
-        $column = $modelRouteKey === $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
-
-        // If #[Model] contains column, forcefully overriding previous colum
-        $column = $modelAttribute->column !== $modelPrimaryKey ? $modelAttribute->column : $modelRouteKey;
+        $column = $modelAttribute->column ?? $modelRouteKey;
         $exception = $modelAttribute->exception;
 
         if (!isset($routeParams[$paramName])) {
