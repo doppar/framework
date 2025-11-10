@@ -1,7 +1,7 @@
 <div 
     id="single-accordion-container"
     data-open-by-default
-    class=" dark:bg-neutral-900 bg-neutral-900/[1%]"
+    class=" dark:bg-neutral-900 bg-neutral-900/[1%] overflow-hidden rounded-lg"
 >
     <div
         class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 border-dashed"

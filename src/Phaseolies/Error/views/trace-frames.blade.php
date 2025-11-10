@@ -8,7 +8,7 @@
         class="frame border border-neutral-200 dark:border-neutral-800 border-dashed rounded-lg overflow-hidden transition-all duration-200"
         data-frame="{{ $index }}"
       >
-        <div data-open-by-default class="frame-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer">
+        <div class="frame-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer">
           <span
             class="frame-number flex items-center justify-center w-8 h-8 bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded font-mono text-xs font-semibold shrink-0">{{ $index + 1 }}</span>
           <div class="flex-1 min-w-0">

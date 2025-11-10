@@ -9,17 +9,14 @@
 
     <script>
         const loadDarkMode = () => {
-            const theme = localStorage.getItem('theme') ?? 'system'
+            const storedTheme = localStorage.getItem('theme');
+            const theme = storedTheme !== null ? storedTheme : 'system';
 
-            if (
-                theme === 'dark' ||
-                (theme === 'system' &&
-                    window.matchMedia('(prefers-color-scheme: dark)')
-                    .matches)
-            ) {
-                document.documentElement.classList.add('dark')
+            if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
             }
         }
+
         loadDarkMode();
     </script>
 </head>
@@ -87,7 +84,7 @@
         }
 
         .code-line-error {
-            @apply inline-flex w-full bg-red-500/10 border-l-4 border-l-red-500 py-0.5 ;
+            @apply inline-flex my-1 w-full bg-red-500/10 border-l-4 border-l-red-500 py-0.5 ;
             animation: pulse-slow 2s ease-in-out infinite;
         }
 
@@ -105,7 +102,7 @@
         }
 
         .info-card {
-            @apply rounded-lg border-[1.2px] dark:bg-neutral-950/30 bg-neutral-50/50 backdrop-blur-sm dark:border-white/5 border-neutral-900/5 p-4 transition-all duration-200 hover:shadow-lg hover:scale-[1.01];
+            @apply rounded-lg border-[1.2px] dark:bg-neutral-950/30 bg-neutral-50/50 backdrop-blur-sm dark:border-white/5 border-neutral-900/5 p-4 transition-all duration-200 ;
         }
 
         .info-label {
@@ -147,7 +144,7 @@
                 <div class="flex flex-col items-end gap-3">
                     <div class="flex gap-2">
                         <button id="themeToggle" class="p-2.5 cursor-pointer rounded-lg hover:bg-neutral-100 dark:hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-95 border border-neutral-200 dark:border-white/10" aria-label="Toggle theme">
-                            <svg id="sunIcon" class="hidden dark:block w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                            <svg id="sunIcon" class="hidden dark:block size-5" xmlns="http://www.w3.org/2000/svg"
                                 fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
@@ -211,7 +208,7 @@
 
             {{-- Code Content --}}
             <div class="rounded-lg overflow-hidden border border-neutral-200 dark:border-white/10">
-                <pre class="[&_.code-line:nth-child(odd)]:bg-neutral-100/30 [&_.code-line:nth-child(odd)]:dark:bg-neutral-950/30 overflow-x-auto p-4">{!! $contents !!}</pre>
+                <pre class="[&_.code-line:nth-child(odd)]:bg-neutral-200/30 [&_.code-line:nth-child(odd)]:dark:bg-neutral-950/20 overflow-x-auto p-4">{!! $contents !!}</pre>
             </div>
 
             <div class="mt-8">
@@ -244,7 +241,7 @@
         {{-- System Information --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
-                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z">
                     </path>
@@ -266,7 +263,7 @@
         {{-- Memory Usage --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
-                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                 </svg>
@@ -287,7 +284,7 @@
         {{-- User Information --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
-                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                 </svg>
@@ -319,7 +316,7 @@
     <div class="info-card mb-5">
         <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
-                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
                     </path>
@@ -352,7 +349,7 @@
     {{-- Routing Details --}}
     <div class="info-card mb-5">
         <div class="flex items-center gap-2 mb-4">
-            <svg class="w-5 h-5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
             </svg>
@@ -360,7 +357,7 @@
         </div>
 
         {{-- Controller & Middleware Info --}}
-        @if (!empty($routing['controller']) || !empty($routing['middleware']))
+        {{-- @if (!empty($routing['controller']) || !empty($routing['middleware']))
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 @if (!empty($routing['controller']))
                     <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
@@ -380,7 +377,7 @@
                     </div>
                 @endif
             </div>
-        @endif
+        @endif --}}
 
         {{-- Route Parameters --}}
         <div>
@@ -455,7 +452,6 @@
 
     ThemeManager.init();
 
-    // Copy to Clipboard functionality
     document.getElementById('copyToClipBoard')?.addEventListener('click', async function() {
         const mdContent = document.getElementById('mdContent')?.value;
         if (!mdContent) return;
@@ -465,7 +461,9 @@
 
             // Visual feedback with success animation
             const btn = this;
+
             const originalHTML = btn.innerHTML;
+            
             btn.innerHTML =
                 '<svg class="size-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
             btn.classList.add('bg-green-500/10');
@@ -474,11 +472,14 @@
                 btn.innerHTML = originalHTML;
                 btn.classList.remove('bg-green-500/10');
             }, 2000);
+
         } catch (err) {
             console.error('Failed to copy:', err);
             // Show error feedback
             const btn = this;
+
             btn.classList.add('bg-red-500/10');
+            
             setTimeout(() => {
                 btn.classList.remove('bg-red-500/10');
             }, 1000);
@@ -580,27 +581,6 @@
             contentSelector: '.frame-content',
             arrowSelector: '.frame-arrow',
             toggleAllBtnSelector: '#toggleAllFramesBtn',
-        });
-
-        // Setup accordion for request body
-        setupAccordion('body', {
-            headerSelector: '.accordion-header',
-            contentSelector: '.accordion-content',
-            arrowSelector: '.accordion-arrow',
-        });
-
-        // Setup accordion for session
-        setupAccordion('body', {
-            headerSelector: '.session-accordion-header',
-            contentSelector: '.session-accordion-content',
-            arrowSelector: '.session-accordion-arrow',
-        });
-
-        // Setup accordion for cookies
-        setupAccordion('body', {
-            headerSelector: '.cookies-accordion-header',
-            contentSelector: '.cookies-accordion-content',
-            arrowSelector: '.cookies-accordion-arrow',
         });
     });
 </script>
