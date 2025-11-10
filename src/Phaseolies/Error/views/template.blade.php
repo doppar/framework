@@ -123,14 +123,14 @@
     
     {{-- Top Bar --}}
     <div class="top-bar rounded-lg mb-6 group">
-        <div class="relative overflow-hidden border-[1.2px] border-dashed dark:bg-gradient-to-br dark:from-red-500/5 dark:to-transparent bg-gradient-to-br from-red-500/3 to-transparent dark:border-red-500/20 border-red-500/30 p-6 rounded-lg transition-all duration-300 hover:shadow-2xl hover:shadow-red-500/10">
-            {{-- Animated background blur --}}
-            <div class="absolute -top-24 -right-24 w-64 h-64 bg-red-500/20 rounded-full blur-3xl animate-pulse opacity-50"></div>
+        <div class="relative overflow-hidden border-[1.2px] border-dashed dark:bg-gradient-to-br dark:from-red-500/5 dark:to-transparent bg-gradient-to-br from-red-500/3 to-transparent dark:border-red-500/20 border-red-500/30 p-6 rounded-lg transition-all duration-300 shadow-xl shadow-red-500/5 ">
+            {{-- niice background blur --}}
+            <div class="absolute -top-24 -right-24 w-64 h-64 bg-red-500/20 rounded-full blur-3xl opacity-50"></div>
             
             <div class="flex flex-col md:flex-row md:items-start gap-4 relative z-10">
                 {{-- Error Icon --}}
-                <div class="flex-shrink-0 p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/20 group-hover:scale-110 transition-transform duration-300">
-                    <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="flex-shrink-0 p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/20  transition-transform duration-300">
+                    <svg class="size-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
                 </div>
@@ -139,7 +139,7 @@
                     <div class="text-sm font-bold text-red-600 dark:text-red-400 mb-2 tracking-wide uppercase">
                         {{ $exception_class }}
                     </div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-neutral-900 dark:text-white mb-1 break-words leading-tight">
+                    <h1 class="text-2xl md:text-3xl font-semibold text-neutral-900 dark:text-white mb-1 break-words leading-tight">
                         {{ $error_message }}
                     </h1>
                 </div>
@@ -200,9 +200,9 @@
     <div class="flex flex-col gap-5">
         <main class="rounded-lg border-[1.2px] border-dashed w-full dark:bg-white/[2%] bg-neutral-50/50 backdrop-blur-sm border-neutral-900/10 dark:border-white/10 p-4 hover:shadow-xl transition-all duration-300">
             {{-- File Header --}}
-            <div class="flex items-center gap-3 bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-white/10 dark:to-white/5 rounded-lg px-4 py-3 mb-4 border border-neutral-200 dark:border-white/10">
+            <div class="flex items-center gap-3 bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-white/7 dark:to-white/5 rounded-lg px-4 py-3 mb-4 border border-neutral-200 dark:border-white/10">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                    stroke="currentColor" class="size-6 text-blue-500">
+                    stroke="currentColor" class="size-6 ">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
@@ -217,7 +217,7 @@
             <div class="mt-8">
                 <div class="flex items-center justify-between mb-4 px-2">
                     <h3 class="text-lg font-bold flex items-center gap-3">
-                        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>

@@ -40,7 +40,7 @@ class WebErrorRenderer
             ];
         }
 
-        $user = auth()->user();
+        $user = auth()?->user();
 
         $userInfo = $user ? [
             'id' => $user->id,
@@ -72,7 +72,6 @@ class WebErrorRenderer
             'request_method'  => request()->getMethod(),
             'request_url'     => trim(request()->fullUrl(), '/'),
             'timestamp'       => now()->toDayDateTimeString(),
-            // 
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
             'platform'        => php_uname(),
             'memory_usage'    => memory_get_usage(true),
