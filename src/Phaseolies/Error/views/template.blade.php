@@ -208,7 +208,7 @@
 
             {{-- Code Content --}}
             <div class="rounded-lg overflow-hidden border border-neutral-200 dark:border-white/10">
-                <pre class="[&_.code-line:nth-child(odd)]:bg-neutral-200/30 [&_.code-line:nth-child(odd)]:dark:bg-neutral-950/20 overflow-x-auto p-4">{!! $contents !!}</pre>
+                <pre class="[overflow-x-auto p-4">{!! $contents !!}</pre>
             </div>
 
             <div class="mt-8">
