@@ -18,7 +18,7 @@ class RequestAbortion
      */
     public function abort(int $code, string $message = '', array $headers = []): void
     {
-        $shouldJsonResponse = request()->isAjax() || request()->is('/api/*');
+        $shouldJsonResponse = request()->isAjax() || request()->isApiRequest();
 
         $customPath = base_path("resources/views/errors/{$code}.blade.php");
         $packagePath = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$code}.blade.php");

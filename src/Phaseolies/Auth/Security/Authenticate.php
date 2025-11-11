@@ -387,6 +387,6 @@ class Authenticate
      */
     private function isApiRequest(): bool
     {
-        return (bool) request()->is('/api/*');
+        return (bool) request()->isApiRequest();
     }
 }

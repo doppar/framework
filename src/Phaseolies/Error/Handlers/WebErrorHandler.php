@@ -34,6 +34,6 @@ class WebErrorHandler implements ErrorHandlerInterface
      */
     public function supports(): bool
     {
-        return !request()->isAjax() && !request()->is('/api/*') && PHP_SAPI !== 'cli';
+        return !request()->isAjax() && !request()->isApiRequest() && PHP_SAPI !== 'cli';
     }
 }

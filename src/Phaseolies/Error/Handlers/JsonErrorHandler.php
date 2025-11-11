@@ -39,6 +39,6 @@ class JsonErrorHandler implements ErrorHandlerInterface
      */
     public function supports(): bool
     {
-        return request()->isAjax() || request()->is('/api/*');
+        return request()->isAjax() || request()->isApiRequest();
     }
 }
