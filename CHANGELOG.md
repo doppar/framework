@@ -1,5 +1,15 @@
 # Release Notes
 
+## v3.0.0-beta.6 - 2025-11-11
+
+* presenter and presenter bundle relationship unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/111
+* Update some namespace for unit test class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/112
+* EntityModelQueryTest for all the entity builder model query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/113
+* Improve route model binding override model key code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/114
+* Improve exception page by [@CharrafiMed](https://github.com/CharrafiMed) in https://github.com/doppar/framework/pull/102
+* Added proper PHP doc for error page related class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/115
+* Remove background from code block in exception page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/116
+
 ## v3.0.0-beta.5 - 2025-11-06
 
 * Nested relationship deep unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/108
