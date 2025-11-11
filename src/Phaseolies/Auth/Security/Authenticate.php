@@ -156,19 +156,15 @@ class Authenticate
         }
 
         if ($this->isApiRequest()) {
-            if (!class_exists(\Doppar\Flarion\ApiAuthenticate::class)) {
-                throw new \RuntimeException(
-                    'Please install [doppar/flarion] package before using API token access.'
-                );
+            $hasAuthApi = false;
+            foreach (app('route')->getCurrentMiddlewareNames() ?? [] as $middleware) {
+                if (str_starts_with($middleware, 'auth-api')) {
+                    $hasAuthApi = true;
+                    break;
+                }
             }
 
-            $middlewares = app('route')->getCurrentMiddlewareNames();
-
-            if (in_array('auth-api', $middlewares ?? [])) {
-                return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
-            }
-
-            return null;
+            return $hasAuthApi ? app(\Doppar\Flarion\ApiAuthenticate::class)->user() : null;
         }
 
         if (session()->has('cache_auth_user')) {
