@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.7 - 2025-11-11
+
+* Improved auth user() method to handle auth-api by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/117
+
 ## v3.0.0-beta.6 - 2025-11-11
 
 * presenter and presenter bundle relationship unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/111
