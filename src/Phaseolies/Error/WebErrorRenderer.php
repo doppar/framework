@@ -47,16 +47,14 @@ class WebErrorRenderer
             'email' => $user->email ?? 'N/A',
         ] : null;
 
-
         date_default_timezone_set(config('app.timezone'));
-
 
         $mdReport = new ExceptionMarkdownReport($exception);
 
-        // setup the controller to point out to different views location 
+        // setup the controller to point out to different views location
         $controller = $this->setupController();
 
-        // to start a fresh view 
+        // to start a fresh view
         $this->clearOutputBufferIfActive();
 
         return $controller->render('template', [
@@ -84,10 +82,13 @@ class WebErrorRenderer
         ]);
     }
 
-
+    /**
+     * Initialize and configure a Controller instance.
+     *
+     * @return Controller
+     */
     private function setupController(): Controller
     {
-
         $controller = new Controller();
 
         $relative = str_replace(base_path() . '/', '', __DIR__);
@@ -99,14 +100,25 @@ class WebErrorRenderer
         return $controller;
     }
 
+    /**
+     * Retrieve all HTTP request headers as an array of strings.
+     *
+     * @return array<string, string>
+     */
     private function getHeaders(): array
     {
-        return array_map(function (array $header) {
-            return implode(', ', $header);
-        }, request()->headers->all());
+        return array_map(
+            fn(array $header): string => implode(', ', $header),
+            request()->headers->all()
+        );
     }
 
 
+    /**
+     * Clear the active PHP output buffer, if one exists.
+     *
+     * @return void
+     */
     function clearOutputBufferIfActive(): void
     {
         if (ob_get_level() > 0) {
@@ -114,6 +126,11 @@ class WebErrorRenderer
         }
     }
 
+    /**
+     * Get the current request route details
+     *
+     * @return array
+     */
     public function getRouteDetails(): array
     {
         return [
@@ -121,7 +138,13 @@ class WebErrorRenderer
         ];
     }
 
-    private function buildContents($codeLines)
+    /**
+     * Build formatted HTML code content from an array of code lines.
+     *
+     * @param array $codeLines
+     * @return string
+     */
+    private function buildContents(array $codeLines): string
     {
         $contents = [];
 

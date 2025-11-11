@@ -8,15 +8,36 @@ use Phaseolies\Http\Request;
 
 class ExceptionMarkdownReport
 {
+    /**
+     * The exception instance to report
+     *
+     * @var Throwable
+     */
     protected Throwable $exception;
+
+    /**
+     * The current HTTP request instance
+     *
+     * @var Request
+     */
     protected Request $request;
 
+    /**
+     * Create a new ExceptionMarkdownReport instance.
+     *
+     * @param Throwable $exception
+     */
     public function __construct(Throwable $exception)
     {
         $this->exception = $exception;
         $this->request = app('request');
     }
 
+    /**
+     * Generate a Markdown-formatted exception report.
+     *
+     * @return string
+     */
     public function generate(): string
     {
         $md = [];
@@ -57,13 +78,12 @@ class ExceptionMarkdownReport
 
         // Route Parameters (if any)
         if ($routeParams = $this->request->getRouteParams()) {
-            
             $md[] = "### Route Parameters";
-            
+
             foreach ($routeParams as $key => $value) {
                 $md[] = "- **{$key}:** " . (is_scalar($value) ? $value : json_encode($value));
             }
-            
+
             $md[] = '';
         }
 

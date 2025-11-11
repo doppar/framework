@@ -4,7 +4,13 @@ namespace Phaseolies\Error\Utils;
 
 class Highlighter
 {
-    public static function make($code)
+    /**
+     * Highlight PHP code syntax and wrap tokens in styled HTML spans.
+     *
+     * @param string $code
+     * @return string
+     */
+    public static function make(string $code): string
     {
         $needsWrapping = !str_contains($code, '<?php');
 
