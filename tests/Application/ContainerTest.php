@@ -1284,4 +1284,20 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteDependency::class, $first->dependency);
         $this->assertInstanceOf(AlternateDependency::class, $second->dependency);
     }
+
+    //========================================
+    // CONTEXTUAL BINDING SCENARIOS
+    //========================================
+
+    public function testDifferentImplementationsForDifferentClasses()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance1 = $this->container->make(ClassWithDependency::class);
+        $this->assertInstanceOf(ConcreteDependency::class, $instance1->dependency);
+
+        $this->container->bind(DependencyInterface::class, AlternateDependency::class);
+        $instance2 = $this->container->make(ClassWithDependency::class);
+        $this->assertInstanceOf(AlternateDependency::class, $instance2->dependency);
+    }
 }
