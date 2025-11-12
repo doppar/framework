@@ -10,6 +10,8 @@ use Tests\Application\Mock\Interfaces\DependencyInterface;
 use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ClassWithVariadic;
+use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
 use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
@@ -357,5 +359,27 @@ class ContainerTest extends TestCase
     {
         $instance = $this->container->make(ClassWithNullable::class, ['value' => 'test']);
         $this->assertEquals('test', $instance->value);
+    }
+
+    //=======================================
+    // VARIADIC PARAMETER TESTS
+    //=======================================
+
+    public function testVariadicConstructor()
+    {
+        $instance = $this->container->make(ClassWithVariadic::class, ['a', 'b', 'c']);
+        $this->assertEquals([['a', 'b', 'c']], $instance->items);
+    }
+
+    public function testVariadicConstructorEmpty()
+    {
+        $instance = $this->container->make(ClassWithVariadic::class, []);
+        $this->assertEquals([[]], $instance->items);
+    }
+
+    public function testVariadicWithTypedParameters()
+    {
+        $instance = $this->container->make(ClassWithTypedVariadic::class, [1, 2, 3, 4, 5]);
+        $this->assertEquals([[1, 2, 3, 4, 5]], $instance->numbers);
     }
 }
