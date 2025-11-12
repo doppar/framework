@@ -375,18 +375,18 @@ trait BladeCondition
      * @param string $view
      * @return string
      */
-    protected function compileInclude($view): string
+    protected function compileInclude($expression): string
     {
-        if (isset($view[0]) && "(" === $view[0]) {
-            $view = substr($view, 1, -1);
+        if (isset($expression[0]) && "(" === $expression[0]) {
+            $expression = substr($expression, 1, -1);
         }
 
-        $parts = explode(',', $view, 2);
+        // Split into view and data
+        $parts = explode(',', $expression, 2);
+        $view = trim($parts[0]);
+        $data = isset($parts[1]) ? trim($parts[1]) : '[]';
 
-        $viewPart = trim($parts[0]);
-        $dataPart = isset($parts[1]) ? ', ' . trim($parts[1]) : '';
-
-        return "<?php include \$this->prepare({$viewPart}{$dataPart}) ?>";
+        return "<?php \$__data = {$data}; extract(\$__data); include \$this->prepare({$view}, \$__data); ?>";
     }
 
     /**

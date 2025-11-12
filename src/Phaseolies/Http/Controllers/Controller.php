@@ -213,12 +213,6 @@ class Controller extends View
 
         if ($needsRecompile) {
             $content = $this->compileView($actual, $data);
-
-            if (!empty($data)) {
-                $dataExport = var_export($data, true);
-                $content = "<?php extract($dataExport); ?>" . $content;
-            }
-
             file_put_contents($cache, $content);
         }
 
