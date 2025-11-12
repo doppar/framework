@@ -25,6 +25,9 @@ use Tests\Application\Mock\ClassWithDependency;
 use Tests\Application\Mock\ClassWithDefaults;
 use Tests\Application\Mock\ClassWithBool;
 use Tests\Application\Mock\ClassWithArray;
+use Tests\Application\Mock\CircularC;
+use Tests\Application\Mock\CircularB;
+use Tests\Application\Mock\CircularA;
 use Tests\Application\Mock\CallableClass;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
@@ -851,4 +854,30 @@ class ContainerTest extends TestCase
 
         $this->assertEquals('value2', $this->container->get('service'));
     }
+
+    //==========================================
+    // CIRCULAR DEPENDENCY INJECTION TESTS
+    //==========================================
+
+    public function testCircularDependencyDetection()
+    {
+        $this->container->bind(CircularA::class);
+        $this->container->bind(CircularB::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Circular dependency');
+
+        $this->container->get(CircularA::class);
+    }
+
+    public function testCircularDependencyWithThreeClasses()
+    {
+        $this->container->bind(CircularA::class);
+        $this->container->bind(CircularB::class);
+        $this->container->bind(CircularC::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->container->get(CircularA::class);
+    }
+
 }
