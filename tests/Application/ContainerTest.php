@@ -597,4 +597,47 @@ class ContainerTest extends TestCase
         $result = $this->container->call([CallableClass::class, 'staticMethod']);
         $this->assertEquals('static result', $result);
     }
+
+    //=======================================
+    // HAS TESTS
+    //=======================================
+
+    public function testHasBoundService()
+    {
+        $this->container->bind('service', fn() => 'value');
+        $this->assertTrue($this->container->has('service'));
+    }
+
+    public function testHasUnboundService()
+    {
+        $this->assertFalse($this->container->has('nonexistent'));
+    }
+
+    public function testHasExistingClass()
+    {
+        $this->assertTrue($this->container->has(SimpleClass::class));
+    }
+
+    public function testHasNonExistentClass()
+    {
+        $this->assertFalse($this->container->has('NonExistentClass'));
+    }
+
+    public function testHasAfterRebind()
+    {
+        $this->container->bind('service', fn() => 'value1');
+        $this->assertTrue($this->container->has('service'));
+
+        $this->container->bind('service', fn() => 'value2');
+        $this->assertTrue($this->container->has('service'));
+    }
+
+    public function testHasAfterUnset()
+    {
+        $this->container->bind('service', fn() => 'value');
+        $this->assertTrue($this->container->has('service'));
+
+        unset($this->container['service']);
+        $this->assertFalse($this->container->has('service'));
+    }
 }
