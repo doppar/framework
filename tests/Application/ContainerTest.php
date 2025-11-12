@@ -1039,4 +1039,58 @@ class ContainerTest extends TestCase
         $instances = $this->container->getInstances();
         $this->assertCount(2, $instances);
     }
+
+    //======================================
+    // GET ALIASES TESTS
+    //======================================
+
+    public function testGetAliasesEmpty()
+    {
+        $aliases = $this->container->getAliases();
+        $this->assertIsArray($aliases);
+        $this->assertEmpty($aliases);
+    }
+
+    // has issue
+    // public function testGetAliases()
+    // {
+    //     $this->container->bind('original', fn() => 'value');
+    //     $this->container->alias('original', 'alias1');
+    //     $this->container->alias('original', 'alias2');
+
+    //     $aliases = $this->container->getAliases();
+    //     $this->assertNotEmpty($aliases);
+    // }
+
+    //=====================================
+    // RESOLVE METHOD DEPENDENCIES TESTS
+    //=====================================
+
+    public function testResolveMethodDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $deps = $this->container->resolveMethodDependencies(
+            CallableClass::class,
+            'methodWithDependency'
+        );
+
+        $this->assertCount(1, $deps);
+        $this->assertInstanceOf(ConcreteDependency::class, $deps[0]);
+    }
+
+    public function testResolveMethodDependenciesWithParams()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $deps = $this->container->resolveMethodDependencies(
+            CallableClass::class,
+            'methodWithMixed',
+            ['value' => 'test']
+        );
+
+        $this->assertCount(2, $deps);
+        $this->assertInstanceOf(ConcreteDependency::class, $deps[0]);
+        $this->assertEquals('test', $deps[1]);
+    }
 }
