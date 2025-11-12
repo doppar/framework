@@ -641,9 +641,9 @@ class ContainerTest extends TestCase
         $this->assertFalse($this->container->has('service'));
     }
 
-    //=========================================
+    //===========================================
     // HAS INSTANCE TESTS
-    //=========================================
+    //===========================================
 
     public function testHasInstanceBeforeResolve()
     {
