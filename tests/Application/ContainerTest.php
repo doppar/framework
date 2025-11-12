@@ -493,7 +493,7 @@ class ContainerTest extends TestCase
     {
         $this->container->bind('dependency', fn() => 'dep');
         $this->container->bind('service', fn() => 'base');
-        $this->container->extend('service', function($original, $container) {
+        $this->container->extend('service', function ($original, $container) {
             return $original . ':' . $container->get('dependency');
         });
 
@@ -509,7 +509,7 @@ class ContainerTest extends TestCase
     public function testExtendSingleton()
     {
         $this->container->singleton('service', fn() => new \stdClass());
-        $this->container->extend('service', function($original) {
+        $this->container->extend('service', function ($original) {
             $original->extended = true;
             return $original;
         });
@@ -639,5 +639,89 @@ class ContainerTest extends TestCase
 
         unset($this->container['service']);
         $this->assertFalse($this->container->has('service'));
+    }
+
+    //=========================================
+    // HAS INSTANCE TESTS
+    //=========================================
+
+    public function testHasInstanceBeforeResolve()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->assertFalse($this->container->hasInstance('service'));
+    }
+    public function testHasInstanceAfterResolve()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->assertTrue($this->container->hasInstance('service'));
+    }
+
+    public function testHasInstanceForInstanceBinding()
+    {
+        $this->container->instance('service', new \stdClass());
+        $this->assertTrue($this->container->hasInstance('service'));
+    }
+
+    public function testHasInstanceForTransient()
+    {
+        $this->container->bind('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->assertFalse($this->container->hasInstance('service'));
+    }
+
+    //=======================================
+    // IS SINGLETON TESTS
+    //=======================================
+
+    public function testIsSingletonForSingleton()
+    {
+        $this->container->singleton('service', fn() => 'value');
+        $this->assertTrue($this->container->isSingleton('service'));
+    }
+
+    public function testIsSingletonForTransient()
+    {
+        $this->container->bind('service', fn() => 'value');
+        $this->assertFalse($this->container->isSingleton('service'));
+    }
+
+    public function testIsSingletonForUnbound()
+    {
+        $this->assertFalse($this->container->isSingleton('nonexistent'));
+    }
+
+    public function testIsSingletonForInstanceBinding()
+    {
+        $this->container->instance('service', new \stdClass());
+        $this->assertTrue($this->container->isSingleton('service'));
+    }
+
+    //=================================================
+    // RESOLVED TESTS
+    //=================================================
+
+    public function testResolvedBeforeGet()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->assertFalse($this->container->resolved('service'));
+    }
+
+    public function testResolvedAfterGet()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->assertTrue($this->container->resolved('service'));
+    }
+
+    public function testResolvedForTransient()
+    {
+        $this->container->bind('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->assertFalse($this->container->resolved('service'));
     }
 }
