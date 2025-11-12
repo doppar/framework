@@ -230,10 +230,11 @@
                 </div>
             </div>
         </main>
-
+        <!--
         <div id="headers" class="my-2">
-            @include('headers', ['headers' => $headers])
+            @include('template-headers', ['headers' => $headers])
         </div>
+        -->
     </div>
 
     {{-- System & User Info Grid --}}

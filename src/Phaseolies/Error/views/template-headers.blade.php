@@ -6,7 +6,7 @@
     <div
         class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 border-dashed"
     >
-        {{-- header area --}}
+        <!-- header area -->
         <div
             class="accordion-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
             tabindex="0"
@@ -23,7 +23,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
         </div>
-        {{-- contaainer area --}}
+        <!-- contaainer area -->
         <div class="accordion-content bg-white dark:bg-neutral-950/30 border-t border-dashed  border-neutral-200 dark:border-neutral-800 hidden"
             role="region" aria-labelledby="accordion-header">
             <div class="p-3 font-mono">
