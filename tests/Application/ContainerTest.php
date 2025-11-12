@@ -3,9 +3,17 @@
 namespace Tests\Unit\Application;
 
 use Tests\Application\Mock\SimpleClass;
+use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Interfaces\TestInterface;
+use Tests\Application\Mock\Interfaces\ServiceInterface;
+use Tests\Application\Mock\Interfaces\DependencyInterface;
 use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
+use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ClassWithNestedDependency;
+use Tests\Application\Mock\ClassWithMultipleDependencies;
+use Tests\Application\Mock\ClassWithDependencyChain;
+use Tests\Application\Mock\ClassWithDependency;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -205,5 +213,61 @@ class ContainerTest extends TestCase
 
         $this->assertSame($obj1, $this->container->get('obj1'));
         $this->assertSame($obj2, $this->container->get('obj2'));
+    }
+
+    //==============================================
+    // DEPENDENCY INJECTION TESTS
+    //==============================================
+
+    public function testSimpleDependencyInjection()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->make(ClassWithDependency::class);
+
+        $this->assertInstanceOf(ClassWithDependency::class, $instance);
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+    }
+
+    public function testNestedDependencyInjection()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->make(ClassWithNestedDependency::class);
+
+        $this->assertInstanceOf(ClassWithNestedDependency::class, $instance);
+        $this->assertInstanceOf(ClassWithDependency::class, $instance->nested);
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->nested->dependency);
+    }
+
+    public function testMultipleDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance = $this->container->make(ClassWithMultipleDependencies::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+        $this->assertInstanceOf(ConcreteService::class, $instance->service);
+    }
+
+    public function testDependencyChain()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance = $this->container->make(ClassWithDependencyChain::class);
+
+        $this->assertInstanceOf(ClassWithDependencyChain::class, $instance);
+        $this->assertInstanceOf(ClassWithMultipleDependencies::class, $instance->multi);
+    }
+
+    public function testSingletonDependency()
+    {
+        $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance1 = $this->container->make(ClassWithDependency::class);
+        $instance2 = $this->container->make(ClassWithDependency::class);
+
+        $this->assertNotSame($instance1, $instance2);
+        $this->assertSame($instance1->dependency, $instance2->dependency);
     }
 }
