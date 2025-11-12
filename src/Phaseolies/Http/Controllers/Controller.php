@@ -213,11 +213,12 @@ class Controller extends View
 
         if ($needsRecompile) {
             $content = $this->compileView($actual, $data);
-            file_put_contents($cache, $content);
-        } elseif (!empty($data)) {
-            $dataExport = var_export($data, true);
-            $content = file_get_contents($cache);
-            $content = "<?php extract($dataExport); ?>" . $content;
+
+            if (!empty($data)) {
+                $dataExport = var_export($data, true);
+                $content = "<?php extract($dataExport); ?>" . $content;
+            }
+
             file_put_contents($cache, $content);
         }
 
@@ -256,11 +257,6 @@ class Controller extends View
 
         // Replace @php and @endphp blocks
         $content = $this->replacePhpBlocks($content);
-
-        if (!empty($data)) {
-            $dataExport = var_export($data, true);
-            $content = "<?php extract($dataExport); ?>" . $content;
-        }
 
         return $content;
     }
