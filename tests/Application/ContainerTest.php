@@ -3,7 +3,9 @@
 namespace Tests\Unit\Application;
 
 use Tests\Application\Mock\SimpleClass;
+use Tests\Application\Mock\Interfaces\TestInterface;
 use Tests\Application\Mock\Counter;
+use Tests\Application\Mock\ConcreteImplementation;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -158,5 +160,50 @@ class ContainerTest extends TestCase
         $second = $this->container->get('transient');
 
         $this->assertNotSame($first, $second);
+    }
+
+    //=================================================
+    // INSTANCE BINDING TESTS
+    //=================================================
+
+    public function testInstanceBinding()
+    {
+        $obj = new \stdClass();
+        $obj->value = 'test';
+        $this->container->instance('obj', $obj);
+
+        $resolved = $this->container->get('obj');
+        $this->assertSame($obj, $resolved);
+        $this->assertEquals('test', $resolved->value);
+    }
+
+    public function testInstanceBindingIsSingleton()
+    {
+        $obj = new \stdClass();
+        $this->container->instance('obj', $obj);
+
+        $first = $this->container->get('obj');
+        $second = $this->container->get('obj');
+        $this->assertSame($first, $second);
+    }
+
+    public function testInstanceBindingWithInterface()
+    {
+        $instance = new ConcreteImplementation();
+        $this->container->instance(TestInterface::class, $instance);
+
+        $resolved = $this->container->get(TestInterface::class);
+        $this->assertSame($instance, $resolved);
+    }
+
+    public function testMultipleInstanceBindings()
+    {
+        $obj1 = new \stdClass();
+        $obj2 = new \stdClass();
+        $this->container->instance('obj1', $obj1);
+        $this->container->instance('obj2', $obj2);
+
+        $this->assertSame($obj1, $this->container->get('obj1'));
+        $this->assertSame($obj2, $this->container->get('obj2'));
     }
 }
