@@ -961,4 +961,82 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(SimpleClass::class, $made);
         $this->assertInstanceOf(SimpleClass::class, $gotten);
     }
+
+    //===========================================
+    // SHARE TESTS
+    //===========================================
+
+    public function testShareMethod()
+    {
+        $obj = new \stdClass();
+        $obj->value = 'shared';
+
+        $this->container->share('shared', $obj);
+
+        $this->assertSame($obj, $this->container->get('shared'));
+    }
+
+    public function testShareIsSingleton()
+    {
+        $obj = new \stdClass();
+        $this->container->share('shared', $obj);
+
+        $first = $this->container->get('shared');
+        $second = $this->container->get('shared');
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testShareMultipleObjects()
+    {
+        $obj1 = new \stdClass();
+        $obj2 = new \stdClass();
+
+        $this->container->share('obj1', $obj1);
+        $this->container->share('obj2', $obj2);
+
+        $this->assertSame($obj1, $this->container->get('obj1'));
+        $this->assertSame($obj2, $this->container->get('obj2'));
+    }
+
+    //=========================================
+    // GET BINDINGS/INSTANCES TESTS
+    //=========================================
+
+    public function testGetBindingsEmpty()
+    {
+        $bindings = $this->container->getBindings();
+        $this->assertIsArray($bindings);
+        $this->assertEmpty($bindings);
+    }
+
+    public function testGetBindings()
+    {
+        $this->container->bind('service1', fn() => 'value1');
+        $this->container->bind('service2', fn() => 'value2');
+
+        $bindings = $this->container->getBindings();
+        $this->assertCount(2, $bindings);
+        $this->assertArrayHasKey('service1', $bindings);
+        $this->assertArrayHasKey('service2', $bindings);
+    }
+
+    public function testGetInstancesEmpty()
+    {
+        $instances = $this->container->getInstances();
+        $this->assertIsArray($instances);
+        $this->assertEmpty($instances);
+    }
+
+    public function testGetInstances()
+    {
+        $this->container->singleton('single1', fn() => new \stdClass());
+        $this->container->singleton('single2', fn() => new \stdClass());
+
+        $this->container->get('single1');
+        $this->container->get('single2');
+
+        $instances = $this->container->getInstances();
+        $this->assertCount(2, $instances);
+    }
 }
