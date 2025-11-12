@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.0.0-beta.8 - 2025-11-12
+
+* Request parser trait unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/118
+* global helper function wrapped by function_exists by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/119
+* var_export append issue resolved for [@include](https://github.com/include) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/120
+
 ## v3.0.0-beta.7 - 2025-11-11
 
 * Improved auth user() method to handle auth-api by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/117
