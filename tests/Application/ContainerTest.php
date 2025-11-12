@@ -426,4 +426,44 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteDependency::class, $first);
         $this->assertInstanceOf(AlternateDependency::class, $second);
     }
+
+    //=========================================
+    // ALIAS TESTS
+    //=========================================
+
+    public function testSimpleAlias()
+    {
+        $this->container->bind('original', fn() => 'value');
+        $this->container->alias('original', 'aliased');
+
+        $this->assertEquals('value', $this->container->get('aliased'));
+    }
+
+    public function testMultipleAliases()
+    {
+        $this->container->bind('original', fn() => 'value');
+        $this->container->alias('original', 'alias1');
+        $this->container->alias('original', 'alias2');
+
+        $this->assertEquals('value', $this->container->get('alias1'));
+        $this->assertEquals('value', $this->container->get('alias2'));
+    }
+
+    public function testAliasForClass()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->alias(DependencyInterface::class, 'dependency');
+
+        $instance = $this->container->get('dependency');
+        $this->assertInstanceOf(ConcreteDependency::class, $instance);
+    }
+
+    public function testAliasChain()
+    {
+        $this->container->bind('original', fn() => 'value');
+        $this->container->alias('original', 'alias1');
+        $this->container->alias('alias1', 'alias2');
+
+        $this->assertEquals('value', $this->container->get('alias2'));
+    }
 }
