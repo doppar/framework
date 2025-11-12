@@ -763,4 +763,52 @@ class ContainerTest extends TestCase
         $this->assertEquals('value1', $this->container['key1']);
         $this->assertEquals('value2', $this->container['key2']);
     }
+
+    //=======================================
+    // WHEN CONDITION TESTS
+    //=======================================
+
+    public function testWhenTrueCondition()
+    {
+        $result = $this->container->when(true);
+        $this->assertInstanceOf(Container::class, $result);
+    }
+
+    public function testWhenFalseCondition()
+    {
+        $result = $this->container->when(false);
+        $this->assertNull($result);
+    }
+
+    public function testWhenCallableReturnsTrue()
+    {
+        $result = $this->container->when(fn() => true);
+        $this->assertInstanceOf(Container::class, $result);
+    }
+
+    public function testWhenCallableReturnsFalse()
+    {
+        $result = $this->container->when(fn() => false);
+        $this->assertNull($result);
+    }
+
+    public function testWhenChaining()
+    {
+        $this->container->when(true)?->bind('service', fn() => 'value');
+        $this->assertTrue($this->container->has('service'));
+    }
+
+    public function testWhenChainingFalse()
+    {
+        $this->container->when(false)?->bind('service', fn() => 'value');
+        $this->assertFalse($this->container->has('service'));
+    }
+
+    public function testWhenWithEnvironmentCheck()
+    {
+        $env = 'production';
+        $this->container->when($env === 'production')?->singleton('cache', fn() => new \stdClass());
+
+        $this->assertTrue($this->container->has('cache'));
+    }
 }
