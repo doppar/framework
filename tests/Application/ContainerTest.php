@@ -5,17 +5,21 @@ namespace Tests\Unit\Application;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
+use Tests\Application\Mock\MixedOptionalClass;
 use Tests\Application\Mock\Interfaces\UnboundInterface;
 use Tests\Application\Mock\Interfaces\TestInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
+use Tests\Application\Mock\DeepNestedClass;
 use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ComplexConstructorClass;
 use Tests\Application\Mock\ClassWithVariadic;
 use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
 use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
+use Tests\Application\Mock\ClassWithOptionalDependency;
 use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
 use Tests\Application\Mock\ClassWithMultipleDependencies;
@@ -1119,5 +1123,137 @@ class ContainerTest extends TestCase
     public function testIsResolvingNever()
     {
         $this->assertFalse($this->container->isResolving('never_resolved'));
+    }
+
+    //=======================================
+    // SERVICE PROVIDER TESTS
+    //=======================================
+    // public function testRegisterServiceProvider()
+    // {
+    //     $provider = new TestServiceProvider();
+    //     $this->container->register($provider);
+
+    //     $this->assertTrue($this->container->has('from_provider'));
+    // }
+
+    // public function testRegisterServiceProviderByClass()
+    // {
+    //     $this->container->register(TestServiceProvider::class);
+        
+    //     $this->assertTrue($this->container->has('from_provider'));
+    // }
+
+    // public function testServiceProviderBoot()
+    // {
+    //     $provider = new BootableServiceProvider();
+    //     $this->container->register($provider);
+        
+    //     $this->assertTrue($provider->booted);
+    // }
+
+    // public function testMultipleServiceProviders()
+    // {
+    //     $this->container->register(TestServiceProvider::class);
+    //     $this->container->register(AnotherServiceProvider::class);
+        
+    //     $this->assertTrue($this->container->has('from_provider'));
+    //     $this->assertTrue($this->container->has('another_service'));
+    // }
+
+    //============================================
+    // SINGLETON INSTANCE TESTS
+    //============================================
+
+    public function testGetInstanceReturnsSingleton()
+    {
+        $first = Container::getInstance();
+        $second = Container::getInstance();
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testSetInstance()
+    {
+        $custom = new Container();
+        Container::setInstance($custom);
+
+        $this->assertSame($custom, Container::getInstance());
+    }
+
+    public function testForgetInstance()
+    {
+        $first = Container::getInstance();
+        Container::forgetInstance();
+        $second = Container::getInstance();
+
+        $this->assertNotSame($first, $second);
+    }
+
+    //=============================================
+    // COMPLEX DEPENDENCY SCENARIOS
+    //=============================================
+
+    public function testDeepNestedDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance = $this->container->make(DeepNestedClass::class);
+
+        $this->assertInstanceOf(DeepNestedClass::class, $instance);
+        $this->assertInstanceOf(ClassWithDependencyChain::class, $instance->chain);
+        $this->assertInstanceOf(ClassWithMultipleDependencies::class, $instance->chain->multi);
+    }
+
+    public function testMultipleConstructorDependenciesWithPrimitives()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ComplexConstructorClass::class, [
+            'name' => 'Test',
+            'count' => 5,
+            'active' => true
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+        $this->assertEquals('Test', $instance->name);
+        $this->assertEquals(5, $instance->count);
+        $this->assertTrue($instance->active);
+    }
+
+    public function testOptionalDependencyWithDefault()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ClassWithOptionalDependency::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->required);
+        $this->assertEquals('default', $instance->optional);
+    }
+
+    public function testOptionalDependencyOverridden()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ClassWithOptionalDependency::class, [
+            'optional' => 'custom'
+        ]);
+
+        $this->assertEquals('custom', $instance->optional);
+    }
+
+    public function testMixedOptionalAndRequired()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance = $this->container->make(MixedOptionalClass::class, [
+            'name' => 'Custom'
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dep);
+        $this->assertInstanceOf(ConcreteService::class, $instance->service);
+        $this->assertEquals('Custom', $instance->name);
+        $this->assertEquals(0, $instance->count);
     }
 }
