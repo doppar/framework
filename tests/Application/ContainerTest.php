@@ -1093,4 +1093,31 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteDependency::class, $deps[0]);
         $this->assertEquals('test', $deps[1]);
     }
+
+    //=============================================
+    // IS RESOLVING TESTS
+    //=============================================
+
+    public function testIsResolvingDuringResolution()
+    {
+        $this->container->bind('service', function() {
+            return $this->container->isResolving('service') ? 'resolving' : 'not';
+        });
+
+        $result = $this->container->get('service');
+        $this->assertEquals('resolving', $result);
+    }
+
+    public function testIsResolvingAfterResolution()
+    {
+        $this->container->bind('service', fn() => 'value');
+        $this->container->get('service');
+
+        $this->assertFalse($this->container->isResolving('service'));
+    }
+
+    public function testIsResolvingNever()
+    {
+        $this->assertFalse($this->container->isResolving('never_resolved'));
+    }
 }
