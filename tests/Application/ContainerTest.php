@@ -672,9 +672,9 @@ class ContainerTest extends TestCase
         $this->assertFalse($this->container->hasInstance('service'));
     }
 
-    //=======================================
+    //=========================================
     // IS SINGLETON TESTS
-    //=======================================
+    //=========================================
 
     public function testIsSingletonForSingleton()
     {
