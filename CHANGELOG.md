@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.9 - 2025-11-12
+
+* remove var_Extract from prepare method and uncomment header option for error-exception by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/121
+
 ## v3.0.0-beta.8 - 2025-11-12
 
 * Request parser trait unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/118
