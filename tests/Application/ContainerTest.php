@@ -811,4 +811,44 @@ class ContainerTest extends TestCase
 
         $this->assertTrue($this->container->has('cache'));
     }
+
+    // ==================== FLUSH/RESET TESTS ====================
+
+    public function testFlushClearsBindings()
+    {
+        $this->container->bind('service', fn() => 'value');
+        $this->container->flush();
+
+        $this->assertFalse($this->container->has('service'));
+    }
+
+    public function testFlushClearsInstances()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->get('service');
+        $this->container->flush();
+
+        $this->assertFalse($this->container->hasInstance('service'));
+    }
+
+    public function testResetClearsAll()
+    {
+        $this->container->bind('service1', fn() => 'value1');
+        $this->container->singleton('service2', fn() => new \stdClass());
+        $this->container->get('service2');
+
+        $this->container->reset();
+
+        $this->assertFalse($this->container->has('service1'));
+        $this->assertFalse($this->container->hasInstance('service2'));
+    }
+
+    public function testFlushAllowsRebinding()
+    {
+        $this->container->bind('service', fn() => 'value1');
+        $this->container->flush();
+        $this->container->bind('service', fn() => 'value2');
+
+        $this->assertEquals('value2', $this->container->get('service'));
+    }
 }
