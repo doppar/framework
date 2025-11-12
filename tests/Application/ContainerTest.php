@@ -1300,4 +1300,38 @@ class ContainerTest extends TestCase
         $instance2 = $this->container->make(ClassWithDependency::class);
         $this->assertInstanceOf(AlternateDependency::class, $instance2->dependency);
     }
+
+    //============================================
+    // CALLABLE BINDING TESTS
+    //============================================
+
+    public function testCallableWithContainerParameter()
+    {
+        $this->container->bind('test', function(Container $container) {
+            return $container->has('dependency') ? 'has' : 'not';
+        });
+
+        $this->container->bind('dependency', fn() => 'dep');
+        $this->assertEquals('has', $this->container->get('test'));
+    }
+
+    public function testCallableWithParameters()
+    {
+        $this->container->bind('test', function(Container $c, array $params) {
+            return $params['value'] ?? 'default';
+        });
+
+        $result = $this->container->get('test', ['value' => 'custom']);
+        $this->assertEquals('custom', $result);
+    }
+
+    public function testNestedCallableResolution()
+    {
+        $this->container->bind('inner', fn() => 'inner_value');
+        $this->container->bind('outer', function(Container $c) {
+            return $c->get('inner') . '_outer';
+        });
+
+        $this->assertEquals('inner_value_outer', $this->container->get('outer'));
+    }
 }
