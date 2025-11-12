@@ -724,4 +724,43 @@ class ContainerTest extends TestCase
 
         $this->assertFalse($this->container->resolved('service'));
     }
+
+    //===========================================
+    // ARRAY ACCESS TESTS
+    //===========================================
+
+    public function testArrayAccessSet()
+    {
+        $this->container['key'] = fn() => 'value';
+        $this->assertTrue(isset($this->container['key']));
+    }
+
+    public function testArrayAccessGet()
+    {
+        $this->container['key'] = fn() => 'value';
+        $this->assertEquals('value', $this->container['key']);
+    }
+
+    public function testArrayAccessExists()
+    {
+        $this->container['key'] = fn() => 'value';
+        $this->assertTrue(isset($this->container['key']));
+    }
+
+    public function testArrayAccessUnset()
+    {
+        $this->container['key'] = fn() => 'value';
+        unset($this->container['key']);
+
+        $this->assertFalse(isset($this->container['key']));
+    }
+
+    public function testArrayAccessMultipleKeys()
+    {
+        $this->container['key1'] = fn() => 'value1';
+        $this->container['key2'] = fn() => 'value2';
+
+        $this->assertEquals('value1', $this->container['key1']);
+        $this->assertEquals('value2', $this->container['key2']);
+    }
 }
