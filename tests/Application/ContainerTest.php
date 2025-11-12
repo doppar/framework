@@ -1256,4 +1256,32 @@ class ContainerTest extends TestCase
         $this->assertEquals('Custom', $instance->name);
         $this->assertEquals(0, $instance->count);
     }
+
+    //=============================================
+    // MULTIPLE INTERFACE IMPLEMENTATIONS
+    //=============================================
+
+    public function testMultipleImplementations()
+    {
+        $this->container->bind('impl1', fn() => new ConcreteDependency());
+        $this->container->bind('impl2', fn() => new AlternateDependency());
+
+        $impl1 = $this->container->get('impl1');
+        $impl2 = $this->container->get('impl2');
+
+        $this->assertInstanceOf(ConcreteDependency::class, $impl1);
+        $this->assertInstanceOf(AlternateDependency::class, $impl2);
+    }
+
+    public function testSwitchImplementation()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $first = $this->container->make(ClassWithDependency::class);
+
+        $this->container->bind(DependencyInterface::class, AlternateDependency::class);
+        $second = $this->container->make(ClassWithDependency::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $first->dependency);
+        $this->assertInstanceOf(AlternateDependency::class, $second->dependency);
+    }
 }
