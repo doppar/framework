@@ -466,4 +466,54 @@ class ContainerTest extends TestCase
 
         $this->assertEquals('value', $this->container->get('alias2'));
     }
+
+    //========================================
+    // EXTEND TESTS
+    //========================================
+
+    public function testExtendBinding()
+    {
+        $this->container->bind('service', fn() => 'base');
+        $this->container->extend('service', fn($original) => $original . ' extended');
+
+        $this->assertEquals('base extended', $this->container->get('service'));
+    }
+
+    public function testExtendMultipleTimes()
+    {
+        $this->container->bind('service', fn() => 'base');
+        $this->container->extend('service', fn($original) => $original . ' first');
+        $this->container->extend('service', fn($original) => $original . ' second');
+
+        $this->assertEquals('base first second', $this->container->get('service'));
+    }
+
+    public function testExtendWithContainer()
+    {
+        $this->container->bind('dependency', fn() => 'dep');
+        $this->container->bind('service', fn() => 'base');
+        $this->container->extend('service', function($original, $container) {
+            return $original . ':' . $container->get('dependency');
+        });
+
+        $this->assertEquals('base:dep', $this->container->get('service'));
+    }
+
+    public function testExtendUnboundThrows()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->container->extend('nonexistent', fn($original) => $original);
+    }
+
+    public function testExtendSingleton()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->extend('service', function($original) {
+            $original->extended = true;
+            return $original;
+        });
+
+        $instance = $this->container->get('service');
+        $this->assertTrue($instance->extended);
+    }
 }
