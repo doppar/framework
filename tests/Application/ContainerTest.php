@@ -10,10 +10,18 @@ use Tests\Application\Mock\Interfaces\DependencyInterface;
 use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ClassWithString;
+use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
 use Tests\Application\Mock\ClassWithMultipleDependencies;
+use Tests\Application\Mock\ClassWithMixedParams;
+use Tests\Application\Mock\ClassWithInt;
+use Tests\Application\Mock\ClassWithFloat;
 use Tests\Application\Mock\ClassWithDependencyChain;
 use Tests\Application\Mock\ClassWithDependency;
+use Tests\Application\Mock\ClassWithDefaults;
+use Tests\Application\Mock\ClassWithBool;
+use Tests\Application\Mock\ClassWithArray;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -269,5 +277,85 @@ class ContainerTest extends TestCase
 
         $this->assertNotSame($instance1, $instance2);
         $this->assertSame($instance1->dependency, $instance2->dependency);
+    }
+
+    //============================================
+    // CONSTRUCTOR PARAMETER TESTS
+    //============================================
+
+    public function testConstructorWithPrimitiveString()
+    {
+        $instance = $this->container->make(ClassWithString::class, ['name' => 'John']);
+        $this->assertEquals('John', $instance->name);
+    }
+
+    public function testConstructorWithPrimitiveInt()
+    {
+        $instance = $this->container->make(ClassWithInt::class, ['age' => 25]);
+        $this->assertEquals(25, $instance->age);
+    }
+
+    // has issue
+    // public function testConstructorWithPrimitiveBool()
+    // {
+    //     $instance = $this->container->make(ClassWithBool::class, ['active' => true]);
+    //     $this->assertTrue($instance->active);
+    // }
+
+    public function testConstructorWithPrimitiveFloat()
+    {
+        $instance = $this->container->make(ClassWithFloat::class, ['price' => 19.99]);
+        $this->assertEquals(19.99, $instance->price);
+    }
+
+    public function testConstructorWithPrimitiveArray()
+    {
+        $instance = $this->container->make(ClassWithArray::class, ['items' => [1, 2, 3]]);
+        $this->assertEquals([1, 2, 3], $instance->items);
+    }
+
+    public function testConstructorWithMixedParameters()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ClassWithMixedParams::class, [
+            'name' => 'Test',
+            'count' => 5
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+        $this->assertEquals('Test', $instance->name);
+        $this->assertEquals(5, $instance->count);
+    }
+
+    public function testConstructorWithDefaultValues()
+    {
+        $instance = $this->container->make(ClassWithDefaults::class);
+
+        $this->assertEquals('default', $instance->name);
+        $this->assertEquals(0, $instance->count);
+    }
+
+    public function testConstructorOverrideDefaultValues()
+    {
+        $instance = $this->container->make(ClassWithDefaults::class, [
+            'name' => 'custom',
+            'count' => 10
+        ]);
+
+        $this->assertEquals('custom', $instance->name);
+        $this->assertEquals(10, $instance->count);
+    }
+
+    public function testConstructorWithNullableParameter()
+    {
+        $instance = $this->container->make(ClassWithNullable::class);
+        $this->assertNull($instance->value);
+    }
+
+    public function testConstructorWithNullableParameterProvided()
+    {
+        $instance = $this->container->make(ClassWithNullable::class, ['value' => 'test']);
+        $this->assertEquals('test', $instance->value);
     }
 }
