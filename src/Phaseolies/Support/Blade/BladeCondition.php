@@ -386,7 +386,7 @@ trait BladeCondition
         $view = trim($parts[0]);
         $data = isset($parts[1]) ? trim($parts[1]) : '[]';
 
-        return "<?php \$__data = {$data}; extract(\$__data); include \$this->prepare({$view}, \$__data); ?>";
+        return "<?php \$__data = {$data}; extract(\$__data); include \$this->prepare({$view}); ?>";
     }
 
     /**

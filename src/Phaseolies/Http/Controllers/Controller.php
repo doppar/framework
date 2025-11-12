@@ -203,7 +203,7 @@ class Controller extends View
      *
      * @param string $view
      */
-    public function prepare($view, array $data = []): string
+    public function prepare($view): string
     {
         $actual = $this->findView($view);
         $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
@@ -212,7 +212,7 @@ class Controller extends View
         $needsRecompile = !is_file($cache) || filemtime($actual) > filemtime($cache);
 
         if ($needsRecompile) {
-            $content = $this->compileView($actual, $data);
+            $content = $this->compileView($actual);
             file_put_contents($cache, $content);
         }
 
@@ -230,7 +230,7 @@ class Controller extends View
      * @param array $data
      * @return string
      */
-    protected function compileView(string $actual, array $data): string
+    protected function compileView(string $actual): string
     {
         if (!is_file($actual)) {
             throw new RuntimeException('View not found: ' . $actual);
@@ -541,7 +541,7 @@ class Controller extends View
                 $data = isset($match[2]) ? $match[2] : '[]';
 
                 try {
-                    $includedContent = $this->compileView($this->findView($view), []);
+                    $includedContent = $this->compileView($this->findView($view));
 
                     // Only inline if the content is small
                     if (strlen($includedContent) < 500) {
