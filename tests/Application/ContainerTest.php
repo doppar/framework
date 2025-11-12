@@ -919,4 +919,46 @@ class ContainerTest extends TestCase
 
         $this->container->make(ClassWithUnresolvablePrimitive::class);
     }
+
+    //==========================================
+    // MAKE TESTS
+    //==========================================
+
+    public function testMakeSimpleClass()
+    {
+        $instance = $this->container->make(SimpleClass::class);
+        $this->assertInstanceOf(SimpleClass::class, $instance);
+    }
+
+    public function testMakeClassWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->make(ClassWithDependency::class);
+
+        $this->assertInstanceOf(ClassWithDependency::class, $instance);
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+    }
+
+     public function testMakeWithParameters()
+    {
+        $instance = $this->container->make(ClassWithString::class, ['name' => 'Test']);
+        $this->assertEquals('Test', $instance->name);
+    }
+
+    public function testMakeMultipleTimes()
+    {
+        $first = $this->container->make(SimpleClass::class);
+        $second = $this->container->make(SimpleClass::class);
+
+        $this->assertNotSame($first, $second);
+    }
+
+    public function testMakeVsGet()
+    {
+        $made = $this->container->make(SimpleClass::class);
+        $gotten = $this->container->get(SimpleClass::class);
+
+        $this->assertInstanceOf(SimpleClass::class, $made);
+        $this->assertInstanceOf(SimpleClass::class, $gotten);
+    }
 }
