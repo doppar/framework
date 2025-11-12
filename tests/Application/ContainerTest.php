@@ -25,6 +25,7 @@ use Tests\Application\Mock\ClassWithDependency;
 use Tests\Application\Mock\ClassWithDefaults;
 use Tests\Application\Mock\ClassWithBool;
 use Tests\Application\Mock\ClassWithArray;
+use Tests\Application\Mock\CallableClass;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -515,5 +516,85 @@ class ContainerTest extends TestCase
 
         $instance = $this->container->get('service');
         $this->assertTrue($instance->extended);
+    }
+
+    //=======================================
+    // CALL METHOD TESTS FOR CLOSURE
+    //=======================================
+
+    public function testCallClosure()
+    {
+        $result = $this->container->call(fn() => 'result');
+        $this->assertEquals('result', $result);
+    }
+
+    public function testCallClosureWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $result = $this->container->call(function (DependencyInterface $dep) {
+            return get_class($dep);
+        });
+
+        $this->assertEquals(ConcreteDependency::class, $result);
+    }
+
+    public function testCallClosureWithParameters()
+    {
+        $result = $this->container->call(
+            fn(string $name, int $age) => "$name:$age",
+            ['name' => 'John', 'age' => 30]
+        );
+
+        $this->assertEquals('John:30', $result);
+    }
+
+    public function testCallClosureWithMixedDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $result = $this->container->call(
+            function (DependencyInterface $dep, string $name) {
+                return get_class($dep) . ':' . $name;
+            },
+            ['name' => 'Test']
+        );
+
+        $this->assertStringContainsString('ConcreteDependency:Test', $result);
+    }
+
+    public function testCallMethod()
+    {
+        $object = new CallableClass();
+        $result = $this->container->call([$object, 'method']);
+
+        $this->assertEquals('method result', $result);
+    }
+
+    public function testCallMethodWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $object = new CallableClass();
+        $result = $this->container->call([$object, 'methodWithDependency']);
+
+        $this->assertStringContainsString('ConcreteDependency', $result);
+    }
+
+    public function testCallMethodWithParameters()
+    {
+        $object = new CallableClass();
+        $result = $this->container->call(
+            [$object, 'methodWithParams'],
+            ['name' => 'Test', 'value' => 42]
+        );
+
+        $this->assertEquals('Test:42', $result);
+    }
+
+    public function testCallStaticMethod()
+    {
+        $result = $this->container->call([CallableClass::class, 'staticMethod']);
+        $this->assertEquals('static result', $result);
     }
 }
