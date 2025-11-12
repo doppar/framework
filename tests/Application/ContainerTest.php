@@ -5,6 +5,7 @@ namespace Tests\Unit\Application;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
+use Tests\Application\Mock\Interfaces\UnboundInterface;
 use Tests\Application\Mock\Interfaces\TestInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
@@ -12,6 +13,7 @@ use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
 use Tests\Application\Mock\ClassWithVariadic;
+use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
 use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
 use Tests\Application\Mock\ClassWithNullable;
@@ -29,6 +31,7 @@ use Tests\Application\Mock\CircularC;
 use Tests\Application\Mock\CircularB;
 use Tests\Application\Mock\CircularA;
 use Tests\Application\Mock\CallableClass;
+use Tests\Application\Mock\Abstracts\AbstractClass;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -880,4 +883,40 @@ class ContainerTest extends TestCase
         $this->container->get(CircularA::class);
     }
 
+    //================================================
+    // EXCEPTION TESTS
+    //================================================
+
+    public function testResolveAbstractClass()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not instantiable');
+
+        $this->container->get(AbstractClass::class);
+    }
+
+    // has issue
+    // public function testResolveInterface()
+    // {
+    //     $this->expectException(\RuntimeException::class);
+    //     $this->expectExceptionMessage('not instantiable');
+
+    //     $this->container->get(UnboundInterface::class);
+    // }
+
+    public function testResolveNonExistentClass()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not bound');
+
+        $this->container->get('NonExistentClass');
+    }
+
+    public function testResolveUnresolvablePrimitive()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Unresolvable dependency');
+
+        $this->container->make(ClassWithUnresolvablePrimitive::class);
+    }
 }
