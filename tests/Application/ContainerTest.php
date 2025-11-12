@@ -4,6 +4,7 @@ namespace Tests\Unit\Application;
 
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\Services\ConcreteService;
+use Tests\Application\Mock\Services\AlternateDependency;
 use Tests\Application\Mock\Interfaces\TestInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
@@ -381,5 +382,48 @@ class ContainerTest extends TestCase
     {
         $instance = $this->container->make(ClassWithTypedVariadic::class, [1, 2, 3, 4, 5]);
         $this->assertEquals([[1, 2, 3, 4, 5]], $instance->numbers);
+    }
+
+    //========================================
+    // INTERFACE BINDING TESTS
+    //========================================
+
+    public function testInterfaceToClassBinding()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->get(DependencyInterface::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance);
+    }
+
+    public function testInterfaceSingletonBinding()
+    {
+        $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+
+        $first = $this->container->get(DependencyInterface::class);
+        $second = $this->container->get(DependencyInterface::class);
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testMultipleInterfaceBindings()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $this->container->get(DependencyInterface::class));
+        $this->assertInstanceOf(ConcreteService::class, $this->container->get(ServiceInterface::class));
+    }
+
+    public function testRebindInterface()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $first = $this->container->get(DependencyInterface::class);
+
+        $this->container->bind(DependencyInterface::class, AlternateDependency::class);
+        $second = $this->container->get(DependencyInterface::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $first);
+        $this->assertInstanceOf(AlternateDependency::class, $second);
     }
 }
