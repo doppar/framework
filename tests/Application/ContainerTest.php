@@ -3,6 +3,7 @@
 namespace Tests\Unit\Application;
 
 use Tests\Application\Mock\SimpleClass;
+use Tests\Application\Mock\Counter;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
@@ -109,5 +110,53 @@ class ContainerTest extends TestCase
 
         $this->container->bind('service', fn() => 'replaced');
         $this->assertEquals('replaced', $this->container->get('service'));
+    }
+
+    //===================================================
+    // SINGLETON TESTS
+    //===================================================
+    public function testSingletonReturnsSameInstance()
+    {
+        $this->container->singleton('single', fn() => new \stdClass());
+        $first = $this->container->get('single');
+        $second = $this->container->get('single');
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testSingletonWithClass()
+    {
+        $this->container->singleton(SimpleClass::class);
+        $first = $this->container->get(SimpleClass::class);
+        $second = $this->container->get(SimpleClass::class);
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testMultipleSingletons()
+    {
+        $this->container->singleton('single1', fn() => new \stdClass());
+        $this->container->singleton('single2', fn() => new \stdClass());
+
+        $this->assertNotSame($this->container->get('single1'), $this->container->get('single2'));
+    }
+
+    public function testSingletonWithState()
+    {
+        $this->container->singleton('counter', fn() => new Counter());
+        $counter = $this->container->get('counter');
+        $counter->increment();
+
+        $secondRef = $this->container->get('counter');
+        $this->assertEquals(1, $secondRef->getCount());
+    }
+
+    public function testTransientReturnsDifferentInstances()
+    {
+        $this->container->bind('transient', fn() => new \stdClass());
+        $first = $this->container->get('transient');
+        $second = $this->container->get('transient');
+
+        $this->assertNotSame($first, $second);
     }
 }
