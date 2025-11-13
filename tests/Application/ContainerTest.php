@@ -1851,14 +1851,14 @@ class ContainerTest extends TestCase
     }
 
     // has issues
-    // public function testCallbackWithOptionalParameters()
-    // {
-    //     $result = $this->container->call(
-    //         fn(string $name = 'default') => $name
-    //     );
+    public function testCallbackWithOptionalParameters()
+    {
+        $result = $this->container->call(
+            fn(string $name = 'default') => $name
+        );
 
-    //     $this->assertEquals('default', $result);
-    // }
+        $this->assertEquals('default', $result);
+    }
 
     public function testCallbackWithOptionalParametersOverridden()
     {
