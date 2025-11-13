@@ -32,7 +32,7 @@ class JsonErrorRenderer
                 'errors'  => $errorDetails,
             ]
             : [
-                'message' => $exception->getMessage(),
+                'message' => $errorDetails ?? $exception->getMessage(),
                 'errors'  => [
                     'file'  => $exception->getFile(),
                     'line'  => $exception->getLine(),
