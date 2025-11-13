@@ -1376,4 +1376,29 @@ class ContainerTest extends TestCase
         $factory = $this->container->get('closure_factory');
         $this->assertEquals('result', $factory());
     }
+
+    //==============================================
+    // REBINDING TESTS
+    //==============================================
+
+    public function testRebindingSingleton()
+    {
+        $this->container->singleton('service', fn() => 'original');
+        $first = $this->container->get('service');
+
+        $this->container->singleton('service', fn() => 'replaced');
+        $second = $this->container->get('service');
+
+        $this->assertEquals('original', $first);
+        $this->assertEquals('replaced', $second);
+    }
+
+    public function testRebindingPreservesNewType()
+    {
+        $this->container->bind('service', fn() => 'transient');
+        $this->assertFalse($this->container->isSingleton('service'));
+
+        $this->container->singleton('service', fn() => 'singleton');
+        $this->assertTrue($this->container->isSingleton('service'));
+    }
 }
