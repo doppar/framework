@@ -1417,4 +1417,23 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteDependency::class, $dep);
         $this->assertInstanceOf(ConcreteService::class, $svc);
     }
+
+    //==================================================
+    // NESTED CONTAINER CALLS
+    //==================================================
+
+    public function testNestedContainerCalls()
+    {
+        $this->container->bind('level1', function(Container $c) {
+            return $c->get('level2') . ':1';
+        });
+
+        $this->container->bind('level2', function(Container $c) {
+            return $c->get('level3') . ':2';
+        });
+
+        $this->container->bind('level3', fn() => '3');
+
+        $this->assertEquals('3:2:1', $this->container->get('level1'));
+    }
 }
