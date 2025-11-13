@@ -163,7 +163,7 @@ class Container implements ArrayAccess
                 return $resolved;
             }
 
-            if (class_exists($abstract)) {
+            if (class_exists($abstract) || interface_exists($abstract)) {
                 $resolved = $this->build($abstract, $parameters);
                 return $resolved;
             }
@@ -286,6 +286,15 @@ class Container implements ArrayAccess
 
         // If it's a class dependency, resolve it
         if ($paramType && !$paramType->isBuiltin()) {
+            // Handle nullable class dependencies
+            if (
+                $paramType->allowsNull() &&
+                $parameter->isDefaultValueAvailable() &&
+                $parameter->getDefaultValue() === null
+            ) {
+                return null;
+            }
+
             $typeName = $paramType->getName();
             return $this->get($typeName);
         }
@@ -505,7 +514,8 @@ class Container implements ArrayAccess
     public function getAliases(): array
     {
         return array_filter(self::$bindings, function ($binding) {
-            return is_callable($binding['concrete']) && !class_exists($binding['concrete']);
+            $concrete = $binding['concrete'];
+            return is_callable($concrete) && !(is_string($concrete) && class_exists($concrete));
         });
     }
 

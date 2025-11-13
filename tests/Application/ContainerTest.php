@@ -335,12 +335,11 @@ class ContainerTest extends TestCase
         $this->assertEquals(25, $instance->age);
     }
 
-    // has issue
-    // public function testConstructorWithPrimitiveBool()
-    // {
-    //     $instance = $this->container->make(ClassWithBool::class, ['active' => true]);
-    //     $this->assertTrue($instance->active);
-    // }
+    public function testConstructorWithPrimitiveBool()
+    {
+        $instance = $this->container->make(ClassWithBool::class, ['active' => true]);
+        $this->assertTrue($instance->active);
+    }
 
     public function testConstructorWithPrimitiveFloat()
     {
@@ -925,14 +924,13 @@ class ContainerTest extends TestCase
         $this->container->get(AbstractClass::class);
     }
 
-    // has issue
-    // public function testResolveInterface()
-    // {
-    //     $this->expectException(\RuntimeException::class);
-    //     $this->expectExceptionMessage('not instantiable');
+    public function testResolveInterface()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not instantiable');
 
-    //     $this->container->get(UnboundInterface::class);
-    // }
+        $this->container->get(UnboundInterface::class);
+    }
 
     public function testResolveNonExistentClass()
     {
@@ -1081,16 +1079,15 @@ class ContainerTest extends TestCase
         $this->assertEmpty($aliases);
     }
 
-    // has issue
-    // public function testGetAliases()
-    // {
-    //     $this->container->bind('original', fn() => 'value');
-    //     $this->container->alias('original', 'alias1');
-    //     $this->container->alias('original', 'alias2');
+    public function testGetAliases()
+    {
+        $this->container->bind('original', fn() => 'value');
+        $this->container->alias('original', 'alias1');
+        $this->container->alias('original', 'alias2');
 
-    //     $aliases = $this->container->getAliases();
-    //     $this->assertNotEmpty($aliases);
-    // }
+        $aliases = $this->container->getAliases();
+        $this->assertNotEmpty($aliases);
+    }
 
     //=====================================
     // RESOLVE METHOD DEPENDENCIES TESTS
@@ -1357,21 +1354,19 @@ class ContainerTest extends TestCase
     // UNION TYPE AND NULLABLE TYPE TESTS (PHP 8.0+)
     //===============================================
 
-    // has issue
-    // public function testNullableClassDependency()
-    // {
-    //     $instance = $this->container->make(ClassWithNullableClass::class);
-    //     $this->assertNull($instance->dependency);
-    // }
+    public function testNullableClassDependency()
+    {
+        $instance = $this->container->make(ClassWithNullableClass::class);
+        $this->assertNull($instance->dependency);
+    }
 
-    // has issue
-    // public function testNullableClassDependencyProvided()
-    // {
-    //     $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
-    //     $instance = $this->container->make(ClassWithNullableClass::class);
+    public function testNullableClassDependencyProvided()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->make(ClassWithNullableClass::class);
 
-    //     $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
-    // }
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+    }
 
     //================================================
     // CLOSURE BINDING TESTS
