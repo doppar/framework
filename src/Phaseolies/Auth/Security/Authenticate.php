@@ -30,6 +30,13 @@ class Authenticate
      */
     private static $versionCheckCache = [];
 
+    /**
+     * Get the current authenticated user
+     *
+     * @var Model|null
+     */
+    private static ?Model $currentUser = null;
+
     public function __set($name, $value)
     {
         $this->data[$name] = $value;
@@ -149,6 +156,10 @@ class Authenticate
      */
     public function user(): ?Model
     {
+        if (self::$currentUser !== null) {
+            return self::$currentUser;
+        }
+
         $authModel = app(config('auth.model'));
 
         if ($this->statelessUser !== null) {
@@ -164,14 +175,19 @@ class Authenticate
                 }
             }
 
-            return $hasAuthApi ? app(\Doppar\Flarion\ApiAuthenticate::class)->user() : null;
+            if ($hasAuthApi) {
+                return self::$currentUser = $hasAuthApi
+                    ? app(\Doppar\Flarion\ApiAuthenticate::class)->user()
+                    : null;
+            }
         }
 
         if (session()->has('cache_auth_user')) {
             $cache = session('cache_auth_user');
-
             if ($this->isUserCacheValid($cache)) {
-                return $cache['user'];
+                if ($this->isUserCacheValid($cache)) {
+                    return self::$currentUser = $cache['user'];
+                }
             }
         }
 
@@ -180,8 +196,7 @@ class Authenticate
 
             if ($user) {
                 $this->cacheUser($user);
-
-                return $user;
+                return self::$currentUser = $user;
             }
         }
 
@@ -225,7 +240,7 @@ class Authenticate
 
                 $this->setUser($user);
 
-                return $user;
+                return self::$currentUser = $user;
             }
 
             // Token didn't match - possible theft attempt
