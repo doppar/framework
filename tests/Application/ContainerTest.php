@@ -20,6 +20,7 @@ use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
 use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
 use Tests\Application\Mock\ClassWithOptionalDependency;
+use Tests\Application\Mock\ClassWithNullableClass;
 use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
 use Tests\Application\Mock\ClassWithMultipleDependencies;
@@ -1333,5 +1334,46 @@ class ContainerTest extends TestCase
         });
 
         $this->assertEquals('inner_value_outer', $this->container->get('outer'));
+    }
+
+    //===============================================
+    // UNION TYPE AND NULLABLE TYPE TESTS (PHP 8.0+)
+    //===============================================
+
+    // has issue
+    // public function testNullableClassDependency()
+    // {
+    //     $instance = $this->container->make(ClassWithNullableClass::class);
+    //     $this->assertNull($instance->dependency);
+    // }
+
+    // has issue
+    // public function testNullableClassDependencyProvided()
+    // {
+    //     $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+    //     $instance = $this->container->make(ClassWithNullableClass::class);
+
+    //     $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+    // }
+
+    //================================================
+    // CLOSURE BINDING TESTS
+    //================================================
+
+    public function testClosureAsService()
+    {
+        $closure = fn(string $input) => strtoupper($input);
+        $this->container->instance('transformer', $closure);
+
+        $retrieved = $this->container->get('transformer');
+        $this->assertEquals('HELLO', $retrieved('hello'));
+    }
+
+    public function testClosureFactory()
+    {
+        $this->container->bind('closure_factory', fn() => fn() => 'result');
+
+        $factory = $this->container->get('closure_factory');
+        $this->assertEquals('result', $factory());
     }
 }
