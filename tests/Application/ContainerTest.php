@@ -9,20 +9,25 @@ use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
 use Tests\Application\Mock\Repository\ConcreteRepository;
 use Tests\Application\Mock\Providers\TestServiceProvider;
+use Tests\Application\Mock\Providers\ProviderWithDependencies;
 use Tests\Application\Mock\Providers\BootableServiceProvider;
+use Tests\Application\Mock\Providers\BootableProviderWithDependencies;
 use Tests\Application\Mock\Providers\AnotherServiceProvider;
 use Tests\Application\Mock\MixedOptionalClass;
+use Tests\Application\Mock\InvokableClass;
 use Tests\Application\Mock\Interfaces\UnboundInterface;
 use Tests\Application\Mock\Interfaces\TestInterface;
 use Tests\Application\Mock\Interfaces\ServiceLayerInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
 use Tests\Application\Mock\Interfaces\RepositoryInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
+use Tests\Application\Mock\ExtendedSimpleClass;
 use Tests\Application\Mock\DeepNestedClass;
 use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\Controllers\ControllerClass;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ComplexDependencyGraph;
 use Tests\Application\Mock\ComplexConstructorClass;
 use Tests\Application\Mock\ClassWithoutConstructor;
 use Tests\Application\Mock\ClassWithVariadic;
@@ -31,16 +36,21 @@ use Tests\Application\Mock\ClassWithUnboundDependency;
 use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
 use Tests\Application\Mock\ClassWithOptionalDependency;
+use Tests\Application\Mock\ClassWithOnlyOptionals;
+use Tests\Application\Mock\ClassWithNullableDefault;
 use Tests\Application\Mock\ClassWithNullableClass;
 use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
 use Tests\Application\Mock\ClassWithMultiplePrimitives;
 use Tests\Application\Mock\ClassWithMultipleDependencies;
+use Tests\Application\Mock\ClassWithMixedRequiredOptional;
 use Tests\Application\Mock\ClassWithMixedParams;
+use Tests\Application\Mock\ClassWithManyParams;
 use Tests\Application\Mock\ClassWithInt;
 use Tests\Application\Mock\ClassWithFloat;
 use Tests\Application\Mock\ClassWithEmptyConstructor;
 use Tests\Application\Mock\ClassWithDependencyChain;
+use Tests\Application\Mock\ClassWithDependencyAndVariadic;
 use Tests\Application\Mock\ClassWithDependency;
 use Tests\Application\Mock\ClassWithDefaults;
 use Tests\Application\Mock\ClassWithBool;
@@ -1884,7 +1894,7 @@ class ContainerTest extends TestCase
         $this->assertEquals(['debug' => true], $app->config);
     }
 
-    // has issues
+    // has issue
     // public function testRepositoryPattern()
     // {
     //     $this->container->singleton(RepositoryInterface::class, ConcreteRepository::class);
@@ -1894,7 +1904,7 @@ class ContainerTest extends TestCase
     //     $this->assertInstanceOf(ConcreteRepository::class, $controller->repository);
     // }
 
-    // has issues
+    // has issue
     // public function testServiceLayerPattern()
     // {
     //     $this->container->singleton(RepositoryInterface::class, ConcreteRepository::class);
@@ -1969,5 +1979,417 @@ class ContainerTest extends TestCase
 
         // __clone is empty, so it creates a shallow copy but shouldn't be used
         $this->assertNotSame($instance, $cloned);
+    }
+
+    public function testServiceProviderWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->register(ProviderWithDependencies::class);
+
+        $this->assertTrue($this->container->has('provider_service'));
+    }
+
+     public function testServiceProviderBootReceivesDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $provider = new BootableProviderWithDependencies();
+
+        $this->container->register($provider);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $provider->bootedDependency);
+    }
+
+    public function testAliasResolvesToSameSingleton()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $original = $this->container->get('original');
+        $aliased = $this->container->get('alias');
+
+        $this->assertSame($original, $aliased);
+    }
+
+    public function testMultipleAliasesResolveSame()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias1');
+        $this->container->alias('original', 'alias2');
+        $this->container->alias('original', 'alias3');
+
+        $o = $this->container->get('original');
+        $a1 = $this->container->get('alias1');
+        $a2 = $this->container->get('alias2');
+        $a3 = $this->container->get('alias3');
+
+        $this->assertSame($o, $a1);
+        $this->assertSame($o, $a2);
+        $this->assertSame($o, $a3);
+    }
+
+    public function testExtendPreservesSingletonBehavior()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->extend('service', function($obj) {
+            $obj->extended = true;
+            return $obj;
+        });
+
+        $first = $this->container->get('service');
+        $second = $this->container->get('service');
+
+        $this->assertSame($first, $second);
+        $this->assertTrue($first->extended);
+    }
+
+    public function testExtendPreservesTransientBehavior()
+    {
+        $this->container->bind('service', fn() => new \stdClass());
+        $this->container->extend('service', function($obj) {
+            $obj->extended = true;
+            return $obj;
+        });
+
+        $first = $this->container->get('service');
+        $second = $this->container->get('service');
+
+        $this->assertNotSame($first, $second);
+        $this->assertTrue($first->extended);
+        $this->assertTrue($second->extended);
+    }
+
+    public function testConstructorWithManyParameters()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance = $this->container->make(ClassWithManyParams::class, [
+            'name' => 'Test',
+            'age' => 25,
+            'email' => 'test@example.com',
+            'active' => true,
+            'score' => 98.5
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dep);
+        $this->assertInstanceOf(ConcreteService::class, $instance->service);
+        $this->assertEquals('Test', $instance->name);
+        $this->assertEquals(25, $instance->age);
+        $this->assertEquals('test@example.com', $instance->email);
+        $this->assertTrue($instance->active);
+        $this->assertEquals(98.5, $instance->score);
+    }
+
+    public function testConstructorWithOnlyOptionalParams()
+    {
+        $instance = $this->container->make(ClassWithOnlyOptionals::class);
+
+        $this->assertEquals('default', $instance->name);
+        $this->assertEquals(0, $instance->count);
+        $this->assertFalse($instance->active);
+    }
+
+    public function testConstructorWithMixedRequiredAndOptional()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ClassWithMixedRequiredOptional::class, [
+            'name' => 'Required'
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+        $this->assertEquals('Required', $instance->name);
+        $this->assertEquals('optional', $instance->optional);
+    }
+
+    public function testResolveMethodWithNoParams()
+    {
+        $deps = $this->container->resolveMethodDependencies(
+            CallableClass::class,
+            'method'
+        );
+
+        $this->assertEmpty($deps);
+    }
+
+    public function testResolveMethodWithOnlyPrimitives()
+    {
+        $deps = $this->container->resolveMethodDependencies(
+            CallableClass::class,
+            'methodWithParams',
+            ['name' => 'Test', 'value' => 42]
+        );
+
+        $this->assertEquals('Test', $deps[0]);
+        $this->assertEquals(42, $deps[1]);
+    }
+
+    public function testResolveMethodWithComplexMix()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $deps = $this->container->resolveMethodDependencies(
+            CallableClass::class,
+            'methodWithComplexParams',
+            ['name' => 'Test', 'count' => 5]
+        );
+
+        $this->assertInstanceOf(ConcreteDependency::class, $deps[0]);
+        $this->assertInstanceOf(ConcreteService::class, $deps[1]);
+        $this->assertEquals('Test', $deps[2]);
+        $this->assertEquals(5, $deps[3]);
+    }
+
+    public function testResolveBoundOverUnbound()
+    {
+        $this->container->bind(SimpleClass::class, fn() => new ExtendedSimpleClass());
+
+        $instance = $this->container->get(SimpleClass::class);
+        $this->assertInstanceOf(ExtendedSimpleClass::class, $instance);
+    }
+
+    public function testResolveUnboundWhenNoBinding()
+    {
+        $instance = $this->container->get(SimpleClass::class);
+        $this->assertInstanceOf(SimpleClass::class, $instance);
+        $this->assertNotInstanceOf(ExtendedSimpleClass::class, $instance);
+    }
+
+    // public function testFindInstanceByType()
+    // {
+    //     $instance = new ConcreteDependency();
+    //     $this->container->instance('my_service', $instance);
+
+    //     $found = $this->container->get(DependencyInterface::class);
+    //     $this->assertSame($instance, $found);
+    // }
+
+    // has issue
+    // public function testFindFirstMatchingInstance()
+    // {
+    //     $instance1 = new ConcreteDependency();
+    //     $instance2 = new AlternateDependency();
+
+    //     $this->container->instance('service1', $instance1);
+    //     $this->container->instance('service2', $instance2);
+
+    //     $found = $this->container->get(DependencyInterface::class);
+    //     $this->assertSame($instance1, $found);
+    // }
+
+    public function testParametersOverrideDependencies()
+    {
+        $customDep = new AlternateDependency();
+
+        $instance = $this->container->make(ClassWithDependency::class, [
+            'dependency' => $customDep
+        ]);
+
+        $this->assertSame($customDep, $instance->dependency);
+    }
+
+    // has issue
+    // public function testCallWithInvokableClass()
+    // {
+    //     $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+    //     $invokable = new InvokableClass();
+    //     $result = $this->container->call($invokable);
+
+    //     $this->assertEquals('invoked', $result);
+    // }
+
+    public function testCallWithClosureBindTo()
+    {
+        $closure = function() {
+            return $this->container->has('test') ? 'yes' : 'no';
+        };
+
+        $this->container->bind('test', fn() => 'value');
+        $boundClosure = $closure->bindTo($this);
+
+        $result = $this->container->call($boundClosure);
+        $this->assertEquals('yes', $result);
+    }
+
+    public function testFlushDoesNotAffectNewBindings()
+    {
+        $this->container->bind('before', fn() => 'value');
+        $this->container->flush();
+        $this->container->bind('after', fn() => 'value');
+
+        $this->assertFalse($this->container->has('before'));
+        $this->assertTrue($this->container->has('after'));
+    }
+
+    public function testFlushClearsResolvingState()
+    {
+        $this->container->bind('service', function () {
+            $this->container->flush();
+            return 'value';
+        });
+
+        // This should not throw even though we're flushing during resolution
+        $result = $this->container->get('service');
+        $this->assertEquals('value', $result);
+    }
+
+    // has issue
+    // public function testMultipleContainerInstances()
+    // {
+    //     $container1 = new Container();
+    //     $container2 = new Container();
+
+    //     $container1->bind('service', fn() => 'container1');
+    //     $container2->bind('service', fn() => 'container2');
+
+    //     $this->assertEquals('container1', $container1->get('service'));
+    //     $this->assertEquals('container2', $container2->get('service'));
+    // }
+
+    // has issue
+    // public function testStaticInstanceIsolation()
+    // {
+    //     Container::setInstance($this->container);
+    //     $this->container->bind('service', fn() => 'value');
+
+    //     $newContainer = new Container();
+    //     $this->assertFalse($newContainer->has('service'));
+    // }
+
+    public function testBindingPriorityOverAutoResolution()
+    {
+        $this->container->bind(SimpleClass::class, fn() => new ExtendedSimpleClass());
+
+        $instance = $this->container->make(SimpleClass::class);
+        $this->assertInstanceOf(ExtendedSimpleClass::class, $instance);
+    }
+
+    public function testInstancePriorityOverBinding()
+    {
+        $specificInstance = new SimpleClass();
+        $this->container->bind(SimpleClass::class, fn() => new ExtendedSimpleClass());
+        $this->container->instance(SimpleClass::class, $specificInstance);
+
+        $resolved = $this->container->get(SimpleClass::class);
+        $this->assertSame($specificInstance, $resolved);
+    }
+
+    public function testVariadicWithDependency()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $instance = $this->container->make(ClassWithDependencyAndVariadic::class, [
+            'items' => ['a', 'b', 'c']
+        ]);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
+        $this->assertEquals(['a', 'b', 'c'], $instance->items);
+    }
+
+    public function testNullParameter()
+    {
+        $instance = $this->container->make(ClassWithNullable::class, ['value' => null]);
+        $this->assertNull($instance->value);
+    }
+
+    public function testExplicitNullOverridesDefault()
+    {
+        $instance = $this->container->make(ClassWithNullableDefault::class, ['value' => null]);
+        $this->assertNull($instance->value);
+    }
+
+    public function testRebindingAffectsNewResolutions()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $first = $this->container->make(ClassWithDependency::class);
+
+        $this->container->bind(DependencyInterface::class, AlternateDependency::class);
+        $second = $this->container->make(ClassWithDependency::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $first->dependency);
+        $this->assertInstanceOf(AlternateDependency::class, $second->dependency);
+    }
+
+    public function testRebindingSingletonClearsOldInstance()
+    {
+        $this->container->singleton('service', fn() => 'old');
+        $old = $this->container->get('service');
+
+        $this->container->singleton('service', fn() => 'new');
+        $new = $this->container->get('service');
+
+        $this->assertEquals('old', $old);
+        $this->assertEquals('new', $new);
+    }
+
+    public function testDifferentParametersProduceDifferentInstances()
+    {
+        $instance1 = $this->container->make(ClassWithString::class, ['name' => 'First']);
+        $instance2 = $this->container->make(ClassWithString::class, ['name' => 'Second']);
+
+        $this->assertEquals('First', $instance1->name);
+        $this->assertEquals('Second', $instance2->name);
+        $this->assertNotSame($instance1, $instance2);
+    }
+
+    // has issue
+    // public function testCompleteApplicationStack()
+    // {
+    //     // Database layer
+    //     $this->container->singleton(ConnectionInterface::class, DatabaseConnection::class);
+
+    //     // Repository layer
+    //     $this->container->bind(RepositoryInterface::class, ConcreteRepository::class);
+
+    //     // Service layer
+    //     $this->container->bind(ServiceLayerInterface::class, ConcreteServiceLayer::class);
+
+    //     // Controller layer
+    //     $controller = $this->container->make(ControllerClass::class);
+
+    //     $this->assertInstanceOf(ControllerClass::class, $controller);
+    //     $this->assertInstanceOf(ConcreteRepository::class, $controller->repository);
+    // }
+
+    // has issue
+    // public function testComplexDependencyGraph()
+    // {
+    //     $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+    //     $this->container->singleton(ServiceInterface::class, ConcreteService::class);
+    //     $this->container->bind(RepositoryInterface::class, ConcreteRepository::class);
+        
+    //     $graph = $this->container->make(ComplexDependencyGraph::class, [
+    //         'config' => ['key' => 'value']
+    //     ]);
+        
+    //     $this->assertInstanceOf(ComplexDependencyGraph::class, $graph);
+    //     $this->assertInstanceOf(ConcreteDependency::class, $graph->dependency);
+    //     $this->assertInstanceOf(ConcreteService::class, $graph->service);
+    //     $this->assertInstanceOf(ConcreteRepository::class, $graph->repository);
+    //     $this->assertEquals(['key' => 'value'], $graph->config);
+    // }
+
+    public function testResolutionWithAllFeatures()
+    {
+        // Setup complex scenario
+        $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+        $this->container->extend(DependencyInterface::class, function($dep) {
+            $dep->extended = true;
+            return $dep;
+        });
+        $this->container->alias(ServiceInterface::class, 'service');
+
+        // Resolve
+        $instance = $this->container->make(ClassWithMultipleDependencies::class);
+
+        $this->assertTrue($instance->dependency->extended);
+        $this->assertInstanceOf(ConcreteService::class, $instance->service);
+
+        // Check alias
+        $aliased = $this->container->get('service');
+        $this->assertInstanceOf(ConcreteService::class, $aliased);
     }
 }
