@@ -1074,17 +1074,55 @@ class Router extends Kernel
             $actionMethod = "__invoke";
         } else if ($callback instanceof \Closure) {
             $reflection = new \ReflectionFunction($callback);
+            $dependencies = [];
+
             foreach ($reflection->getParameters() as $parameter) {
                 $paramType = $parameter->getType();
-                if (!$paramType->isBuiltin() && $paramType) {
+
+                // Handle #[Model] attribute - HIGHEST PRIORITY
+                $modelResult = $this->handleModelAttribute($parameter, $routeParams);
+                if ($modelResult['handled']) {
+                    $dependencies[] = $modelResult['instance'];
+                    continue;
+                }
+
+                // Handle #[BindPayload()]
+                $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
+                if ($payloadResult['handled']) {
+                    $dependencies[] = $payloadResult['instance'];
+                    continue;
+                }
+
+                // Handle #[Bind()]
+                $bindResult = $this->handleBindAttribute($parameter, $app);
+                if ($bindResult['handled']) {
+                    $dependencies[] = $bindResult['instance'];
+                    continue;
+                }
+
+                // Handle type-hinted dependencies
+                if ($paramType && !$paramType->isBuiltin()) {
                     $typeName = $paramType->getName();
                     if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
                         $this->resolveFormRequestValidationClass($app, $typeName);
                     }
+                    $dependencies[] = $app->make($typeName);
+                }
+                // Handle route parameters
+                elseif (isset($routeParams[$parameter->getName()])) {
+                    $dependencies[] = $routeParams[$parameter->getName()];
+                }
+                // Handle optional parameters
+                elseif ($parameter->isOptional()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                }
+                // Cannot resolve parameter
+                else {
+                    throw new \Exception("Cannot resolve parameter '{$parameter->getName()}' for closure");
                 }
             }
 
-            return $app->call($callback, $routeParams);
+            return $callback(...$dependencies);
         }
 
         $reflector = new \ReflectionClass($controllerClass);

@@ -144,11 +144,9 @@ class Container implements ArrayAccess
                 return self::$instances[$abstract];
             }
 
-            if (class_exists($abstract)) {
-                foreach (self::$instances as $instance) {
-                    if ($instance instanceof $abstract) {
-                        return $instance;
-                    }
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof $abstract) {
+                    return $instance;
                 }
             }
 
@@ -163,7 +161,7 @@ class Container implements ArrayAccess
                 return $resolved;
             }
 
-            if (class_exists($abstract)) {
+            if (class_exists($abstract) || interface_exists($abstract)) {
                 $resolved = $this->build($abstract, $parameters);
                 return $resolved;
             }
@@ -284,20 +282,26 @@ class Container implements ArrayAccess
             return $primitives[$paramName];
         }
 
-        // If it's a class dependency, resolve it
+        // Handle class or interface dependencies
         if ($paramType && !$paramType->isBuiltin()) {
             $typeName = $paramType->getName();
-            return $this->get($typeName);
-        }
 
-        // Check for variadic parameters
-        if ($parameter->isVariadic()) {
-            return $primitives;
+            // If it's nullable and not bound, return null
+            if ($paramType->allowsNull() && !$this->has($typeName)) {
+                return null;
+            }
+
+            return $this->get($typeName);
         }
 
         // Check if parameter has a default value
         if ($parameter->isDefaultValueAvailable()) {
             return $parameter->getDefaultValue();
+        }
+
+        // Check for variadic parameters
+        if ($parameter->isVariadic()) {
+            return $primitives;
         }
 
         // Check if we can use positional primitives
@@ -474,6 +478,8 @@ class Container implements ArrayAccess
     {
         if (is_array($callback)) {
             $reflection = new \ReflectionMethod($callback[0], $callback[1]);
+        } elseif (is_object($callback) && method_exists($callback, '__invoke')) {
+            $reflection = new \ReflectionMethod($callback, '__invoke');
         } else {
             $reflection = new \ReflectionFunction($callback);
         }
@@ -505,7 +511,8 @@ class Container implements ArrayAccess
     public function getAliases(): array
     {
         return array_filter(self::$bindings, function ($binding) {
-            return is_callable($binding['concrete']) && !class_exists($binding['concrete']);
+            $concrete = $binding['concrete'];
+            return is_callable($concrete) && !(is_string($concrete) && class_exists($concrete));
         });
     }
 
