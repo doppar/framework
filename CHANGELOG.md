@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.0.0-beta.10 - 2025-11-13
+
+* [Unite Test] All possible test case unit test for DI container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/122
+* json null error message issue resolve for 404 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/123
+* api user() call optimized by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/124
+
 ## v3.0.0-beta.9 - 2025-11-12
 
 * remove var_Extract from prepare method and uncomment header option for error-exception by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/121
