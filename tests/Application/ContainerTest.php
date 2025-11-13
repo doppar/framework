@@ -33,6 +33,7 @@ use Tests\Application\Mock\ClassWithDependency;
 use Tests\Application\Mock\ClassWithDefaults;
 use Tests\Application\Mock\ClassWithBool;
 use Tests\Application\Mock\ClassWithArray;
+use Tests\Application\Mock\ClassWithAllDefaults;
 use Tests\Application\Mock\CircularC;
 use Tests\Application\Mock\CircularB;
 use Tests\Application\Mock\CircularA;
@@ -1479,5 +1480,29 @@ class ContainerTest extends TestCase
         $this->assertEquals('John', $instance->name);
         $this->assertEquals(30, $instance->age);
         $this->assertTrue($instance->active);
+    }
+
+    //==============================================
+    // DEFAULT VALUE TESTS
+    //==============================================
+
+    public function testAllDefaultValues()
+    {
+        $instance = $this->container->make(ClassWithAllDefaults::class);
+
+        $this->assertEquals('default', $instance->name);
+        $this->assertEquals(0, $instance->count);
+        $this->assertFalse($instance->active);
+        $this->assertEquals([], $instance->items);
+    }
+
+    public function testPartialDefaultOverride()
+    {
+        $instance = $this->container->make(ClassWithAllDefaults::class, [
+            'name' => 'custom'
+        ]);
+
+        $this->assertEquals('custom', $instance->name);
+        $this->assertEquals(0, $instance->count);
     }
 }
