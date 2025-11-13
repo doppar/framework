@@ -1505,4 +1505,22 @@ class ContainerTest extends TestCase
         $this->assertEquals('custom', $instance->name);
         $this->assertEquals(0, $instance->count);
     }
+
+    //===========================================
+    // TYPE COERCION TESTS
+    //===========================================
+
+    public function testStringToIntCoercion()
+    {
+        $instance = $this->container->make(ClassWithInt::class, ['age' => '25']);
+        $this->assertIsInt($instance->age);
+        $this->assertEquals(25, $instance->age);
+    }
+
+    public function testIntToBoolCoercion()
+    {
+        $instance = $this->container->make(ClassWithBool::class, ['active' => 1]);
+        $this->assertIsBool($instance->active);
+        $this->assertTrue($instance->active);
+    }
 }
