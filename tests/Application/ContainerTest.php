@@ -1605,4 +1605,30 @@ class ContainerTest extends TestCase
    //========================================
    // EDGE CASES
    //========================================
+
+   public function testBindingWithSpecialCharacters()
+    {
+        $this->container->bind('service.name', fn() => 'value');
+        $this->assertEquals('value', $this->container->get('service.name'));
+    }
+
+    public function testBindingWithNamespace()
+    {
+        $this->container->bind('App\\Service\\MyService', fn() => 'value');
+        $this->assertEquals('value', $this->container->get('App\\Service\\MyService'));
+    }
+
+    public function testLongServiceName()
+    {
+        $longName = str_repeat('service', 50);
+        $this->container->bind($longName, fn() => 'value');
+
+        $this->assertEquals('value', $this->container->get($longName));
+    }
+
+    public function testNumericStringAsKey()
+    {
+        $this->container->bind('123', fn() => 'numeric');
+        $this->assertEquals('numeric', $this->container->get('123'));
+    }
 }
