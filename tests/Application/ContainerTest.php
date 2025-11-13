@@ -23,6 +23,7 @@ use Tests\Application\Mock\ClassWithOptionalDependency;
 use Tests\Application\Mock\ClassWithNullableClass;
 use Tests\Application\Mock\ClassWithNullable;
 use Tests\Application\Mock\ClassWithNestedDependency;
+use Tests\Application\Mock\ClassWithMultiplePrimitives;
 use Tests\Application\Mock\ClassWithMultipleDependencies;
 use Tests\Application\Mock\ClassWithMixedParams;
 use Tests\Application\Mock\ClassWithInt;
@@ -1435,5 +1436,48 @@ class ContainerTest extends TestCase
         $this->container->bind('level3', fn() => '3');
 
         $this->assertEquals('3:2:1', $this->container->get('level1'));
+    }
+
+    //==========================================
+    // PARAMETER POSITION TESTS
+    //==========================================
+
+    public function testPositionalParameters()
+    {
+        $instance = $this->container->make(ClassWithMultiplePrimitives::class, [
+            'John',
+            30,
+            true
+        ]);
+
+        $this->assertEquals('John', $instance->name);
+        $this->assertEquals(30, $instance->age);
+        $this->assertTrue($instance->active);
+    }
+
+    public function testNamedParameters()
+    {
+        $instance = $this->container->make(ClassWithMultiplePrimitives::class, [
+            'age' => 30,
+            'name' => 'John',
+            'active' => false
+        ]);
+
+        $this->assertEquals('John', $instance->name);
+        $this->assertEquals(30, $instance->age);
+        $this->assertFalse($instance->active);
+    }
+
+    public function testMixedPositionalAndNamed()
+    {
+        $instance = $this->container->make(ClassWithMultiplePrimitives::class, [
+            'name' => 'John',
+            'age' => 30,
+            'active' => true
+        ]);
+
+        $this->assertEquals('John', $instance->name);
+        $this->assertEquals(30, $instance->age);
+        $this->assertTrue($instance->active);
     }
 }
