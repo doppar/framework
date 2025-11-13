@@ -480,7 +480,7 @@ class RouterTest extends TestCase
 
     public function testResolveActionWithClosure(): void
     {
-        $callback = fn(Request $request) => $request->getPath();
+        $callback = fn($id, $name) => "User $id: $name";
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('resolveAction');
@@ -488,14 +488,10 @@ class RouterTest extends TestCase
 
         $app = $this->createMock(Application::class);
 
-        $_SERVER['REQUEST_URI'] = '/';
-        $freshRequest = new Request();
+        $routeParams = ['id' => 123, 'name' => 'John'];
+        $result = $method->invoke($this->router, $callback, $app, $routeParams);
 
-        $app->method('call')->willReturnCallback(fn($closure, $params) => $closure($freshRequest));
-
-        $result = $method->invoke($this->router, $callback, $app, []);
-
-        $this->assertEquals('/', $result);
+        $this->assertEquals('User 123: John', $result);
     }
 
     public function testProcessRateLimitAnnotation(): void
