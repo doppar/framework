@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Application;
 
+use Tests\Application\Mock\StaticCallableClass;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
@@ -1540,5 +1541,18 @@ class ContainerTest extends TestCase
     {
         $instance = $this->container->make(ClassWithEmptyConstructor::class);
         $this->assertInstanceOf(ClassWithEmptyConstructor::class, $instance);
+    }
+
+    //=======================================
+    // STATIC METHOD TESTS
+    //=======================================
+
+    public function testCallStaticMethodWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $result = $this->container->call([StaticCallableClass::class, 'staticWithDependency']);
+
+        $this->assertStringContainsString('ConcreteDependency', $result);
     }
 }
