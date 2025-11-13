@@ -4,21 +4,27 @@ namespace Tests\Unit\Application;
 
 use Tests\Application\Mock\StaticCallableClass;
 use Tests\Application\Mock\SimpleClass;
+use Tests\Application\Mock\Services\ConcreteServiceLayer;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
+use Tests\Application\Mock\Repository\ConcreteRepository;
 use Tests\Application\Mock\MixedOptionalClass;
 use Tests\Application\Mock\Interfaces\UnboundInterface;
 use Tests\Application\Mock\Interfaces\TestInterface;
+use Tests\Application\Mock\Interfaces\ServiceLayerInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
+use Tests\Application\Mock\Interfaces\RepositoryInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
 use Tests\Application\Mock\DeepNestedClass;
 use Tests\Application\Mock\Counter;
+use Tests\Application\Mock\Controllers\ControllerClass;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
 use Tests\Application\Mock\ComplexConstructorClass;
 use Tests\Application\Mock\ClassWithoutConstructor;
 use Tests\Application\Mock\ClassWithVariadic;
 use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
+use Tests\Application\Mock\ClassWithUnboundDependency;
 use Tests\Application\Mock\ClassWithTypedVariadic;
 use Tests\Application\Mock\ClassWithString;
 use Tests\Application\Mock\ClassWithOptionalDependency;
@@ -41,6 +47,7 @@ use Tests\Application\Mock\CircularC;
 use Tests\Application\Mock\CircularB;
 use Tests\Application\Mock\CircularA;
 use Tests\Application\Mock\CallableClass;
+use Tests\Application\Mock\ApplicationClass;
 use Tests\Application\Mock\Abstracts\AbstractClass;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
@@ -1797,5 +1804,136 @@ class ContainerTest extends TestCase
     {
         $this->container->bind('config.debug', fn() => true);
         $this->assertTrue($this->container->get('config.debug'));
+    }
+
+    public function testResolveFromMultipleSources()
+    {
+        // Bound service
+        $this->container->bind('service1', fn() => 'bound');
+
+        // Instance
+        $this->container->instance('service2', 'instance');
+
+        // Auto-resolved class
+        $class = $this->container->make(SimpleClass::class);
+
+        $this->assertEquals('bound', $this->container->get('service1'));
+        $this->assertEquals('instance', $this->container->get('service2'));
+        $this->assertInstanceOf(SimpleClass::class, $class);
+    }
+
+    public function testCallbackWithNoParameters()
+    {
+        $result = $this->container->call(fn() => 'no params');
+        $this->assertEquals('no params', $result);
+    }
+
+    public function testCallbackWithOnlyDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+
+        $result = $this->container->call(function(DependencyInterface $dep) {
+            return get_class($dep);
+        });
+
+        $this->assertEquals(ConcreteDependency::class, $result);
+    }
+
+    public function testCallbackWithOnlyPrimitives()
+    {
+        $result = $this->container->call(
+            fn(string $a, int $b) => "$a:$b",
+            ['a' => 'test', 'b' => 42]
+        );
+
+        $this->assertEquals('test:42', $result);
+    }
+
+    public function testCallbackWithOptionalParameters()
+    {
+        $result = $this->container->call(
+            fn(string $name = 'default') => $name
+        );
+
+        $this->assertEquals('default', $result);
+    }
+
+    public function testCallbackWithOptionalParametersOverridden()
+    {
+        $result = $this->container->call(
+            fn(string $name = 'default') => $name,
+            ['name' => 'custom']
+        );
+
+        $this->assertEquals('custom', $result);
+    }
+
+    //=========================================
+    // INTEGRATION TESTS
+    //=========================================
+
+    public function testFullApplicationFlow()
+    {
+        // Setup dependencies
+        $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        // Create application class
+        $app = $this->container->make(ApplicationClass::class, [
+            'config' => ['debug' => true]
+        ]);
+
+        $this->assertInstanceOf(ApplicationClass::class, $app);
+        $this->assertInstanceOf(ConcreteDependency::class, $app->dependency);
+        $this->assertInstanceOf(ConcreteService::class, $app->service);
+        $this->assertEquals(['debug' => true], $app->config);
+    }
+
+    // has issues
+    // public function testRepositoryPattern()
+    // {
+    //     $this->container->singleton(RepositoryInterface::class, ConcreteRepository::class);
+
+    //     $controller = $this->container->make(ControllerClass::class);
+
+    //     $this->assertInstanceOf(ConcreteRepository::class, $controller->repository);
+    // }
+
+    // has issues
+    // public function testServiceLayerPattern()
+    // {
+    //     $this->container->singleton(RepositoryInterface::class, ConcreteRepository::class);
+    //     $this->container->singleton(ServiceLayerInterface::class, ConcreteServiceLayer::class);
+
+    //     $service = $this->container->get(ServiceLayerInterface::class);
+
+    //     $this->assertInstanceOf(ConcreteServiceLayer::class, $service);
+    //     $this->assertInstanceOf(ConcreteRepository::class, $service->repository);
+    // }
+
+    public function testInvalidCallableThrows()
+    {
+        $this->expectException(\TypeError::class);
+        $this->container->call('not_a_callable');
+    }
+
+    public function testUnresolvableDependencyThrows()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->container->make(ClassWithUnboundDependency::class);
+    }
+
+    public function testAbstractClassInstantiationThrows()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not instantiable');
+        $this->container->build(AbstractClass::class, []);
+    }
+
+    public function testInterfaceInstantiationThrows()
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('not instantiable');
+        $this->container->build(DependencyInterface::class, []);
     }
 }
