@@ -1631,4 +1631,30 @@ class ContainerTest extends TestCase
         $this->container->bind('123', fn() => 'numeric');
         $this->assertEquals('numeric', $this->container->get('123'));
     }
+
+    //===========================================
+    // PERFORMANCE RELATED TESTS
+    //===========================================
+
+    public function testManyBindings()
+    {
+        for ($i = 0; $i < 100; $i++) {
+            $this->container->bind("service_$i", fn() => "value_$i");
+        }
+
+        $this->assertEquals('value_50', $this->container->get('service_50'));
+        $this->assertEquals('value_99', $this->container->get('service_99'));
+    }
+
+    public function testManySingletons()
+    {
+        for ($i = 0; $i < 50; $i++) {
+            $this->container->singleton("singleton_$i", fn() => new \stdClass());
+        }
+
+        $first = $this->container->get('singleton_25');
+        $second = $this->container->get('singleton_25');
+
+        $this->assertSame($first, $second);
+    }
 }
