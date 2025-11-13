@@ -8,6 +8,9 @@ use Tests\Application\Mock\Services\ConcreteServiceLayer;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\AlternateDependency;
 use Tests\Application\Mock\Repository\ConcreteRepository;
+use Tests\Application\Mock\Providers\TestServiceProvider;
+use Tests\Application\Mock\Providers\BootableServiceProvider;
+use Tests\Application\Mock\Providers\AnotherServiceProvider;
 use Tests\Application\Mock\MixedOptionalClass;
 use Tests\Application\Mock\Interfaces\UnboundInterface;
 use Tests\Application\Mock\Interfaces\TestInterface;
@@ -1141,37 +1144,29 @@ class ContainerTest extends TestCase
     //=======================================
     // SERVICE PROVIDER TESTS
     //=======================================
-    // public function testRegisterServiceProvider()
-    // {
-    //     $provider = new TestServiceProvider();
-    //     $this->container->register($provider);
+    public function testRegisterServiceProvider()
+    {
+        $provider = new TestServiceProvider();
+        $this->container->register($provider);
 
-    //     $this->assertTrue($this->container->has('from_provider'));
-    // }
+        $this->assertTrue($this->container->has('from_provider'));
+    }
 
-    // public function testRegisterServiceProviderByClass()
-    // {
-    //     $this->container->register(TestServiceProvider::class);
-        
-    //     $this->assertTrue($this->container->has('from_provider'));
-    // }
+    public function testRegisterServiceProviderByClass()
+    {
+        $this->container->register(TestServiceProvider::class);
 
-    // public function testServiceProviderBoot()
-    // {
-    //     $provider = new BootableServiceProvider();
-    //     $this->container->register($provider);
-        
-    //     $this->assertTrue($provider->booted);
-    // }
+        $this->assertTrue($this->container->has('from_provider'));
+    }
 
-    // public function testMultipleServiceProviders()
-    // {
-    //     $this->container->register(TestServiceProvider::class);
-    //     $this->container->register(AnotherServiceProvider::class);
-        
-    //     $this->assertTrue($this->container->has('from_provider'));
-    //     $this->assertTrue($this->container->has('another_service'));
-    // }
+    public function testMultipleServiceProviders()
+    {
+        $this->container->register(TestServiceProvider::class);
+        $this->container->register(AnotherServiceProvider::class);
+
+        $this->assertTrue($this->container->has('from_provider'));
+        $this->assertTrue($this->container->has('another_service'));
+    }
 
     //============================================
     // SINGLETON INSTANCE TESTS
@@ -1935,5 +1930,44 @@ class ContainerTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('not instantiable');
         $this->container->build(DependencyInterface::class, []);
+    }
+
+    public function testBindZero()
+    {
+        $this->container->bind('zero', fn() => 0);
+        $this->assertEquals(0, $this->container->get('zero'));
+    }
+
+    public function testBindEmptyString()
+    {
+        $this->container->bind('empty', fn() => '');
+        $this->assertEquals('', $this->container->get('empty'));
+    }
+
+    public function testBindEmptyArray()
+    {
+        $this->container->bind('empty_array', fn() => []);
+        $this->assertEquals([], $this->container->get('empty_array'));
+    }
+
+    public function testBindNegativeNumber()
+    {
+        $this->container->bind('negative', fn() => -100);
+        $this->assertEquals(-100, $this->container->get('negative'));
+    }
+
+    public function testBindFloat()
+    {
+        $this->container->bind('pi', fn() => 3.14159);
+        $this->assertEquals(3.14159, $this->container->get('pi'));
+    }
+
+    public function testCloneNotAllowed()
+    {
+        $instance = $this->container;
+        $cloned = clone $instance;
+
+        // __clone is empty, so it creates a shallow copy but shouldn't be used
+        $this->assertNotSame($instance, $cloned);
     }
 }
