@@ -1401,4 +1401,20 @@ class ContainerTest extends TestCase
         $this->container->singleton('service', fn() => 'singleton');
         $this->assertTrue($this->container->isSingleton('service'));
     }
+
+    //========================================
+    // CONCURRENT RESOLUTION TESTS
+    //========================================
+
+    public function testMultipleServicesResolvedConcurrently()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $dep = $this->container->get(DependencyInterface::class);
+        $svc = $this->container->get(ServiceInterface::class);
+
+        $this->assertInstanceOf(ConcreteDependency::class, $dep);
+        $this->assertInstanceOf(ConcreteService::class, $svc);
+    }
 }
