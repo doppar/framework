@@ -1657,4 +1657,145 @@ class ContainerTest extends TestCase
 
         $this->assertSame($first, $second);
     }
+
+    //===================================
+    // OTHERS RANDOM METHOD AND JOB TEST
+    //===================================
+
+    public function testMethodChaining()
+    {
+        $this->container->when(true)?->bind('chain1', fn() => 'value1');
+        $this->assertTrue($this->container->has('chain1'));
+    }
+
+    public function testInstanceOfCheck()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->get(DependencyInterface::class);
+
+        $this->assertInstanceOf(DependencyInterface::class, $instance);
+        $this->assertInstanceOf(ConcreteDependency::class, $instance);
+    }
+
+    public function testMultipleInstanceOfChecks()
+    {
+        $this->container->instance(DependencyInterface::class, new ConcreteDependency());
+        $this->container->instance('another', new AlternateDependency());
+
+        $dep = $this->container->get(DependencyInterface::class);
+        $alt = $this->container->get('another');
+
+        $this->assertInstanceOf(DependencyInterface::class, $dep);
+        $this->assertInstanceOf(DependencyInterface::class, $alt);
+    }
+
+    public function testBuildDirectly()
+    {
+        $instance = $this->container->build(SimpleClass::class, []);
+        $this->assertInstanceOf(SimpleClass::class, $instance);
+    }
+
+    public function testBuildWithDependencies()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $instance = $this->container->build(ClassWithDependency::class, []);
+
+        $this->assertInstanceOf(ClassWithDependency::class, $instance);
+    }
+
+    public function testBuildWithParameters()
+    {
+        $instance = $this->container->build(ClassWithString::class, ['name' => 'Built']);
+        $this->assertEquals('Built', $instance->name);
+    }
+
+    public function testSetAndGetInstance()
+    {
+        $custom = new Container();
+        Container::setInstance($custom);
+
+        $retrieved = Container::getInstance();
+        $this->assertSame($custom, $retrieved);
+
+        Container::forgetInstance();
+    }
+
+    public function testDependencyWithFactory()
+    {
+        $this->container->bind(DependencyInterface::class, function() {
+            static $counter = 0;
+            $dep = new ConcreteDependency();
+            $dep->id = ++$counter;
+            return $dep;
+        });
+
+        $first = $this->container->get(DependencyInterface::class);
+        $second = $this->container->get(DependencyInterface::class);
+
+        $this->assertNotEquals($first->id, $second->id);
+    }
+
+    public function testSingletonWithFactory()
+    {
+        $this->container->singleton(DependencyInterface::class, function() {
+            static $counter = 0;
+            $dep = new ConcreteDependency();
+            $dep->id = ++$counter;
+            return $dep;
+        });
+
+        $first = $this->container->get(DependencyInterface::class);
+        $second = $this->container->get(DependencyInterface::class);
+
+        $this->assertEquals($first->id, $second->id);
+        $this->assertSame($first, $second);
+    }
+
+    public function testExtendWithComplexLogic()
+    {
+        $this->container->bind('service', fn() => ['base' => true]);
+        $this->container->extend('service', function($original, $c) {
+            $original['extended'] = true;
+            $original['dependency'] = $c->has('dep') ? 'yes' : 'no';
+            return $original;
+        });
+
+        $this->container->bind('dep', fn() => 'value');
+        $result = $this->container->get('service');
+
+        $this->assertTrue($result['base']);
+        $this->assertTrue($result['extended']);
+        $this->assertEquals('yes', $result['dependency']);
+    }
+
+    public function testNestedExtend()
+    {
+        $this->container->bind('service', fn() => 1);
+        $this->container->extend('service', fn($val) => $val * 2);
+        $this->container->extend('service', fn($val) => $val + 10);
+
+        $this->assertEquals(12, $this->container->get('service'));
+    }
+
+    public function testResolveStringBinding()
+    {
+        $this->container->bind('abstract', SimpleClass::class);
+        $instance = $this->container->get('abstract');
+
+        $this->assertInstanceOf(SimpleClass::class, $instance);
+    }
+
+    public function testResolveCallableBinding()
+    {
+        $this->container->bind('abstract', fn() => new SimpleClass());
+        $instance = $this->container->get('abstract');
+
+        $this->assertInstanceOf(SimpleClass::class, $instance);
+    }
+
+    public function testResolvePrimitiveBinding()
+    {
+        $this->container->bind('config.debug', fn() => true);
+        $this->assertTrue($this->container->get('config.debug'));
+    }
 }
