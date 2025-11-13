@@ -1555,4 +1555,54 @@ class ContainerTest extends TestCase
 
         $this->assertStringContainsString('ConcreteDependency', $result);
     }
+
+    //====================================
+    // COMPLEX SCENARIOS
+    //====================================
+
+     public function testDependencyGraphWithSingletons()
+    {
+        $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->bind(ServiceInterface::class, ConcreteService::class);
+
+        $instance1 = $this->container->make(ClassWithMultipleDependencies::class);
+        $instance2 = $this->container->make(ClassWithMultipleDependencies::class);
+
+        $this->assertSame($instance1->dependency, $instance2->dependency);
+        $this->assertNotSame($instance1->service, $instance2->service);
+    }
+
+    public function testComplexDependencyWithExtend()
+    {
+        $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
+        $this->container->extend(DependencyInterface::class, function($dep, $c) {
+            $dep->extended = true;
+            return $dep;
+        });
+
+        $instance = $this->container->make(ClassWithDependency::class);
+        $this->assertTrue($instance->dependency->extended);
+    }
+
+    //======================================
+    // PARAMETER TEST
+    //======================================
+
+    public function testArrayParameterInjection()
+    {
+        $data = ['a' => 1, 'b' => 2];
+        $instance = $this->container->make(ClassWithArray::class, ['items' => $data]);
+
+        $this->assertEquals($data, $instance->items);
+    }
+
+    public function testEmptyArrayParameter()
+    {
+        $instance = $this->container->make(ClassWithArray::class, ['items' => []]);
+        $this->assertEquals([], $instance->items);
+    }
+
+   //========================================
+   // EDGE CASES
+   //========================================
 }
