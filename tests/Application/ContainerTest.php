@@ -15,6 +15,7 @@ use Tests\Application\Mock\Counter;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\ConcreteDependency;
 use Tests\Application\Mock\ComplexConstructorClass;
+use Tests\Application\Mock\ClassWithoutConstructor;
 use Tests\Application\Mock\ClassWithVariadic;
 use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
 use Tests\Application\Mock\ClassWithTypedVariadic;
@@ -28,6 +29,7 @@ use Tests\Application\Mock\ClassWithMultipleDependencies;
 use Tests\Application\Mock\ClassWithMixedParams;
 use Tests\Application\Mock\ClassWithInt;
 use Tests\Application\Mock\ClassWithFloat;
+use Tests\Application\Mock\ClassWithEmptyConstructor;
 use Tests\Application\Mock\ClassWithDependencyChain;
 use Tests\Application\Mock\ClassWithDependency;
 use Tests\Application\Mock\ClassWithDefaults;
@@ -1522,5 +1524,21 @@ class ContainerTest extends TestCase
         $instance = $this->container->make(ClassWithBool::class, ['active' => 1]);
         $this->assertIsBool($instance->active);
         $this->assertTrue($instance->active);
+    }
+
+    //=======================================
+    // EMPTY CONSTRUCTOR TESTS
+    //=======================================
+
+    public function testClassWithoutConstructor()
+    {
+        $instance = $this->container->make(ClassWithoutConstructor::class);
+        $this->assertInstanceOf(ClassWithoutConstructor::class, $instance);
+    }
+
+    public function testClassWithEmptyConstructor()
+    {
+        $instance = $this->container->make(ClassWithEmptyConstructor::class);
+        $this->assertInstanceOf(ClassWithEmptyConstructor::class, $instance);
     }
 }
