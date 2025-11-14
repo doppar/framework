@@ -27,7 +27,7 @@ class Middleware
     /**
      * Apply a given middleware to the current middleware chain.
      *
-     * @param ContractsMiddleware $middleware The middleware to apply.
+     * @param ContractsMiddleware $middleware
      * @return void
      */
     public function applyMiddleware(ContractsMiddleware $middleware, array|string $params = []): void

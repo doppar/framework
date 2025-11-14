@@ -25,7 +25,7 @@ class LogService implements ResettableInterface
     /**
      * Adds a log handler.
      *
-     * @param LogHandlerInterface $handler The log handler to add.
+     * @param LogHandlerInterface $handler
      * @return void
      */
     public function addHandler(LogHandlerInterface $handler): void
@@ -36,8 +36,8 @@ class LogService implements ResettableInterface
     /**
      * Configures and returns a Monolog logger instance with specific handlers.
      *
-     * @param string|null $channel The logging channel.
-     * @return Logger The configured Monolog logger instance.
+     * @param string|null $channel
+     * @return Logger
      */
     public function getLogger(?string $channel = null): Logger
     {

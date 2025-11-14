@@ -5,7 +5,7 @@ namespace Phaseolies\Auth\Security;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\Facades\Cache;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 
 class Authenticate
 {
@@ -22,6 +22,20 @@ class Authenticate
      * @var Model|null
      */
     private $statelessUser = null;
+
+    /**
+     * Cache for user version checks during the current request
+     *
+     * @var array
+     */
+    private static $versionCheckCache = [];
+
+    /**
+     * Get the current authenticated user
+     *
+     * @var Model|null
+     */
+    private static ?Model $currentUser = null;
 
     public function __set($name, $value)
     {
@@ -142,6 +156,10 @@ class Authenticate
      */
     public function user(): ?Model
     {
+        if (self::$currentUser !== null) {
+            return self::$currentUser;
+        }
+
         $authModel = app(config('auth.model'));
 
         if ($this->statelessUser !== null) {
@@ -149,26 +167,27 @@ class Authenticate
         }
 
         if ($this->isApiRequest()) {
-            if (!class_exists(\Doppar\Flarion\ApiAuthenticate::class)) {
-                throw new \RuntimeException(
-                    'Please install [doppar/flarion] package before using API token access.'
-                );
+            $hasAuthApi = false;
+            foreach (app('route')->getCurrentMiddlewareNames() ?? [] as $middleware) {
+                if (str_starts_with($middleware, 'auth-api')) {
+                    $hasAuthApi = true;
+                    break;
+                }
             }
 
-            $middlewares = app('route')->getCurrentMiddlewareNames();
-
-            if (in_array('auth-api', $middlewares ?? [])) {
-                return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
+            if ($hasAuthApi) {
+                return self::$currentUser = $hasAuthApi
+                    ? app(\Doppar\Flarion\ApiAuthenticate::class)->user()
+                    : null;
             }
-
-            return null;
         }
 
         if (session()->has('cache_auth_user')) {
             $cache = session('cache_auth_user');
-
             if ($this->isUserCacheValid($cache)) {
-                return $cache['user'];
+                if ($this->isUserCacheValid($cache)) {
+                    return self::$currentUser = $cache['user'];
+                }
             }
         }
 
@@ -177,8 +196,7 @@ class Authenticate
 
             if ($user) {
                 $this->cacheUser($user);
-
-                return $user;
+                return self::$currentUser = $user;
             }
         }
 
@@ -222,7 +240,7 @@ class Authenticate
 
                 $this->setUser($user);
 
-                return $user;
+                return self::$currentUser = $user;
             }
 
             // Token didn't match - possible theft attempt
@@ -317,10 +335,20 @@ class Authenticate
             return false;
         }
 
-        $currentVersion =  $cache['user']->newQuery()
+        $userId = $cache['user']->id;
+
+        // Check if we already verified this user's version during this request
+        if (isset(self::$versionCheckCache[$userId])) {
+            return $cache['version'] === self::$versionCheckCache[$userId];
+        }
+
+        $currentVersion = $cache['user']->newQuery()
             ->select('updated_at')
-            ->where('id', $cache['user']->id)
+            ->where('id', $userId)
             ->first();
+
+        // Cache the version check result for this request
+        self::$versionCheckCache[$userId] = $currentVersion?->updated_at;
 
         return $cache['version'] === $currentVersion?->updated_at;
     }
@@ -374,6 +402,6 @@ class Authenticate
      */
     private function isApiRequest(): bool
     {
-        return (bool) request()->is('/api/*');
+        return (bool) request()->isApiRequest();
     }
 }

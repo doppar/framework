@@ -28,7 +28,7 @@ class DBSeedCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
+        return $this->executeWithTiming(function () {
             $seedName = $this->argument('seed');
 
             if ($seedName) {
@@ -36,7 +36,7 @@ class DBSeedCommand extends Command
 
                 if (!class_exists($seederClass)) {
                     $this->displayError('Seeder not found: ' . $seedName);
-                    return 1;
+                    return Command::FAILURE;
                 }
 
                 $seeder = new $seederClass();
@@ -46,9 +46,10 @@ class DBSeedCommand extends Command
                 $databaseSeeder->run();
             }
 
+            $this->newLine();
             $this->displaySuccess('Seeds executed successfully');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 }

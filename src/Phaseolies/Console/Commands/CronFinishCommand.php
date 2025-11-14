@@ -53,7 +53,7 @@ class CronFinishCommand extends Command
 
             if ($exitCode === 0) {
                 $this->displaySuccess('Cron task completed successfully');
-                return 0;
+                return Command::SUCCESS;
             } else {
                 $this->displayError('Cron task failed with exit code: ' . $exitCode);
                 return $exitCode;

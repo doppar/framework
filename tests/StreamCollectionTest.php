@@ -490,15 +490,15 @@ class StreamCollectionTest extends TestCase
         $executionCount = 0;
 
         $generator = function () use (&$executionCount) {
-            echo "Generator started\n";
+            // echo "Generator started\n";
             $executionCount++;
-            echo "Yield 1 (count: $executionCount)\n";
+            // echo "Yield 1 (count: $executionCount)\n";
             yield 1;
             $executionCount++;
-            echo "Yield 2 (count: $executionCount)\n";
+            // echo "Yield 2 (count: $executionCount)\n";
             yield 2;
             $executionCount++;
-            echo "Yield 3 (count: $executionCount)\n";
+            // echo "Yield 3 (count: $executionCount)\n";
             yield 3;
         };
 

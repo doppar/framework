@@ -3,20 +3,19 @@
 namespace App\Http\Controllers;
 
 use Phaseolies\Http\Response;
-use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Utilities\Attributes\Route;
-use App\Http\Middleware\Authenticate;
+use Phaseolies\Utilities\Attributes\Mapper;
 use App\Http\Controllers\Controller;
 
+#[Mapper(prefix: 'home', middleware: ['auth'])]
 class HomeController extends Controller
 {
     /**
      * Display the home page view
      *
-     * @return Response
+     * @return \Phaseolies\Http\Response
      */
-    #[Middleware(Authenticate::class)]
-    #[Route('home', name: 'dashboard')]
+    #[Route('/', name: 'dashboard')]
     public function __invoke(): Response
     {
         return view('home');

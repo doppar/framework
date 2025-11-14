@@ -15,7 +15,7 @@ class ApplicationBuilder
     protected $request;
 
     /**
-     * @param Application $app The application instance to be built
+     * @param Application $app
      */
     public function __construct(protected Application $app)
     {

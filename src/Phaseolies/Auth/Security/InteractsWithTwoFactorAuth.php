@@ -8,7 +8,7 @@ use Symfony\Component\Clock\NativeClock;
 use Psr\Clock\ClockInterface;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\Facades\Auth;
-use Phaseolies\Database\Eloquent\Model;
+use Phaseolies\Database\Entity\Model;
 use ParagonIE\ConstantTime\Base32;
 use OTPHP\TOTP;
 
@@ -27,7 +27,7 @@ trait InteractsWithTwoFactorAuth
     /**
      * Enable 2FA for the current user
      *
-     * @return array Contains secret, QR code URL, and recovery codes
+     * @return array
      */
     public function enableTwoFactorAuth(): array
     {
@@ -218,9 +218,9 @@ trait InteractsWithTwoFactorAuth
     /**
      * Generate QR code image for 2FA setup
      *
-     * @param string $qrCodeUrl The TOTP provisioning URL
-     * @param int $size QR code size in pixels (default 200)
-     * @return string Base64 encoded PNG image data
+     * @param string $qrCodeUrl
+     * @param int $size
+     * @return string
      */
     public function generateTwoFactorQrCode(string $qrCodeUrl): string
     {

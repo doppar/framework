@@ -5,14 +5,16 @@ namespace Phaseolies\Support;
 use Ramsey\Collection\Collection;
 use Phaseolies\Utilities\Attributes\Resolver;
 use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Utilities\Attributes\BindPayload;
+use Phaseolies\Utilities\Attributes\Bind;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
 use App\Http\Kernel;
 
@@ -321,11 +323,31 @@ class Router extends Kernel
     {
         $reflection = new \ReflectionClass($controllerClass);
 
+        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Utilities\Attributes\Mapper::class);
+        $classPrefix = null;
+        $classMiddleware = [];
+
+        if (!empty($mapperAttributes)) {
+            $mapper = $mapperAttributes[0]->newInstance();
+            $classPrefix = $mapper->prefix;
+            $classMiddleware = $mapper->middleware ?? [];
+        }
+
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
                 $route = $attribute->newInstance();
+
+                // Apply class prefix to route URI
+                if ($classPrefix) {
+                    $route->uri = '/' . trim($classPrefix, '/') . '/' . ltrim($route->uri, '/');
+                    $route->uri = rtrim($route->uri, '/') ?: '/';
+                }
+
+                $mergedMiddleware = array_merge($classMiddleware, $route->middleware ?? []);
+                $route->middleware = $mergedMiddleware;
+
                 $this->registerAttributeRoute($controllerClass, $method->getName(), $route);
             }
         }
@@ -341,15 +363,21 @@ class Router extends Kernel
      */
     protected function registerAttributeRoute(string $controllerClass, string $method, object $route): void
     {
-        $path = $route->path;
+        $path = $route->uri;
         $httpMethods = $route->methods ?? ['GET'];
         $name = $route->name ?? null;
         $middleware = $route->middleware ?? [];
+        $rateLimit = $route->rateLimit ?? null;
+        $rateLimitDecay = $route->rateLimitDecay ?? 1;
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
             if (!empty($middleware)) {
                 $this->middleware($middleware);
+            }
+
+            if ($rateLimit) {
+                $this->middleware("throttle:{$rateLimit},{$rateLimitDecay}");
             }
         }
     }
@@ -894,8 +922,7 @@ class Router extends Kernel
     protected function loadRoutesFromFiles(): void
     {
         $routeFiles = [
-            base_path('routes/web.php'),
-            base_path('routes/api.php'),
+            base_path('routes/web.php')
         ];
 
         foreach ($routeFiles as $file) {
@@ -1047,17 +1074,55 @@ class Router extends Kernel
             $actionMethod = "__invoke";
         } else if ($callback instanceof \Closure) {
             $reflection = new \ReflectionFunction($callback);
+            $dependencies = [];
+
             foreach ($reflection->getParameters() as $parameter) {
                 $paramType = $parameter->getType();
-                if (!$paramType->isBuiltin() && $paramType) {
+
+                // Handle #[Model] attribute - HIGHEST PRIORITY
+                $modelResult = $this->handleModelAttribute($parameter, $routeParams);
+                if ($modelResult['handled']) {
+                    $dependencies[] = $modelResult['instance'];
+                    continue;
+                }
+
+                // Handle #[BindPayload()]
+                $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
+                if ($payloadResult['handled']) {
+                    $dependencies[] = $payloadResult['instance'];
+                    continue;
+                }
+
+                // Handle #[Bind()]
+                $bindResult = $this->handleBindAttribute($parameter, $app);
+                if ($bindResult['handled']) {
+                    $dependencies[] = $bindResult['instance'];
+                    continue;
+                }
+
+                // Handle type-hinted dependencies
+                if ($paramType && !$paramType->isBuiltin()) {
                     $typeName = $paramType->getName();
                     if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
                         $this->resolveFormRequestValidationClass($app, $typeName);
                     }
+                    $dependencies[] = $app->make($typeName);
+                }
+                // Handle route parameters
+                elseif (isset($routeParams[$parameter->getName()])) {
+                    $dependencies[] = $routeParams[$parameter->getName()];
+                }
+                // Handle optional parameters
+                elseif ($parameter->isOptional()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                }
+                // Cannot resolve parameter
+                else {
+                    throw new \Exception("Cannot resolve parameter '{$parameter->getName()}' for closure");
                 }
             }
 
-            return $app->call($callback, $routeParams);
+            return $callback(...$dependencies);
         }
 
         $reflector = new \ReflectionClass($controllerClass);
@@ -1070,7 +1135,45 @@ class Router extends Kernel
 
         $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
 
+        // Check if method should be wrapped in a transaction
+        $transactionConfig = $this->getTransactionConfig($reflector, $actionMethod);
+
+        if ($transactionConfig) {
+            return $this->executeInTransaction(
+                $controllerInstance,
+                $actionMethod,
+                $actionDependencies,
+                $transactionConfig['connection'],
+                $transactionConfig['attempts']
+            );
+        }
+
         return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Execute a controller action within a database transaction
+     *
+     * @param object $controllerInstance
+     * @param string $actionMethod
+     * @param array $actionDependencies
+     * @param string|null $connection
+     * @param int $attempts
+     * @return mixed
+     * @throws \Throwable
+     */
+    protected function executeInTransaction(
+        object $controllerInstance,
+        string $actionMethod,
+        array $actionDependencies,
+        ?string $connection,
+        int $attempts
+    ): mixed {
+        $db = new \Phaseolies\Database\Database($connection);
+
+        return $db->transaction(function () use ($controllerInstance, $actionMethod, $actionDependencies) {
+            return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+        }, $attempts);
     }
 
     /**
@@ -1266,6 +1369,27 @@ class Router extends Kernel
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
 
+            // Handle #[Model] attribute - HIGHEST PRIORITY
+            $modelResult = $this->handleModelAttribute($parameter, $routeParams);
+            if ($modelResult['handled']) {
+                $dependencies[] = $modelResult['instance'];
+                continue;
+            }
+
+            // Handle #[BindPayload()]
+            $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
+            if ($payloadResult['handled']) {
+                $dependencies[] = $payloadResult['instance'];
+                continue;
+            }
+
+            // Handle #[Bind()]
+            $bindResult = $this->handleBindAttribute($parameter, $app);
+            if ($bindResult['handled']) {
+                $dependencies[] = $bindResult['instance'];
+                continue;
+            }
+
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
                 $resolvedInstance = $this->resolveFormRequestValidationClass($app, $resolvedClass);
@@ -1280,5 +1404,181 @@ class Router extends Kernel
         }
 
         return $dependencies;
+    }
+
+    /**
+     * Handle BindPayload attribute for a parameter
+     *
+     * @param \ReflectionParameter $parameter
+     * @param Application $app
+     * @return array
+     * @throws \Exception
+     */
+    private function handleBindPayloadAttribute(\ReflectionParameter $parameter, Application $app): array
+    {
+        $mapAttributes = $parameter->getAttributes(BindPayload::class);
+        if (empty($mapAttributes)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
+        }
+
+        $dtoClass = $paramType->getName();
+        if (!class_exists($dtoClass)) {
+            throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
+        }
+
+        $dto = $app->make($dtoClass);
+        $request = $app->make('request');
+        $attributeInstance = $mapAttributes[0]->newInstance();
+        $instance = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Handle Bind attribute for a parameter
+     *
+     * @param \ReflectionParameter $parameter
+     * @param Application $app
+     * @return array
+     * @throws \Exception
+     */
+    private function handleBindAttribute(\ReflectionParameter $parameter, Application $app): array
+    {
+        $binds = $parameter->getAttributes(Bind::class);
+        if (empty($binds)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception("Parameter '$paramName' must be a class-typed when using Bind");
+        }
+
+        $bindAttribute = $binds[0];
+        $bindInstance = $bindAttribute->newInstance();
+
+        $abstract = $paramType->getName();
+        $bindInstance->singleton
+            ? $app->singleton($abstract, $bindInstance->concrete)
+            : $app->bind($abstract, $bindInstance->concrete);
+
+        $instance = $app->make($abstract);
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Handle Model attribute for automatic model binding
+     *
+     * @param \ReflectionParameter $parameter
+     * @param array $routeParams
+     * @return array
+     * @throws \Exception
+     */
+    private function handleModelAttribute(\ReflectionParameter $parameter, array $routeParams): array
+    {
+        $modelAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Model::class);
+
+        if (empty($modelAttributes)) {
+            return ['handled' => false, 'instance' => null];
+        }
+
+        $paramName = $parameter->getName();
+        $paramType = $parameter->getType();
+
+        // Ensure parameter has a type hint
+        if (!$paramType || $paramType->isBuiltin()) {
+            throw new \Exception(
+                "Parameter '\$$paramName' must have a class type hint when using #[Model] attribute"
+            );
+        }
+
+        $modelClass = $paramType->getName();
+        $modelAttribute = $modelAttributes[0]->newInstance();
+
+        $modelInstance = app($modelClass);
+        $modelRouteKey = $modelInstance->getRouteKeyName();
+        $modelPrimaryKey = $modelInstance->getPrimaryKey();
+
+        $column = $modelAttribute->column ?? $modelRouteKey;
+        $exception = $modelAttribute->exception;
+
+        if (!isset($routeParams[$paramName])) {
+            throw new \Exception(
+                "Route parameter '\$$paramName' not found in URL for model binding"
+            );
+        }
+
+        $value = $routeParams[$paramName];
+        $instance = $this->resolveModelInstance($modelClass, $column, $value, $modelPrimaryKey, $exception);
+
+        return ['handled' => true, 'instance' => $instance];
+    }
+
+    /**
+     * Resolve a model instance from the database
+     *
+     * @param string $modelClass
+     * @param string $column
+     * @param mixed $value
+     * @param string $modelPrimaryKey
+     * @param bool $exception
+     * @return Model
+     * @throws \Exception
+     */
+    private function resolveModelInstance(
+        string $modelClass,
+        string $column,
+        mixed $value,
+        string $modelPrimaryKey,
+        bool $exception
+    ): ?Model {
+        if ($column === $modelPrimaryKey) {
+            $instance = $modelClass::find($value);
+        } elseif ($column !== $modelPrimaryKey) {
+            $instance = $modelClass::where($column, $value)->first();
+        } else {
+            throw new \Exception(
+                "Model class '$modelClass' does not have a suitable method for model binding"
+            );
+        }
+
+        if (!$instance && $exception) {
+            abort(404, "$modelClass not found with $column = $value");
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Check if method has Transaction attribute
+     *
+     * @param \ReflectionClass $reflector
+     * @param string $actionMethod
+     * @return array|null [connection, attempts] or null
+     */
+    protected function getTransactionConfig(\ReflectionClass $reflector, string $actionMethod): ?array
+    {
+        $method = $reflector->getMethod($actionMethod);
+        $methodAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Transaction::class);
+
+        if (!empty($methodAttributes)) {
+            $transaction = $methodAttributes[0]->newInstance();
+            return [
+                'connection' => $transaction->connection,
+                'attempts' => $transaction->attempts
+            ];
+        }
+
+        return null;
     }
 }

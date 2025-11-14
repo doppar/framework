@@ -14,20 +14,20 @@
   },
   "require": {
     "php": "^8.3",
+    "chillerlan/php-qrcode": "^5.0",
     "dragonmantank/cron-expression": "^3.4",
     "monolog/monolog": "^3.0",
     "nesbot/carbon": "^3.8",
+    "paragonie/constant_time_encoding": "^3.0",
     "phpmailer/phpmailer": "^6.9",
     "psr/simple-cache": "^3.0",
     "ramsey/collection": "^2.1",
-    "symfony/cache": "^7.2",
-    "symfony/console": "^7.2",
-    "symfony/process": "^7.2",
-    "symfony/var-dumper": "^7.1",
-    "vlucas/phpdotenv": "^5.5",
-    "paragonie/constant_time_encoding": "^3.0",
     "spomky-labs/otphp": "^11.3",
-    "chillerlan/php-qrcode": "^5.0"
+    "symfony/cache": "^7.3",
+    "symfony/console": "^7.3",
+    "symfony/process": "^7.3",
+    "symfony/var-dumper": "^7.3",
+    "vlucas/phpdotenv": "^5.6"
   },
   "require-dev": {
     "mockery/mockery": "^1.6",
@@ -60,6 +60,6 @@
       "composer/package-versions-deprecated": true
     }
   },
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
   "prefer-stable": true
 }

@@ -22,13 +22,8 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles an incoming request and verifies the CSRF token.
      *
-     * This middleware checks if the request is a POST, PUT, PATCH, or DELETE request
-     * and if the CSRF token is present and valid. If the CSRF token is missing or invalid,
-     * a JSON response with a 422 status code is returned for AJAX requests, and an exception
-     * is thrown for non-AJAX requests.
-     *
-     * @param Request $request The incoming request instance.
-     * @param Closure $next The next middleware or request handler.
+     * @param Request $request
+     * @param \Closure(\Phaseolies\Http\Request) $next
      * @return \Phaseolies\Http\Response
      * @throws HttpException
      */
@@ -52,7 +47,7 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Checks if the request is a modifying request (POST, PUT, PATCH, DELETE).
      *
-     * @param Request $request The incoming request instance.
+     * @param Request $request
      * @return bool
      */
     protected function isReading(Request $request): bool
@@ -167,7 +162,7 @@ class CsrfTokenMiddleware implements Middleware
     /**
      * Handles CSRF validation errors.
      *
-     * @param string $message The error message.
+     * @param string $message
      * @return Response
      * @throws TokenMismatchException
      */

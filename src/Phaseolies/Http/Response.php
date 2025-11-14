@@ -1572,8 +1572,8 @@ class Response implements HttpStatus
         if (
             is_array($content) ||
             $content instanceof \JsonSerializable ||
-            $content instanceof \Phaseolies\Database\Eloquent\Model ||
-            $content instanceof \Phaseolies\Database\Eloquent\Builder ||
+            $content instanceof \Phaseolies\Database\Entity\Model ||
+            $content instanceof \Phaseolies\Database\Entity\Builder ||
             $content instanceof \stdClass ||
             $content instanceof \ArrayObject
         ) {
@@ -1585,5 +1585,28 @@ class Response implements HttpStatus
         $this->setBody($content);
 
         return $content;
+    }
+
+    /**
+     * Set exception response body
+     *
+     * @param Throwable $exception
+     * @param int|null $statusCode
+     * @return static
+     */
+    public function setExceptionError(Throwable $exception, ?int $statusCode = null): static
+    {
+        $status = $statusCode ?? ($exception->getCode() ?: 500);
+        $error = $exception->getMessage() ?? 'An error occurred';
+
+        $this->setBody(json_encode($error));
+        $this->setOriginal($exception);
+        $this->setStatusCode($status);
+        $this->setException($status);
+
+        // Fallback
+        http_response_code($status);
+
+        return $this;
     }
 }

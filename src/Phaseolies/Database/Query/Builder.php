@@ -3,47 +3,40 @@
 namespace Phaseolies\Database\Query;
 
 use PDO;
+use Phaseolies\Database\Contracts\Driver\DriverInterface;
 
 class Builder
 {
     /**
-     * @var string
-     */
-    protected string $table;
-
-    /**
-     * @var PDO
-     */
-    protected PDO $pdo;
-
-    /**
      * @param string $table
      * @param PDO $pdo
+     * @param DriverInterface|null $driver
      */
-    public function __construct(string $table, PDO $pdo)
+    public function __construct(protected string $table, protected PDO $pdo, protected ?DriverInterface $driver = null)
     {
-        $this->table = $table;
-        $this->pdo = $pdo;
     }
 
     /**
      * Truncate the table
      *
-     * @param bool $resetAutoIncrement Whether to reset auto-increment values
+     * @param bool $resetAutoIncrement
      * @return int
-     * @throws \RuntimeException When table doesn't exist
+     * @throws \RuntimeException
      */
     public function truncate(bool $resetAutoIncrement = true): int
     {
-        $sql = "TRUNCATE TABLE {$this->table}";
-
-        if (!$resetAutoIncrement) {
-            $sql = "DELETE FROM {$this->table}";
-        }
-
         if (!$this->tableExists()) {
             throw new \RuntimeException("Table {$this->table} does not exist");
         }
+
+        if ($this->driver) {
+            return $this->driver->truncate($this->pdo, $this->table, $resetAutoIncrement);
+        }
+
+        // Fallback to direct SQL if no driver is available
+        $sql = $resetAutoIncrement
+            ? "TRUNCATE TABLE {$this->table}"
+            : "DELETE FROM {$this->table}";
 
         return (int) $this->execute($sql);
     }
@@ -55,6 +48,9 @@ class Builder
      */
     public function delete(): int
     {
+        if ($this->driver) {
+            return $this->driver->deleteAll($this->pdo, $this->table);
+        }
         return (int) $this->execute("DELETE FROM {$this->table}");
     }
 
@@ -65,16 +61,23 @@ class Builder
      */
     public function drop(): int
     {
+        if ($this->driver) {
+            return $this->driver->dropTable($this->pdo, $this->table);
+        }
         return (int) $this->execute("DROP TABLE {$this->table}");
     }
 
     /**
      * Check if table exists
-     * 
+     *
      * @return bool
      */
     protected function tableExists(): bool
     {
+        if ($this->driver) {
+            return $this->driver->tableExists($this->pdo, $this->table);
+        }
+
         try {
             $result = $this->pdo->query("SELECT 1 FROM {$this->table} LIMIT 1");
             return $result !== false;

@@ -1,75 +1,13 @@
 <p align="center">
-    <a href="https://doppar.com" target="_blank">
-        <img src="https://raw.githubusercontent.com/doppar/doppar/7138fb0e72cd55256769be6947df3ac48c300700/public/logo.png" width="400">
-    </a>
-</p>
-
-<p align="center">
-<a href="https://github.com/doppar/framework/actions/workflows/tests.yml"><img src="https://github.com/doppar/framework/actions/workflows/tests.yml/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/dt/doppar/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/doppar/framework"><img src="https://img.shields.io/packagist/v/doppar/framework" alt="Latest Stable Version"></a>
-<a href="https://github.com/doppar/framework/blob/main/LICENSE"><img src="https://img.shields.io/github/license/doppar/framework" alt="License"></a>
+  <a href="https://doppar.com" target="_blank">
+    <img src="https://raw.githubusercontent.com/doppar/doppar/7138fb0e72cd55256769be6947df3ac48c300700/public/logo.png" width="320" alt="Doppar logo">
+  </a>
 </p>
 
 ## About Doppar
 The high-performance, minimalist PHP framework for developers who need raw speed and are willing to build their own application layer
 
-> **Note:** This repository contains the core code of the Doppar framework. If you want to build an application using Doppar, visit the main [Doppar repository](https://github.com/doppar/doppar).
-
-### 1. Performance & Lightweight Architecture
-- **Minimal overhead**: Core stripped of third-party dependencies → lightning-fast performance with minimal bloat.
-- **JIT compilation for Blade templates**: Optimizations include:
-  - Whitespace reduction
-  - Echo consolidation
-  - Loop simplification
-  - Inline small views
-  - Lazy-loading components
-
-### 2. Modern, Modular Design
-- Inspired by **Laravel’s syntax** but built on **Symfony’s solid foundation**.
-- Encourages **feature-based development structure** → promotes organization and scalability.
-- Includes robust features out of the box:
-  - Routing
-  - Middleware
-  - Service container
-  - Validation
-  - ORM
-  - Caching
-  - API authentication
-  - Rate limiting
-  - CLI tooling
-
-### 3. Security and API-readiness
-- Built-in security features:
-  - CSRF protection
-  - Input validation
-  - Encryption utilities
-  - Header-based authentication
-  - Throttling & middleware-driven rate limiting
-
-- Strong **API-first focus**:
-  - JSON-first controllers
-  - Built-in rate limiting
-  - API authentication with **Flarion**
-  - Standardized JSON responses
-
-### 4. Extensibility & Package Architecture
-- Modular package system with:
-  - Routes
-  - Migrations
-  - Views
-  - Service providers
-- Improves adaptability, reusability, and scalability.
-- Service providers handle setup and bootstrapping → clean separation of concerns, ideal for large/complex applications.
-
-### 5. Production Readiness
-- Optimization tools for live environments:
-  - Route caching
-  - View caching
-  - Config caching
-- Middleware support for HTTP caching (e.g., **ETags**) → improves client-side performance and reduces server load.
-
-Whether you're a seasoned PHP developer or just diving in, Doppar makes it easy to build powerful applications quickly and cleanly.
+> This repository contains the Doppar framework core. To build an application with Doppar, use the main [Doppar repository](https://github.com/doppar/doppar).
 
 ## Contributing
 

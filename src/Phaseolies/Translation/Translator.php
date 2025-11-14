@@ -37,8 +37,8 @@ class Translator extends FileLoader
     /**
      * Create a new translator instance.
      *
-     * @param FileLoader $loader The file loader instance
-     * @param string $locale The default locale
+     * @param FileLoader $loader
+     * @param string $locale
      */
     public function __construct(FileLoader $loader, $locale)
     {
@@ -51,10 +51,10 @@ class Translator extends FileLoader
      * Get the translation for the given key.
      * Alias for the get() method.
      *
-     * @param string $key The translation key
-     * @param array $replace Placeholder replacements
-     * @param string|null $locale The locale to use
-     * @return string The translated string or the key if not found
+     * @param string $key
+     * @param array $replace
+     * @param string|null $locale
+     * @return string
      */
     public function trans($key, array $replace = [], $locale = null)
     {
@@ -64,10 +64,10 @@ class Translator extends FileLoader
     /**
      * Get the translation for the given key.
      *
-     * @param string $key The translation key
-     * @param array $replace Placeholder replacements
-     * @param string|null $locale The locale to use
-     * @return string The translated string or the key if not found
+     * @param string $key
+     * @param array $replace
+     * @param string|null $locale
+     * @return string
      */
     public function get($key, array $replace = [], $locale = null)
     {
@@ -103,7 +103,7 @@ class Translator extends FileLoader
     /**
      * Parse a key into namespace, group, and item.
      *
-     * @param string $key The translation key to parse
+     * @param string $key
      * @return array [namespace, group, item]
      */
     protected function parseKey($key)
@@ -135,7 +135,7 @@ class Translator extends FileLoader
     /**
      * Parse a namespaced key into components.
      *
-     * @param string $key The namespaced key to parse
+     * @param string $key
      * @return array [namespace, group, item]
      */
     protected function parseNamespacedKey($key)
@@ -159,12 +159,12 @@ class Translator extends FileLoader
     /**
      * Get a translation line from the loaded translations.
      *
-     * @param string|null $namespace The namespace
-     * @param string|null $group The group
-     * @param string $locale The locale
-     * @param string $item The item key
-     * @param array $replace Placeholder replacements
-     * @return string|array|null The translated string, array of translations, or null if not found
+     * @param string|null $namespace
+     * @param string|null $group
+     * @param string $locale
+     * @param string $item
+     * @param array $replace
+     * @return string|array|null
      */
     protected function getLine($namespace, $group, $locale, $item, array $replace)
     {
@@ -192,9 +192,9 @@ class Translator extends FileLoader
     /**
      * Make the place-holder replacements on a translation line.
      *
-     * @param string $line The translation line
-     * @param array $replace The replacements
-     * @return string The line with replacements applied
+     * @param string $line
+     * @param array $replace
+     * @return string
      */
     public function makeReplacements($line, array $replace)
     {
@@ -212,9 +212,9 @@ class Translator extends FileLoader
     /**
      * Load the specified language group.
      *
-     * @param string|null $namespace The namespace
-     * @param string|null $group The group
-     * @param string $locale The locale
+     * @param string|null $namespace
+     * @param string|null $group
+     * @param string $locale
      * @return void
      */
     public function loadTranslations($namespace, $group, $locale)
@@ -231,9 +231,9 @@ class Translator extends FileLoader
     /**
      * Determine if the given group has been loaded.
      *
-     * @param string|null $namespace The namespace
-     * @param string|null $group The group
-     * @param string $locale The locale
+     * @param string|null $namespace
+     * @param string|null $group
+     * @param string $locale
      * @return bool
      */
     protected function isLoaded($namespace, $group, $locale)
@@ -244,7 +244,7 @@ class Translator extends FileLoader
     /**
      * Set the current locale.
      *
-     * @param string $locale The locale to set
+     * @param string $locale
      * @return void
      */
     public function setLocale($locale)
@@ -265,7 +265,7 @@ class Translator extends FileLoader
     /**
      * Set the fallback locale.
      *
-     * @param string $fallback The fallback locale
+     * @param string $fallback
      * @return void
      */
     public function setFallback($fallback)

@@ -85,7 +85,7 @@ class RateLimiter
     /**
      * Get the number of seconds until the "key" is accessible again.
      *
-     * @param  string  $key
+     * @param string $key
      * @return int
      * @throws InvalidArgumentException
      */

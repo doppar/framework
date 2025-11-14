@@ -4,7 +4,7 @@ namespace Phaseolies\Http\Controllers;
 
 use RuntimeException;
 use Phaseolies\Support\View\View;
-use Phaseolies\Support\Cache\Cache;
+use Phaseolies\Support\Blade\BladeCache;
 use Phaseolies\Support\Blade\Directives;
 use Phaseolies\Support\Blade\BladeCondition;
 use Phaseolies\Support\Blade\BladeCompiler;
@@ -13,7 +13,7 @@ use Countable;
 
 class Controller extends View
 {
-    use Cache, BladeCompiler, Directives, BladeCondition;
+    use BladeCache, BladeCompiler, Directives, BladeCondition;
 
     /**
      * @var array
@@ -203,7 +203,7 @@ class Controller extends View
      *
      * @param string $view
      */
-    public function prepare($view, array $data = []): string
+    public function prepare($view): string
     {
         $actual = $this->findView($view);
         $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
@@ -212,12 +212,7 @@ class Controller extends View
         $needsRecompile = !is_file($cache) || filemtime($actual) > filemtime($cache);
 
         if ($needsRecompile) {
-            $content = $this->compileView($actual, $data);
-            file_put_contents($cache, $content);
-        } elseif (!empty($data)) {
-            $dataExport = var_export($data, true);
-            $content = file_get_contents($cache);
-            $content = "<?php extract($dataExport); ?>" . $content;
+            $content = $this->compileView($actual);
             file_put_contents($cache, $content);
         }
 
@@ -235,7 +230,7 @@ class Controller extends View
      * @param array $data
      * @return string
      */
-    protected function compileView(string $actual, array $data): string
+    protected function compileView(string $actual): string
     {
         if (!is_file($actual)) {
             throw new RuntimeException('View not found: ' . $actual);
@@ -256,11 +251,6 @@ class Controller extends View
 
         // Replace @php and @endphp blocks
         $content = $this->replacePhpBlocks($content);
-
-        if (!empty($data)) {
-            $dataExport = var_export($data, true);
-            $content = "<?php extract($dataExport); ?>" . $content;
-        }
 
         return $content;
     }
@@ -551,7 +541,7 @@ class Controller extends View
                 $data = isset($match[2]) ? $match[2] : '[]';
 
                 try {
-                    $includedContent = $this->compileView($this->findView($view), []);
+                    $includedContent = $this->compileView($this->findView($view));
 
                     // Only inline if the content is small
                     if (strlen($includedContent) < 500) {

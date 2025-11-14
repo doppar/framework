@@ -29,9 +29,15 @@ class Migrator
     protected array $migrationPaths = [];
 
     /**
-     * Constructor
-     * @param MigrationRepository $repository Repository for tracking migrations
-     * @param string $migrationPath Path to migration files directory
+     * The database connection name this migration should use
+     *
+     * @var string|null
+     */
+    protected ?string $connection = null;
+
+    /**
+     * @param MigrationRepository $repository
+     * @param string $migrationPath
      */
     public function __construct(MigrationRepository $repository, string $migrationPath)
     {
@@ -54,81 +60,195 @@ class Migrator
     /**
      * Run all pending migrations
      *
-     * @return array List of migration files that were executed
+     * @param string $connection
+     * @return array
      */
-    public function run(): array
+    public function run(string $connection, ?string $path = null): array
     {
-        $this->ensureMigrationTableExists();
+        $connection = $connection ?? config('database.default');
+        $this->ensureMigrationTableExists($connection);
 
-        $files = $this->getMigrationFiles();
-        $ran = $this->repository->getRan();
+        $files = $this->getMigrationFiles($connection);
+        $ran = $this->repository->getRan($connection);
 
-        $migrations = array_diff($files, $ran);
-        $migrations = array_unique($migrations);
+        $localMigrations = [];
+        $vendorMigrations = [];
+
+        foreach ($files as $file) {
+            if (str_contains($file, '/vendor/')) {
+                $vendorMigrations[basename($file)] = $file;
+            } else {
+                $localMigrations[basename($file)] = $file;
+            }
+        }
+
+        $fileNames = array_map('basename', array_merge($files));
+        $migrations = array_diff($fileNames, $ran);
+
+        foreach ($vendorMigrations as $basename => $vendorPath) {
+            if (!file_exists(database_path('migration/' . $basename))) {
+                $migrations[] = $vendorPath;
+            }
+
+            foreach ($migrations as $key => $value) {
+                if (basename($value) === $basename && strpos($value, 'vendor') === false) {
+                    unset($migrations[$key]);
+                }
+            }
+        }
+
+        if ($path) {
+            $file = basename($path);
+            if (in_array($file, $ran)) {
+                return [];
+            }
+
+            $fullPath = is_file($path) ? $path : $this->migrationPath . DIRECTORY_SEPARATOR . $file;
+            if (!is_file($fullPath)) {
+                throw new \RuntimeException("Migration file not found: {$fullPath}\n\n");
+            }
+
+            $this->runMigrationList([$file], $connection);
+
+            return [$file];
+        }
 
         if (empty($migrations)) {
             return [];
         }
 
-        $this->runMigrationList($migrations);
+        $executed = [];
+        foreach ($migrations as $file) {
+            $fullPath = is_file($file) ? $file : $this->migrationPath . DIRECTORY_SEPARATOR . $file;
 
-        return $migrations;
+            if (!is_file($fullPath)) {
+                echo "Migration file not found: {$file}\n\n";
+                continue;
+            }
+
+            $executed[] = basename($fullPath);
+        }
+        sort($executed);
+
+        $this->runMigrationList($executed, $connection);
+
+        return $executed;
     }
 
     /**
      * Ensure the migration tracking table exists in the database
-     * Creates it if it doesn't exist
      *
+     * @param string|null $connection
      * @return void
      */
-    protected function ensureMigrationTableExists(): void
+    protected function ensureMigrationTableExists(?string $connection = null): void
     {
-        if (!$this->repository->exists()) {
-            $this->repository->create();
+        if (!$this->repository->exists($connection)) {
+            $this->repository->create($connection);
         }
     }
 
     /**
      * Get all migration files from the migration path
      *
-     * @return array List of migration file names
+     * @param string|null $connection
+     * @return array
      */
-    protected function getMigrationFiles(): array
+    public function getMigrationFiles(?string $connection = null): array
     {
+        $connection = $connection ?? config('database.default');
+
         $files = glob($this->migrationPath . '/*.php') ?: [];
+        $packageMigrations = $this->migrationPaths ?: [];
 
-        $packageMigrations = app('migrator')->migrationPaths;
+        // Normalize vendor migrations to full paths if needed
+        $normalizedPackages = array_map(function ($file) {
+            return is_file($file) ? $file : (base_path($file));
+        }, $packageMigrations);
 
-        $allFiles = array_merge($files, $packageMigrations);
+        /**
+         * 🧠 Build a map by basename so project migrations override vendor ones
+         * Example:
+         *   2025_10_11_000001_create_users_table.php → pick from database/migrations if exists
+         */
+        $migrationMap = [];
 
-        return array_map('basename', $allFiles);
+        foreach ($normalizedPackages as $vendorFile) {
+            if (is_file($vendorFile)) {
+                $migrationMap[basename($vendorFile)] = $vendorFile;
+            }
+        }
+
+        foreach ($files as $localFile) {
+            $migrationMap[basename($localFile)] = $localFile;
+        }
+
+        $allFiles = array_values($migrationMap);
+
+        $filtered = [];
+
+        foreach ($allFiles as $path) {
+            if (!is_file($path)) continue;
+
+            $content = file_get_contents($path);
+            if ($content === false) continue;
+
+            $patterns = [
+                "/Schema::connection\(\s*['\"]([^'\"]+)['\"]\s*\)/i",
+                "/DB::connection\(\s*['\"]([^'\"]+)['\"]\s*\)/i",
+                "/protected\s+\$connection\s*=\s*['\"]([^'\"]+)['\"]\s*;/i",
+                "/public\s+\$connection\s*=\s*['\"]([^'\"]+)['\"]\s*;/i",
+                "/\$this->connection\s*=\s*['\"]([^'\"]+)['\"]\s*;/i",
+            ];
+
+            $migrationConnection = null;
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $content, $m)) {
+                    $migrationConnection = $m[1];
+                    break;
+                }
+            }
+
+            if ($migrationConnection === null) {
+                $migrationConnection = config('database.default');
+            }
+
+            if ($migrationConnection === $connection) {
+                $filtered[] = $path;
+            }
+        }
+
+        return $filtered;
     }
 
     /**
      * Run a list of migration files
      *
-     * @param array $migrations List of migration file names to run
+     * @param array $migrations
+     * @param string|null $connection
      */
-    protected function runMigrationList(array $migrations): void
+    protected function runMigrationList(array $migrations, ?string $connection = null): void
     {
         foreach ($migrations as $file) {
-            $this->runMigration($file);
+            $this->runMigration($file, $connection);
         }
     }
 
     /**
      * Run a single migration file
      *
-     * @param string $file Migration file name
-     * @throws \Throwable If migration fails
+     * @param string $file
+     * @param string|null $connection
+     * @return void
+     * @throws \RuntimeException
      */
-    protected function runMigration(string $file): void
+    protected function runMigration(string $file, ?string $connection = null): void
     {
         try {
-            foreach (app('migrator')->migrations as $path => $migration) {
+            foreach ($this->migrations as $path => $migration) {
                 if (basename($path) === $file) {
                     $migration->up();
-                    $this->repository->log($file);
+                    $this->repository->log($file, $connection);
                     return;
                 }
             }
@@ -139,8 +259,9 @@ class Migrator
             }
 
             $migration = require $path;
+
             $migration->up();
-            $this->repository->log($file);
+            $this->repository->log($file, $connection);
         } catch (\Throwable $e) {
             throw $e;
         }
@@ -149,9 +270,9 @@ class Migrator
     /**
      * Resolve a migration file into a Migration instance
      *
-     * @param string $file Migration file name
-     * @return Migration Migration instance
-     * @throws \RuntimeException If file doesn't exist or invalid migration
+     * @param string $file
+     * @return Migration
+     * @throws \RuntimeException
      */
     protected function resolve(string $file): Migration
     {
@@ -173,8 +294,8 @@ class Migrator
     /**
      * Convert a migration file name to a class name
      *
-     * @param string $file Migration file name
-     * @return string Class name
+     * @param string $file
+     * @return string
      */
     protected function getMigrationClass(string $file): string
     {

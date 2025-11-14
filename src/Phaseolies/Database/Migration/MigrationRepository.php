@@ -19,24 +19,24 @@ class MigrationRepository
      *
      * @return bool True if table exists, false otherwise
      */
-    public function exists(): bool
+    public function exists(?string $connection = null): bool
     {
-        return (bool) DB::tableExists($this->table);
+        return (bool) DB::connection($connection)->tableExists($this->table);
     }
 
     /**
      * Creates the migrations table in the database
-     * The table has two columns:
-     * - migration: string - stores the migration filename
-     * - batch: integer - stores the batch number when the migration was run
+     *
+     * @param string|null $connection
+     * @return void
      */
-    public function create(): void
+    public function create(?string $connection = null): void
     {
-        if ($this->exists()) {
+        if ($this->exists($connection)) {
             return;
         }
 
-        Schema::create($this->table, function ($table) {
+        Schema::connection($connection)->create($this->table, function ($table) {
             $table->string('migration');
             $table->integer('batch');
         });
@@ -44,15 +44,19 @@ class MigrationRepository
 
     /**
      * Gets the list of migrations that have already been run
-     * @return array Array of migration filenames, ordered by batch and migration name
+     *
+     * @param string|null $connection
+     * @return array
      */
-    public function getRan(): array
+    public function getRan(?string $connection = null): array
     {
-        if (!$this->exists()) {
+        $connection = $connection ?? config('database.default');
+
+        if (!$this->exists($connection)) {
             return [];
         }
 
-        $stmt = DB::statement(
+        $stmt = DB::connection($connection)->statement(
             "SELECT migration FROM {$this->table} ORDER BY batch ASC, migration ASC"
         );
 
@@ -64,13 +68,14 @@ class MigrationRepository
     /**
      * Logs a migration file as having been run
      *
-     * @param string $file The migration filename to log
+     * @param string $file
+     * @param string|null $connection
      */
-    public function log(string $file): void
+    public function log(string $file, ?string $connection = null): void
     {
-        $batch = $this->getNextBatchNumber();
+        $batch = $this->getNextBatchNumber($connection);
 
-        DB::execute(
+        DB::connection($connection)->execute(
             "INSERT INTO {$this->table} (migration, batch) VALUES (?, ?)",
             [$file, $batch]
         );
@@ -79,15 +84,16 @@ class MigrationRepository
     /**
      * Gets the next batch number for new migrations
      *
-     * @return int The next batch number (increments the highest existing batch number)
+     * @param string|null $connection
+     * @return int
      */
-    protected function getNextBatchNumber(): int
+    protected function getNextBatchNumber(?string $connection = null): int
     {
-        if (!$this->exists()) {
+        if (!$this->exists($connection)) {
             return 1;
         }
 
-        $stmt = DB::statement("SELECT MAX(batch) FROM {$this->table}");
+        $stmt = DB::connection($connection)->statement("SELECT MAX(batch) FROM {$this->table}");
         $maxBatch = $stmt->fetchColumn();
 
         return $maxBatch ? (int) $maxBatch + 1 : 1;

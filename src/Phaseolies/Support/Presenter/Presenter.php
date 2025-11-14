@@ -2,8 +2,8 @@
 
 namespace Phaseolies\Support\Presenter;
 
-use Phaseolies\Database\Eloquent\Model;
-use Phaseolies\Database\Eloquent\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
 use JsonSerializable;
 
 abstract class Presenter implements JsonSerializable
@@ -136,11 +136,11 @@ abstract class Presenter implements JsonSerializable
             return $value->toArray();
         }
 
-        if ($value instanceof \Phaseolies\Database\Eloquent\Builder) {
+        if ($value instanceof \Phaseolies\Database\Entity\Builder) {
             return $value->get()->toArray();
         }
 
-        if ($value instanceof \Phaseolies\Database\Eloquent\Model) {
+        if ($value instanceof \Phaseolies\Database\Entity\Model) {
             return $value->toArray();
         }
 

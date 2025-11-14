@@ -11,7 +11,7 @@ class MakeConsoleCommand extends Command
      *
      * @var string
      */
-    protected $name = 'make:schedule {name}';
+    protected $name = 'make:command {name}';
 
     /**
      * The description of the console command.
@@ -37,7 +37,7 @@ class MakeConsoleCommand extends Command
             if (file_exists($filePath)) {
                 $this->displayError('Command already exists at:');
                 $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
-                return 1;
+                return Command::FAILURE;
             }
 
             $directoryPath = dirname($filePath);
@@ -53,7 +53,7 @@ class MakeConsoleCommand extends Command
             $this->newLine();
             $this->line('<fg=yellow>📌 Command Name:</> <fg=white>doppar:' . $this->convertToKebabCase($className) . '</>');
 
-            return 0;
+            return Command::SUCCESS;
         });
     }
 
@@ -82,6 +82,8 @@ class MakeConsoleCommand extends Command
     {
         $commandName = $this->convertToKebabCase($className);
 
+        $appName = strtolower(str_replace(' ', '_', config('app.name', 'doppar')));
+
         return <<<EOT
 <?php
 
@@ -96,7 +98,7 @@ class {$className} extends Command
      *
      * @var string
      */
-    protected \$name = 'doppar:{$commandName}';
+    protected \$name = '{$appName}:{$commandName}';
 
     /**
      * The console command description.
@@ -112,7 +114,7 @@ class {$className} extends Command
      */
     protected function handle(): int
     {
-        return 0;
+        return Command::SUCCESS;
     }
 }
 

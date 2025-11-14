@@ -38,7 +38,7 @@ class ClearSessionCommand extends Command
             }
 
             session()->flush();
-            return 0;
+            return Command::SUCCESS;
         }, 'Application sessions have been gracefully cleared.');
     }
 }
