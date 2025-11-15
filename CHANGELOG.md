@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.12 - 2025-11-15
+
+* make:job deleted and move to doppar queue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/128
+
 ## v3.0.0-beta.11 - 2025-11-15
 
 * Merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/125
