@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.0.0-beta.11 - 2025-11-15
+
+* Merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/125
+* Merged with master (#125) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/126
+* make:job command to handle job as queue or as sync by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/127
+
 ## v3.0.0-beta.10 - 2025-11-13
 
 * [Unite Test] All possible test case unit test for DI container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/122
