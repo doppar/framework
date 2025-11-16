@@ -3,8 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Support\Facades\Config;
-
+use Phaseolies\Config\Config;
 class ConfigCacheCommand extends Command
 {
     /**
