@@ -130,4 +130,26 @@ class AllRequestInputTest extends TestCase
         $this->assertArrayHasKey('page', $query);
         $this->assertArrayHasKey('limit', $query);
     }
+
+    public function testItGetsCookies()
+    {
+        $_COOKIE = ['session_id' => 'abc123', 'preferences' => 'dark_mode'];
+
+        $request = new Request();
+
+        $cookies = $request->cookie();
+
+        $this->assertArrayHasKey('session_id', $cookies);
+        $this->assertEquals('abc123', $cookies['session_id']);
+    }
+
+    public function testItChecksIfCookieExists()
+    {
+        $_COOKIE = ['session_id' => 'abc123'];
+
+        $request = new Request();
+
+        $this->assertTrue($request->hasCookie('session_id'));
+        $this->assertFalse($request->hasCookie('nonexistent'));
+    }
 }
