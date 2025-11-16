@@ -152,4 +152,89 @@ class AllRequestInputTest extends TestCase
         $this->assertTrue($request->hasCookie('session_id'));
         $this->assertFalse($request->hasCookie('nonexistent'));
     }
+
+    public function testItHandlesSingleFileUpload()
+    {
+        $_FILES = [
+            'avatar' => [
+                'name' => 'profile.jpg',
+                'type' => 'image/jpeg',
+                'tmp_name' => '/tmp/phpXXXXXX',
+                'error' => UPLOAD_ERR_OK,
+                'size' => 2048
+            ]
+        ];
+
+        $request = new Request();
+
+        $this->assertTrue($request->hasFile('avatar'));
+
+        $file = $request->file('avatar');
+        $this->assertInstanceOf(File::class, $file);
+    }
+
+    public function testItHandlesMultipleFileUploads()
+    {
+        $_FILES = [
+            'documents' => [
+                'name' => ['doc1.pdf', 'doc2.pdf'],
+                'type' => ['application/pdf', 'application/pdf'],
+                'tmp_name' => ['/tmp/php1', '/tmp/php2'],
+                'error' => [UPLOAD_ERR_OK, UPLOAD_ERR_OK],
+                'size' => [1024, 2048]
+            ]
+        ];
+
+        $request = new Request();
+
+        $this->assertTrue($request->hasFile('documents'));
+
+        $files = $request->file('documents');
+        $this->assertIsArray($files);
+        $this->assertCount(2, $files);
+        $this->assertInstanceOf(File::class, $files[0]);
+    }
+
+    public function testItDetectsUploadErrors()
+    {
+        $_FILES = [
+            'failed' => [
+                'name' => '',
+                'type' => '',
+                'tmp_name' => '',
+                'error' => UPLOAD_ERR_NO_FILE,
+                'size' => 0
+            ]
+        ];
+
+        $request = new Request();
+
+        $this->assertFalse($request->hasFile('failed'));
+    }
+
+    public function testItChecksIfAnyFilesUploaded()
+    {
+        $requestWithoutFiles = new Request();
+        $this->assertFalse($requestWithoutFiles->hasFiles());
+
+        $_FILES = [
+            'avatar' => [
+                'name' => 'test.jpg',
+                'type' => 'image/jpeg',
+                'tmp_name' => '/tmp/php',
+                'error' => UPLOAD_ERR_OK,
+                'size' => 1024
+            ]
+        ];
+
+        $requestWithFiles = new Request();
+        $this->assertTrue($requestWithFiles->hasFiles());
+    }
+
+    public function testItReturnsNullForNonexistentFile()
+    {
+        $request = new Request();
+
+        $this->assertNull($request->file('nonexistent'));
+    }
 }
