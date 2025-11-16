@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Requests;
 
+use RuntimeException;
+use Phaseolies\Support\StringService;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\File;
 use Phaseolies\Http\ServerBag;
@@ -9,9 +11,9 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
+use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
-use RuntimeException;
 
 class AllRequestInputTest extends TestCase
 {
@@ -20,6 +22,9 @@ class AllRequestInputTest extends TestCase
 
     protected function setUp(): void
     {
+        $container = new Container();
+        $container->bind('str', StringService::class);
+
         $this->defaultServerData = [
             'REQUEST_METHOD' => 'GET',
             'REQUEST_URI' => '/api/users',
@@ -236,5 +241,77 @@ class AllRequestInputTest extends TestCase
         $request = new Request();
 
         $this->assertNull($request->file('nonexistent'));
+    }
+
+    public function testItGetsAllHeaders()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+        $_SERVER['HTTP_USER_AGENT'] = 'TestAgent/1.0';
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer token123';
+
+        $request = new Request();
+
+        $headers = $request->headers();
+
+        $this->assertIsArray($headers);
+        $this->assertArrayHasKey('accept', $headers);
+        $this->assertArrayHasKey('user-agent', $headers);
+    }
+
+    public function testItGetsSpecificHeader()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertEquals('application/json', $request->header('Accept'));
+        $this->assertNull($request->header('NonExistent'));
+    }
+
+    public function testItChecksIfHeaderExists()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertTrue($request->hasHeader('Accept'));
+        $this->assertFalse($request->hasHeader('NonExistent'));
+    }
+
+    public function testItGetsBearerToken()
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+
+        $request = new Request();
+
+        $this->assertEquals('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9', $request->bearerToken());
+    }
+
+    public function testItReturnsNullForMissingBearerToken()
+    {
+        $request = new Request();
+
+        $this->assertNull($request->bearerToken());
+    }
+
+    public function testItReturnsNullForNonBearerAuthorization()
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Basic dXNlcjpwYXNz';
+
+        $request = new Request();
+
+        $this->assertNull($request->bearerToken());
+    }
+
+    public function testItGetsEtags()
+    {
+        $_SERVER['HTTP_IF_NONE_MATCH'] = '"abc123", "def456", "ghi789"';
+
+        $request = new Request();
+
+        $etags = $request->getETags();
+
+        $this->assertCount(3, $etags);
+        $this->assertContains('"abc123"', $etags);
     }
 }
