@@ -562,5 +562,4 @@ class AllRequestInputTest extends TestCase
 
         $this->assertEquals('/public/index.php', $request->getScriptName());
     }
-
 }
