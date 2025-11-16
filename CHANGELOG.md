@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.14 - 2025-11-16
+
+* daemon mode for second based schedule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/131
+
 ## v3.0.0-beta.13 - 2025-11-16
 
 * [Unit Test] Request class and its all trait method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/129
