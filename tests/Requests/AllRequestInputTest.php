@@ -314,4 +314,100 @@ class AllRequestInputTest extends TestCase
         $this->assertCount(3, $etags);
         $this->assertContains('"abc123"', $etags);
     }
+
+    public function testItGetsAcceptableContentTypes()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json, text/html;q=0.9, */*;q=0.8';
+
+        $request = new Request();
+
+        $types = $request->getAcceptableContentTypes();
+
+        $this->assertContains('application/json', $types);
+        $this->assertContains('text/html', $types);
+    }
+
+    public function testItChecksIfAcceptsJson()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertTrue($request->acceptsJson());
+        $this->assertTrue($request->accepts('application/json'));
+    }
+
+    public function testItChecksIfAcceptsHtml()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'text/html';
+
+        $request = new Request();
+
+        $this->assertTrue($request->acceptsHtml());
+        $this->assertTrue($request->accepts('text/html'));
+    }
+
+    public function testItChecksIfAcceptsAnyContentType()
+    {
+        $_SERVER['HTTP_ACCEPT'] = '*/*';
+
+        $request = new Request();
+
+        $this->assertTrue($request->acceptsAnyContentType());
+    }
+
+    public function testItDeterminesPreferredContentType()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json;q=0.9, text/html;q=1.0';
+
+        $request = new Request();
+
+        $preferred = $request->prefers(['application/json', 'text/html']);
+
+        $this->assertEquals('text/html', $preferred);
+    }
+
+    public function testItChecksIfRequestIsJson()
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertTrue($request->isJson());
+    }
+
+    public function testItChecksIfExpectsJsonResponse()
+    {
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertTrue($request->expectsJson());
+    }
+
+    public function testItChecksIfWantsJson()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/json';
+
+        $request = new Request();
+
+        $this->assertTrue($request->wantsJson());
+    }
+
+    public function testItGetsRequestFormat()
+    {
+        $_SERVER['HTTP_ACCEPT'] = 'application/xml';
+
+        $request = new Request();
+
+        $this->assertEquals('xml', $request->format());
+    }
+
+    public function testItMatchesContentTypes()
+    {
+        $this->assertTrue(Request::matchesType('application/json', 'application/json'));
+        $this->assertTrue(Request::matchesType('application/json', 'application/vnd.api+json'));
+        $this->assertFalse(Request::matchesType('application/xml', 'application/json'));
+    }
 }
