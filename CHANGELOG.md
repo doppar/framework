@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.13 - 2025-11-16
+
+* [Unit Test] Request class and its all trait method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/129
+* vendor:publish command updated with cache config by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/130
+
 ## v3.0.0-beta.12 - 2025-11-15
 
 * make:job deleted and move to doppar queue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/128
