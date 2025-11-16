@@ -1,7 +1,8 @@
 <?php
 
-namespace Tests\Unit\Application;
+namespace Tests\Application;
 
+use TypeError;
 use Tests\Application\Mock\StaticCallableClass;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\Services\ConcreteServiceLayer;
@@ -21,6 +22,7 @@ use Tests\Application\Mock\Interfaces\ServiceLayerInterface;
 use Tests\Application\Mock\Interfaces\ServiceInterface;
 use Tests\Application\Mock\Interfaces\RepositoryInterface;
 use Tests\Application\Mock\Interfaces\DependencyInterface;
+use Tests\Application\Mock\Interfaces\ConnectionInterface;
 use Tests\Application\Mock\ExtendedSimpleClass;
 use Tests\Application\Mock\DeepNestedClass;
 use Tests\Application\Mock\DatabaseConnection;
@@ -63,9 +65,9 @@ use Tests\Application\Mock\CircularA;
 use Tests\Application\Mock\CallableClass;
 use Tests\Application\Mock\ApplicationClass;
 use Tests\Application\Mock\Abstracts\AbstractClass;
+use RuntimeException;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
-
 class ContainerTest extends TestCase
 {
     protected Container $container;

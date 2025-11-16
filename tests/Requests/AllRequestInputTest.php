@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Requests;
 
+use Tests\Support\MockContainer;
+use Tests\Support\Kernel;
 use RuntimeException;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Session;
@@ -15,6 +17,31 @@ use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
 
+
+if (!class_exists('App\Http\Kernel')) {
+    class_alias(Kernel::class, 'App\Http\Kernel');
+}
+
+function base_path($path = '')
+{
+    return '/test/path' . ($path ? '/' . $path : '');
+}
+
+function config($key = null, $default = null)
+{
+    return $default;
+}
+
+function env($key, $default = null)
+{
+    return $default;
+}
+
+function app($abstract = null, array $parameters = [])
+{
+    return \Phaseolies\DI\Container::getInstance()->make($abstract, $parameters);
+}
+
 class AllRequestInputTest extends TestCase
 {
     protected Request $request;
@@ -23,6 +50,11 @@ class AllRequestInputTest extends TestCase
     protected function setUp(): void
     {
         $container = new Container();
+        Container::setInstance(new MockContainer());
+        $container = new Container();
+        $container->bind('request', fn() => Request::class);
+        $container = new Container();
+        $this->request = new Request();
         $container->bind('str', StringService::class);
 
         $this->defaultServerData = [
@@ -434,5 +466,36 @@ class AllRequestInputTest extends TestCase
         $request = new Request();
 
         $this->assertTrue($request->isPjax());
+    }
+
+    public function testItDetectsSecureConnections()
+    {
+        $_SERVER['HTTPS'] = 'on';
+        
+        $request = new Request();
+        
+        $this->assertTrue($request->isSecure());
+        $this->assertEquals('https', $request->scheme());
+        $this->assertEquals('https', $request->getScheme());
+    }
+
+    public function testItDetectsInsecureConnections()
+    {
+        $_SERVER['HTTPS'] = 'off';
+
+        $request = new Request();
+
+        $this->assertFalse($request->isSecure());
+        $this->assertEquals('http', $request->scheme());
+    }
+
+    public function testItSetsAndGetsRouteParameters()
+    {
+        $request = new Request();
+
+        $params = ['id' => 123, 'slug' => 'test-post'];
+        $request->setRouteParams($params);
+
+        $this->assertEquals($params, $request->getRouteParams());
     }
 }
