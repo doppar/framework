@@ -2,10 +2,11 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Application;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Config\Config;
+use Phaseolies\Application;
 use FilesystemIterator;
 
 class VendorPublishCommand extends Command
@@ -55,6 +56,11 @@ class VendorPublishCommand extends Command
             }
 
             $this->publishAll($force);
+
+            Config::clearCache();
+            Config::loadAll();
+            Config::cacheConfig();
+
             return Command::SUCCESS;
         });
     }
