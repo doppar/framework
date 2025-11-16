@@ -410,4 +410,29 @@ class AllRequestInputTest extends TestCase
         $this->assertTrue(Request::matchesType('application/json', 'application/vnd.api+json'));
         $this->assertFalse(Request::matchesType('application/xml', 'application/json'));
     }
+
+    public function testItDetectsAjaxRequests()
+    {
+        $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+
+        $request = new Request();
+
+        $this->assertTrue($request->isAjax());
+    }
+
+    public function testItDetectsNonAjaxRequests()
+    {
+        $request = new Request();
+
+        $this->assertFalse($request->isAjax());
+    }
+
+    public function testItDetectsPjaxRequests()
+    {
+        $_SERVER['HTTP_X_PJAX'] = 'true';
+
+        $request = new Request();
+
+        $this->assertTrue($request->isPjax());
+    }
 }
