@@ -4,43 +4,11 @@ namespace Tests\Unit\Requests;
 
 use Tests\Support\MockContainer;
 use Tests\Support\Kernel;
-use RuntimeException;
 use Phaseolies\Support\StringService;
-use Phaseolies\Support\Session;
-use Phaseolies\Support\File;
-use Phaseolies\Http\ServerBag;
 use Phaseolies\Http\Request;
-use Phaseolies\Http\ParameterBag;
-use Phaseolies\Http\InputBag;
-use Phaseolies\Http\HeaderBag;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use InvalidArgumentException;
-
-
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
-}
-
-function base_path($path = '')
-{
-    return '/test/path' . ($path ? '/' . $path : '');
-}
-
-function config($key = null, $default = null)
-{
-    return $default;
-}
-
-function env($key, $default = null)
-{
-    return $default;
-}
-
-function app($abstract = null, array $parameters = [])
-{
-    return \Phaseolies\DI\Container::getInstance()->make($abstract, $parameters);
-}
 
 class DataTransformationTest extends TestCase
 {
@@ -51,9 +19,6 @@ class DataTransformationTest extends TestCase
     {
         $container = new Container();
         Container::setInstance(new MockContainer());
-        $container = new Container();
-        $container->bind('request', fn() => Request::class);
-        $container = new Container();
         $this->request = new Request();
         $container->bind('str', StringService::class);
 
