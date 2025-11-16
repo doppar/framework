@@ -498,4 +498,69 @@ class AllRequestInputTest extends TestCase
 
         $this->assertEquals($params, $request->getRouteParams());
     }
+
+    public function testItGetsServerInformation()
+    {
+        $request = new Request();
+
+        $server = $request->server();
+
+        $this->assertIsArray($server);
+        $this->assertArrayHasKey('REQUEST_METHOD', $server);
+    }
+
+    public function testItGetsUserAgent()
+    {
+        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Custom Agent)';
+
+        $request = new Request();
+
+        $this->assertEquals('Mozilla/5.0 (Custom Agent)', $request->userAgent());
+    }
+
+    public function testItGetsReferer()
+    {
+        $_SERVER['HTTP_REFERER'] = 'https://google.com';
+
+        $request = new Request();
+
+        $this->assertEquals('https://google.com', $request->referer());
+    }
+
+    public function testItGetsContentType()
+    {
+        $_SERVER['CONTENT_TYPE'] = 'application/json; charset=utf-8';
+
+        $request = new Request();
+
+        $this->assertStringContainsString('application/json', $request->contentType());
+    }
+
+    public function testItGetsContentLength()
+    {
+        $_SERVER['HTTP_CONTENT_LENGTH'] = '1024';
+
+        $request = new Request();
+
+        $this->assertEquals(1024, $request->contentLength());
+    }
+
+    public function testItGetsProtocolVersion()
+    {
+        $_SERVER['SERVER_PROTOCOL'] = 'HTTP/2.0';
+
+        $request = new Request();
+
+        $this->assertEquals('HTTP/2.0', $request->getProtocolVersion());
+    }
+
+    public function testItGetsScriptName()
+    {
+        $_SERVER['SCRIPT_NAME'] = '/public/index.php';
+
+        $request = new Request();
+
+        $this->assertEquals('/public/index.php', $request->getScriptName());
+    }
+
 }
