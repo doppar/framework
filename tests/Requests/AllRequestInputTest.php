@@ -471,9 +471,9 @@ class AllRequestInputTest extends TestCase
     public function testItDetectsSecureConnections()
     {
         $_SERVER['HTTPS'] = 'on';
-        
+
         $request = new Request();
-        
+
         $this->assertTrue($request->isSecure());
         $this->assertEquals('https', $request->scheme());
         $this->assertEquals('https', $request->getScheme());
@@ -561,5 +561,64 @@ class AllRequestInputTest extends TestCase
         $request = new Request();
 
         $this->assertEquals('/public/index.php', $request->getScriptName());
+    }
+
+    public function testItGetsSessionInstance()
+    {
+        $request = new Request();
+
+        $session = $request->session();
+
+        $this->assertInstanceOf(Session::class, $session);
+    }
+
+    // public function testItConvertsToString()
+    // {
+    //     $_SERVER['REQUEST_METHOD'] = 'POST';
+    //     $_SERVER['REQUEST_URI'] = '/api/users';
+    //     $_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
+    //     $_SERVER['HTTP_HOST'] = 'example.com';
+    //     $_COOKIE = ['session' => 'abc123'];
+
+    //     $request = new Request();
+
+    //     $string = (string) $request;
+
+    //     $this->assertStringContainsString('POST /api/users HTTP/1.1', $string);
+    //     $this->assertStringContainsString('Host:', $string);
+    // }
+
+    public function testItCapturesRequest()
+    {
+        $request = Request::capture();
+
+        $this->assertInstanceOf(Request::class, $request);
+        $this->assertTrue(Request::getHttpMethodParameterOverride());
+    }
+
+    public function testItStoresAndRetrievesPassedValidationData()
+    {
+        $request = new Request();
+
+        $passedData = ['name' => 'John', 'email' => 'john@example.com', 'csrf_token' => 'token'];
+        $request->setPassedData($passedData);
+
+        $passed = $request->passed();
+
+        $this->assertArrayHasKey('name', $passed);
+        $this->assertArrayHasKey('email', $passed);
+        $this->assertArrayNotHasKey('csrf_token', $passed);
+    }
+
+    public function testItStoresAndRetrievesValidationErrors()
+    {
+        $request = new Request();
+
+        $errors = ['email' => 'Invalid email', 'name' => 'Required'];
+        $request->setErrors($errors);
+
+        $failed = $request->failed();
+
+        $this->assertEquals($errors, $failed);
     }
 }
