@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.15 - 2025-11-17
+
+* cron:finish command remove executing with timing block by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/132
+* dark mode supported for default skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/133
+
 ## v3.0.0-beta.14 - 2025-11-16
 
 * daemon mode for second based schedule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/131
