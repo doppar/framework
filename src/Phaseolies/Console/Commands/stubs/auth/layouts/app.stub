@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,18 +10,17 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <style>
-            .sidebar,.top-nav{top:0;background:#fff}.sidebar,.top-nav{background:#fff}.sidebar-menu li.has-submenu,.submenu li{position:relative}.dropdown-menu,.sidebar{box-shadow:0 .5rem 1rem rgba(0,0,0,.05)}:root{--doppar-primary:#8486FF;--doppar-primary-dark:#8486FF;--doppar-primary-light:#e8f2fc;--doppar-gray-100:#f9fafd;--doppar-gray-200:#edf2f9;--doppar-gray-300:#d8e2ef;--doppar-gray-600:#7280a0;--doppar-gray-700:#4a5568;--doppar-gray-800:#2d3748;--doppar-dark:#12263f;--doppar-sidebar-width:260px;--doppar-sidebar-collapsed-width:80px;--doppar-header-height:70px}body{font-family:'Nunito Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background-color:var(--doppar-gray-100);color:var(--doppar-gray-800);overflow-x:hidden}.sidebar{width:var(--doppar-sidebar-width);height:100vh;position:fixed;left:0;transition:.3s;z-index:1100;border-right:1px solid #ddd}.nav-container>div,.sidebar-header,.top-nav{height:var(--doppar-header-height)}.sidebar.collapsed{width:var(--doppar-sidebar-collapsed-width)}.sidebar.collapsed .menu-text,.sidebar.collapsed .sidebar-header h3,.sidebar.collapsed .sidebar-menu li.has-submenu>a .chevron,a.logo.hidden{display:none}.sidebar.collapsed .sidebar-menu li a{justify-content:center;padding:.8rem 0}.sidebar.collapsed .sidebar-menu li a i{margin-right:0;font-size:1.2rem}.sidebar-header{padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between}.sidebar-header h3{margin:0;font-weight:700;font-size:1.25rem;color:var(--doppar-primary)}.content-wrapper h4,.dropdown-header h6{font-weight:600;margin-bottom:.25rem}.toggle-collapse{background:#fff;border:1px solid #ddd;border-radius:50%;color:#1f1d1d;font-size:1.1rem;cursor:pointer;margin-right:-40px;margin-top:3px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;transition:.3s;box-shadow:0 4px 6px rgba(0,0,0,.1)}.sidebar-menu{padding:1rem 0}.sidebar-menu ul{list-style:none;padding:0}.sidebar-menu li a{display:flex;align-items:center;padding:.8rem 1.5rem;color:var(--doppar-gray-700);text-decoration:none;transition:.3s;margin:0 .5rem;border-radius:.375rem;font-weight:500}.sidebar-menu li a:hover{background:var(--doppar-gray-100);color:var(--doppar-primary)}.sidebar-menu li a i{margin-right:12px;width:20px;text-align:center;font-size:1rem;color:var(--doppar-gray-600)}.sidebar-menu li.active a{background:var(--doppar-primary-light);color:var(--doppar-primary)}.main-content{margin-left:var(--doppar-sidebar-width);transition:.3s;min-height:100vh}.main-content.collapsed{margin-left:var(--doppar-sidebar-collapsed-width)}.top-nav{position:sticky;z-index:1000;border-bottom:1px solid #ddd}.nav-container{display:flex;align-items:center;justify-content:space-between;height:100%;padding:0 1.5rem;max-width:100%}.nav-container>div{display:flex;align-items:center}.profile-img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--doppar-gray-200)}.content-wrapper{padding:2rem 1.5rem}.content-wrapper h4{font-size:1.5rem}.content-wrapper .text-muted{font-size:.875rem;margin-bottom:1.5rem;color:var(--doppar-gray-600)!important}.dropdown-header,.dropdown-item{padding:.5rem 1rem}.text-success{font-size:.875rem;font-weight:500;color:#00d97e!important}.dropdown-menu{border:1px solid var(--doppar-gray-200)}.dropdown-header span{font-size:.75rem;color:var(--doppar-gray-600)}.dropdown-item{font-size:.875rem}@media (max-width:992px){.sidebar{transform:translateX(-100%)}.sidebar.show{transform:translateX(0)}.main-content{margin-left:0}}@media (max-width:768px){.nav-container{padding:0 1rem}}.input-group .btn{border:1px solid #ddd;border-radius:unset}.submenu{display:none;list-style-type:none;padding-left:0;margin:.25rem 0 .25rem 3rem;background-color:rgba(255,255,255,.9);border-radius:.375rem;overflow:hidden;transition:.3s}.submenu li{padding-left:1rem}.submenu li::before{content:"•";color:var(--doppar-primary);font-size:1.2em;position:absolute;left:0}.submenu li a{padding:.5rem .5rem .5rem 0;display:block;background:#fff!important}.sidebar-menu li.has-submenu.active>.submenu{display:block;animation:.3s fadeIn}@keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}.sidebar-menu li.has-submenu>a .chevron{transition:transform .3s;margin-left:auto;font-size:.8rem}.sidebar-menu li.has-submenu.active>a .chevron{transform:rotate(180deg)}.sidebar.collapsed .submenu{display:none!important}
+            .toggle-collapse,body{color:var(--text-primary)}.sidebar-menu ul,.submenu{list-style:none}.search-box input:focus,.sidebar,.toggle-collapse,.top-nav{background:var(--bg-primary)}.toast,.top-nav{backdrop-filter:blur(10px)}:root{--bg-primary:#ffffff;--bg-secondary:#ffffff;--bg-tertiary:#e9ecef;--text-primary:#1a1d29;--text-secondary:#6c757d;--text-muted:#adb5bd;--border-color:#ddd;--shadow:rgba(0, 0, 0, 0.08);--shadow-lg:rgba(0, 0, 0, 0.12);--primary:#6366f1;--primary-hover:#4f46e5;--primary-light:#eef2ff;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--sidebar-width:280px;--sidebar-collapsed:80px;--header-height:70px}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-secondary);overflow-x:hidden}.sidebar{width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;border-right:1px solid var(--border-color);z-index:1100;display:flex;flex-direction:column}.search-box i,.toggle-collapse{top:50%;transform:translateY(-50%)}.sidebar.collapsed{width:var(--sidebar-collapsed)}.sidebar-header{height:var(--header-height);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:relative}.logo{transition:opacity .3s}.sidebar.collapsed .logo{opacity:0;pointer-events:none}.toggle-collapse{position:absolute;right:-18px;width:36px;height:36px;border:2px solid var(--border-color);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.3s;box-shadow:0 2px 8px var(--shadow)}.sidebar.collapsed .chevron,.sidebar.collapsed .menu-text,.submenu{display:none}.dropdown-menu,.toast{box-shadow:0 10px 40px var(--shadow-lg)}.toggle-collapse:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-50%) scale(1.1)}.dropdown-item:hover,.sidebar-menu li a:hover,.sidebar-menu li.active a,.theme-toggle:hover{color:var(--primary);background:var(--primary-light)}.sidebar-menu{flex:1;padding:1.5rem 1rem;overflow-y:auto}.sidebar-menu::-webkit-scrollbar{width:6px}.sidebar-menu::-webkit-scrollbar-track{background:0 0}.sidebar-menu::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px}.sidebar-menu li{margin-bottom:.5rem}.sidebar-menu li a{display:flex;align-items:center;padding:.875rem 1rem;color:var(--text-secondary);text-decoration:none;border-radius:12px;transition:.2s;font-weight:500;font-size:.95rem;position:relative;overflow:hidden}.sidebar-menu li a::before{content:'';position:absolute;left:0;top:0;height:100%;width:4px;background:var(--primary);transform:scaleY(0);transition:transform .2s}.sidebar-menu li.active a::before{transform:scaleY(1)}.sidebar-menu li a i{width:24px;margin-right:12px;font-size:1.1rem;transition:transform .2s}.sidebar-menu li a:hover i{transform:scale(1.1)}.sidebar.collapsed .sidebar-menu li a{justify-content:center;padding:.875rem}.sidebar.collapsed .sidebar-menu li a i{margin-right:0}.submenu{margin:.5rem 0 0 2.5rem;padding:.5rem 0;animation:.3s slideDown}@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}.sidebar-menu li.has-submenu.active>.submenu{display:block}.submenu li{margin-bottom:.25rem}.submenu li a{padding:.625rem 1rem;font-size:.875rem;margin-left:0}.chevron{margin-left:auto;font-size:.75rem;transition:transform .3s}.sidebar-menu li.has-submenu.active>a .chevron{transform:rotate(180deg)}.main-content{margin-left:var(--sidebar-width);transition:margin-left .3s cubic-bezier(.4, 0, .2, 1);min-height:100vh}.main-content.collapsed{margin-left:var(--sidebar-collapsed)}.top-nav{height:var(--header-height);border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1000}.profile-dropdown,.search-box input,.theme-toggle{background:var(--bg-secondary);color:var(--text-primary)}.nav-container{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 2rem}.search-box{position:relative;width:100%;max-width:400px}.search-box input{width:100%;padding:.625rem 1rem .625rem 2.75rem;border:1px solid var(--border-color);border-radius:12px;transition:.2s;font-size:.9rem}.search-box input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}.search-box i{position:absolute;left:1rem;color:var(--text-muted)}.nav-actions{display:flex;align-items:center;gap:1rem}.dropdown-item,.profile-dropdown{transition:.2s;display:flex;gap:.75rem}.theme-toggle{width:40px;height:40px;border-radius:12px;border:none;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}.theme-toggle:hover{transform:scale(1.05)}.profile-dropdown{align-items:center;padding:.5rem 1rem;border-radius:12px;cursor:pointer;text-decoration:none}.card,.dropdown-menu{background:var(--bg-primary)}.profile-dropdown:hover{background:var(--primary-light);transform:translateY(-2px);box-shadow:0 4px 12px var(--shadow)}.profile-img{width:36px;height:36px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color)}.profile-info{display:flex;flex-direction:column;align-items:flex-start}.profile-name{font-weight:600;font-size:.875rem;line-height:1.2}.profile-role{font-size:.75rem;color:var(--text-muted)}.dropdown-menu{border:1px solid var(--border-color);border-radius:12px;padding:.5rem;margin-top:.5rem}.dropdown-item{padding:.75rem 1rem;border-radius:8px;color:var(--text-primary);align-items:center}.dropdown-item i{width:20px}.content-wrapper{padding:2rem}.toast-body,.toast-header{padding:1rem 1.25rem}.toast{border:none;border-radius:12px}.toast-header{border-bottom:none;border-radius:12px 12px 0 0}@media (max-width:576px){.search-box{display:none}}.card{border:1px solid var(--border-color);border-radius:16px;transition:.3s}.btn-dark{background:var(--primary);border-color:var(--primary);border-radius:12px;padding:.625rem 1.5rem;font-weight:500;transition:.2s}.btn-dark:hover{background:var(--primary-hover);border-color:var(--primary-hover);transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,.3)}.mobile-menu-btn{display:none;width:40px;height:40px;border-radius:12px;background:var(--bg-secondary);border:none;color:var(--text-primary);cursor:pointer}@media (max-width:992px){.sidebar{transform:translateX(-100%)}.sidebar.show{transform:translateX(0)}.main-content{margin-left:0}.nav-container{padding:0 1rem}.search-box{max-width:200px}.profile-info{display:none}.mobile-menu-btn{display:flex;align-items:center;justify-content:center}}
         </style>
     </head>
     <body>
-        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <a href="{{ route('dashboard') }}" class="logo">
-                    <img src="{{ enqueue('logo.png') }}" alt="Logo" width="170" height="40">
+                    <img src="{{ enqueue('logo.png') }}" alt="Logo" width="200" height="40">
                 </a>
                 <button class="toggle-collapse">
-                    <i class="fas fa-arrow-left"></i>
+                    <i class="fas fa-chevron-left"></i>
                 </button>
             </div>
             <div class="sidebar-menu">
@@ -41,12 +40,14 @@
                         <ul class="submenu">
                             <li>
                                 <a href="https://github.com/doppar" target="_blank">
-                                    Github
+                                    <i class="fab fa-github"></i>
+                                    <span class="menu-text">Github</span>
                                 </a>
                             </li>
                             <li>
                                 <a href="https://doppar.com" target="_blank">
-                                    Documentation
+                                    <i class="fas fa-book"></i>
+                                    <span class="menu-text">Documentation</span>
                                 </a>
                             </li>
                         </ul>
@@ -54,56 +55,56 @@
                 </ul>
             </div>
         </div>
-
-        <!-- Main Content -->
         <div class="main-content">
-            <!-- Top Navigation -->
             <nav class="top-nav">
-                <div class="container">
-                    <div class="nav-container">
-                        <div class="d-flex align-items-center">
-                            <input type="search" class="form-control" placeholder="Search">
-                            <button class="btn btn-link me-3 d-lg-none mobile-toggle">
-                                <i class="fas fa-bars"></i>
-                            </button>
+                <div class="nav-container">
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="mobile-menu-btn">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="search" placeholder="Search...">
                         </div>
-                        <div class="d-flex align-items-center">
-                            <div class="dropdown ms-3">
-                                <a href="#" class="dropdown-toggle text-decoration-none text-black" id="profileDropdown"
-                                    data-bs-toggle="dropdown">
-                                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=2c7be5&color=fff"
-                                        alt="Profile" class="profile-img">&nbsp;
-                                    {{ Auth::user()?->name }}
-                                </a>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                                    <a href="{{ route('profile') }}" class="dropdown-item">
-                                        <i class="fas fa-user me-2"></i> Profile
-                                    </a>
-                                    <div class="dropdown-divider"></div>
-                                    <form action="{{ route('logout') }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item d-flex align-items-center">
-                                            <i class="fas fa-sign-out-alt me-2"></i> {{ __('Logout') }}
-                                        </button>
-                                    </form>
+                    </div>
+                    <div class="nav-actions">
+                        <button class="theme-toggle" id="themeToggle">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                        <div class="dropdown">
+                            <a href="#" class="profile-dropdown dropdown-toggle" data-bs-toggle="dropdown">
+                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff"
+                                    alt="Profile" class="profile-img">
+                                <div class="profile-info">
+                                    <span class="profile-name">{{ Auth::user()?->name }}</span>
+                                    <span class="profile-role">Administrator</span>
                                 </div>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end">
+                                <a href="{{ route('profile') }}" class="dropdown-item">
+                                    <i class="fas fa-user"></i> Profile
+                                </a>
+                                <div class="dropdown-divider"></div>
+                                <form action="{{ route('logout') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
                 </div>
             </nav>
-
-            <!-- Content Wrapper -->
-            <div class="container content-wrapper">
+            <div class="content-wrapper">
                 @if (session()->has('success'))
                     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-                        <div id="successToast" class="toast show" role="alert" aria-live="assertive"
-                            aria-atomic="true">
+                        <div class="toast show" role="alert">
                             <div class="toast-header bg-success text-white">
                                 <strong class="me-auto">Success!</strong>
                                 <small class="text-white">Just now</small>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
-                                    aria-label="Close"></button>
+                                <button type="button" class="btn-close btn-close-white"
+                                    data-bs-dismiss="toast"></button>
                             </div>
                             <div class="toast-body bg-light">
                                 <div class="d-flex align-items-center">
@@ -116,12 +117,12 @@
                 @endif
                 @if (session()->has('error'))
                     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-                        <div id="errorToast" class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="toast show" role="alert">
                             <div class="toast-header bg-danger text-white">
                                 <strong class="me-auto">Error!</strong>
                                 <small class="text-white">Just now</small>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
-                                    aria-label="Close"></button>
+                                <button type="button" class="btn-close btn-close-white"
+                                    data-bs-dismiss="toast"></button>
                             </div>
                             <div class="toast-body bg-light">
                                 <div class="d-flex align-items-center">
@@ -132,61 +133,42 @@
                         </div>
                     </div>
                 @endif
-                @errors
-                <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-                    <div id="errorToast" class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-                        <div class="toast-header bg-danger text-white">
-                            <strong class="me-auto">Error</strong>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
-                                aria-label="Close"></button>
-                        </div>
-                        <div class="toast-body bg-light">
-                            <ul class="mb-0">
-                                @foreach (session()->pull('errors') as $messages)
-                                    @foreach ($messages as $message)
-                                        <li>{{ $message }}</li>
-                                    @endforeach
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                @enderrors
                 @yield('content')
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const mobileToggle = document.querySelector('.mobile-toggle');
+                // Mobile Toggle
+                const mobileToggle = document.querySelector('.mobile-menu-btn');
                 const sidebar = document.querySelector('.sidebar');
-                mobileToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('show');
-                });
+
+                if (mobileToggle) {
+                    mobileToggle.addEventListener('click', function() {
+                        sidebar.classList.toggle('show');
+                    });
+                }
+
+                // Sidebar Collapse Toggle
                 const toggleCollapse = document.querySelector('.toggle-collapse');
                 toggleCollapse.addEventListener('click', function() {
-                    document.querySelector('.sidebar').classList.toggle('collapsed');
+                    sidebar.classList.toggle('collapsed');
                     document.querySelector('.main-content').classList.toggle('collapsed');
+
                     const icon = this.querySelector('i');
-                    if (document.querySelector('.sidebar').classList.contains('collapsed')) {
-                        icon.classList.replace('fa-arrow-left', 'fa-arrow-right');
-                        const logo = document.querySelector('.logo');
-                        logo.classList.add('hidden');
+                    if (sidebar.classList.contains('collapsed')) {
+                        icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
                     } else {
-                        icon.classList.replace('fa-arrow-right', 'fa-arrow-left');
-                        const logo = document.querySelector('.logo');
-                        logo.classList.remove('hidden');
+                        icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
                     }
                 });
+
+                // Submenu Toggle
                 document.querySelectorAll('.sidebar-menu li.has-submenu > a').forEach(function(menuLink) {
                     menuLink.addEventListener('click', function(e) {
-                        if (document.querySelector('.sidebar').classList.contains('collapsed')) {
-                            return;
-                        }
+                        if (sidebar.classList.contains('collapsed')) return;
 
                         e.preventDefault();
-                        e.stopPropagation();
-
                         const parentLi = this.parentElement;
                         const wasActive = parentLi.classList.contains('active');
 
@@ -200,6 +182,58 @@
                         parentLi.classList.toggle('active', !wasActive);
                     });
                 });
+
+                // Theme Toggle
+                const themeToggle = document.getElementById('themeToggle');
+                const html = document.documentElement;
+                const icon = themeToggle.querySelector('i');
+
+                // Load saved theme
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                html.setAttribute('data-theme', savedTheme);
+                updateThemeIcon(savedTheme);
+
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = html.getAttribute('data-theme');
+                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+                    html.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcon(newTheme);
+                });
+
+                function updateThemeIcon(theme) {
+                    if (theme === 'dark') {
+                        icon.classList.replace('fa-moon', 'fa-sun');
+                        const style = document.createElement('style');
+                        style.id = 'dark-mode-filter';
+                        style.textContent =
+                            'html,iframe,img,video{ filter: invert(1) hue-rotate(180deg); opacity: 1; }';
+                        document.head.appendChild(style);
+                    } else {
+                        icon.classList.replace('fa-sun', 'fa-moon');
+                        const darkStyle = document.getElementById('dark-mode-filter');
+                        if (darkStyle) {
+                            darkStyle.remove();
+                        }
+                    }
+                }
+
+                // Apply filter on initial load if dark mode
+                if (savedTheme === 'dark') {
+                    const style = document.createElement('style');
+                    style.id = 'dark-mode-filter';
+                    style.textContent = 'html,iframe,img,video{ filter: invert(1) hue-rotate(180deg); opacity: 1; }';
+                    document.head.appendChild(style);
+                }
+                // Auto-hide toasts
+                setTimeout(function() {
+                    const toasts = document.querySelectorAll('.toast');
+                    toasts.forEach(toast => {
+                        const bsToast = new bootstrap.Toast(toast);
+                        bsToast.hide();
+                    });
+                }, 5000);
             });
         </script>
     </body>
