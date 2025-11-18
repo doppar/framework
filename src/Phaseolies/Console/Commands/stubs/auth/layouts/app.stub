@@ -6,11 +6,11 @@
         <title>@yield('title')</title>
         <!-- Bootstrap 5 CSS -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Box Icon -->
+        <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <style>
-            .toggle-collapse,body{color:var(--text-primary)}.sidebar-menu ul,.submenu{list-style:none}.search-box input:focus,.sidebar,.toggle-collapse,.top-nav{background:var(--bg-primary)}.toast,.top-nav{backdrop-filter:blur(10px)}:root{--bg-primary:#ffffff;--bg-secondary:#ffffff;--bg-tertiary:#e9ecef;--text-primary:#1a1d29;--text-secondary:#6c757d;--text-muted:#adb5bd;--border-color:#ddd;--shadow:rgba(0, 0, 0, 0.08);--shadow-lg:rgba(0, 0, 0, 0.12);--primary:#6366f1;--primary-hover:#4f46e5;--primary-light:#eef2ff;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--sidebar-width:280px;--sidebar-collapsed:80px;--header-height:70px}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-secondary);overflow-x:hidden}.sidebar{width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;border-right:1px solid var(--border-color);z-index:1100;display:flex;flex-direction:column}.search-box i,.toggle-collapse{top:50%;transform:translateY(-50%)}.sidebar.collapsed{width:var(--sidebar-collapsed)}.sidebar-header{height:var(--header-height);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:relative}.logo{transition:opacity .3s}.sidebar.collapsed .logo{opacity:0;pointer-events:none}.toggle-collapse{position:absolute;right:-18px;width:36px;height:36px;border:2px solid var(--border-color);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.3s;box-shadow:0 2px 8px var(--shadow)}.sidebar.collapsed .chevron,.sidebar.collapsed .menu-text,.submenu{display:none}.dropdown-menu,.toast{box-shadow:0 10px 40px var(--shadow-lg)}.toggle-collapse:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-50%) scale(1.1)}.dropdown-item:hover,.sidebar-menu li a:hover,.sidebar-menu li.active a,.theme-toggle:hover{color:var(--primary);background:var(--primary-light)}.sidebar-menu{flex:1;padding:1.5rem 1rem;overflow-y:auto}.sidebar-menu::-webkit-scrollbar{width:6px}.sidebar-menu::-webkit-scrollbar-track{background:0 0}.sidebar-menu::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px}.sidebar-menu li{margin-bottom:.5rem}.sidebar-menu li a{display:flex;align-items:center;padding:.875rem 1rem;color:var(--text-secondary);text-decoration:none;border-radius:12px;transition:.2s;font-weight:500;font-size:.95rem;position:relative;overflow:hidden}.sidebar-menu li a::before{content:'';position:absolute;left:0;top:0;height:100%;width:4px;background:var(--primary);transform:scaleY(0);transition:transform .2s}.sidebar-menu li.active a::before{transform:scaleY(1)}.sidebar-menu li a i{width:24px;margin-right:12px;font-size:1.1rem;transition:transform .2s}.sidebar-menu li a:hover i{transform:scale(1.1)}.sidebar.collapsed .sidebar-menu li a{justify-content:center;padding:.875rem}.sidebar.collapsed .sidebar-menu li a i{margin-right:0}.submenu{margin:.5rem 0 0 2.5rem;padding:.5rem 0;animation:.3s slideDown}@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}.sidebar-menu li.has-submenu.active>.submenu{display:block}.submenu li{margin-bottom:.25rem}.submenu li a{padding:.625rem 1rem;font-size:.875rem;margin-left:0}.chevron{margin-left:auto;font-size:.75rem;transition:transform .3s}.sidebar-menu li.has-submenu.active>a .chevron{transform:rotate(180deg)}.main-content{margin-left:var(--sidebar-width);transition:margin-left .3s cubic-bezier(.4, 0, .2, 1);min-height:100vh}.main-content.collapsed{margin-left:var(--sidebar-collapsed)}.top-nav{height:var(--header-height);border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1000}.profile-dropdown,.search-box input,.theme-toggle{background:var(--bg-secondary);color:var(--text-primary)}.nav-container{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 2rem}.search-box{position:relative;width:100%;max-width:400px}.search-box input{width:100%;padding:.625rem 1rem .625rem 2.75rem;border:1px solid var(--border-color);border-radius:12px;transition:.2s;font-size:.9rem}.search-box input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}.search-box i{position:absolute;left:1rem;color:var(--text-muted)}.nav-actions{display:flex;align-items:center;gap:1rem}.dropdown-item,.profile-dropdown{transition:.2s;display:flex;gap:.75rem}.theme-toggle{width:40px;height:40px;border-radius:12px;border:none;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}.theme-toggle:hover{transform:scale(1.05)}.profile-dropdown{align-items:center;padding:.5rem 1rem;border-radius:12px;cursor:pointer;text-decoration:none}.card,.dropdown-menu{background:var(--bg-primary)}.profile-dropdown:hover{background:var(--primary-light);transform:translateY(-2px);box-shadow:0 4px 12px var(--shadow)}.profile-img{width:36px;height:36px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color)}.profile-info{display:flex;flex-direction:column;align-items:flex-start}.profile-name{font-weight:600;font-size:.875rem;line-height:1.2}.profile-role{font-size:.75rem;color:var(--text-muted)}.dropdown-menu{border:1px solid var(--border-color);border-radius:12px;padding:.5rem;margin-top:.5rem}.dropdown-item{padding:.75rem 1rem;border-radius:8px;color:var(--text-primary);align-items:center}.dropdown-item i{width:20px}.content-wrapper{padding:2rem}.toast-body,.toast-header{padding:1rem 1.25rem}.toast{border:none;border-radius:12px}.toast-header{border-bottom:none;border-radius:12px 12px 0 0}@media (max-width:576px){.search-box{display:none}}.card{border:1px solid var(--border-color);border-radius:16px;transition:.3s}.btn-dark{background:var(--primary);border-color:var(--primary);border-radius:12px;padding:.625rem 1.5rem;font-weight:500;transition:.2s}.btn-dark:hover{background:var(--primary-hover);border-color:var(--primary-hover);transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,.3)}.mobile-menu-btn{display:none;width:40px;height:40px;border-radius:12px;background:var(--bg-secondary);border:none;color:var(--text-primary);cursor:pointer}@media (max-width:992px){.sidebar{transform:translateX(-100%)}.sidebar.show{transform:translateX(0)}.main-content{margin-left:0}.nav-container{padding:0 1rem}.search-box{max-width:200px}.profile-info{display:none}.mobile-menu-btn{display:flex;align-items:center;justify-content:center}}
+            .toggle-collapse,body{color:var(--text-primary)}.sidebar-menu ul,.submenu{list-style:none}.search-box input:focus,.sidebar,.toggle-collapse,.top-nav{background:var(--bg-primary)}.toast,.top-nav{backdrop-filter:blur(10px)}:root{--bg-primary:#ffffff;--bg-secondary:#ffffff;--bg-tertiary:#e9ecef;--text-primary:#1a1d29;--text-secondary:#6c757d;--text-muted:#adb5bd;--border-color:#ddd;--shadow:rgba(0, 0, 0, 0.08);--shadow-lg:rgba(0, 0, 0, 0.12);--primary:#6366f1;--primary-hover:#4f46e5;--primary-light:#eef2ff;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--sidebar-width:280px;--sidebar-collapsed:80px;--header-height:70px}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-secondary);overflow-x:hidden}.sidebar{width:var(--sidebar-width);height:100vh;position:fixed;left:0;top:0;border-right:1px solid var(--border-color);z-index:1100;display:flex;flex-direction:column}.search-box i,.toggle-collapse{top:50%;transform:translateY(-50%)}.sidebar.collapsed{width:var(--sidebar-collapsed)}.sidebar-header{height:var(--header-height);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;position:relative}.logo{transition:opacity .3s}.sidebar.collapsed .logo{opacity:0;pointer-events:none}.toggle-collapse{position:absolute;right:-18px;width:36px;height:36px;border:2px solid var(--border-color);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.3s;box-shadow:0 2px 8px var(--shadow)}.sidebar.collapsed .chevron,.sidebar.collapsed .menu-text,.submenu{display:none}.dropdown-menu,.toast{box-shadow:0 10px 40px var(--shadow-lg)}.toggle-collapse:hover{background:var(--primary);color:#fff;border-color:var(--primary);transform:translateY(-50%) scale(1.1)}.dropdown-item:hover,.sidebar-menu li a:hover,.sidebar-menu li.active a,.theme-toggle:hover{color:var(--primary);background:var(--primary-light)}.sidebar-menu{flex:1;padding:1.5rem 1rem;overflow-y:auto}.sidebar-menu::-webkit-scrollbar{width:6px}.sidebar-menu::-webkit-scrollbar-track{background:0 0}.sidebar-menu::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px}.sidebar-menu li{margin-bottom:.5rem}.sidebar-menu li a{display:flex;align-items:center;padding:.875rem 1rem;color:var(--text-secondary);text-decoration:none;border-radius:12px;transition:.2s;font-weight:500;font-size:.95rem;position:relative;overflow:hidden}.sidebar-menu li a::before{content:'';position:absolute;left:0;top:0;height:100%;width:4px;background:var(--primary);transform:scaleY(0);transition:transform .2s}.sidebar-menu li.active a::before{transform:scaleY(1)}.sidebar-menu li a i{width:24px;margin-right:12px;font-size:1.1rem;transition:transform .2s}.sidebar-menu li a:hover i{transform:scale(1.1)}.sidebar.collapsed .sidebar-menu li a{justify-content:center;padding:.875rem}.sidebar.collapsed .sidebar-menu li a i{margin-right:0}.submenu{margin:.5rem 0 0 2.5rem;padding:.5rem 0;animation:.3s slideDown}@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}.sidebar-menu li.has-submenu.active>.submenu{display:block}.submenu li{margin-bottom:.25rem}.submenu li a{padding:.625rem 1rem;font-size:.875rem;margin-left:0}.chevron{margin-left:auto;font-size:.75rem;transition:transform .3s}.sidebar-menu li.has-submenu.active>a .chevron{transform:rotate(180deg)}.main-content{margin-left:var(--sidebar-width);transition:margin-left .3s cubic-bezier(.4, 0, .2, 1);min-height:100vh}.main-content.collapsed{margin-left:var(--sidebar-collapsed)}.top-nav{height:var(--header-height);border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1000}.profile-dropdown,.search-box input,.theme-toggle{background:var(--bg-secondary);color:var(--text-primary)}.nav-container{height:100%;display:flex;align-items:center;justify-content:space-between;padding:0 2rem}.search-box{position:relative;width:100%;max-width:400px}.search-box input{width:100%;padding:.625rem 1rem .625rem 2.75rem;border:1px solid var(--border-color);border-radius:12px;transition:.2s;font-size:.9rem}.search-box input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1)}.search-box i{position:absolute;left:1rem;color:var(--text-muted)}.nav-actions{display:flex;align-items:center;gap:1rem}.dropdown-item,.profile-dropdown{transition:.2s;display:flex;gap:.75rem}.theme-toggle{width:40px;height:40px;border-radius:12px;border:none;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}.theme-toggle:hover{transform:scale(1.05)}.profile-dropdown{align-items:center;padding:.5rem 1rem;border-radius:12px;cursor:pointer;text-decoration:none}.card,.dropdown-menu{background:var(--bg-primary)}.profile-dropdown:hover{background:var(--primary-light);transform:translateY(-2px);box-shadow:0 4px 12px var(--shadow)}.profile-img{width:36px;height:36px;border-radius:10px;object-fit:cover;border:2px solid var(--border-color)}.profile-info{display:flex;flex-direction:column;align-items:flex-start}.profile-name{font-weight:600;font-size:.875rem;line-height:1.2}.profile-role{font-size:.75rem;color:var(--text-muted)}.dropdown-menu{border:1px solid var(--border-color);border-radius:12px;padding:.5rem;margin-top:.5rem}.dropdown-item{padding:.75rem 1rem;border-radius:8px;color:var(--text-primary);align-items:center}.dropdown-item i{width:20px}.content-wrapper{padding:2rem}.toast-body,.toast-header{padding:1rem 1.25rem}.toast{border:none;border-radius:12px}.toast-header{border-bottom:none;border-radius:12px 12px 0 0}@media (max-width:576px){.search-box{display:none}}.card{border:1px solid var(--border-color);border-radius:16px;transition:.3s}.btn-dark{background:var(--primary);border-color:var(--primary);border-radius:12px;padding:.625rem 1.5rem;font-weight:500;transition:.2s}.btn-dark:hover{background:var(--primary-hover);border-color:var(--primary-hover);transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,.3)}.mobile-menu-btn{display:none;width:40px;height:40px;border-radius:12px;background:var(--bg-secondary);border:none;color:var(--text-primary);cursor:pointer}@media (max-width:992px){.sidebar{transform:translateX(-100%)}.sidebar.show{transform:translateX(0)}.main-content{margin-left:0}.nav-container{padding:0 1rem}.search-box{max-width:200px}.profile-info{display:none}.mobile-menu-btn{display:flex;align-items:center;justify-content:center}}.sidebar-menu ul{padding: 0}
         </style>
     </head>
     <body>
@@ -20,22 +20,22 @@
                     <img src="{{ enqueue('logo.png') }}" alt="Logo" width="200" height="40">
                 </a>
                 <button class="toggle-collapse">
-                    <i class="fas fa-chevron-left"></i>
+                    <i class='bx bx-chevron-right' ></i>
                 </button>
             </div>
             <div class="sidebar-menu">
                 <ul>
                     <li class="{{ Request::is('/home') ? 'active' : '' }}">
                         <a href="{{ route('dashboard') }}">
-                            <i class="fa-solid fa-grip"></i>
+                            <i class='bx bxs-dashboard'></i>
                             <span class="menu-text">Dashboard</span>
                         </a>
                     </li>
                     <li class="has-submenu">
                         <a href="javascript:void(0)">
-                            <i class="fa-regular fa-file-lines"></i>
+                            <i class='bx bx-link-external'></i>
                             <span class="menu-text">Extras</span>
-                            <i class="fas fa-chevron-down chevron"></i>
+                            <i class='bx bx-chevron-down chevron'></i>
                         </a>
                         <ul class="submenu">
                             <li>
@@ -63,32 +63,30 @@
                             <i class="fas fa-bars"></i>
                         </button>
                         <div class="search-box">
-                            <i class="fas fa-search"></i>
+                            <i class='bx bx-search' ></i>
                             <input type="search" placeholder="Search...">
                         </div>
                     </div>
                     <div class="nav-actions">
                         <button class="theme-toggle" id="themeToggle">
-                            <i class="fas fa-moon"></i>
+                            <i class='bx bx-moon' ></i>
                         </button>
                         <div class="dropdown">
                             <a href="#" class="profile-dropdown dropdown-toggle" data-bs-toggle="dropdown">
-                                <img src="https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff"
-                                    alt="Profile" class="profile-img">
+                                <i class='bx bxs-user-circle' ></i>
                                 <div class="profile-info">
                                     <span class="profile-name">{{ Auth::user()?->name }}</span>
-                                    <span class="profile-role">Administrator</span>
                                 </div>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end">
                                 <a href="{{ route('profile') }}" class="dropdown-item">
-                                    <i class="fas fa-user"></i> Profile
+                                    <i class='bx bx-user-circle' ></i> Profile
                                 </a>
                                 <div class="dropdown-divider"></div>
                                 <form action="{{ route('logout') }}" method="POST">
                                     @csrf
                                     <button type="submit" class="dropdown-item">
-                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                        <i class='bx bx-log-out' ></i> Logout
                                     </button>
                                 </form>
                             </div>
@@ -108,7 +106,7 @@
                             </div>
                             <div class="toast-body bg-light">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-check-circle text-success me-2 fs-4"></i>
+                                    <i class='bx bxs-badge-check text-success me-2 fs-4'></i>
                                     <span>{{ session()->pull('success') }}</span>
                                 </div>
                             </div>
@@ -126,7 +124,7 @@
                             </div>
                             <div class="toast-body bg-light">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-exclamation-circle text-danger me-2 fs-4"></i>
+                                    <i class="bx bxs-error-circle text-danger me-2 fs-4"></i>
                                     <span>{{ session()->pull('error') }}</span>
                                 </div>
                             </div>
@@ -157,9 +155,9 @@
 
                     const icon = this.querySelector('i');
                     if (sidebar.classList.contains('collapsed')) {
-                        icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+                        icon.classList.replace('bx-chevron-left', 'bx-chevron-right');
                     } else {
-                        icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+                        icon.classList.replace('bx-chevron-right', 'bx-chevron-left');
                     }
                 });
 
@@ -204,14 +202,14 @@
 
                 function updateThemeIcon(theme) {
                     if (theme === 'dark') {
-                        icon.classList.replace('fa-moon', 'fa-sun');
+                        icon.classList.replace('bx-moon', 'bx-sun');
                         const style = document.createElement('style');
                         style.id = 'dark-mode-filter';
                         style.textContent =
                             'html,iframe,img,video{ filter: invert(1) hue-rotate(180deg); opacity: 1; }';
                         document.head.appendChild(style);
                     } else {
-                        icon.classList.replace('fa-sun', 'fa-moon');
+                        icon.classList.replace('bx-sun', 'bx-moon');
                         const darkStyle = document.getElementById('dark-mode-filter');
                         if (darkStyle) {
                             darkStyle.remove();
