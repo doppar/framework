@@ -50,15 +50,15 @@
                             @csrf
                             <div class="mb-3">
                                 <label class="form-label">Current Password</label>
-                                <input type="password" name="old_password" class="form-control">
+                                <input type="password" name="old_password" class="form-control" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">New Password</label>
-                                <input type="password" name="new_password" class="form-control">
+                                <input type="password" name="new_password" class="form-control" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Confirm Password</label>
-                                <input type="password" name="confirm_password" class="form-control">
+                                <input type="password" name="confirm_password" class="form-control" required>
                             </div>
                             <button type="submit" class="btn btn-dark">Update Password</button>
                         </form>
