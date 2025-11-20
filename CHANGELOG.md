@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.16 - 2025-11-18
+
+* Default dashboard skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/134
+* default admin dashboard layout skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/135
+
 ## v3.0.0-beta.15 - 2025-11-17
 
 * cron:finish command remove executing with timing block by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/132
