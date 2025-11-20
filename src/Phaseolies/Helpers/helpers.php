@@ -16,6 +16,7 @@ use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
+use Phaseolies\Cache\RateLimiter;
 use Phaseolies\Auth\Security\Authenticate;
 use Carbon\Carbon;
 
@@ -889,5 +890,17 @@ if (!function_exists('db')) {
     function db(): Database
     {
         return app('db');
+    }
+}
+
+if (!function_exists('throttle')) {
+    /**
+     * Get a RateLimiter instance
+     *
+     * @return RateLimiter
+     */
+    function throttle(): RateLimiter
+    {
+        return app(RateLimiter::class);
     }
 }
