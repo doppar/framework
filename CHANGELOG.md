@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.17 - 2025-11-20
+
+* New global [throttle()] helper method to ratelimit request by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/136
+
 ## v3.0.0-beta.16 - 2025-11-18
 
 * Default dashboard skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/134
