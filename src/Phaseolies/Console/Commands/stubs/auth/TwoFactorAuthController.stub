@@ -48,8 +48,7 @@ class TwoFactorAuthController extends Controller
      *
      * @return Response
      */
-    #[Middleware([GuestMiddleware::class])]
-    #[Route('verify/2fa', name: 'verify.2fa')]
+    #[Route('verify/2fa', name: 'verify.2fa', middleware: ['guest', 'verify.2fa'])]
     public function index(): Response
     {
         return view('auth.2fa');

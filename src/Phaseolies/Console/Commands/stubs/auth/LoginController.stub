@@ -39,12 +39,16 @@ class LoginController extends Controller
             'password' => 'required|min:2|max:20'
         ]);
 
-        $user = User::whereEmail($request->email)->first();
-
         if (Auth::try($request->passed())) {
-            if (Auth::hasTwoFactorEnabled($user)) {
+            if (Auth::hasTwoFactorEnabled(
+                $user = User::whereEmail($request->email)->first()
+            )) {
+                session()->put('2fa:user:id', $user->id);
+                session()->put('2fa:timestamp', time());
+
                 return redirect()->route('verify.2fa');
             }
+
             return redirect()->intended('/home')->withSuccess('You are logged in');
         }
 
