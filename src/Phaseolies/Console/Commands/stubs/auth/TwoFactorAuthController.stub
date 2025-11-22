@@ -8,6 +8,7 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Utilities\Attributes\Route;
 use App\Http\Middleware\GuestMiddleware;
+use App\Http\Middleware\VerifyTwoFactorUser;
 use App\Http\Middleware\Authenticate;
 use App\Http\Controllers\Controller;
 use Phaseolies\Http\Response\RedirectResponse;
@@ -48,7 +49,11 @@ class TwoFactorAuthController extends Controller
      *
      * @return Response
      */
-    #[Route('verify/2fa', name: 'verify.2fa', middleware: ['guest', 'verify.2fa'])]
+    #[Middleware([
+        GuestMiddleware::class,
+        VerifyTwoFactorUser::class
+    ])]
+    #[Route('verify/2fa', name: 'verify.2fa')]
     public function index(): Response
     {
         return view('auth.2fa');
@@ -60,12 +65,17 @@ class TwoFactorAuthController extends Controller
      * @param Request $request
      * @return RedirectResponse
      */
-    #[Middleware([GuestMiddleware::class])]
+    #[Middleware([
+        GuestMiddleware::class,
+        VerifyTwoFactorUser::class
+    ])]
     #[Route('verify/2fa', name: 'verify.2fa', methods: ['POST'])]
     public function verifyToken(Request $request): RedirectResponse
     {
         if (Auth::verifyTwoFactorCode($request->token)) {
             if (Auth::completeTwoFactorLogin()) {
+                $request->session()->forget('2fa_token');
+
                 return redirect()->intended('/home')->withSuccess('You are logged in');
             }
 
