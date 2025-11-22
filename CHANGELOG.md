@@ -1,5 +1,96 @@
 # Release Notes
 
+## v3.0.0-beta.19 - 2025-11-22
+
+* Updated Secure Two-Factor Authentication (2FA) Flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/139
+
+## v3.0.0-beta.18 - 2025-11-21
+
+* verify 2fa token page to increase security by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/137
+
+## v3.0.0-beta.17 - 2025-11-20
+
+* New global [throttle()] helper method to ratelimit request by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/136
+
+## v3.0.0-beta.16 - 2025-11-18
+
+* Default dashboard skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/134
+* default admin dashboard layout skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/135
+
+## v3.0.0-beta.15 - 2025-11-17
+
+* cron:finish command remove executing with timing block by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/132
+* dark mode supported for default skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/133
+
+## v3.0.0-beta.14 - 2025-11-16
+
+* daemon mode for second based schedule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/131
+
+## v3.0.0-beta.13 - 2025-11-16
+
+* [Unit Test] Request class and its all trait method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/129
+* vendor:publish command updated with cache config by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/130
+
+## v3.0.0-beta.12 - 2025-11-15
+
+* make:job deleted and move to doppar queue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/128
+
+## v3.0.0-beta.11 - 2025-11-15
+
+* Merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/125
+* Merged with master (#125) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/126
+* make:job command to handle job as queue or as sync by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/127
+
+## v3.0.0-beta.10 - 2025-11-13
+
+* [Unite Test] All possible test case unit test for DI container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/122
+* json null error message issue resolve for 404 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/123
+* api user() call optimized by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/124
+
+## v3.0.0-beta.9 - 2025-11-12
+
+* remove var_Extract from prepare method and uncomment header option for error-exception by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/121
+
+## v3.0.0-beta.8 - 2025-11-12
+
+* Request parser trait unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/118
+* global helper function wrapped by function_exists by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/119
+* var_export append issue resolved for [@include](https://github.com/include) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/120
+
+## v3.0.0-beta.7 - 2025-11-11
+
+* Improved auth user() method to handle auth-api by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/117
+
+## v3.0.0-beta.6 - 2025-11-11
+
+* presenter and presenter bundle relationship unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/111
+* Update some namespace for unit test class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/112
+* EntityModelQueryTest for all the entity builder model query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/113
+* Improve route model binding override model key code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/114
+* Improve exception page by [@CharrafiMed](https://github.com/CharrafiMed) in https://github.com/doppar/framework/pull/102
+* Added proper PHP doc for error page related class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/115
+* Remove background from code block in exception page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/116
+
+## v3.0.0-beta.5 - 2025-11-06
+
+* Nested relationship deep unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/108
+* Unit test for abort() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/109
+* #[Transaction] New transanction attribute to reduces boilerplate by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/110
+
+## v3.0.0-beta.4 - 2025-11-03
+
+* auth stub updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/106
+* default true to false set for BindPayload attr by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/107
+
+## v3.0.0-beta.3 - 2025-11-02
+
+* Support for Dynamic Route Model Binding Column Override by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/105
+
+## v3.0.0-beta.2 - 2025-11-02
+
+* URI Prefix and Class Middleware Support for Attribute-Based Routing by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/103
+* New #[Model] Attribute for Route Model Binding by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/104
+
 ## v3.0.0-beta.1 - 2025-11-01
 
 * [Router Class] Unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/96

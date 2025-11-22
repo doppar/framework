@@ -17,7 +17,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '3.0.0-beta.1';
+    const VERSION = '3.0.0-beta.19';
 
     /**
      * The base path of the application installation.
@@ -155,11 +155,10 @@ class Application extends Container
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
-     * - Loading configuration.
-     * - Registering and booting core service providers.
      * - Setting up exception handling.
+     * - Loading configuration.
      * - Defining necessary folder paths.
-     * - Detecting if the application is running in the console.
+     * - Registering and booting core service providers.
      */
     public function __construct()
     {

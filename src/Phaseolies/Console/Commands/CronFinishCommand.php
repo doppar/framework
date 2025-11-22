@@ -27,37 +27,34 @@ class CronFinishCommand extends Command
      */
     protected function handle(): int
     {
-        return $this->executeWithTiming(function() {
-            $finishId = $this->argument('finish_id');
-            $shouldReleaseLock = (bool)$this->argument('release_lock');
-            $exitCode = (int)$this->argument('exit_code');
+        $finishId = $this->argument('finish_id');
+        $shouldReleaseLock = (bool)$this->argument('release_lock');
+        $exitCode = (int)$this->argument('exit_code');
 
-            // Find and clean up the process
-            $pidFiles = glob(sys_get_temp_dir() . "/doppar_cron_lock_*.pid");
+        // Find and clean up the process
+        $pidFiles = glob(sys_get_temp_dir() . "/doppar_cron_lock_*.pid");
 
-            foreach ($pidFiles as $pidFile) {
-                $processInfo = json_decode(file_get_contents($pidFile), true);
+        foreach ($pidFiles as $pidFile) {
+            $processInfo = json_decode(file_get_contents($pidFile), true);
 
-                if ($processInfo['finish_id'] === $finishId) {
-                    if ($shouldReleaseLock) {
-                        $lockFile = str_replace('.pid', '', $pidFile);
-                        if (file_exists($lockFile)) {
-                            unlink($lockFile);
-                        }
+            if ($processInfo['finish_id'] === $finishId) {
+                if ($shouldReleaseLock) {
+                    $lockFile = str_replace('.pid', '', $pidFile);
+                    if (file_exists($lockFile)) {
+                        unlink($lockFile);
                     }
-
-                    unlink($pidFile);
-                    break;
                 }
-            }
 
-            if ($exitCode === 0) {
-                $this->displaySuccess('Cron task completed successfully');
-                return Command::SUCCESS;
-            } else {
-                $this->displayError('Cron task failed with exit code: ' . $exitCode);
-                return $exitCode;
+                unlink($pidFile);
+                break;
             }
-        });
+        }
+
+        if ($exitCode === 0) {
+            return Command::SUCCESS;
+        } else {
+            error('Cron task failed with exit code: ' . $exitCode);
+            return $exitCode;
+        }
     }
 }

@@ -30,6 +30,13 @@ class Authenticate
      */
     private static $versionCheckCache = [];
 
+    /**
+     * Get the current authenticated user
+     *
+     * @var Model|null
+     */
+    private static ?Model $currentUser = null;
+
     public function __set($name, $value)
     {
         $this->data[$name] = $value;
@@ -149,6 +156,10 @@ class Authenticate
      */
     public function user(): ?Model
     {
+        if (self::$currentUser !== null) {
+            return self::$currentUser;
+        }
+
         $authModel = app(config('auth.model'));
 
         if ($this->statelessUser !== null) {
@@ -156,26 +167,27 @@ class Authenticate
         }
 
         if ($this->isApiRequest()) {
-            if (!class_exists(\Doppar\Flarion\ApiAuthenticate::class)) {
-                throw new \RuntimeException(
-                    'Please install [doppar/flarion] package before using API token access.'
-                );
+            $hasAuthApi = false;
+            foreach (app('route')->getCurrentMiddlewareNames() ?? [] as $middleware) {
+                if (str_starts_with($middleware, 'auth-api')) {
+                    $hasAuthApi = true;
+                    break;
+                }
             }
 
-            $middlewares = app('route')->getCurrentMiddlewareNames();
-
-            if (in_array('auth-api', $middlewares ?? [])) {
-                return app(\Doppar\Flarion\ApiAuthenticate::class)->user() ?? null;
+            if ($hasAuthApi) {
+                return self::$currentUser = $hasAuthApi
+                    ? app(\Doppar\Flarion\ApiAuthenticate::class)->user()
+                    : null;
             }
-
-            return null;
         }
 
         if (session()->has('cache_auth_user')) {
             $cache = session('cache_auth_user');
-
             if ($this->isUserCacheValid($cache)) {
-                return $cache['user'];
+                if ($this->isUserCacheValid($cache)) {
+                    return self::$currentUser = $cache['user'];
+                }
             }
         }
 
@@ -184,8 +196,7 @@ class Authenticate
 
             if ($user) {
                 $this->cacheUser($user);
-
-                return $user;
+                return self::$currentUser = $user;
             }
         }
 
@@ -229,7 +240,7 @@ class Authenticate
 
                 $this->setUser($user);
 
-                return $user;
+                return self::$currentUser = $user;
             }
 
             // Token didn't match - possible theft attempt
@@ -391,6 +402,6 @@ class Authenticate
      */
     private function isApiRequest(): bool
     {
-        return (bool) request()->is('/api/*');
+        return (bool) request()->isApiRequest();
     }
 }

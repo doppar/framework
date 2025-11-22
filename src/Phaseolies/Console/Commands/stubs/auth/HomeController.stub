@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Phaseolies\Http\Response;
 use Phaseolies\Utilities\Attributes\Route;
+use Phaseolies\Utilities\Attributes\Mapper;
 use App\Http\Controllers\Controller;
 
+#[Mapper(prefix: 'home', middleware: ['auth'])]
 class HomeController extends Controller
 {
     /**
@@ -13,7 +15,7 @@ class HomeController extends Controller
      *
      * @return \Phaseolies\Http\Response
      */
-    #[Route('home', name: 'dashboard', middleware: ['auth'])]
+    #[Route('/', name: 'dashboard')]
     public function __invoke(): Response
     {
         return view('home');

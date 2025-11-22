@@ -1361,6 +1361,23 @@ class Builder
     }
 
     /**
+     * Find a model by its primary key.
+     *
+     * @param mixed $id
+     * @return mixed
+     */
+    public function find($id)
+    {
+        $key = $this->getModel()->getKeyName();
+
+        if (is_array($id)) {
+            return $this->whereIn($key, $id)->get();
+        }
+
+        return $this->where($key, $id)->first();
+    }
+
+    /**
      * Delete records by their primary keys.
      *
      * @param mixed ...$ids

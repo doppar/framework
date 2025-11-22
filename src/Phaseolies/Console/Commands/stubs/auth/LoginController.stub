@@ -6,10 +6,12 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Utilities\Attributes\Route;
+use Phaseolies\Utilities\Attributes\Mapper;
 use Phaseolies\Http\Response\RedirectResponse;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 
+#[Mapper(prefix: 'login')]
 class LoginController extends Controller
 {
     /**
@@ -17,7 +19,7 @@ class LoginController extends Controller
      *
      * @return \Phaseolies\Http\Response
      */
-    #[Route('login', name: 'login', middleware: ['guest'])]
+    #[Route('/', name: 'login', middleware: ['guest'])]
     public function index(): Response
     {
         return view('auth.login');
@@ -29,27 +31,29 @@ class LoginController extends Controller
      * @param Request $request
      * @return \Phaseolies\Http\Response\RedirectResponse
      */
-    #[Route('login', name: 'login', methods: ['POST'], middleware: ['guest'])]
-    public function login(Request $request): RedirectResponse
+    #[Route('/', name: 'login', methods: ['POST'], middleware: ['guest'])]
+     public function login(Request $request): RedirectResponse
     {
         $request->sanitize([
-            'email' => 'required|email|min:2|max:100',
+            'email' => 'required|exists_in:users,email',
             'password' => 'required|min:2|max:20'
         ]);
 
-        $user = User::whereEmail($request->email)->first();
+        if (Auth::try($request->passed())) {
+            if (Auth::hasTwoFactorEnabled(
+                $user = User::whereEmail($request->email)->first()
+            )) {
+                $rawToken = bin2hex(random_bytes(64));
+                $signature = hash_hmac('sha256', $user->id . '|' . $rawToken . '|' . $timestamp = time(), config('app.key'));
+                $token = implode('|', [$user->id, $rawToken, $signature, $timestamp]);
+                session(['2fa_token' => $token]);
 
-        if ($user) {
-            if (Auth::try($request->passed())) {
-                if (Auth::hasTwoFactorEnabled($user)) {
-                    return redirect()->route('verify.2fa');
-                }
-                return redirect()->intended('/home')->withSuccess('You are logged in');
+                return redirect()->route('verify.2fa');
             }
-            return back()->withError('Email or password is incorrect');
+            return redirect()->intended('/home')->withSuccess('You are logged in');
         }
 
-        return back()->withError('User does not exist');
+        return back()->withError('Email or password is incorrect');
     }
 
     /**

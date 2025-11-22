@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Router;
 
 use Tests\Support\MockContainer;
 use Tests\Support\Kernel;
@@ -334,9 +334,9 @@ class RouterTest extends TestCase
     {
         $callback = fn() => 'any response';
 
-        $_SERVER['REQUEST_METHOD'] = 'POST';
-        $request = new Request();
+        $_SERVER['REQUEST_METHOD'] = 'GET';
 
+        $request = new Request();
         $container = Container::getInstance();
         $container->bind('request', fn() => $request);
 
@@ -349,8 +349,9 @@ class RouterTest extends TestCase
         $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
-        $this->assertArrayHasKey('POST', $routes);
-        $this->assertArrayHasKey('/test', $routes['POST']);
+        $this->assertEquals('GET', $request->getMethod());
+        $this->assertArrayHasKey('GET', $routes);
+        $this->assertArrayHasKey('/test', $routes['GET']);
     }
 
     public function testRedirectMethodRegistersRedirectRoute(): void
@@ -479,7 +480,7 @@ class RouterTest extends TestCase
 
     public function testResolveActionWithClosure(): void
     {
-        $callback = fn(Request $request) => $request->getPath();
+        $callback = fn($id, $name) => "User $id: $name";
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('resolveAction');
@@ -487,14 +488,10 @@ class RouterTest extends TestCase
 
         $app = $this->createMock(Application::class);
 
-        $_SERVER['REQUEST_URI'] = '/';
-        $freshRequest = new Request();
+        $routeParams = ['id' => 123, 'name' => 'John'];
+        $result = $method->invoke($this->router, $callback, $app, $routeParams);
 
-        $app->method('call')->willReturnCallback(fn($closure, $params) => $closure($freshRequest));
-
-        $result = $method->invoke($this->router, $callback, $app, []);
-
-        $this->assertEquals('/', $result);
+        $this->assertEquals('User 123: John', $result);
     }
 
     public function testProcessRateLimitAnnotation(): void
