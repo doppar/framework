@@ -1,8 +1,8 @@
 <?php
 
-namespace Phaseolies\Support\Blade;
+namespace Phaseolies\Support\Odo;
 
-trait BladeCompiler
+trait OdoCompiler
 {
     /**
      * The file extension for ODO templates (e.g., ".odo.php")

@@ -1,11 +1,11 @@
 <?php
 
-namespace Phaseolies\Support\Blade;
+namespace Phaseolies\Support\Odo;
 
 use Closure;
 use InvalidArgumentException;
 
-trait Directives
+trait OdoDirectives
 {
     /**
      * Extend this class (Add custom directives).

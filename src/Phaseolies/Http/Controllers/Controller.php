@@ -4,17 +4,17 @@ namespace Phaseolies\Http\Controllers;
 
 use RuntimeException;
 use Phaseolies\Support\View\View;
-use Phaseolies\Support\Blade\BladeCache;
-use Phaseolies\Support\Blade\Directives;
-use Phaseolies\Support\Blade\BladeCondition;
-use Phaseolies\Support\Blade\BladeCompiler;
+use Phaseolies\Support\Odo\OdoCache;
+use Phaseolies\Support\Odo\OdoDirectives;
+use Phaseolies\Support\Odo\OdoCondition;
+use Phaseolies\Support\Odo\OdoCompiler;
 use Phaseolies\Http\Exceptions\NotFoundHttpException;
 use Countable;
 use Throwable;
 
 class Controller extends View
 {
-    use BladeCache, BladeCompiler, Directives, BladeCondition;
+    use OdoCache, OdoCompiler, OdoDirectives, OdoCondition;
 
     /**
      * @var array

@@ -1,8 +1,8 @@
 <?php
 
-namespace Phaseolies\Support\Blade;
+namespace Phaseolies\Support\Odo;
 
-trait BladeCondition
+trait OdoCondition
 {
     /**
      * Usage: #if ($condition).
