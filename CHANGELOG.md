@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.0-beta.19 - 2025-11-22
+
+* Updated Secure Two-Factor Authentication (2FA) Flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/139
+
 ## v3.0.0-beta.18 - 2025-11-21
 
 * verify 2fa token page to increase security by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/137
