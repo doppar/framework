@@ -4,151 +4,212 @@
 @endsection
 @section('content')
     <div class="container">
-        <div class="row mb-3">
-            <div class="col-12">
-                <h2 class="mb-0 fw-bold">{{ __('Profile') }}</h2>
-                <p class="text-muted fw-bold">Manage your profile and accounts</p>
+        <!-- Profile Header -->
+        <div class="card card-body mb-5">
+            <div class="d-flex align-items-center gap-3">
+                <div class="profile-avatar-large">
+                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                </div>
+                <div>
+                    <h1 class="mb-1 fw-bold" style="font-size: 1.75rem;">{{ Auth::user()->name }}</h1>
+                    <p class="mb-0 opacity-75">{{ Auth::user()->email }}</p>
+                </div>
             </div>
         </div>
-        <div class="row mb-5">
-            <div class="col-md-5 mb-3 mb-md-0">
-                <h5 class="mb-3">Profile Information</h5>
-                <p class="text-muted">Update your account's profile information and email address.</p>
+        <!-- Profile Information Section -->
+        <div class="row mb-4">
+            <div class="col-lg-4 mb-3 mb-lg-0">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class='bx bx-user-circle' style="color: var(--primary); font-size: 1.5rem; vertical-align: middle;"></i>
+                        Profile Information
+                    </h3>
+                    <p class="section-description">Update your account's profile information and email address.</p>
+                </div>
             </div>
-            <div class="col-md-7">
-                <div class="card">
-                    <div class="card-body">
-                        <form action="{{ route('profile') }}" method="post">
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label">Name</label>
-                                <input type="text" name="name" class="form-control" value="{{ Auth::user()->name }}">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Email</label>
-                                <input type="email" name="email" class="form-control" value="{{ Auth::user()->email }}">
-                            </div>
-                            <button type="submit" class="btn btn-dark">Update Profile</button>
-                        </form>
-                    </div>
+            <div class="col-lg-8">
+                <div class="form-section">
+                    <form action="{{ route('profile') }}" method="post">
+                        @csrf
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class='bx bx-user' style="margin-right: 0.25rem;"></i>
+                                Full Name
+                            </label>
+                            <input type="text" name="name" class="form-control" value="{{ Auth::user()->name }}" placeholder="Enter your full name">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class='bx bx-envelope' style="margin-right: 0.25rem;"></i>
+                                Email Address
+                            </label>
+                            <input type="email" name="email" class="form-control" value="{{ Auth::user()->email }}" placeholder="Enter your email">
+                        </div>
+                        <button type="submit" class="btn btn-dark">
+                            <i class='bx bx-save' style="margin-right: 0.5rem;"></i>
+                            Save Changes
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <hr class="mb-5">
+        <hr class="section-divider">
 
         <!-- Update Password Section -->
-        <div class="row">
-            <div class="col-md-5 mb-3 mb-md-0">
-                <h5 class="mb-3">Update Password</h5>
-                <p class="text-muted">Ensure your account is using a long, random password to stay secure.</p>
+        <div class="row mb-4">
+            <div class="col-lg-4 mb-3 mb-lg-0">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class='bx bx-lock-alt' style="color: var(--primary); font-size: 1.5rem; vertical-align: middle;"></i>
+                        Update Password
+                    </h3>
+                    <p class="section-description">Ensure your account is using a long, random password to stay secure.</p>
+                </div>
             </div>
-            <div class="col-md-7">
-                <div class="card">
-                    <div class="card-body">
-                        <form action="{{ route('password.update') }}" method="post">
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label">Current Password</label>
-                                <input type="password" name="old_password" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">New Password</label>
-                                <input type="password" name="new_password" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Confirm Password</label>
-                                <input type="password" name="confirm_password" class="form-control" required>
-                            </div>
-                            <button type="submit" class="btn btn-dark">Update Password</button>
-                        </form>
+            <div class="col-lg-8">
+                <div class="form-section">
+                    <div class="info-box">
+                        <i class='bx bx-info-circle' style="margin-right: 0.5rem; font-size: 1.25rem; vertical-align: middle;"></i>
+                        <strong>Password Security:</strong> Use at least 8 characters with a mix of letters, numbers, and symbols.
                     </div>
+                    <form action="{{ route('password.update') }}" method="post">
+                        @csrf
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class='bx bx-key' style="margin-right: 0.25rem;"></i>
+                                Current Password
+                            </label>
+                            <input type="password" name="old_password" class="form-control" placeholder="Enter current password" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class='bx bx-lock' style="margin-right: 0.25rem;"></i>
+                                New Password
+                            </label>
+                            <input type="password" name="new_password" class="form-control" placeholder="Enter new password" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class='bx bx-check-circle' style="margin-right: 0.25rem;"></i>
+                                Confirm Password
+                            </label>
+                            <input type="password" name="confirm_password" class="form-control" placeholder="Confirm new password" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark">
+                            <i class='bx bx-save' style="margin-right: 0.5rem;"></i>
+                            Update Password
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
-        <hr class="my-5">
+        <hr class="section-divider">
 
         <!-- Two-Factor Authentication Section -->
-        <div class="row">
-            <div class="col-md-5 mb-3 mb-md-0">
-                <h5 class="mb-3">Two-Factor Authentication</h5>
-                <p class="text-muted">
-                    Add extra security to your account using two-factor authentication (2FA).
-                </p>
+        <div class="row mb-4">
+            <div class="col-lg-4 mb-3 mb-lg-0">
+                <div class="section-header">
+                    <h3 class="section-title">
+                        <i class='bx bx-shield-alt-2' style="color: var(--primary); font-size: 1.5rem; vertical-align: middle;"></i>
+                        Two-Factor Authentication
+                    </h3>
+                    <p class="section-description">
+                        Add extra security to your account using two-factor authentication (2FA).
+                    </p>
+                </div>
             </div>
-            <div class="col-md-7">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between flex-wrap">
-                            <div class="flex-grow-1 pe-md-3 mb-3 mb-md-0">
-                                <h6 class="fw-bold mb-3">
-                                    Two-factor authentication is currently
-                                    <span class="{{ Auth::user()->two_factor_secret ? 'text-success' : 'text-danger' }}">
-                                        {{ Auth::user()->two_factor_secret ? 'Enabled' : 'Disabled' }}
-                                    </span>
-                                </h6>
-                                <p class="text-muted mb-3">
-                                    Two-factor authentication (2FA) adds an extra layer of security to your account by
-                                    requiring a time-based code from an authenticator app. Even if your password is
-                                    compromised,
-                                    your account remains protected.
-                                </p>
-                                <form action="{{ route('enable.2fa') }}" method="post">
-                                    @csrf
-                                    <input type="hidden" name="is_enabled_request"
-                                        value="{{ Auth::user()->two_factor_secret ? 0 : 1 }}">
-                                    <button type="submit"
-                                        class="btn btn-{{ Auth::user()->two_factor_secret ? 'danger' : 'dark' }}">
-                                        {{ Auth::user()->two_factor_secret ? 'Disable 2FA' : 'Enable 2FA' }}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+            <div class="col-lg-8">
+                <div class="form-section">
+                   <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h5 class="mb-0 fw-bold">Status</h5>
+                    <span class="status-badge {{ Auth::user()->two_factor_secret ? 'enabled' : 'disabled' }} d-flex align-items-center">
+                        <i class='bx {{ Auth::user()->two_factor_secret ? "bx-check-circle" : "bx-x-circle" }} me-1'></i>
+                        {{ Auth::user()->two_factor_secret ? 'Enabled' : 'Disabled' }}
+                    </span>
+                </div>
+
+
+                    <div class="info-box">
+                        <i class='bx bx-info-circle' style="margin-right: 0.5rem; font-size: 1.25rem; vertical-align: middle;"></i>
+                        Two-factor authentication (2FA) adds an extra layer of security to your account by
+                        requiring a time-based code from an authenticator app. Even if your password is
+                        compromised, your account remains protected.
+                    </div>
+
+                    <form action="{{ route('enable.2fa') }}" method="post">
+                        @csrf
+                        <input type="hidden" name="is_enabled_request"
+                            value="{{ Auth::user()->two_factor_secret ? 0 : 1 }}">
+                        <button type="submit"
+                            class="btn btn-{{ Auth::user()->two_factor_secret ? 'danger' : 'dark' }}">
+                            <i class='bx {{ Auth::user()->two_factor_secret ? "bx-x" : "bx-check" }}' style="margin-right: 0.5rem;"></i>
+                            {{ Auth::user()->two_factor_secret ? 'Disable 2FA' : 'Enable 2FA' }}
+                        </button>
+                    </form>
 
                         @if (isset($qrCodeImage) && isset($secret) && !empty($recoveryCodes))
                             <hr class="my-4">
-                            <div class="row">
-                                <!-- Recovery Codes Section (Left) -->
-                                <div class="col-md-7">
-                                    <div class="recovery-codes">
-                                        <h6 class="fw-bold mb-3">Manual Setup</h6>
-                                        <p class="mb-2">Secret Key: <code>{{ $secret }}</code></p>
-                                        <div class="mt-4">
-                                            <h6 class="fw-bold mb-2">How to Set Up Manually</h6>
-                                            <ol class="mb-0 ps-3">
-                                                <li>Open your preferred authenticator app</li>
-                                                <li>Tap the option to <strong>add a new account</strong> or <strong>set up
-                                                        manually</strong>.</li>
-                                                <li>Select <strong>“Enter a setup key”</strong> or similar if prompted.</li>
-                                                <li>Enter your account name.</li>
-                                                <li>Enter the secret key</li>
-                                                <li>Make sure the type is set to <strong>Time-based (TOTP)</strong>.</li>
-                                                <li>Save the account. Your app will now start generating 6-digit codes every
-                                                    30 seconds.</li>
-                                            </ol>
-                                        </div>
-                                        <h6 class="fw-bold mb-2 mt-3">Recovery Codes</h6>
-                                        <p class="mb-2 text-muted">
-                                            Save these recovery codes in a secure place. Each code can be used only once to
-                                            access your account if you lose access to your authenticator app.
-                                        </p>
-                                        @foreach ($recoveryCodes as $code)
-                                            {{ $code }}<br>
-                                        @endforeach
+                            <div class="alert alert-warning" style="border-left: 4px solid var(--warning); background: rgba(245, 158, 11, 0.1); border-radius: 12px;">
+                                <i class='bx bx-error' style="font-size: 1.25rem; margin-right: 0.5rem; vertical-align: middle;"></i>
+                                <strong>Important:</strong> Save your recovery codes and secret key in a secure location before closing this page.
+                            </div>
+
+                            <div class="row mt-4">
+                                <!-- QR Code Section -->
+                                <div class="col-lg-5 mb-4">
+                                    <h5 class="fw-bold mb-3">
+                                        <i class='bx bx-qr' style="margin-right: 0.5rem; color: var(--primary);"></i>
+                                        Scan QR Code
+                                    </h5>
+                                    <div class="qr-code-container">
+                                        <img src="{{ $qrCodeImage }}" alt="Two-Factor QR Code" height="180" width="180">
                                     </div>
+                                    <p class="mt-3 text-muted" style="font-size: 0.9rem;">
+                                        <i class='bx bx-mobile' style="margin-right: 0.25rem;"></i>
+                                        Open your authenticator app (Google Authenticator, Authy, etc.), tap "+" and scan this QR code.
+                                    </p>
                                 </div>
 
-                                <!-- QR Code Section (Right) -->
-                                <div class="col-md-5">
-                                    <p class="mb-2">Or set up 2FA by scanning QR code</p>
-                                    <div class="border d-inline-block bg-light rounded">
-                                        <img src="{{ $qrCodeImage }}" alt="Two-Factor QR Code" height="160"
-                                            width="160">
+                                <!-- Manual Setup & Recovery Codes -->
+                                <div class="col-lg-7">
+                                    <!-- Manual Setup -->
+                                    <div class="mb-4">
+                                        <h5 class="fw-bold mb-3">
+                                            <i class='bx bx-wrench' style="margin-right: 0.5rem; color: var(--primary);"></i>
+                                            Manual Setup
+                                        </h5>
+                                        <div class="recovery-codes-box mb-3">
+                                            <strong>Secret Key:</strong><br>
+                                            <code style="font-size: 1rem; color: var(--primary);">{{ $secret }}</code>
+                                        </div>
+                                        <ol class="setup-steps" style="font-size: 0.9rem;">
+                                            <li>Open your authenticator app</li>
+                                            <li>Tap <strong>"Add account"</strong> or <strong>"Set up manually"</strong></li>
+                                            <li>Select <strong>"Enter a setup key"</strong></li>
+                                            <li>Enter your account name</li>
+                                            <li>Paste the secret key above</li>
+                                            <li>Set type to <strong>Time-based (TOTP)</strong></li>
+                                            <li>Save and start generating codes</li>
+                                        </ol>
                                     </div>
-                                    <p class="mt-2 text-muted" style="max-width: 240px;">
-                                        Open your authenticator app (like Google Authenticator or Authy), tap “+” or “Scan a
-                                        QR code,” and point your camera at the code.
-                                    </p>
+
+                                    <!-- Recovery Codes -->
+                                    <div>
+                                        <h5 class="fw-bold mb-3">
+                                            <i class='bx bx-key' style="margin-right: 0.5rem; color: var(--warning);"></i>
+                                            Recovery Codes
+                                        </h5>
+                                        <p class="mb-3 text-muted" style="font-size: 0.9rem;">
+                                            <i class='bx bx-info-circle' style="margin-right: 0.25rem;"></i>
+                                            Save these codes securely. Each can be used once if you lose access to your authenticator.
+                                        </p>
+                                        <div class="recovery-codes-box">
+                                            @foreach ($recoveryCodes as $code)
+                                                <div style="padding: 0.25rem 0;">{{ $code }}</div>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         @endif
