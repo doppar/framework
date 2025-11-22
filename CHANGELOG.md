@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.21 - 2025-11-22
+
+* remove # from cdn from skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/142
+* searchViewInPath method remove from controller and adding search inline by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/143
+
 ## v3.0.0-beta.20 - 2025-11-22
 
 * update the redesign dashboard starter by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/140
