@@ -358,7 +358,6 @@ class Controller extends View
         $possiblePaths = [
             $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
             $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
             $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
         ];
 
@@ -387,7 +386,6 @@ class Controller extends View
         $possiblePaths = [
             $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
             $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
             $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
         ];
 

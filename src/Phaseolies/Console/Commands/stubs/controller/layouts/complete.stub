@@ -20,7 +20,7 @@
                 <p>The following files were created for you:</p>
                 <ul>
                     <li>Controller: <code>[[ controllerPath ]]</code></li>
-                    <li>View: <code>resources/views/[[ routeName ]]/default.blade.php</code></li>
+                    <li>View: <code>resources/views/[[ routeName ]]/default.odo.php</code></li>
                 </ul>
             </div>
 

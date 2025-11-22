@@ -732,7 +732,7 @@ class Response implements HttpStatus
 
         ob_start();
 
-        include base_path("resources/views/{$viewPath}.blade.php");
+        include base_path("resources/views/{$viewPath}.odo.php");
 
         return ob_get_clean();
     }

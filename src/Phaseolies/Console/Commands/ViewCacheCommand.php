@@ -78,7 +78,7 @@ class ViewCacheCommand extends Command
 
         foreach ($viewFiles as $file) {
             $relativePath = str_replace(base_path('resources/views') . '/', '', $file);
-            $viewName = str_replace(['/', '.blade.php'], ['.', ''], $relativePath);
+            $viewName = str_replace(['/', '.odo.php'], ['.', ''], $relativePath);
 
             try {
                 $compiledFile = $viewCompiler->prepare($viewName);
