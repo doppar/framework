@@ -34,10 +34,10 @@
                     <label for="password" class="form-label">Confirm Password</label>
                     <input type="password" class="form-control" name="confirm_password">
                 </div>
-                <button type="submit" class="btn btn-primary w-100">{{ __('Register') }}</button>
+                <button type="submit" class="btn btn-primary w-100">[[ __('Register') ]]</button>
             </form>
             <div class="text-center mt-3">
-                Already have an account? <a href="{{ route('login') }}" class="text-decoration-none">{{ __('Sign in') }}</a>
+                Already have an account? <a href="[[ route('login') ]]" class="text-decoration-none">[[ __('Sign in') ]]</a>
             </div>
         </div>
     </div>
