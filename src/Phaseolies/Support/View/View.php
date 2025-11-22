@@ -40,7 +40,7 @@ class View extends Factory
      *
      * @var array<string, string>
      */
-    protected $cache = [];
+    protected static array $cache = [];
 
     /**
      * Stack of currently rendering view names.
@@ -65,13 +65,9 @@ class View extends Factory
      */
     public function render($name, array $data = [], $returnOnly = false)
     {
-        try {
-            $html = $this->fetch($name, $data);
+        $html = $this->fetch($name, $data);
 
-            return $returnOnly ? $html : print($html);
-        } finally {
-            $this->flush();
-        }
+        return $returnOnly ? $html : print($html);
     }
 
     /**
@@ -88,8 +84,8 @@ class View extends Factory
 
         $cacheKey = $this->generateCacheKey($name, $data);
 
-        if (isset($this->cache[$cacheKey])) {
-            return $this->cache[$cacheKey];
+        if (isset(self::$cache[$cacheKey])) {
+            return self::$cache[$cacheKey];
         }
 
         $this->renderStack[] = $name;
@@ -106,9 +102,11 @@ class View extends Factory
 
             $result = $this->block('__current_template__', '');
 
-            return $this->cache[$cacheKey] = $result;
+            return self::$cache[$cacheKey] = $result;
         } finally {
-            array_pop($this->renderStack);
+            if (!empty($this->renderStack)) {
+                array_pop($this->renderStack);
+            }
         }
     }
 
@@ -201,7 +199,7 @@ class View extends Factory
 
         hash_update($hasher, $name);
 
-        hash_update($hasher, json_encode($payload));
+        hash_update($hasher, serialize($payload));
 
         return hash_final($hasher);
     }
@@ -216,7 +214,6 @@ class View extends Factory
         $this->blocks = [];
         $this->blockStacks = [];
         $this->parents = [];
-        $this->cache = [];
     }
 
     public function __destruct()

@@ -325,11 +325,12 @@ class Controller extends View
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
 
         // First check published views in resources/views/vendor/{namespace}
+        // Prioritize published views over package views
         $publishedPath = base_path('resources/views/vendor/' . $namespace);
         if (is_dir($publishedPath)) {
             $possiblePaths = [
                 $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-                $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+                $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
                 $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.php',
             ];
 
@@ -343,9 +344,7 @@ class Controller extends View
         // Then check package views
         foreach ($this->factory->namespaces[$namespace] as $basePath) {
             $possiblePaths = [
-                $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-                $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
-                $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+                $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension
             ];
 
             foreach ($possiblePaths as $fullPath) {
@@ -371,11 +370,8 @@ class Controller extends View
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
         $basePath = base_path($this->viewFolder);
 
-        // Try multiple extensions
         $possiblePaths = [
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension
         ];
 
         foreach ($possiblePaths as $fullPath) {
@@ -384,8 +380,8 @@ class Controller extends View
             }
         }
 
-        // Provide helpful error message with attempted paths
         $attemptedPaths = implode("\n  - ", $possiblePaths);
+
         throw new NotFoundHttpException(
             "View [{$view}] not found. Attempted paths:\n  - {$attemptedPaths}"
         );
