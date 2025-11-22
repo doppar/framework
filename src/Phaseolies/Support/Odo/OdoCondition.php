@@ -1,14 +1,14 @@
 <?php
 
-namespace Phaseolies\Support\Blade;
+namespace Phaseolies\Support\Odo;
 
-trait BladeCondition
+trait OdoCondition
 {
     /**
-     * Usage: @if ($condition).
+     * Usage: #if ($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileIf($condition): string
     {
@@ -16,10 +16,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @elseif (condition).
+     * Usage: #elseif (condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileElseif($condition): string
     {
@@ -27,9 +27,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @else.
+     * Usage: #else.
      *
-     * @return string
+     * #return string
      */
     protected function compileElse(): string
     {
@@ -37,9 +37,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endif.
+     * Usage: #endif.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndif(): string
     {
@@ -47,10 +47,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @unless($condition).
+     * Usage: #unless($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileUnless($condition): string
     {
@@ -58,9 +58,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endunless.
+     * Usage: #endunless.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndunless(): string
     {
@@ -68,10 +68,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @isset($variable).
+     * Usage: #isset($variable).
      *
-     * @param mixed $variable
-     * @return string
+     * #param mixed $variable
+     * #return string
      */
     protected function compileIsset($variable): string
     {
@@ -79,9 +79,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endisset.
+     * Usage: #endisset.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndisset(): string
     {
@@ -89,10 +89,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @switch ($condition).
+     * Usage: #switch ($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileSwitch($condition): string
     {
@@ -101,10 +101,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @case ($condition).
+     * Usage: #case ($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileCase($condition): string
     {
@@ -117,9 +117,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @default.
+     * Usage: #default.
      *
-     * @return string
+     * #return string
      */
     protected function compileDefault(): string
     {
@@ -127,10 +127,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @break or @break($condition).
+     * Usage: #break or #break($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileBreak($condition): string
     {
@@ -145,9 +145,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endswitch.
+     * Usage: #endswitch.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndswitch(): string
     {
@@ -155,10 +155,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @continue or @continue($condition).
+     * Usage: #continue or #continue($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileContinue($condition): string
     {
@@ -173,10 +173,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @exit or @exit($condition).
+     * Usage: #exit or #exit($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileExit($condition): string
     {
@@ -190,21 +190,21 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @php($varName = 'value').
+     * Usage: #php($varName = 'value').
      *
-     * @param string $value
-     * @return string
+     * #param string $value
+     * #return string
      */
     protected function compilePhp($value): string
     {
-        return $value ? "<?php {$value}; ?>" : "@php{$value}";
+        return $value ? "<?php {$value}; ?>" : "#php{$value}";
     }
 
     /**
-     * Usage: @json($data).
+     * Usage: #json($data).
      *
-     * @param mixed $data
-     * @return string
+     * #param mixed $data
+     * #return string
      */
     protected function compileJson($data): string
     {
@@ -214,23 +214,18 @@ trait BladeCondition
             $data = substr($data, 1, -1);
         }
 
-        $parts = explode(",", $data);
+        $parts = explode(",", $data, 3);
         $options = isset($parts[1]) ? trim($parts[1]) : $default;
         $depth = isset($parts[2]) ? trim($parts[2]) : 512;
 
-        // PHP < 5.5.0 doesn't have the $depth parameter
-        if (PHP_VERSION_ID >= 50500) {
-            return "<?php echo json_encode($parts[0], $options, $depth) ?>";
-        }
-
-        return "<?php echo json_encode($parts[0], $options) ?>";
+        return "<?php echo json_encode({$parts[0]}, {$options}, {$depth}) ?>";
     }
 
     /**
-     * Usage: @unset($var).
+     * Usage: #unset($var).
      *
-     * @param mixed $variable
-     * @return string
+     * #param mixed $variable
+     * #return string
      */
     protected function compileUnset($variable): string
     {
@@ -238,10 +233,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @for ($condition).
+     * Usage: #for ($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileFor($condition): string
     {
@@ -249,9 +244,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endfor.
+     * Usage: #endfor.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndfor(): string
     {
@@ -259,10 +254,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @foreach ($expression).
+     * Usage: #foreach ($expression).
      *
-     * @param mixed $expression
-     * @return string
+     * #param mixed $expression
+     * #return string
      */
     protected function compileForeach($expression): string
     {
@@ -271,27 +266,26 @@ trait BladeCondition
         $iteratee = trim($matches[1]);
         $iteration = trim($matches[2]);
         $initLoop = "\$__currloopdata = {$iteratee}; \$this->addLoop(\$__currloopdata);";
-        $iterateLoop =
-            '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
+        $iterateLoop = '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
 
         return "<?php {$initLoop} foreach(\$__currloopdata as {$iteration}): {$iterateLoop} ?>";
     }
 
     /**
-     * Usage: @endforeach.
+     * Usage: #endforeach.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndforeach(): string
     {
-        return "<?php endforeach; ?>";
+        return "<?php endforeach; \$this->popLoop(); ?>";
     }
 
     /**
-     * Usage: @forelse ($condition).
+     * Usage: #forelse ($condition).
      *
-     * @param mixed $expression
-     * @return string
+     * #param mixed $expression
+     * #return string
      */
     protected function compileForelse($expression): string
     {
@@ -300,8 +294,7 @@ trait BladeCondition
         $iteratee = trim($matches[1]);
         $iteration = trim($matches[2]);
         $initLoop = "\$__currloopdata = {$iteratee}; \$this->addLoop(\$__currloopdata);";
-        $iterateLoop =
-            '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
+        $iterateLoop = '$this->incrementLoopIndices(); $loop = $this->getFirstLoop();';
 
         ++$this->emptyCounter;
 
@@ -311,22 +304,22 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @empty.
+     * Usage: #empty.
      *
-     * @return string
+     * #return string
      */
     protected function compileEmpty(): string
     {
-        $string = "<?php endforeach; if (\$__empty_{$this->emptyCounter}): ?>";
+        $string = "<?php endforeach; \$this->popLoop(); if (\$__empty_{$this->emptyCounter}): ?>";
         --$this->emptyCounter;
 
         return $string;
     }
 
     /**
-     * Usage: @endforelse.
+     * Usage: #endforelse.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndforelse(): string
     {
@@ -334,10 +327,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @while ($condition).
+     * Usage: #while ($condition).
      *
-     * @param mixed $condition
-     * @return string
+     * #param mixed $condition
+     * #return string
      */
     protected function compileWhile($condition): string
     {
@@ -345,9 +338,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endwhile.
+     * Usage: #endwhile.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndwhile(): string
     {
@@ -355,10 +348,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @extends($parent).
+     * Usage: #extends($parent).
      *
-     * @param string $parent
-     * @return string
+     * #param string $parent
+     * #return string
      */
     protected function compileExtends($parent): string
     {
@@ -370,10 +363,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @include($view).
+     * Usage: #include($view).
      *
-     * @param string $view
-     * @return string
+     * #param string $expression
+     * #return string
      */
     protected function compileInclude($expression): string
     {
@@ -390,10 +383,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @yield($string).
+     * Usage: #yield($string).
      *
-     * @param string $string
-     * @return string
+     * #param string $string
+     * #return string
      */
     protected function compileYield($string): string
     {
@@ -401,10 +394,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @section($name).
+     * Usage: #section($name).
      *
-     * @param string $name
-     * @return string
+     * #param string $name
+     * #return string
      */
     protected function compileSection($name): string
     {
@@ -412,9 +405,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endsection.
+     * Usage: #endsection.
      *
-     * @return string
+     * #return string
      */
     protected function compileEndsection(): string
     {
@@ -422,9 +415,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @show.
+     * Usage: #show.
      *
-     * @return string
+     * #return string
      */
     protected function compileShow(): string
     {
@@ -432,9 +425,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @append.
+     * Usage: #append.
      *
-     * @return string
+     * #return string
      */
     protected function compileAppend(): string
     {
@@ -442,9 +435,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @stop.
+     * Usage: #stop.
      *
-     * @return string
+     * #return string
      */
     protected function compileStop(): string
     {
@@ -452,9 +445,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @overwrite.
+     * Usage: #overwrite.
      *
-     * @return string
+     * #return string
      */
     protected function compileOverwrite(): string
     {
@@ -462,10 +455,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @method('put').
+     * Usage: #method('put').
      *
-     * @param string $method
-     * @return string
+     * #param string $method
+     * #return string
      */
     protected function compileMethod($method): string
     {
@@ -473,23 +466,23 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @csrf
+     * Usage: #csrf
      *
-     * Generate random string to protect spumy form submit
+     * Generate random string to protect spammy form submit
      *
-     * @return string
+     * #return string
      */
-    protected function compileCsrf()
+    protected function compileCsrf(): string
     {
         return '<?php echo \'<input type="hidden" name="_token" value="\' . 
         htmlspecialchars(csrf_token(), ENT_QUOTES, "UTF-8") . \'">\'; ?>' . "\n";
     }
 
     /**
-     * Usage: @can('ability-name'[, $args])
+     * Usage: #scope('ability-name'[, $args])
      *
-     * @param string $expression
-     * @return string
+     * #param string $expression
+     * #return string
      */
     protected function compileScope($expression): string
     {
@@ -497,10 +490,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @elsescope('ability-name'[, $args])
+     * Usage: #elsescope('ability-name'[, $args])
      *
-     * @param string $expression
-     * @return string
+     * #param string $expression
+     * #return string
      */
     protected function compileElsescope($expression): string
     {
@@ -508,9 +501,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endscope
+     * Usage: #endscope
      *
-     * @return string
+     * #return string
      */
     protected function compileEndscope(): string
     {
@@ -518,10 +511,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @scopenot('ability-name'[, $args])
+     * Usage: #scopenot('ability-name'[, $args])
      *
-     * @param string $expression
-     * @return string
+     * #param string $expression
+     * #return string
      */
     protected function compileScopenot($expression): string
     {
@@ -529,10 +522,10 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @elsescopenot('ability-name'[, $args])
+     * Usage: #elsescopenot('ability-name'[, $args])
      *
-     * @param string $expression
-     * @return string
+     * #param string $expression
+     * #return string
      */
     protected function compileElsescopenot($expression): string
     {
@@ -540,9 +533,9 @@ trait BladeCondition
     }
 
     /**
-     * Usage: @endscopenot
+     * Usage: #endscopenot
      *
-     * @return string
+     * #return string
      */
     protected function compileEndscopenot(): string
     {

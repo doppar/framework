@@ -113,7 +113,7 @@ class View extends Factory
     }
 
     /**
-     * Helper method for @extends() directive to define parent view.
+     * Helper method for #extends() directive to define parent view.
      *
      * @param string $name
      * @return void

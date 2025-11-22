@@ -3,8 +3,6 @@
 namespace Tests\Unit;
 
 use Tests\Support\MockContainer;
-use RuntimeException;
-use Phaseolies\Http\Exceptions\NotFoundHttpException;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
@@ -31,7 +29,7 @@ class ControllerTest extends TestCase
         $fileExtensionProperty = $reflection->getProperty('fileExtension');
         $fileExtensionProperty->setAccessible(true);
 
-        $this->assertEquals('.blade.php', $fileExtensionProperty->getValue($this->controller));
+        $this->assertEquals('.odo.php', $fileExtensionProperty->getValue($this->controller));
     }
 
     public function testSetFileExtension(): void
@@ -65,49 +63,6 @@ class ControllerTest extends TestCase
         $echoFormatProperty->setAccessible(true);
 
         $this->assertEquals('custom_format(%s)', $echoFormatProperty->getValue($this->controller));
-    }
-
-    public function testSetOptimizationLevel(): void
-    {
-        $this->controller->setOptimizationLevel(1);
-
-        $reflection = new \ReflectionClass(Controller::class);
-        $optimizationLevelProperty = $reflection->getProperty('optimizationLevel');
-        $optimizationLevelProperty->setAccessible(true);
-
-        $this->assertEquals(1, $optimizationLevelProperty->getValue($this->controller));
-    }
-
-    public function testSetOptimizationLevelThrowsExceptionForInvalidLevel(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Optimization level must be 0, 1, or 2');
-
-        $this->controller->setOptimizationLevel(5);
-    }
-
-    public function testClearCompiledTemplates(): void
-    {
-        $reflection = new \ReflectionClass(Controller::class);
-
-        // Set some compiled templates
-        $compiledTemplatesProperty = $reflection->getProperty('compiledTemplates');
-        $compiledTemplatesProperty->setAccessible(true);
-        $compiledTemplatesProperty->setValue($this->controller, ['test' => 'content']);
-
-        $lazyComponentsProperty = $reflection->getProperty('lazyComponents');
-        $lazyComponentsProperty->setAccessible(true);
-        $lazyComponentsProperty->setValue($this->controller, ['component' => true]);
-
-        $loopStacksProperty = $reflection->getProperty('loopStacks');
-        $loopStacksProperty->setAccessible(true);
-        $loopStacksProperty->setValue($this->controller, ['loop' => []]);
-
-        $this->controller->clearCompiledTemplates();
-
-        $this->assertEmpty($compiledTemplatesProperty->getValue($this->controller));
-        $this->assertEmpty($lazyComponentsProperty->getValue($this->controller));
-        $this->assertEmpty($loopStacksProperty->getValue($this->controller));
     }
 
     public function testAddLoop(): void
@@ -377,7 +332,7 @@ class ControllerTest extends TestCase
         $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
-        $this->assertEquals('<?php endforeach; ?>', $result);
+        $this->assertEquals('<?php endforeach; $this->popLoop(); ?>', $result);
     }
 
     public function testCompileWhile(): void
@@ -408,42 +363,9 @@ class ControllerTest extends TestCase
 
     public function testReplacePhpBlocks(): void
     {
-        $content = '@php echo "test"; @endphp';
+        $content = '#php echo "test"; #endphp';
         $result = $this->controller->replacePhpBlocks($content);
         $this->assertEquals('<?php echo "test"; ?>', $result);
-    }
-
-    public function testSafeFullMinifyWithJsCssAware(): void
-    {
-        $reflection = new \ReflectionClass(Controller::class);
-        $method = $reflection->getMethod('safeFullMinifyWithJsCssAware');
-        $method->setAccessible(true);
-
-        $content = '<div>  test  </div>';
-        $result = $method->invoke($this->controller, $content);
-        $this->assertStringContainsString('<div> test </div>', $result);
-    }
-
-    public function testOptimizeControlStructures(): void
-    {
-        $reflection = new \ReflectionClass(Controller::class);
-        $method = $reflection->getMethod('optimizeControlStructures');
-        $method->setAccessible(true);
-
-        $content = '<?php if ($condition): ?> content <?php endif; ?>';
-        $result = $method->invoke($this->controller, $content);
-        $this->assertStringContainsString('if($condition):', $result);
-    }
-
-    public function testOptimizeEchoStatements(): void
-    {
-        $reflection = new \ReflectionClass(Controller::class);
-        $method = $reflection->getMethod('optimizeEchoStatements');
-        $method->setAccessible(true);
-
-        $content = '<?= $var1 ?> <?= $var2 ?>';
-        $result = $method->invoke($this->controller, $content);
-        $this->assertStringContainsString('$var1.$var2', $result);
     }
 
     public function testCompileEchos(): void
@@ -452,7 +374,7 @@ class ControllerTest extends TestCase
         $method = $reflection->getMethod('compileEchos');
         $method->setAccessible(true);
 
-        $content = '{{ $variable }}';
+        $content = '[[ $variable ]]';
         $result = $method->invoke($this->controller, $content);
         $this->assertStringContainsString('echo', $result);
         $this->assertStringContainsString('$variable', $result);

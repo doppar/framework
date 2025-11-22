@@ -20,8 +20,8 @@
                 </p>
             </div>
             <div class="card-body">
-                <form action="{{ route('verify.2fa') }}" method="POST">
-                    @csrf
+                <form action="[[ route('verify.2fa') ]]" method="POST">
+                    #csrf
                     <div class="mb-3 mt-3">
                         <label for="token" class="form-label">2FA Code</label>
                         <input type="text" class="form-control" name="token" inputmode="numeric" pattern="\d{6}"

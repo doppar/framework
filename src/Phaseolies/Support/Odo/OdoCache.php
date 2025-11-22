@@ -1,13 +1,13 @@
 <?php
 
-namespace Phaseolies\Support\Blade;
+namespace Phaseolies\Support\Odo;
 
 use RuntimeException;
 
-trait BladeCache
+trait OdoCache
 {
     /**
-     * Path to the cache folder for compiled Blade templates
+     * Path to the cache folder for compiled odo templates
      *
      * @var string|null
      */

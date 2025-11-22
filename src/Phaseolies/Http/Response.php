@@ -656,17 +656,14 @@ class Response implements HttpStatus
     /**
      * Render an HTML error page.
      *
-     * This method attempts to include an error page template corresponding to the status code.
-     * If the template does not exist, it throws an HTTP exception.
-     *
      * @param int $statusCode The HTTP status code.
      * @param string $message The error message.
      * @return void
      */
     protected static function renderErrorPage(int $statusCode, string $message): void
     {
-        $customPath = base_path("resources/views/errors/{$statusCode}.blade.php");
-        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.blade.php");
+        $customPath = base_path("resources/views/errors/{$statusCode}.odo.php");
+        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.odo.php");
 
         if (file_exists($customPath)) {
             include $customPath;
@@ -735,7 +732,7 @@ class Response implements HttpStatus
 
         ob_start();
 
-        include base_path("resources/views/{$viewPath}.blade.php");
+        include base_path("resources/views/{$viewPath}.odo.php");
 
         return ob_get_clean();
     }
