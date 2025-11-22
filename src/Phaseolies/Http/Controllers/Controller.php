@@ -294,12 +294,16 @@ class Controller extends View
      */
     protected function findView(string $view): string
     {
-        // Handle namespaced views (e.g., 'package::view.name')
+        // Handling namespaced views (e.g., 'namespace::view.name')
+        // Check for '::' to identify namespaced views
+        // Split into namespace and view name
+        // Search in published views first, then in package views
         if (str_contains($view, '::')) {
             return $this->findNamespacedView($view);
         }
 
-        // Handle non-namespaced views
+        // Regular views
+        // Search in the main views directory
         return $this->findRegularView($view);
     }
 
@@ -314,9 +318,7 @@ class Controller extends View
     protected function findNamespacedView(string $view): string
     {
         [$namespace, $viewName] = explode('::', $view, 2);
-
-        // Validate namespace exists
-        if (!isset($this->factory->namespaces[$namespace]) || empty($this->factory->namespaces[$namespace])) {
+        if (empty($this->factory->namespaces[$namespace])) {
             throw new RuntimeException("Namespace [{$namespace}] not registered");
         }
 
@@ -325,19 +327,34 @@ class Controller extends View
         // First check published views in resources/views/vendor/{namespace}
         $publishedPath = base_path('resources/views/vendor/' . $namespace);
         if (is_dir($publishedPath)) {
-            $foundPath = $this->searchViewInPath($publishedPath, $viewPath);
-            if ($foundPath !== null) {
-                return $foundPath;
+            $possiblePaths = [
+                $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
+                $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+                $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+            ];
+
+            foreach ($possiblePaths as $fullPath) {
+                if (file_exists($fullPath)) {
+                    return $fullPath;
+                }
             }
         }
 
         // Then check package views
         foreach ($this->factory->namespaces[$namespace] as $basePath) {
-            $foundPath = $this->searchViewInPath($basePath, $viewPath);
-            if ($foundPath !== null) {
-                return $foundPath;
+            $possiblePaths = [
+                $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
+                $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+                $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+            ];
+
+            foreach ($possiblePaths as $fullPath) {
+                if (file_exists($fullPath)) {
+                    return $fullPath;
+                }
             }
         }
+
 
         throw new NotFoundHttpException("View [{$view}] not found in namespace [{$namespace}]");
     }
@@ -372,30 +389,6 @@ class Controller extends View
         throw new NotFoundHttpException(
             "View [{$view}] not found. Attempted paths:\n  - {$attemptedPaths}"
         );
-    }
-
-    /**
-     * Search for a view file in a given path with multiple extensions
-     *
-     * @param string $basePath
-     * @param string $viewPath
-     * @return string|null
-     */
-    protected function searchViewInPath(string $basePath, string $viewPath): ?string
-    {
-        $possiblePaths = [
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
-            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
-        ];
-
-        foreach ($possiblePaths as $fullPath) {
-            if (file_exists($fullPath) && is_readable($fullPath)) {
-                return $fullPath;
-            }
-        }
-
-        return null;
     }
 
     /**
