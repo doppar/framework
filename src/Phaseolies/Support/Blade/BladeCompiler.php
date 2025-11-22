@@ -5,14 +5,14 @@ namespace Phaseolies\Support\Blade;
 trait BladeCompiler
 {
     /**
-     * The file extension for Blade templates (e.g., ".blade.php")
+     * The file extension for ODO templates (e.g., ".odo.php")
      *
      * @var string|null
      */
     protected $fileExtension;
 
     /**
-     * Path to the view folder containing Blade templates
+     * Path to the view folder containing ODO templates
      *
      * @var string|null
      */
@@ -26,45 +26,59 @@ trait BladeCompiler
     protected $echoFormat;
 
     /**
-     * Custom compiler extensions registered for Blade
+     * Custom compiler extensions registered for ODO
      *
      * @var array
      */
     protected $extensions = [];
 
     /**
-     * Registered Blade directives (e.g., @datetime)
+     * Registered ODO directives (e.g., #datetime)
      *
      * @var array
      */
     protected static $directives = [];
 
     /**
-     * Compile blade statements.
+     * Compile ODO statements (directives like #if, #foreach, etc.)
      *
      * @param string $statement
      * @return string
      */
     protected function compileStatements($statement): string
     {
-        $pattern = '/\B@(@?\w+(?:->\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x';
+        // Get the directive prefix (default: #)
+        $prefix = preg_quote($this->directivePrefix, '/');
+
+        // Match directives: #directive or #directive(...)
+        $pattern = '/\B' . $prefix . '(' . $prefix . '?\w+(?:->\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x';
 
         return preg_replace_callback($pattern, function ($match) {
-            // default commands
-            if (method_exists($this, $method = 'compile' . ucfirst($match[1]))) {
+            $directiveName = $match[1];
+
+            // Handle escaped directives (##directive becomes #directive)
+            if (str_starts_with($directiveName, $this->directivePrefix)) {
+                return substr($match[0], 1);
+            }
+
+            // Check for built-in compile methods
+            if (method_exists($this, $method = 'compile' . ucfirst($directiveName))) {
                 $match[0] = $this->{$method}(isset($match[3]) ? $match[3] : '');
             }
 
-            // custom directives
-            if (isset(self::$directives[$match[1]])) {
-                if ((isset($match[3][0]) && '(' === $match[3][0])
-                    && (isset($match[3][strlen($match[3]) - 1]) && ')' === $match[3][strlen($match[3]) - 1])
+            // Check for custom directives
+            if (isset(self::$directives[$directiveName])) {
+                $expression = isset($match[3]) ? $match[3] : '';
+
+                // Remove surrounding parentheses
+                if ((isset($expression[0]) && '(' === $expression[0])
+                    && (isset($expression[strlen($expression) - 1]) && ')' === $expression[strlen($expression) - 1])
                 ) {
-                    $match[3] = substr($match[3], 1, -1);
+                    $expression = substr($expression, 1, -1);
                 }
 
-                if (isset($match[3]) && '()' !== $match[3]) {
-                    $match[0] = call_user_func(self::$directives[$match[1]], trim($match[3]));
+                if ($expression !== '' && $expression !== '()') {
+                    $match[0] = call_user_func(self::$directives[$directiveName], trim($expression));
                 }
             }
 
@@ -73,43 +87,58 @@ trait BladeCompiler
     }
 
     /**
-     * Compile blade comments.
+     * Compile ODO comments (e.g., [[-- comment --]])
      *
      * @param string $comment
      * @return string
      */
     protected function compileComments($comment): string
     {
-        return preg_replace('/\{\{--((.|\s)*?)--\}\}/', '<?php /*$1*/ ?>', $comment);
+        $open = preg_quote($this->openCommentTag, '/');
+        $close = preg_quote($this->closeCommentTag, '/');
+
+        return preg_replace('/' . $open . '((.|\s)*?)' . $close . '/', '<?php /*$1*/ ?>', $comment);
     }
 
     /**
-     * Compile blade echoes.
+     * Compile ODO echo statements
      *
      * @param string $string
-     *
      * @return string
      */
     protected function compileEchos($string): string
     {
-        // compile escaped echoes
-        $string = preg_replace_callback('/\{\{\{\s*(.+?)\s*\}\}\}(\r?\n)?/s', function ($matches) {
+        // Escape tags for regex
+        $openEscaped = preg_quote($this->openEscapedEchoTag, '/');
+        $closeEscaped = preg_quote($this->closeEscapedEchoTag, '/');
+        $openRaw = preg_quote($this->openRawEchoTag, '/');
+        $closeRaw = preg_quote($this->closeRawEchoTag, '/');
+        $openEcho = preg_quote($this->openEchoTag, '/');
+        $closeEcho = preg_quote($this->closeEchoTag, '/');
+
+        // Compile escaped echoes (e.g., [[[ $var ]]])
+        $string = preg_replace_callback('/' . $openEscaped . '\s*(.+?)\s*' . $closeEscaped . '(\r?\n)?/s', function ($matches) {
             $whitespace = empty($matches[2]) ? '' : $matches[2] . $matches[2];
             return '<?php echo $this->e(' . $this->compileEchoDefaults($matches[1]) . ') ?>' . $whitespace;
         }, $string);
 
-        // compile unescaped echoes
-        $string = preg_replace_callback('/\{\!!\s*(.+?)\s*!!\}(\r?\n)?/s', function ($matches) {
+        // Compile unescaped/raw echoes (e.g., [[! $var !]])
+        $string = preg_replace_callback('/' . $openRaw . '\s*(.+?)\s*' . $closeRaw . '(\r?\n)?/s', function ($matches) {
             $whitespace = empty($matches[2]) ? '' : $matches[2] . $matches[2];
             return '<?php echo ' . $this->compileEchoDefaults($matches[1]) . ' ?>' . $whitespace;
         }, $string);
 
-        // compile regular echoes
-        $string = preg_replace_callback('/(@)?\{\{\s*(.+?)\s*\}\}(\r?\n)?/s', function ($matches) {
+        // Compile regular echoes (e.g., [[ $var ]])
+        // Check for escaped echo tags (e.g., #[[ becomes [[)
+        $string = preg_replace_callback('/(' . $prefix = preg_quote($this->directivePrefix, '/') . ')?' . $openEcho . '\s*(.+?)\s*' . $closeEcho . '(\r?\n)?/s', function ($matches) {
             $whitespace = empty($matches[3]) ? '' : $matches[3] . $matches[3];
-            return $matches[1]
-                ? substr($matches[0], 1)
-                : '<?php echo '
+
+            // If prefixed with directive symbol, escape it
+            if (!empty($matches[1])) {
+                return substr($matches[0], 1);
+            }
+
+            return '<?php echo '
                 . sprintf($this->echoFormat, $this->compileEchoDefaults($matches[2]))
                 . ' ?>' . $whitespace;
         }, $string);
@@ -118,7 +147,7 @@ trait BladeCompiler
     }
 
     /**
-     * Compile default echoes.
+     * Compile default echo expressions (handle 'or' operator)
      *
      * @param string $string
      * @return string
@@ -129,7 +158,7 @@ trait BladeCompiler
     }
 
     /**
-     * Compile user-defined extensions.
+     * Compile user-defined extensions
      *
      * @param string $string
      * @return string
@@ -144,14 +173,17 @@ trait BladeCompiler
     }
 
     /**
-     * Replace @php and @endphp blocks.
+     * Replace PHP blocks (e.g., #php ... #endphp)
      *
      * @param string $string
      * @return string
      */
     public function replacePhpBlocks($string): string
     {
-        $string = preg_replace_callback('/(?<!@)@php(.*?)@endphp/s', function ($matches) {
+        $prefix = preg_quote($this->directivePrefix, '/');
+
+        // Match #php ... #endphp blocks (not escaped with ##)
+        $string = preg_replace_callback('/(?<!' . $prefix . ')' . $prefix . 'php(.*?)' . $prefix . 'endphp/s', function ($matches) {
             return "<?php{$matches[1]}?>";
         }, $string);
 
@@ -159,7 +191,7 @@ trait BladeCompiler
     }
 
     /**
-     * Escape variables.
+     * Escape variables for HTML output
      *
      * @param string|array|null $string
      * @param string $charset

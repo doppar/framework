@@ -10,8 +10,8 @@ trait Directives
     /**
      * Extend this class (Add custom directives).
      *
-     * @param Closure $compiler
-     * @return void
+     * #param Closure $compiler
+     * #return void
      */
     public function extend(Closure $compiler): void
     {
@@ -19,9 +19,9 @@ trait Directives
     }
 
     /**
-     * Compile the @auth directive.
+     * Compile the #auth directive.
      *
-     * @return string
+     * #return string
      */
     public function compileAuth(): string
     {
@@ -29,9 +29,9 @@ trait Directives
     }
 
     /**
-     * Compile the @endauth directive.
+     * Compile the #endauth directive.
      *
-     * @return string
+     * #return string
      */
     public function compileEndauth(): string
     {
@@ -39,9 +39,9 @@ trait Directives
     }
 
     /**
-     * Compile the @guest directive.
+     * Compile the #guest directive.
      *
-     * @return string
+     * #return string
      */
     public function compileGuest(): string
     {
@@ -49,9 +49,9 @@ trait Directives
     }
 
     /**
-     * Compile the @endguest directive.
+     * Compile the #endguest directive.
      *
-     * @return string
+     * #return string
      */
     public function compileEndguest(): string
     {
@@ -59,9 +59,9 @@ trait Directives
     }
 
     /**
-     * Compile the @errors directive.
+     * Compile the #errors directive.
      *
-     * @return string
+     * #return string
      */
     public function compileErrors(): string
     {
@@ -69,9 +69,9 @@ trait Directives
     }
 
     /**
-     * Compile the @enderrors directive.
+     * Compile the #enderrors directive.
      *
-     * @return string
+     * #return string
      */
     public function compileEnderrors(): string
     {
@@ -79,10 +79,10 @@ trait Directives
     }
 
     /**
-     * Compile the @error directive.
+     * Compile the #error directive.
      *
-     * @param string $key
-     * @return string
+     * #param string $key
+     * #return string
      */
     public function compileError($key): string
     {
@@ -92,9 +92,9 @@ trait Directives
     }
 
     /**
-     * Compile the @enderror directive.
+     * Compile the #enderror directive.
      *
-     * @return string
+     * #return string
      */
     public function compileEnderror(): string
     {
@@ -104,8 +104,8 @@ trait Directives
     /**
      * Another (simpler) way to add custom directives.
      *
-     * @param string $name
-     * @param string $callback
+     * #param string $name
+     * #param string $callback
      */
     public function directive($name, Closure $callback): void
     {
@@ -122,7 +122,7 @@ trait Directives
     /**
      * Get all defined directives.
      *
-     * @return array
+     * #return array
      */
     public function getAllDirectives(): array
     {

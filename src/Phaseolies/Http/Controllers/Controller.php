@@ -10,6 +10,7 @@ use Phaseolies\Support\Blade\BladeCondition;
 use Phaseolies\Support\Blade\BladeCompiler;
 use Phaseolies\Http\Exceptions\NotFoundHttpException;
 use Countable;
+use Throwable;
 
 class Controller extends View
 {
@@ -31,26 +32,81 @@ class Controller extends View
     protected $firstCaseSwitch = true;
 
     /**
-     * @var bool
+     * Directive prefix (default: '#')
+     *
+     * @var string
      */
-    protected $jitEnabled = true;
+    protected $directivePrefix = '#';
 
     /**
-     * 0 = none, 1 = basic, 2 = aggressive
+     * Opening tag for echo statements (default: '[[')
+     *
+     * @var string
+     */
+    protected $openEchoTag = '[[';
+
+    /**
+     * Closing tag for echo statements (default: ']]')
+     *
+     * @var string
+     */
+    protected $closeEchoTag = ']]';
+
+    /**
+     * Opening tag for raw echo statements (default: '[[!')
+     *
+     * @var string
+     */
+    protected $openRawEchoTag = '[[!';
+
+    /**
+     * Closing tag for raw echo statements (default: '!]]')
+     *
+     * @var string
+     */
+    protected $closeRawEchoTag = '!]]';
+
+    /**
+     * Opening tag for escaped echo statements (default: '[[[')
+     *
+     * @var string
+     */
+    protected $openEscapedEchoTag = '[[[';
+
+    /**
+     * Closing tag for escaped echo statements (default: ']]]')
+     *
+     * @var string
+     */
+    protected $closeEscapedEchoTag = ']]]';
+
+    /**
+     * Opening tag for comments (default: '[[--')
+     *
+     * @var string
+     */
+    protected $openCommentTag = '[[--';
+
+    /**
+     * Closing tag for comments (default: '--]]')
+     *
+     * @var string
+     */
+    protected $closeCommentTag = '--]]';
+
+    /**
+     * Maximum allowed nested loops to prevent stack overflow
      *
      * @var int
      */
-    protected $optimizationLevel = 2;
+    protected const MAX_LOOP_DEPTH = 100;
 
     /**
-     * @var array
+     * Maximum compilation retries on file lock conflicts
+     *
+     * @var int
      */
-    protected $lazyComponents = [];
-
-    /**
-     * @var array
-     */
-    protected $compiledTemplates = [];
+    protected const MAX_COMPILE_RETRIES = 3;
 
     /**
      * Constructor to initialize the template engine with default settings
@@ -59,8 +115,8 @@ class Controller extends View
     {
         parent::__construct();
 
-        // Set the file extension for template files
-        $this->setFileExtension('.blade.php');
+        // Set the file extension for template files (changed to .odo.php)
+        $this->setFileExtension('.odo.php');
 
         // Set the directory where view files are stored
         $this->setViewFolder('resources/views' . DIRECTORY_SEPARATOR);
@@ -83,18 +139,111 @@ class Controller extends View
         // Initialize arrays for blocks, block stacks, and loop stacks
         $this->loopStacks = [];
 
-        $this->jitEnabled = env('BLADE_JIT_ENABLED', 'true');
-        $this->optimizationLevel = env('BLADE_OPTIMIZATION_LEVEL', 2);
-        $this->setOptimizationLevel($this->optimizationLevel);
+        // Load custom syntax from config if available
+        $this->loadCustomSyntax();
     }
 
     /**
-     * Set file extension for the view files
-     * Default to: '.blade.php'.
+     * Load custom syntax configuration
+     *
+     * @return void
+     */
+    protected function loadCustomSyntax(): void
+    {
+        $this->directivePrefix = config('odo.directive_prefix', '#');
+        $this->openEchoTag = config('odo.open_echo', '[[');
+        $this->closeEchoTag = config('odo.close_echo', ']]');
+        $this->openRawEchoTag = config('odo.open_raw_echo', '[[!');
+        $this->closeRawEchoTag = config('odo.close_raw_echo', '!]]');
+        $this->openEscapedEchoTag = config('odo.open_escaped_echo', '[[[');
+        $this->closeEscapedEchoTag = config('odo.close_escaped_echo', ']]]');
+        $this->openCommentTag = config('odo.open_comment', '[[--');
+        $this->closeCommentTag = config('odo.close_comment', '--]]');
+    }
+
+    /**
+     * Set custom directive prefix
+     *
+     * @param string $prefix
+     * @return void
+     */
+    public function setDirectivePrefix(string $prefix): void
+    {
+        if (strlen($prefix) !== 1) {
+            throw new \InvalidArgumentException('Directive prefix must be a single character');
+        }
+        $this->directivePrefix = $prefix;
+    }
+
+    /**
+     * Set custom echo tags
+     *
+     * @param string $open
+     * @param string $close
+     * @return void
+     */
+    public function setEchoTags(string $open, string $close): void
+    {
+        $this->openEchoTag = $open;
+        $this->closeEchoTag = $close;
+    }
+
+    /**
+     * Set custom raw echo tags
+     *
+     * @param string $open
+     * @param string $close
+     * @return void
+     */
+    public function setRawEchoTags(string $open, string $close): void
+    {
+        $this->openRawEchoTag = $open;
+        $this->closeRawEchoTag = $close;
+    }
+
+    /**
+     * Set custom escaped echo tags
+     *
+     * @param string $open
+     * @param string $close
+     * @return void
+     */
+    public function setEscapedEchoTags(string $open, string $close): void
+    {
+        $this->openEscapedEchoTag = $open;
+        $this->closeEscapedEchoTag = $close;
+    }
+
+    /**
+     * Set custom comment tags
+     *
+     * @param string $open
+     * @param string $close
+     * @return void
+     */
+    public function setCommentTags(string $open, string $close): void
+    {
+        $this->openCommentTag = $open;
+        $this->closeCommentTag = $close;
+    }
+
+    /**
+     * Get the current directive prefix
+     *
+     * @return string
+     */
+    public function getDirectivePrefix(): string
+    {
+        return $this->directivePrefix;
+    }
+
+    /**
+     * Set file extension for the view files - default '.odo.php'.
      *
      * @param string $extension
+     * @return void
      */
-    public function setFileExtension($extension): void
+    public function setFileExtension(string $extension): void
     {
         $this->fileExtension = $extension;
     }
@@ -103,9 +252,10 @@ class Controller extends View
      * Set view folder location
      * Default to: './views'.
      *
-     * @param string $value
+     * @param string $path
+     * @return void
      */
-    public function setViewFolder($path): void
+    public function setViewFolder(string $path): void
     {
         $this->viewFolder = str_replace('/', DIRECTORY_SEPARATOR, $path);
     }
@@ -115,10 +265,23 @@ class Controller extends View
      * Default to: '$this->e($data)'.
      *
      * @param string $format
+     * @return void
      */
-    public function setEchoFormat($format): void
+    public function setEchoFormat(string $format): void
     {
         $this->echoFormat = $format;
+    }
+
+    /**
+     * Pop a loop from the stack.
+     *
+     * @return void
+     */
+    public function popLoop(): void
+    {
+        if (!empty($this->loopStacks)) {
+            array_pop($this->loopStacks);
+        }
     }
 
     /**
@@ -126,514 +289,283 @@ class Controller extends View
      *
      * @param string $view
      * @return string
+     * @throws NotFoundHttpException
+     * @throws RuntimeException
      */
     protected function findView(string $view): string
     {
+        // Handle namespaced views (e.g., 'package::view.name')
         if (str_contains($view, '::')) {
-            [$namespace, $viewName] = explode('::', $view, 2);
-            if (empty($this->factory->namespaces[$namespace])) {
-                throw new RuntimeException("Namespace [{$namespace}] not registered");
-            }
-
-            $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
-
-            // First check published views in resources/views/vendor/{namespace}
-            $publishedPath = base_path('resources/views/vendor/' . $namespace);
-            if (is_dir($publishedPath)) {
-                $possiblePaths = [
-                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
-                    $publishedPath . DIRECTORY_SEPARATOR . $viewPath . '.php',
-                ];
-
-                foreach ($possiblePaths as $fullPath) {
-                    if (file_exists($fullPath)) {
-                        return $fullPath;
-                    }
-                }
-            }
-
-            // Then check package views
-            foreach ($this->factory->namespaces[$namespace] as $basePath) {
-                $possiblePaths = [
-                    $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
-                    $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
-                    $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
-                ];
-
-                foreach ($possiblePaths as $fullPath) {
-                    if (file_exists($fullPath)) {
-                        return $fullPath;
-                    }
-                }
-            }
-
-            throw new NotFoundHttpException("View [{$view}] not found in namespace [{$namespace}]");
+            return $this->findNamespacedView($view);
         }
 
         // Handle non-namespaced views
-        $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
-        $fullPath = base_path($this->viewFolder) . DIRECTORY_SEPARATOR .
-            $viewPath . $this->fileExtension;
-
-        if (!file_exists($fullPath)) {
-            throw new NotFoundHttpException("View [{$view}] not found");
-        }
-
-        return $fullPath;
+        return $this->findRegularView($view);
     }
 
     /**
-     * Set optimization level (0-2)
-     *
-     * @param int $level
-     * @return void
-     */
-    public function setOptimizationLevel(int $level): void
-    {
-        if (!in_array($level, [0, 1, 2], true)) {
-            throw new \InvalidArgumentException('Optimization level must be 0, 1, or 2');
-        }
-
-        $this->optimizationLevel = max(0, min(2, $level));
-    }
-
-    /**
-     * Prepare the view file (locate and extract).
+     * Find a namespaced view file
      *
      * @param string $view
+     * @return string
+     * @throws NotFoundHttpException
+     * @throws RuntimeException
      */
-    public function prepare($view): string
+    protected function findNamespacedView(string $view): string
     {
-        $actual = $this->findView($view);
-        $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
-        $cache = base_path($this->cacheFolder) . DIRECTORY_SEPARATOR . $viewKey . '__' . sprintf('%u', crc32($viewKey)) . '.php';
+        [$namespace, $viewName] = explode('::', $view, 2);
 
-        $needsRecompile = !is_file($cache) || filemtime($actual) > filemtime($cache);
-
-        if ($needsRecompile) {
-            $content = $this->compileView($actual);
-            file_put_contents($cache, $content);
+        // Validate namespace exists
+        if (!isset($this->factory->namespaces[$namespace]) || empty($this->factory->namespaces[$namespace])) {
+            throw new RuntimeException("Namespace [{$namespace}] not registered");
         }
 
-        if ($this->jitEnabled === 'true') {
-            $cache = $this->applyJitOptimizations($cache, $viewKey, $needsRecompile);
+        $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
+
+        // First check published views in resources/views/vendor/{namespace}
+        $publishedPath = base_path('resources/views/vendor/' . $namespace);
+        if (is_dir($publishedPath)) {
+            $foundPath = $this->searchViewInPath($publishedPath, $viewPath);
+            if ($foundPath !== null) {
+                return $foundPath;
+            }
         }
 
-        return $cache;
+        // Then check package views
+        foreach ($this->factory->namespaces[$namespace] as $basePath) {
+            $foundPath = $this->searchViewInPath($basePath, $viewPath);
+            if ($foundPath !== null) {
+                return $foundPath;
+            }
+        }
+
+        throw new NotFoundHttpException("View [{$view}] not found in namespace [{$namespace}]");
     }
 
     /**
-     * Compile view content with standard Blade compilation
+     * Find a regular (non-namespaced) view file
+     *
+     * @param string $view
+     * @return string
+     * @throws NotFoundHttpException
+     */
+    protected function findRegularView(string $view): string
+    {
+        $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
+        $basePath = base_path($this->viewFolder);
+
+        // Try multiple extensions
+        $possiblePaths = [
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+        ];
+
+        foreach ($possiblePaths as $fullPath) {
+            if (file_exists($fullPath) && is_readable($fullPath)) {
+                return $fullPath;
+            }
+        }
+
+        // Provide helpful error message with attempted paths
+        $attemptedPaths = implode("\n  - ", $possiblePaths);
+        throw new NotFoundHttpException(
+            "View [{$view}] not found. Attempted paths:\n  - {$attemptedPaths}"
+        );
+    }
+
+    /**
+     * Search for a view file in a given path with multiple extensions
+     *
+     * @param string $basePath
+     * @param string $viewPath
+     * @return string|null
+     */
+    protected function searchViewInPath(string $basePath, string $viewPath): ?string
+    {
+        $possiblePaths = [
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.odo.php',
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.blade.php',
+            $basePath . DIRECTORY_SEPARATOR . $viewPath . '.php',
+        ];
+
+        foreach ($possiblePaths as $fullPath) {
+            if (file_exists($fullPath) && is_readable($fullPath)) {
+                return $fullPath;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Prepare the view file (locate and compile).
+     *
+     * @param string $view
+     * @return string
+     * @throws RuntimeException
+     */
+    public function prepare(string $view): string
+    {
+        try {
+            $actual = $this->findView($view);
+            $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
+
+            // stronger hash to avoid collisions
+            $hash = hash('xxh128', $viewKey);
+            $cache = base_path($this->cacheFolder) . DIRECTORY_SEPARATOR . $viewKey . '__' . $hash . '.php';
+
+            $needsRecompile = $this->needsRecompilation($cache, $actual);
+
+            if ($needsRecompile) {
+                $this->compileAndCache($actual, $cache);
+            }
+
+            return $cache;
+        } catch (NotFoundHttpException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new RuntimeException("Failed to prepare view [{$view}]: " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Check if view needs recompilation
+     *
+     * @param string $cache
+     * @param string $actual
+     * @return bool
+     */
+    protected function needsRecompilation(string $cache, string $actual): bool
+    {
+        if (!is_file($cache)) {
+            return true;
+        }
+
+        // Check if source file is newer than cache
+        clearstatcache(true, $cache);
+        clearstatcache(true, $actual);
+
+        return filemtime($actual) > filemtime($cache);
+    }
+
+    /**
+     * Compile view and write to cache with atomic operation
      *
      * @param string $actual
-     * @param array $data
+     * @param string $cache
+     * @return void
+     * @throws RuntimeException
+     */
+    protected function compileAndCache(string $actual, string $cache): void
+    {
+        $retries = 0;
+        $lastException = null;
+
+        while ($retries < self::MAX_COMPILE_RETRIES) {
+            try {
+                $content = $this->compileView($actual);
+
+                // Atomic write using temp file + rename
+                $tempFile = $cache . '.' . uniqid('odo_', true) . '.tmp';
+
+                // Write to temp file with exclusive lock
+                $written = file_put_contents($tempFile, $content, LOCK_EX);
+
+                if ($written === false) {
+                    throw new RuntimeException("Failed to write compiled view to temp file: {$tempFile}");
+                }
+
+                // Make sure the file has proper permissions
+                @chmod($tempFile, 0644);
+
+                // Atomic rename (on Unix systems)
+                if (!rename($tempFile, $cache)) {
+                    @unlink($tempFile);
+                    throw new RuntimeException("Failed to move compiled view to cache: {$cache}");
+                }
+
+                // Verify the cache file was created successfully
+                if (!file_exists($cache)) {
+                    throw new RuntimeException("Cache file was not created: {$cache}");
+                }
+
+                return;
+            } catch (Throwable $e) {
+                $lastException = $e;
+                $retries++;
+
+                // Clean up temp file if it exists
+                if (isset($tempFile) && file_exists($tempFile)) {
+                    @unlink($tempFile);
+                }
+
+                // Small delay before retry to avoid race conditions
+                if ($retries < self::MAX_COMPILE_RETRIES) {
+                    usleep(10000 * $retries); // 10ms, 20ms, 30ms
+                }
+            }
+        }
+
+        throw new RuntimeException(
+            "Failed to compile view after " . self::MAX_COMPILE_RETRIES . " attempts: " .
+                ($lastException ? $lastException->getMessage() : 'Unknown error')
+        );
+    }
+
+    /**
+     * Compile view content
+     *
+     * @param string $actual
      * @return string
+     * @throws RuntimeException
      */
     protected function compileView(string $actual): string
     {
         if (!is_file($actual)) {
-            throw new RuntimeException('View not found: ' . $actual);
+            throw new RuntimeException("View file not found: {$actual}");
         }
 
-        $content = file_get_contents($actual);
-
-        // Add @set() directive using extend() method, we need 2 parameters here
-        $this->extend(function ($value) {
-            return preg_replace("/@set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
-        });
-
-        $compilers = ['Statements', 'Comments', 'Echos', 'Extensions'];
-
-        foreach ($compilers as $compiler) {
-            $content = $this->{'compile' . $compiler}($content);
+        if (!is_readable($actual)) {
+            throw new RuntimeException("View file is not readable: {$actual}");
         }
 
-        // Replace @php and @endphp blocks
-        $content = $this->replacePhpBlocks($content);
+        $content = @file_get_contents($actual);
 
-        return $content;
-    }
+        if ($content === false) {
+            throw new RuntimeException("Failed to read view file: {$actual}");
+        }
 
-    /**
-     * Apply JIT optimizations to compiled template
-     *
-     * @param string $cachePath
-     * @param string $viewKey
-     * @param bool $freshContent
-     * @return string
-     */
-    protected function applyJitOptimizations(string $cachePath, string $viewKey, bool $freshContent = false): string
-    {
         try {
-            // Return already optimized content if available
-            if (isset($this->compiledTemplates[$viewKey])) {
-                return $this->compiledTemplates[$viewKey];
-            }
+            // Add custom #set() directive
+            $this->extend(function ($value) {
+                $prefix = preg_quote($this->directivePrefix, '/');
+                return preg_replace("/{$prefix}set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
+            });
 
-            $content = file_get_contents($cachePath);
-            $optimizedContent = $content;
+            // Compile in order: Statements, Comments, Echos, Extensions
+            $compilers = ['Statements', 'Comments', 'Echos', 'Extensions'];
 
-            // Only optimize if we have fresh content or optimization level requires it
-            if ($freshContent || $this->optimizationLevel > 0) {
-                // Level 1 optimizations
-                if ($this->optimizationLevel >= 1) {
-                    $optimizedContent = $this->safeFullMinifyWithJsCssAware($optimizedContent);
-                    // $optimizedContent = preg_replace('/\s+/', ' ', $optimizedContent);
-                    $optimizedContent = $this->optimizeControlStructures($optimizedContent);
-                    $optimizedContent = $this->optimizeEchoStatements($optimizedContent);
-                    $optimizedContent = $this->optimizeBladeLoops($optimizedContent);
-                }
-
-                // Level 2 optimizations
-                if ($this->optimizationLevel >= 2) {
-                    $optimizedContent = $this->inlineSmallTemplates($optimizedContent);
-                    $optimizedContent = $this->optimizeComplexLoops($optimizedContent);
-                    $optimizedContent = $this->lazyLoadComponents($optimizedContent);
-                }
-
-                // Save optimized version if different
-                if ($optimizedContent !== $content) {
-                    file_put_contents($cachePath, $optimizedContent);
+            foreach ($compilers as $compiler) {
+                $method = 'compile' . $compiler;
+                if (method_exists($this, $method)) {
+                    $content = $this->{$method}($content);
                 }
             }
 
-            // Cache in memory for this request
-            $this->compiledTemplates[$viewKey] = $cachePath;
+            // Replace PHP blocks (e.g., #php ... #endphp)
+            $content = $this->replacePhpBlocks($content);
 
-            return $cachePath;
-        } catch (\Throwable $th) {
-            error("JIT optimization failed for {$viewKey}: " . $th->getMessage());
-            return $cachePath; // Fallback to original
+            return $content;
+        } catch (Throwable $e) {
+            throw new RuntimeException(
+                "Compilation failed for view [{$actual}]: " . $e->getMessage(),
+                0,
+                $e
+            );
         }
-    }
-
-    /**
-     * Ignore CSS JS Comments
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function safeFullMinifyWithJsCssAware(string $content): string
-    {
-        $placeholders = [];
-        $i = 0;
-
-        // Process script blocks
-        $content = preg_replace_callback('/<script\b[^>]*>.*?<\/script>/is', function ($matches) use (&$placeholders, &$i) {
-            $key = "__SCRIPT_{$i}__";
-            $scriptTag = $matches[0];
-
-            // Skip minification if it's an external script (has 'src=' attribute)
-            if (preg_match('/\bsrc\s*=\s*/i', $scriptTag)) {
-                $placeholders[$key] = $scriptTag;
-            } else {
-                // Minify only inline JS content
-                if (preg_match('/(<script\b[^>]*>)(.*?)(<\/script>)/is', $scriptTag, $parts)) {
-                    $minified = preg_replace([
-                        '/\/\/[^\n]*\n/',     // Remove single-line comments
-                        '/\/\*.*?\*\//s',     // Remove multi-line comments
-                        '/\s+/'               // Collapse whitespace
-                    ], ['', '', ' '], $parts[2]);
-
-                    $scriptTag = $parts[1] . trim($minified) . $parts[3];
-                }
-                $placeholders[$key] = $scriptTag;
-            }
-
-            $i++;
-            return $key;
-        }, $content);
-
-        // Process style blocks
-        $content = preg_replace_callback('/<style\b[^>]*>.*?<\/style>/is', function ($matches) use (&$placeholders, &$i) {
-            $key = "__STYLE_{$i}__";
-            $style = preg_replace([
-                '/\/\*.*?\*\//s',    // Remove CSS comments
-                '/\s+/'              // Collapse whitespace
-            ], ['', ' '], $matches[0]);
-            $placeholders[$key] = $style;
-            $i++;
-            return $key;
-        }, $content);
-
-        // Protect PHP blocks
-        $content = preg_replace_callback('/<\?(php)?(.*?)\?>/is', function ($matches) use (&$placeholders, &$i) {
-            $key = "__PHP_{$i}__";
-            $php = $matches[0];
-
-            // Strip safe PHP comments
-            $php = preg_replace([
-                '/\/\/[^\n]*\n/',     // Single-line comments
-                '/\/\*.*?\*\//s'      // Multi-line comments
-            ], ['', ''], $php);
-
-            $placeholders[$key] = $php;
-            $i++;
-            return $key;
-        }, $content);
-
-        // Minify HTML
-        $content = preg_replace('/\s+/', ' ', $content);
-
-        // Restore protected content
-        foreach ($placeholders as $key => $original) {
-            $content = str_replace($key, $original, $content);
-        }
-
-        return $content;
-    }
-
-    /**
-     * Optimize complex loops including nested
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function optimizeComplexLoops(string $content): string
-    {
-        // Optimize nested loops
-        $content = preg_replace_callback(
-            '/\<\?php\s+foreach\s*\((.*?)\)\s*:\s*\?\>(.*?)\<\?php\s+endforeach\s*;\s*\?\>/s',
-            function ($matches) {
-                $expression = $matches[1];
-                $loopContent = $matches[2];
-
-                // Count nested loops to optimize depth tracking
-                $nestedCount = substr_count($loopContent, '<?php foreach');
-
-                if ($nestedCount > 0) {
-                    return "<?php foreach($expression): ?>$loopContent<?php endforeach; ?>";
-                }
-
-                // For non-nested loops, we can optimize further
-                return "<?php foreach($expression): ?>$loopContent<?php endforeach; ?>";
-            },
-            $content
-        );
-
-        // Optimize loops with known counts
-        $content = preg_replace_callback(
-            '/\<\?php\s+\$__currentLoopData\s*=\s*(.*?)\s*;\s*\$__env->addLoop\(\$__currentLoopData\);\s*foreach\(\$__currentLoopData\s+as\s+(.*?)\):\s*\$__env->incrementLoopIndices\(\);\s*\$\w+\s*=\s*\$__env->getFirstLoop\(\);\s*\?\>/',
-            function ($matches) {
-                $data = $matches[1];
-                $item = $matches[2];
-
-                // Simple variable optimization
-                if (preg_match('/^\$\w+$/', $data)) {
-                    return "<?php foreach({$data} as {$item}): ?>";
-                }
-
-                // Method call optimization
-                if (preg_match('/^\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*->[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*\(\)$/', $data)) {
-                    return "<?php foreach({$data} as {$item}): ?>";
-                }
-
-                return $matches[0];
-            },
-            $content
-        );
-
-        return $content;
-    }
-
-    /**
-     * Optimize all the necessary control structures
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function optimizeControlStructures(string $content): string
-    {
-        // Optimize if/elseif/else structures
-        $content = preg_replace([
-            '/\<\?php\s+if\s*\((.*?)\)\s*:\s*\?\>/s',
-            '/\<\?php\s+elseif\s*\((.*?)\)\s*:\s*\?\>/s',
-            '/\<\?php\s+else\s*:\s*\?\>/s',
-            '/\<\?php\s+endif\s*;\s*\?\>/s'
-        ], [
-            '<?php if($1): ?>',
-            '<?php elseif($1): ?>',
-            '<?php else: ?>',
-            '<?php endif; ?>'
-        ], $content);
-
-        // Optimize loops (foreach, for, while)
-        $content = preg_replace([
-            '/\<\?php\s+foreach\s*\((.*?)\)\s*:\s*\?\>/s',
-            '/\<\?php\s+endforeach\s*;\s*\?\>/s',
-            '/\<\?php\s+for\s*\((.*?)\)\s*:\s*\?\>/s',
-            '/\<\?php\s+endfor\s*;\s*\?\>/s',
-            '/\<\?php\s+while\s*\((.*?)\)\s*:\s*\?\>/s',
-            '/\<\?php\s+endwhile\s*;\s*\?\>/s'
-        ], [
-            '<?php foreach($1): ?>',
-            '<?php endforeach; ?>',
-            '<?php for($1): ?>',
-            '<?php endfor; ?>',
-            '<?php while($1): ?>',
-            '<?php endwhile; ?>'
-        ], $content);
-
-        // Preserving newlines in HTML
-        $content = preg_replace('/\>\s+\</', '><', $content);
-
-        // Preserve HTML comments
-        $content = preg_replace_callback('/<!--(.*?)-->/s', function ($matches) {
-            return '<!--' . trim($matches[1]) . '-->';
-        }, $content);
-
-        return $content;
-    }
-
-    /**
-     * Optimize Blade foreach loops
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function optimizeBladeLoops(string $content): string
-    {
-        return preg_replace_callback(
-            '/\@foreach\s*\((.*?)\)(.*?)\@endforeach/s',
-            function ($matches) {
-                $expression = trim($matches[1]);
-                $loopContent = $matches[2];
-
-                // Optimize the loop content
-                $optimizedContent = $this->optimizeControlStructures($loopContent);
-
-                return "<?php foreach($expression): ?>$optimizedContent<?php endforeach; ?>";
-            },
-            $content
-        );
-    }
-
-    /**
-     * Optimize echo statement effectively
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function optimizeEchoStatements(string $content): string
-    {
-        // Combine consecutive echos
-        $content = preg_replace('/\<\?=\s*(.*?)\s*\?\>\s*\<\?=\s*(.*?)\s*\?\>/', '<?=$1.$2?>', $content);
-
-        // Remove unnecessary parentheses
-        $content = preg_replace('/\<\?=\s*\((.*?)\)\s*\?\>/', '<?=$1?>', $content);
-
-        return $content;
-    }
-
-    /**
-     * Handling inline small templates
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function inlineSmallTemplates(string $content): string
-    {
-        // Inline small @include directives (for very small templates)
-        if (preg_match_all('/\@include\(\s*[\'"](.*?)[\'"]\s*(?:,\s*(.*?)\s*)?\)/', $content, $matches, PREG_SET_ORDER)) {
-            foreach ($matches as $match) {
-                $view = trim($match[1], '\'"');
-                $data = isset($match[2]) ? $match[2] : '[]';
-
-                try {
-                    $includedContent = $this->compileView($this->findView($view));
-
-                    // Only inline if the content is small
-                    if (strlen($includedContent) < 500) {
-                        $content = str_replace($match[0], $includedContent, $content);
-                    }
-                } catch (\Exception $e) {
-                    // Skip if the view can't be found
-                    continue;
-                }
-            }
-        }
-
-        return $content;
-    }
-
-    /**
-     * Optimize loops
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function optimizeLoops(string $content): string
-    {
-        // Optimize foreach loops with known counts
-        $content = preg_replace_callback(
-            '/\<\?php\s+\$__currentLoopData\s*=\s*(.*?)\s*;\s*\$__env->addLoop\(\$__currentLoopData\);\s*foreach\(\$__currentLoopData\s+as\s+(.*?)\):\s*\$__env->incrementLoopIndices\(\);\s*\$\w+\s*=\s*\$__env->getFirstLoop\(\);\s*\?\>/',
-            function ($matches) {
-                $data = $matches[1];
-                $item = $matches[2];
-
-                // If the data is a simple variable, we can optimize
-                if (preg_match('/^\$\w+$/', $data)) {
-                    return "<?php foreach({$data} as {$item}): ?>";
-                }
-
-                return $matches[0];
-            },
-            $content
-        );
-
-        return $content;
-    }
-
-    /**
-     * Lazy load components
-     *
-     * @param string $content
-     * @return string
-     */
-    protected function lazyLoadComponents(string $content): string
-    {
-        // Find component tags and mark them for lazy loading
-        if (preg_match_all(
-            '/\<\?php\s+if\s*\(\s*!\s*isset\(\$component\)\s*\)\s*:\s*\$component\s*=\s*\$__env->getComponent\(\s*(.*?)\s*\);\s*endif;\s*echo\s*\$component->render\(\s*(.*?)\s*\);\s*\?\>/',
-            $content,
-            $matches,
-            PREG_SET_ORDER
-        )) {
-
-            foreach ($matches as $match) {
-                $componentName = trim($match[1], '\'"');
-                $componentData = $match[2];
-
-                // Register component for lazy loading
-                $this->lazyComponents[$componentName] = true;
-
-                // Replace with lazy loading code
-                $lazyCode = <<<PHP
-<?php 
-if (!isset(\$__lazyComponents['$componentName'])) {
-    \$__lazyComponents['$componentName'] = \$__env->getComponent($match[1]);
-}
-echo \$__lazyComponents['$componentName']->render($componentData);
-?>
-PHP;
-                $content = str_replace($match[0], $lazyCode, $content);
-            }
-        }
-
-        return $content;
-    }
-
-    /**
-     * Clear all the compiled templates
-     *
-     * @return void
-     */
-    public function clearCompiledTemplates(): void
-    {
-        $this->compiledTemplates = [];
-        $this->lazyComponents = [];
-        $this->loopStacks = [];
     }
 
     /**
@@ -641,11 +573,21 @@ PHP;
      *
      * @param mixed $data
      * @return void
+     * @throws RuntimeException
      */
     public function addLoop($data): void
     {
+        // Prevent infinite loop stack growth
+        if (count($this->loopStacks) >= self::MAX_LOOP_DEPTH) {
+            throw new RuntimeException(
+                "Maximum loop nesting depth of " . self::MAX_LOOP_DEPTH . " exceeded. " .
+                    "Possible infinite loop or excessive nesting detected."
+            );
+        }
+
         $length = (is_array($data) || $data instanceof Countable) ? count($data) : null;
         $parent = empty($this->loopStacks) ? null : end($this->loopStacks);
+
         $this->loopStacks[] = [
             'iteration' => 0,
             'index' => 0,
@@ -665,24 +607,76 @@ PHP;
      */
     public function incrementLoopIndices(): void
     {
+        if (empty($this->loopStacks)) {
+            return;
+        }
+
         $loop = &$this->loopStacks[count($this->loopStacks) - 1];
         $loop['iteration']++;
         $loop['index'] = $loop['iteration'] - 1;
-        $loop['first'] = ((int) $loop['iteration'] === 1);
+        $loop['first'] = ($loop['iteration'] === 1);
 
         if (isset($loop['count'])) {
             $loop['remaining']--;
-            $loop['last'] = ((int) $loop['iteration'] === (int) $loop['count']);
+            $loop['last'] = ($loop['iteration'] === (int)$loop['count']);
         }
     }
 
     /**
-     * Get an instance of the first loop in the stack.
+     * Get an instance of the current loop in the stack.
      *
      * @return \stdClass|null
      */
-    public function getFirstLoop(): \stdClass|null
+    public function getFirstLoop(): ?\stdClass
     {
-        return ($last = end($this->loopStacks)) ? (object) $last : null;
+        if (empty($this->loopStacks)) {
+            return null;
+        }
+
+        $last = end($this->loopStacks);
+        return $last ? (object) $last : null;
+    }
+
+    /**
+     * Get the current loop depth
+     *
+     * @return int
+     */
+    public function getLoopDepth(): int
+    {
+        return count($this->loopStacks);
+    }
+
+    /**
+     * Clear all loop stacks (useful for testing or cleanup)
+     *
+     * @return void
+     */
+    public function clearLoopStacks(): void
+    {
+        $this->loopStacks = [];
+        $this->emptyCounter = 0;
+        $this->firstCaseSwitch = true;
+    }
+
+    /**
+     * Get compilation statistics
+     *
+     * @return array
+     */
+    public function getCompilationStats(): array
+    {
+        return [
+            'loop_depth' => count($this->loopStacks),
+            'empty_counter' => $this->emptyCounter,
+            'cache_folder' => $this->cacheFolder,
+            'view_folder' => $this->viewFolder,
+            'file_extension' => $this->fileExtension,
+            'directive_prefix' => $this->directivePrefix,
+            'echo_tags' => [
+                'open' => $this->openEchoTag,
+                'close' => $this->closeEchoTag,
+            ],
+        ];
     }
 }
