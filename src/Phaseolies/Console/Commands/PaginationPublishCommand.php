@@ -39,8 +39,8 @@ class PaginationPublishCommand extends Command
             }
 
             $files = [
-                'jump.blade.php' => $this->getJumpPaginationView(),
-                'number.blade.php' => $this->getNumberPaginationView(),
+                'jump.odo.php' => $this->getJumpPaginationView(),
+                'number.odo.php' => $this->getNumberPaginationView(),
             ];
 
             $createdCount = 0;
@@ -83,41 +83,41 @@ class PaginationPublishCommand extends Command
     {
         return <<<'EOT'
 <!-- Pagination Links -->
-@if ($paginator->hasPages())
+#if ($paginator->hasPages())
     <div class="d-flex justify-content-between align-items-center">
         <!-- Jump to Page Dropdown -->
         <div class="d-flex align-items-center">
             <span class="me-2">Jump:</span>
             <select class="form-select form-select-sm" onchange="window.location.href = this.value">
-                @for ($i = 1; $i <= $paginator->lastPage(); $i++)
-                    <option value="{{ $paginator->url($i) }}" {{ $i == $paginator->currentPage() ? 'selected' : '' }}>
-                        Page {{ $i }}
+                #for ($i = 1; $i <= $paginator->lastPage(); $i++)
+                    <option value="[[ $paginator->url($i) ]]" [[ $i == $paginator->currentPage() ? 'selected' : '' ]]>
+                        Page [[ $i ]]
                     </option>
-                @endfor
+                #endfor
             </select>
         </div>
 
         <!-- Page X of Y -->
         <div class="ms-3">
-            Page {{ $paginator->currentPage() }} of {{ $paginator->lastPage() }}
+            Page [[ $paginator->currentPage() ]] of [[ $paginator->lastPage() ]]
         </div>
 
         <!-- Previous and Next Buttons -->
         <ul class="pagination mb-0">
-            @if ($paginator->onFirstPage())
+            #if ($paginator->onFirstPage())
                 <li class="page-item disabled"><span class="page-link">« Previous</span></li>
-            @else
-                <li class="page-item"><a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">« Previous</a></li>
-            @endif
+            #else
+                <li class="page-item"><a class="page-link" href="[[ $paginator->previousPageUrl() ]]" rel="prev">« Previous</a></li>
+            #endif
 
-            @if ($paginator->hasMorePages())
-                <li class="page-item"><a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">Next »</a></li>
-            @else
+            #if ($paginator->hasMorePages())
+                <li class="page-item"><a class="page-link" href="[[ $paginator->nextPageUrl() ]]" rel="next">Next »</a></li>
+            #else
                 <li class="page-item disabled"><span class="page-link">Next »</span></li>
-            @endif
+            #endif
         </ul>
     </div>
-@endif
+#endif
 EOT;
     }
 
@@ -130,34 +130,34 @@ EOT;
     {
         return <<<'EOT'
 <!-- Pagination Links -->
-@if ($paginator->hasPages())
+#if ($paginator->hasPages())
     <ul class="pagination">
         <!-- Previous Button -->
-        @if ($paginator->onFirstPage())
+        #if ($paginator->onFirstPage())
             <li class="page-item disabled"><span class="page-link">« Previous</span></li>
-        @else
-            <li class="page-item"><a class="page-link" href="{{ $paginator->previousPageUrl() }}" rel="prev">« Previous</a></li>
-        @endif
+        #else
+            <li class="page-item"><a class="page-link" href="[[ $paginator->previousPageUrl() ]]" rel="prev">« Previous</a></li>
+        #endif
 
         <!-- Page Numbers -->
-        @foreach ($paginator->numbers() as $page)
-            @if (is_string($page))
-                <li class="page-item disabled"><span class="page-link">{{ $page }}</span></li>
-            @else
-                <li class="page-item {{ $page == $paginator->currentPage() ? 'active' : '' }}">
-                    <a class="page-link" href="{{ $paginator->url($page) }}">{{ $page }}</a>
+        #foreach ($paginator->numbers() as $page)
+            #if (is_string($page))
+                <li class="page-item disabled"><span class="page-link">[[ $page ]]</span></li>
+            #else
+                <li class="page-item [[ $page == $paginator->currentPage() ? 'active' : '' ]]">
+                    <a class="page-link" href="[[ $paginator->url($page) ]]">[[ $page ]]</a>
                 </li>
-            @endif
-        @endforeach
+            #endif
+        #endforeach
 
         <!-- Next Button -->
-        @if ($paginator->hasMorePages())
-            <li class="page-item"><a class="page-link" href="{{ $paginator->nextPageUrl() }}" rel="next">Next »</a></li>
-        @else
+        #if ($paginator->hasMorePages())
+            <li class="page-item"><a class="page-link" href="[[ $paginator->nextPageUrl() ]]" rel="next">Next »</a></li>
+        #else
             <li class="page-item disabled"><span class="page-link">Next »</span></li>
-        @endif
+        #endif
     </ul>
-@endif
+#endif
 EOT;
     }
 }
