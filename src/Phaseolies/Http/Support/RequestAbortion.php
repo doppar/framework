@@ -20,8 +20,8 @@ class RequestAbortion
     {
         $shouldJsonResponse = request()->isAjax() || request()->isApiRequest();
 
-        $customPath = base_path("resources/views/errors/{$code}.blade.php");
-        $packagePath = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$code}.blade.php");
+        $customPath = base_path("resources/views/errors/{$code}.odo.php");
+        $packagePath = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$code}.odo.php");
 
         if (!$shouldJsonResponse) {
             $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
