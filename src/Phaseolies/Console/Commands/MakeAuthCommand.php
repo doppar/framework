@@ -106,12 +106,12 @@ class MakeAuthCommand extends Command
     protected function generateViews(): void
     {
         $views = [
-            'auth/login.blade.php' => 'auth/login.stub',
-            'auth/register.blade.php' => 'auth/register.stub',
-            'auth/2fa.blade.php' => 'auth/2fa.stub',
-            'layouts/app.blade.php' => 'layouts/app.stub',
-            'home.blade.php' => 'home.stub',
-            'profile.blade.php' => 'profile.stub'
+            'auth/login.odo.php' => 'auth/login.stub',
+            'auth/register.odo.php' => 'auth/register.stub',
+            'auth/2fa.odo.php' => 'auth/2fa.stub',
+            'layouts/app.odo.php' => 'layouts/app.stub',
+            'home.odo.php' => 'home.stub',
+            'profile.odo.php' => 'profile.stub'
         ];
 
         foreach ($views as $destination => $stubFile) {
@@ -172,12 +172,12 @@ class MakeAuthCommand extends Command
             base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
             base_path('app/Http/Controllers/HomeController.php'),
             base_path('app/Http/Controllers/ProfileController.php'),
-            base_path('resources/views/auth/login.blade.php'),
-            base_path('resources/views/auth/2fa.blade.php'),
-            base_path('resources/views/auth/register.blade.php'),
-            base_path('resources/views/layouts/app.blade.php'),
-            base_path('resources/views/home.blade.php'),
-            base_path('resources/views/profile.blade.php'),
+            base_path('resources/views/auth/login.odo.php'),
+            base_path('resources/views/auth/2fa.odo.php'),
+            base_path('resources/views/auth/register.odo.php'),
+            base_path('resources/views/layouts/app.odo.php'),
+            base_path('resources/views/home.odo.php'),
+            base_path('resources/views/profile.odo.php'),
         ];
 
         foreach ($filesToCheck as $file) {
@@ -203,12 +203,12 @@ class MakeAuthCommand extends Command
                 base_path('app/Http/Controllers/ProfileController.php'),
             ],
             'Views' => [
-                base_path('resources/views/auth/login.blade.php'),
-                base_path('resources/views/auth/register.blade.php'),
-                base_path('resources/views/auth/2fa.blade.php'),
-                base_path('resources/views/layouts/app.blade.php'),
-                base_path('resources/views/home.blade.php'),
-                base_path('resources/views/profile.blade.php'),
+                base_path('resources/views/auth/login.odo.php'),
+                base_path('resources/views/auth/register.odo.php'),
+                base_path('resources/views/auth/2fa.odo.php'),
+                base_path('resources/views/layouts/app.odo.php'),
+                base_path('resources/views/home.odo.php'),
+                base_path('resources/views/profile.odo.php'),
             ]
         ];
 

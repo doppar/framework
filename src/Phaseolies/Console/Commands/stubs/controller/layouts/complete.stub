@@ -9,9 +9,9 @@
     </head>
     <body>
         <header>
-            <img src="{{ enqueue('logo.png') }}" alt="Logo" />
+            <img src="[[ enqueue('logo.png') ]]" alt="Logo" />
             <h1>Default Controller Page</h1>
-            <p class="version">You are viewing the framework's default page for <strong>{{ $className }}</strong>.</p>
+            <p class="version">You are viewing the framework's default page for <strong>[[ $className ]]</strong>.</p>
         </header>
 
         <section class="grid">
@@ -19,8 +19,8 @@
                 <h3>Generated Files</h3>
                 <p>The following files were created for you:</p>
                 <ul>
-                    <li>Controller: <code>{{ controllerPath }}</code></li>
-                    <li>View: <code>resources/views/{{ routeName }}/default.blade.php</code></li>
+                    <li>Controller: <code>[[ controllerPath ]]</code></li>
+                    <li>View: <code>resources/views/[[ routeName ]]/default.blade.php</code></li>
                 </ul>
             </div>
 

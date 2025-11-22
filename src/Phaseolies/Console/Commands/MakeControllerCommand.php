@@ -232,7 +232,7 @@ class MakeControllerCommand extends Command
         $layoutContent = $this->replacePlaceholders($layoutStub, $namespace, $className, $routeName);
         $layoutDir = base_path('resources/views/' . $routeName);
         $this->createDirIfMissing($layoutDir);
-        $layoutPath = $layoutDir . '/default.blade.php';
+        $layoutPath = $layoutDir . '/default.odo.php';
         $this->writeFile($layoutPath, $layoutContent);
         $this->outputFilePath('📁 Layout', $layoutPath);
     }
