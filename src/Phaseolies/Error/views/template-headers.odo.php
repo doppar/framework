@@ -1,19 +1,16 @@
-<div 
+<div
     id="single-accordion-container"
     data-open-by-default
-    class=" dark:bg-neutral-900 bg-neutral-900/[1%] overflow-hidden rounded-lg"
->
+    class=" dark:bg-neutral-900 bg-neutral-900/[1%] overflow-hidden rounded-lg">
     <div
-        class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 border-dashed"
-    >
+        class="border border-neutral-200 dark:border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 border-dashed">
         <!-- header area -->
         <div
             class="accordion-header flex items-center gap-3 p-3 bg-neutral-50 dark:bg-neutral-900 cursor-pointer"
             tabindex="0"
-            role="button" 
-            aria-expanded="false" 
-            aria-controls="accordion-content"
-        >
+            role="button"
+            aria-expanded="false"
+            aria-controls="accordion-content">
             <div class="flex-1 min-w-0">
                 <div class="font-mono text-lg font-bold truncate">Headers</div>
                 <div class="text-xs text-neutral-500 font-mono truncate">HTTP Request Headers</div>
@@ -27,14 +24,14 @@
         <div class="accordion-content bg-white dark:bg-neutral-950/30 border-t border-dashed  border-neutral-200 dark:border-neutral-800 hidden"
             role="region" aria-labelledby="accordion-header">
             <div class="p-3 font-mono">
-                @foreach ($headers as $header_name => $header)
-                    <div class="header flex gap-4 dark:text-neutral-400 text-neutral-700 items-center">
-                        <span class="uppercase">{{ $header_name }}:</span>
-                        <div class="flex-1 dark:border-white/10 border-neutral-900/10 border border-dashed h-[1px]">
-                        </div>
-                        <span class="ml-auto">{{ $header }}</span>
+                #foreach ($headers as $header_name => $header)
+                <div class="header flex gap-4 dark:text-neutral-400 text-neutral-700 items-center">
+                    <span class="uppercase">[[ $header_name ]]:</span>
+                    <div class="flex-1 dark:border-white/10 border-neutral-900/10 border border-dashed h-[1px]">
                     </div>
-                @endforeach
+                    <span class="ml-auto">[[ $header ]]</span>
+                </div>
+                #endforeach
             </div>
         </div>
     </div>

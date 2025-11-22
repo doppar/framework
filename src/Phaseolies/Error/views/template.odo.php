@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Error - {{ $error_message }}</title>
+    <title>Error - [[ $error_message ]]</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <script>
@@ -117,27 +117,22 @@
 
 <body
     class="px-2 antialiased tracking-wide md:px-3 lg:px-12 py-2 md:py-3 lg:py-6 min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-50 transition-colors duration-200">
-    
-    {{-- Top Bar --}}
     <div class="top-bar rounded-lg mb-6 group">
         <div class="relative overflow-hidden border-[1.2px] border-dashed dark:bg-gradient-to-br dark:from-red-500/5 dark:to-transparent bg-gradient-to-br from-red-500/3 to-transparent dark:border-red-500/20 border-red-500/30 p-6 rounded-lg transition-all duration-300 shadow-xl shadow-red-500/5 ">
-            {{-- niice background blur --}}
             <div class="absolute -top-24 -right-24 w-64 h-64 bg-red-500/20 rounded-full blur-3xl opacity-50"></div>
-            
             <div class="flex flex-col md:flex-row md:items-start gap-4 relative z-10">
-                {{-- Error Icon --}}
                 <div class="flex-shrink-0 p-3 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/20  transition-transform duration-300">
                     <svg class="size-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
                 </div>
-                
+
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-bold text-red-600 dark:text-red-400 mb-2 tracking-wide uppercase">
-                        {{ $exception_class }}
+                        [[ $exception_class ]]
                     </div>
                     <h1 class="text-2xl md:text-3xl font-semibold text-neutral-900 dark:text-white mb-1 break-words leading-tight">
-                        {{ $error_message }}
+                        [[ $error_message]]
                     </h1>
                 </div>
 
@@ -163,15 +158,14 @@
                             </svg>
                         </button>
                     </div>
-                    {{-- Versions --}}
                     <div class="rounded-lg flex border-[1.2px] border-dashed dark:bg-white/[2%] bg-neutral-900/[2%] text-sm py-1.5 border-neutral-900/10 px-3 dark:border-white/10">
                         <div class="pl-1 pr-3 border-r border-neutral-900/10 dark:border-white/10">
                             <span class="text-neutral-600 dark:text-neutral-500 pr-2 text-xs">DOPPAR</span>
-                            <span class="font-semibold">{{ $doppar_version }}</span>
+                            <span class="font-semibold">[[ $doppar_version ]]</span>
                         </div>
                         <div class="px-3">
                             <span class="text-neutral-600 dark:text-neutral-500 pr-2 text-xs">PHP</span>
-                            <span class="font-semibold">{{ $php_version }}</span>
+                            <span class="font-semibold">[[ $php_version ]]</span>
                         </div>
                     </div>
                 </div>
@@ -179,36 +173,32 @@
         </div>
     </div>
 
-    {{-- Request Details --}}
     <div class="flex flex-wrap gap-3 items-center border-[1.2px] border-dashed dark:bg-white/[2%] bg-neutral-50/50 backdrop-blur-sm my-5 dark:border-white/10 border-neutral-900/10 p-3 rounded-lg hover:shadow-lg transition-all duration-200">
-        <span data-request-type="{{ $request_method }}" class="badge px-3 py-1.5 rounded-md font-semibold">
-            {{ $request_method }}
+        <span data-request-type="[[ $request_method ]]" class="badge px-3 py-1.5 rounded-md font-semibold">
+            [[ $request_method]]
         </span>
-        <span class="dark:text-neutral-300 text-neutral-700 font-mono text-sm flex-1 min-w-0 truncate">{{ $request_url }}</span>
+        <span class="dark:text-neutral-300 text-neutral-700 font-mono text-sm flex-1 min-w-0 truncate">[[ $request_url ]]</span>
         <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            {{ $timestamp }}
+            [[ $timestamp ]]
         </div>
     </div>
 
-    {{-- Main Content --}}
     <div class="flex flex-col gap-5">
         <main class="rounded-lg border-[1.2px] border-dashed w-full dark:bg-white/[2%] bg-neutral-50/50 backdrop-blur-sm border-neutral-900/10 dark:border-white/10 p-4 hover:shadow-xl transition-all duration-300">
-            {{-- File Header --}}
             <div class="flex items-center gap-3 bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-white/7 dark:to-white/5 rounded-lg px-4 py-3 mb-4 border border-neutral-200 dark:border-white/10">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                     stroke="currentColor" class="size-6 ">
                     <path stroke-linecap="round" stroke-linejoin="round"
                         d="m6.75 7.5 3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
-                <span class="font-mono text-sm">{{ $error_file }}</span>
+                <span class="font-mono text-sm">[[ $error_file ]]</span>
             </div>
 
-            {{-- Code Content --}}
             <div class="rounded-lg overflow-hidden border border-neutral-200 dark:border-white/10">
-                <pre class="[overflow-x-auto p-4">{!! $contents !!}</pre>
+                <pre class="[overflow-x-auto p-4">[[! $contents !]]</pre>
             </div>
 
             <div class="mt-8">
@@ -226,18 +216,16 @@
                     </button>
                 </div>
                 <div id="traceFrames">
-                    @include('trace-frames', ['traces' => $traces])
+                    #include('trace-frames', ['traces' => $traces])
                 </div>
             </div>
         </main>
         <div id="headers" class="my-2">
-            @include('template-headers', ['headers' => $headers])
+            #include('template-headers', ['headers' => $headers])
         </div>
     </div>
 
-    {{-- System & User Info Grid --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 my-6">
-        {{-- System Information --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
                 <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -250,16 +238,15 @@
             <div class="space-y-3 text-sm">
                 <div>
                     <div class="info-label">Server</div>
-                    <div class="info-value truncate">{{ $server_software }}</div>
+                    <div class="info-value truncate">[[ $server_software ]]</div>
                 </div>
                 <div>
                     <div class="info-label">Platform</div>
-                    <div class="info-value truncate">{{ $platform }}</div>
+                    <div class="info-value truncate">[[ $platform ]]</div>
                 </div>
             </div>
         </div>
 
-        {{-- Memory Usage --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
                 <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,16 +258,15 @@
             <div class="space-y-3 text-sm">
                 <div>
                     <div class="info-label">Current Usage</div>
-                    <div class="info-value">{{ number_format($memory_usage / 1024 / 1024, 2) }} MB</div>
+                    <div class="info-value">[[ number_format($memory_usage / 1024 / 1024, 2) ]] MB</div>
                 </div>
                 <div>
                     <div class="info-label">Peak Usage</div>
-                    <div class="info-value">{{ number_format($peack_memory_usage / 1024 / 1024, 2) }} MB</div>
+                    <div class="info-value">[[ number_format($peack_memory_usage / 1024 / 1024, 2) ]] MB</div>
                 </div>
             </div>
         </div>
 
-        {{-- User Information --}}
         <div class="info-card">
             <div class="flex items-center gap-2 mb-4">
                 <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,29 +275,28 @@
                 </svg>
                 <h3 class="font-bold text-base">User</h3>
             </div>
-            @if ($user_info)
-                <div class="space-y-3 text-sm">
-                    <div>
-                        <div class="info-label">ID</div>
-                        <div class="info-value">{{ $user_info['id'] }}</div>
-                    </div>
-                    <div>
-                        <div class="info-label">Email</div>
-                        <div class="info-value truncate">{{ $user_info['email'] }}</div>
-                    </div>
+            #if ($user_info)
+            <div class="space-y-3 text-sm">
+                <div>
+                    <div class="info-label">ID</div>
+                    <div class="info-value">[[ $user_info['id'] ]]</div>
                 </div>
-            @else
-                <div class="flex flex-col items-center justify-center py-4 text-neutral-500 dark:text-neutral-400">
-                    <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                    </svg>
-                    <p class="text-sm font-mono">// NO USER</p>
+                <div>
+                    <div class="info-label">Email</div>
+                    <div class="info-value truncate">[[ $user_info['email'] ]]</div>
                 </div>
-            @endif
+            </div>
+            #else
+            <div class="flex flex-col items-center justify-center py-4 text-neutral-500 dark:text-neutral-400">
+                <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                </svg>
+                <p class="text-sm font-mono">// NO USER</p>
+            </div>
+            #endif
         </div>
     </div>
 
-    {{-- Request Body --}}
     <div class="info-card mb-5">
         <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
@@ -322,30 +307,29 @@
                 </svg>
                 <h3 class="font-bold text-base">Request Body</h3>
             </div>
-            @if (!empty($request_body))
-                <button
-                    class="accordion-header text-sm px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all duration-200 border border-neutral-200 dark:border-white/10">
-                    <span class="accordion-arrow inline-block transition-transform duration-200">▼</span>
-                </button>
-            @endif
+            #if (!empty($request_body))
+            <button
+                class="accordion-header text-sm px-3 py-1.5 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all duration-200 border border-neutral-200 dark:border-white/10">
+                <span class="accordion-arrow inline-block transition-transform duration-200">▼</span>
+            </button>
+            #endif
         </div>
-        @if (!empty($request_body))
-            <div class="accordion-content hidden">
-                <pre class="text-sm bg-neutral-100 dark:bg-white/5 rounded-lg p-4 overflow-x-auto border border-neutral-200 dark:border-white/10"><code>{{ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</code></pre>
-            </div>
-        @else
-            <div class="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-600">
-                <svg class="w-16 h-16 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
-                    </path>
-                </svg>
-                <p class="text-base font-mono font-semibold">// EMPTY REQUEST BODY</p>
-            </div>
-        @endif
+        #if (!empty($request_body))
+        <div class="accordion-content hidden">
+            <pre class="text-sm bg-neutral-100 dark:bg-white/5 rounded-lg p-4 overflow-x-auto border border-neutral-200 dark:border-white/10"><code>[[ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ]]</code></pre>
+        </div>
+        #else
+        <div class="flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-600">
+            <svg class="w-16 h-16 mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                </path>
+            </svg>
+            <p class="text-base font-mono font-semibold">// EMPTY REQUEST BODY</p>
+        </div>
+        #endif
     </div>
 
-    {{-- Routing Details --}}
     <div class="info-card mb-5">
         <div class="flex items-center gap-2 mb-4">
             <svg class="size-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,56 +339,52 @@
             <h3 class="font-bold text-base">Routing</h3>
         </div>
 
-        {{-- Controller & Middleware Info --}}
-        {{-- @if (!empty($routing['controller']) || !empty($routing['middleware']))
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                @if (!empty($routing['controller']))
-                    <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
-                        <div class="info-label">Controller</div>
-                        <div class="font-mono text-sm break-all font-medium">{{ $routing['controller'] }}</div>
-                    </div>
-                @endif
-
-                @if (!empty($routing['middleware']))
-                    <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
-                        <div class="info-label">Middleware</div>
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($routing['middleware'] as $mw)
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">{{ $mw }}</span>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            #if (!empty($routing['controller']))
+            <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                <div class="info-label">Controller</div>
+                <div class="font-mono text-sm break-all font-medium">[[ $routing['controller'] ]]
+                </div>
             </div>
-        @endif --}}
+            #endif
 
-        {{-- Route Parameters --}}
+            #if (!empty($routing['middleware']))
+            <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                <div class="info-label">Middleware</div>
+                <div class="flex flex-wrap gap-2">
+                    #foreach ($routing['middleware'] as $mw)
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold">[[ $mw ]]</span>
+                    #endforeach
+                </div>
+            </div>
+            #endif
+        </div>
+
         <div>
             <div class="info-label mb-3">Route Parameters</div>
-            @if (!empty($routing['params']))
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    @foreach ($routing['params'] as $key => $value)
-                        <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
-                            <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">{{ $key }}</div>
-                            <div class="font-mono text-sm text-neutral-900 dark:text-neutral-100 font-semibold">{{ $value }}</div>
-                        </div>
-                    @endforeach
+            #if (!empty($routing['params']))
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                #foreach ($routing['params'] as $key => $value)
+                <div class="bg-neutral-100 dark:bg-white/5 rounded-lg p-3 border border-neutral-200 dark:border-white/10">
+                    <div class="text-xs text-neutral-500 dark:text-neutral-400 mb-1">[[ $key ]]</div>
+                    <div class="font-mono text-sm text-neutral-900 dark:text-neutral-100 font-semibold">[[ $value ]]</div>
                 </div>
-            @else
-                <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
-                    <svg class="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                            d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
-                        </path>
-                    </svg>
-                    <p class="text-base font-mono font-semibold">// NO ROUTE PARAMETERS</p>
-                </div>
-            @endif
+                #endforeach
+            </div>
+            #else
+            <div class="flex flex-col items-center justify-center py-8 text-neutral-400 dark:text-neutral-600">
+                <svg class="w-12 h-12 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7">
+                    </path>
+                </svg>
+                <p class="text-base font-mono font-semibold">// NO ROUTE PARAMETERS</p>
+            </div>
+            #endif
         </div>
     </div>
 
-    {{-- Hidden markdown content for clipboard --}}
-    <textarea id="mdContent" class="hidden">{{ $md_content }}</textarea>
+    <textarea id="mdContent" class="hidden">[[ $md_content ]]</textarea>
 </body>
 
 <script>
@@ -462,7 +442,7 @@
             const btn = this;
 
             const originalHTML = btn.innerHTML;
-            
+
             btn.innerHTML =
                 '<svg class="size-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
             btn.classList.add('bg-green-500/10');
@@ -478,7 +458,7 @@
             const btn = this;
 
             btn.classList.add('bg-red-500/10');
-            
+
             setTimeout(() => {
                 btn.classList.remove('bg-red-500/10');
             }, 1000);
