@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.0.0-beta.20 - 2025-11-22
+
+* update the redesign dashboard starter by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/140
+* fix: redesign starter template by [@AR-Shahin](https://github.com/AR-Shahin) in https://github.com/doppar/framework/pull/138
+* Introducing [odo] template engine for doppar by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/141
+
 ## v3.0.0-beta.19 - 2025-11-22
 
 * Updated Secure Two-Factor Authentication (2FA) Flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/139
