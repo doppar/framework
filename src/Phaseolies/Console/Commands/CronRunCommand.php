@@ -90,6 +90,7 @@ class CronRunCommand extends Command
             $totalExecuted = count($regularDueCommands);
 
             if ($totalExecuted > 0) {
+                $this->newLine(1);
                 $this->displaySuccess('Executed ' . $totalExecuted . ' scheduled command(s)');
             } else {
                 $this->displayInfo('No scheduled commands are ready to run.');
@@ -132,9 +133,6 @@ class CronRunCommand extends Command
             });
         }
 
-        $loopCount = 0;
-        $lastMinute = null;
-
         while (true) {
             try {
                 // Handle signals if available
@@ -159,33 +157,12 @@ class CronRunCommand extends Command
                     continue;
                 }
 
-                $currentMinute = date('Y-m-d H:i');
-
-                // Log status every minute
-                if ($currentMinute !== $lastMinute) {
-                    $this->displayInfo(sprintf(
-                        '[%s] Monitoring %d second-based schedule(s) - Loop #%d',
-                        date('H:i:s'),
-                        count($secondBasedCommands),
-                        $loopCount
-                    ));
-                    $lastMinute = $currentMinute;
-                }
-
                 // Check and run due commands
                 foreach ($secondBasedCommands as $command) {
                     if ($command->isDue()) {
-                        $this->line(sprintf(
-                            '<comment>[%s] Running:</comment> %s',
-                            date('H:i:s'),
-                            $command->getCommand()
-                        ));
-
                         $this->executeCommand($command, true);
                     }
                 }
-
-                $loopCount++;
 
                 // Sleep for 100ms to balance between responsiveness and CPU usage
                 usleep(100000);
@@ -400,11 +377,6 @@ class CronRunCommand extends Command
             ),
             FILE_APPEND
         );
-
-        $this->displayInfo(sprintf(
-            'Background process started (PID: %d)',
-            $pid
-        ));
     }
 
     protected function runInForeground($command, $env): void
