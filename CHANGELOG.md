@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.22 - 2025-11-23
+
+* refactored controller and view class code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/144
+* Introducing cron:daemon command to handle pure daemon by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/145
+
 ## v3.0.0-beta.21 - 2025-11-22
 
 * remove # from cdn from skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/142
