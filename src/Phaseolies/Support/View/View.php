@@ -197,11 +197,69 @@ class View extends Factory
     {
         $hasher = hash_init('xxh128');
 
-        hash_update($hasher, $name);
+        hash_update($hasher, (string) $name);
 
-        hash_update($hasher, serialize($payload));
+        $normalized = $this->normalizeForHash($payload);
+
+        hash_update($hasher, serialize($normalized));
 
         return hash_final($hasher);
+    }
+
+    /**
+     * Normalize a value into a serialization-safe structure for hashing.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function normalizeForHash($value)
+    {
+        if ($value instanceof \Closure) {
+            return 'closure';
+        }
+
+        if (is_array($value)) {
+            $normalized = [];
+
+            foreach ($value as $k => $v) {
+                $normalized[$k] = $this->normalizeForHash($v);
+            }
+
+            if ($this->isAssoc($normalized)) {
+                ksort($normalized);
+            }
+
+            return $normalized;
+        }
+
+        if (is_object($value)) {
+            if (method_exists($value, '__toString')) {
+                return (string) $value;
+            }
+
+            return ['__class' => get_class($value)];
+        }
+
+        if (is_resource($value)) {
+            return 'resource:' . get_resource_type($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Determine if an array is associative.
+     *
+     * @param array $array
+     * @return bool
+     */
+    private function isAssoc(array $array): bool
+    {
+        if ($array === []) {
+            return false;
+        }
+
+        return array_keys($array) !== range(0, count($array) - 1);
     }
 
     /**

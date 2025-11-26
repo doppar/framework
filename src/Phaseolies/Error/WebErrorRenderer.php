@@ -91,9 +91,13 @@ class WebErrorRenderer
     {
         $controller = new Controller();
 
-        $relative = str_replace(base_path() . '/', '', __DIR__);
-
-        $viewsPath = $relative . '/views';
+        $viewsPath = 'vendor'
+            . DIRECTORY_SEPARATOR . 'doppar'
+            . DIRECTORY_SEPARATOR . 'framework'
+            . DIRECTORY_SEPARATOR . 'src'
+            . DIRECTORY_SEPARATOR . 'Phaseolies'
+            . DIRECTORY_SEPARATOR . 'Error'
+            . DIRECTORY_SEPARATOR . 'views';
 
         $controller->setViewFolder($viewsPath);
 

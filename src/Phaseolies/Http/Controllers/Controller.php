@@ -354,7 +354,6 @@ class Controller extends View
             }
         }
 
-
         throw new NotFoundHttpException("View [{$view}] not found in namespace [{$namespace}]");
     }
 
