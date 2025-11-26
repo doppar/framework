@@ -20,8 +20,26 @@ class RequestAbortion
     {
         $shouldJsonResponse = request()->isAjax() || request()->isApiRequest();
 
-        $customPath = base_path("resources/views/errors/{$code}.odo.php");
-        $packagePath = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$code}.odo.php");
+        $customPath =
+            base_path(
+                'resources'
+                    . DIRECTORY_SEPARATOR . 'views'
+                    . DIRECTORY_SEPARATOR . 'errors'
+                    . DIRECTORY_SEPARATOR . "{$code}.odo.php"
+            );
+
+        $packagePath =
+            base_path(
+                'vendor'
+                    . DIRECTORY_SEPARATOR . 'doppar'
+                    . DIRECTORY_SEPARATOR . 'framework'
+                    . DIRECTORY_SEPARATOR . 'src'
+                    . DIRECTORY_SEPARATOR . 'Phaseolies'
+                    . DIRECTORY_SEPARATOR . 'Support'
+                    . DIRECTORY_SEPARATOR . 'View'
+                    . DIRECTORY_SEPARATOR . 'errors'
+                    . DIRECTORY_SEPARATOR . "{$code}.odo.php"
+            );
 
         if (!$shouldJsonResponse) {
             $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
