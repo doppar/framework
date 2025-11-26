@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.0.0-beta.23 - 2025-11-26
+
+* [Error] Handle errors by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/146
+* error page path calling way change to directory separator by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/147
+
 ## v3.0.0-beta.22 - 2025-11-23
 
 * refactored controller and view class code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/144
