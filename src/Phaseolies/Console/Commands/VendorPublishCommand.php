@@ -41,6 +41,10 @@ class VendorPublishCommand extends Command
     protected function handle(): int
     {
         return $this->executeWithTiming(function () {
+            Config::clearCache();
+            Config::loadAll();
+            Config::cacheConfig();
+
             $provider = $this->option('provider');
             $tag = $this->option('tag');
             $force = $this->option('force');
@@ -56,10 +60,6 @@ class VendorPublishCommand extends Command
             }
 
             $this->publishAll($force);
-
-            Config::clearCache();
-            Config::loadAll();
-            Config::cacheConfig();
 
             return Command::SUCCESS;
         });
