@@ -5,7 +5,6 @@ namespace Phaseolies\Console\Commands;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
 use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Config\Config;
 use Phaseolies\Application;
 use FilesystemIterator;
 
@@ -41,10 +40,6 @@ class VendorPublishCommand extends Command
     protected function handle(): int
     {
         return $this->executeWithTiming(function () {
-            Config::clearCache();
-            Config::loadAll();
-            Config::cacheConfig();
-
             $provider = $this->option('provider');
             $tag = $this->option('tag');
             $force = $this->option('force');
