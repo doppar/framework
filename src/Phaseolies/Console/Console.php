@@ -40,7 +40,7 @@ class Console extends SymfonyApplication
     public function addCommands(array $commands): void
     {
         foreach ($commands as $command) {
-            $this->add($this->resolveCommand($command));
+            $this->addCommand($this->resolveCommand($command));
         }
     }
 
