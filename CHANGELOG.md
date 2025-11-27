@@ -1,5 +1,20 @@
 # Release Notes
 
+## v3.0.0-beta.24 - 2025-11-27
+
+### What's Changed
+
+* config update position change to top from bottom in vendor publish co… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/148
+* remove config code from vendor publish command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/149
+* Fix Symfony Console deprecation: Replace add() with addCommand() by [@xentixar](https://github.com/xentixar) in https://github.com/doppar/framework/pull/150
+* bump symfony 7.4 by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/151
+
+### New Contributors
+
+* [@xentixar](https://github.com/xentixar) made their first contribution in https://github.com/doppar/framework/pull/150
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v3.0.0-beta.23...v3.0.0-beta.24
+
 ## v3.0.0-beta.23 - 2025-11-26
 
 * [Error] Handle errors by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/146
