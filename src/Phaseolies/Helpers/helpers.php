@@ -18,7 +18,6 @@ use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\Cache\RateLimiter;
 use Phaseolies\Auth\Security\Authenticate;
-use Doppar\Airbend\Support\Facades\Broadcast;
 use Carbon\Carbon;
 
 if (!function_exists('env')) {
@@ -903,19 +902,5 @@ if (!function_exists('throttle')) {
     function throttle(): RateLimiter
     {
         return app(RateLimiter::class);
-    }
-}
-
-if (!function_exists('broadcast')) {
-    function broadcast(string|array $channels, $event): void
-    {
-        Broadcast::channel($channels, $event);
-    }
-}
-
-if (!function_exists('broadcast_to_others')) {
-    function broadcast_to_others(string|array $channels, $event): void
-    {
-        Broadcast::toOthers()->channel($channels, $event);
     }
 }
