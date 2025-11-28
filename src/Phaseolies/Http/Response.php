@@ -1602,7 +1602,9 @@ class Response implements HttpStatus
         $this->setException($status);
 
         // Fallback
-        http_response_code($status);
+        if (!headers_sent()) {
+            http_response_code($status);
+        }
 
         return $this;
     }
