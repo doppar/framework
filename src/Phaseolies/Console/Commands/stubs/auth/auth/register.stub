@@ -16,6 +16,17 @@
     </div>
     <div class="card mx-auto mt-5" style="max-width: 400px;">
         <div class="card-body">
+            #errors
+                <div class="alert alert-danger">
+                    <ul>
+                        #foreach (session()->pull('errors') as $messages)
+                            #foreach ($messages as $message)
+                                <li>[[ $message ]]</li>
+                            #endforeach
+                        #endforeach
+                    </ul>
+                </div>
+            #enderrors
             <form action="[[ route('register') ]]" method="POST">
                 #csrf
                 <div class="mb-3">

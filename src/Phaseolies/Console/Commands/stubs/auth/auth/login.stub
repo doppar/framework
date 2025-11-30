@@ -14,6 +14,11 @@
         <div class="card-header border-bottom-0 text-center mt-5">
             <h5 class="fw-bold fs-5">Login</h5>
         </div>
+        #if (session()->has('success'))
+            <div class="alert alert-success">
+                [[ session()->pull('success') ]]
+            </div>
+        #endif
         <div class="card mx-auto mt-5" style="max-width: 400px;">
             <div class="card-body">
                 <form action="[[ route('login') ]]" method="POST">
