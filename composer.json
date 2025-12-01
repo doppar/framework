@@ -9,9 +9,15 @@
   ],
   "homepage": "https://doppar.com",
   "support": {
-    "issues": "https://github.com/doppar/doppar/issues",
-    "source": "https://github.com/doppar/doppar"
+    "issues": "https://github.com/doppar/framework/issues",
+    "source": "https://github.com/doppar/framework"
   },
+  "authors": [
+    {
+      "name": "Mahedi Hasan",
+      "email": "mahedy150101@gmail.com"
+    }
+  ],
   "require": {
     "php": "^8.3",
     "chillerlan/php-qrcode": "^5.0",
@@ -52,12 +58,17 @@
     }
   },
   "suggest": {
-    "ext-pdo": "Required to use all database features."
+    "ext-apcu": "Needed to enable the APC-based caching layer.",
+    "ext-pdo": "Provides the core database abstraction required for all DB operations.",
+    "ext-pcntl": "Enables full functionality of the queue worker and support for console signal handling.",
+    "ext-redis": "Required for using Redis-backed cache.",
+    "symfony/cache": "Supplies the PSR-6 cache integration layer (version ^7.4)."
   },
   "config": {
     "sort-packages": true,
     "allow-plugins": {
-      "composer/package-versions-deprecated": true
+      "composer/package-versions-deprecated": true,
+      "php-http/discovery": false
     }
   },
   "minimum-stability": "dev",
