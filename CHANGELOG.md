@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.1 - 2025-12-04
+
+* updated ErrorHandler class triggerBeforeException method: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/155
+
 ## v3.0.0-beta.24 - 2025-11-27
 
 ### What's Changed
