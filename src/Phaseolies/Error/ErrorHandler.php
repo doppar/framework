@@ -5,6 +5,7 @@ namespace Phaseolies\Error;
 use Throwable;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Error\Factory\ErrorHandlerFactory;
+use Phaseolies\Http\Response;
 
 class ErrorHandler
 {
@@ -116,7 +117,7 @@ class ErrorHandler
             $before = app($beforeExceptionClass);
 
             if ($before->supports()) {
-                $response = app('response');
+                $response = app(Response::class);
                 $statusCode = $exception instanceof \Phaseolies\Http\Exceptions\HttpException
                     ? $exception->getStatusCode()
                     : 500;
