@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.2 - 2025-12-05
+
+* login and register page design improved and showing error message by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/156
+
 ## v3.0.1 - 2025-12-04
 
 * updated ErrorHandler class triggerBeforeException method: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/155
