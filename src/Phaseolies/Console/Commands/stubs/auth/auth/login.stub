@@ -1,47 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Login</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
-            integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-        <style>
-           .btn-check:checked+.btn,.btn-primary,.btn.active,.btn.show,.btn:first-child:active,:not(.btn-check)+.btn:active{color:#fff;background:#8486ff}.btn-primary,.btn-primary:hover{background:#8486ff}body{font-family:Poppins,sans-serif;background:#f8f8f8}.btn-primary{border:unset}
-        </style>
-    </head>
-    <body>
-        <div class="card-header border-bottom-0 text-center mt-5">
-            <h5 class="fw-bold fs-5">Login</h5>
-        </div>
-        #if (session()->has('success'))
-            <div class="alert alert-success">
-                [[ session()->pull('success') ]]
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        @import url(https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap);.card,.card-body,.card-header,.form-check-input,.form-control{background:#fff}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Poppins,sans-serif;background:#f5f5f5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.auth-container{width:100%;max-width:450px;animation:.6s ease-out slideUp}.card{border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.08);border:none;overflow:hidden}.card-header{color:#333;padding:30px 40px 20px;border:none;text-align:center;border-bottom:1px solid #f0f0f0}.card-header h5{font-size:28px;font-weight:600;margin:0;letter-spacing:-.5px;color:#1a1a1a}.card-body{padding:40px}.form-label{font-weight:500;color:#333;margin-bottom:8px;font-size:14px}.form-control{border:1px solid #e0e0e0;border-radius:10px;padding:12px 16px;font-size:15px;transition:.3s}.form-control:focus{border-color:#8486ff;box-shadow:0 0 0 3px rgba(132,134,255,.1);background:#fff;outline:0}.form-check-input{width:18px;height:18px;border:2px solid #e0e0e0;border-radius:5px;cursor:pointer}.form-check-input:checked{background-color:#8486ff;border-color:#8486ff}.form-check-label{font-size:14px;color:#666;cursor:pointer;margin-left:5px}.btn-primary{background:#8486ff;border:none;border-radius:10px;padding:14px;font-size:16px;font-weight:600;letter-spacing:.5px;transition:.3s;box-shadow:0 4px 12px rgba(132,134,255,.3)}.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(132,134,255,.4);background:#7375e6}.btn-primary:active{transform:translateY(0)}.alert{border-radius:10px;border:none;padding:15px 20px;margin-bottom:20px;animation:.5s fadeIn}.alert-danger{background:#fff5f5;color:#e53e3e;border:1px solid #feb2b2}.alert-success{background:#f0fff4;color:#38a169;border:1px solid #9ae6b4}.alert ul{margin:0;padding-left:20px}.text-center a{color:#8486ff;font-weight:500;text-decoration:none;transition:.3s}.text-center a:hover{color:#6b6dd9;text-decoration:underline}.register-link{color:#666;font-size:14px;margin-top:20px}@media (max-width:576px){.card-body{padding:30px 25px}.card-header{padding:25px 25px 20px}}
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="card">
+            <div class="card-header">
+                <h5>Login</h5>
             </div>
-        #endif
-        <div class="card mx-auto mt-5" style="max-width: 400px;">
             <div class="card-body">
+                #errors
+                <div class="alert alert-danger">
+                    <ul>
+                        #foreach (session()->pull('errors') as $messages)
+                        #foreach ($messages as $message)
+                        <li>[[ $message ]]</li>
+                        #endforeach
+                        #endforeach
+                    </ul>
+                </div>
+                #enderrors
+                #if (session()->has('success'))
+                <div class="alert alert-success">
+                    [[ session()->pull('success') ]]
+                </div>
+                #endif
                 <form action="[[ route('login') ]]" method="POST">
                     #csrf
                     <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" name="email" id="email" placeholder="Enter your email">
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" name="password">
+                        <input type="password" class="form-control" name="password" id="password" placeholder="Enter your password">
                     </div>
-                    <div class="mb-3 form-check">
+                    <div class="mb-4 form-check">
                         <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                        <label class="form-check-label" for="remember">Remember Me</label>
+                        <label class="form-check-label" for="remember">Remember me</label>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">[[ __('Sign in') ]]</button>
+                    <button type="submit" class="btn btn-primary w-100">[[ __('Sign In') ]]</button>
                 </form>
-                <div class="text-center mt-3">
-                    Don't have an account? <a href="[[ route('register') ]]"
-                        class="text-decoration-none">[[ __('Register') ]]</a>
+                <div class="text-center register-link">
+                    Don't have an account? <a href="[[ route('register') ]]">[[ __('Create Account') ]]</a>
                 </div>
             </div>
         </div>
-    </body>
+    </div>
+</body>
 </html>
