@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.3 - 2025-12-06
+
+* refactored query builder query binding for condition by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/157
+
 ## v3.0.2 - 2025-12-05
 
 * login and register page design improved and showing error message by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/156
