@@ -1365,7 +1365,8 @@ class Router extends Kernel
     private function resolveParameters(array $parameters, Application $app, array $routeParams): array
     {
         $dependencies = [];
-        foreach ($parameters as $parameter) {
+        foreach ($parameters as $index => $parameter) {
+            $paramPosition = $index + 1;
             $paramName = $parameter->getName();
             $paramType = $parameter->getType();
 
@@ -1392,6 +1393,17 @@ class Router extends Kernel
 
             if ($paramType && !$paramType->isBuiltin()) {
                 $resolvedClass = $paramType->getName();
+                if (!$app->has($resolvedClass) && !class_exists($resolvedClass)) {
+                    $declaringClass = $parameter->getDeclaringClass();
+                    $declaringFunction = $parameter->getDeclaringFunction();
+
+                    throw new \InvalidArgumentException(
+                        ($declaringClass ? $declaringClass->getName() . '::' : '') .
+                            $declaringFunction->getName() .
+                            "(): Argument #{$paramPosition} (\${$paramName}) cannot be resolved. " .
+                            "'{$resolvedClass}' is not bound in the container. "
+                    );
+                }
                 $resolvedInstance = $this->resolveFormRequestValidationClass($app, $resolvedClass);
                 $dependencies[] = $resolvedInstance;
             } elseif (isset($routeParams[$paramName])) {
