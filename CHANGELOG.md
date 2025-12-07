@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.0.4 - 2025-12-07
+
+* Improve container resolution error message for unbound interfaces by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/158
+
 ## v3.0.3 - 2025-12-06
 
 * refactored query builder query binding for condition by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/157
