@@ -562,4 +562,114 @@ class Database
     {
         return new QueryBuilder($this->getPdo(), $table);
     }
+
+    /**
+     * Disconnect from the database and clean up resources
+     *
+     * @param string|null $connection
+     * @return bool
+     */
+    public function disconnect(?string $connection = null): bool
+    {
+        $connection = $connection ?: config('database.default');
+
+        try {
+            if (isset(static::$connections[$connection])) {
+                static::$connections[$connection] = null;
+                unset(static::$connections[$connection]);
+            }
+
+            if (isset(static::$drivers[$connection])) {
+                static::$drivers[$connection] = null;
+                unset(static::$drivers[$connection]);
+            }
+
+            if (isset(static::$transactions[$connection])) {
+                static::$transactions[$connection] = 0;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            if (function_exists('error_log')) {
+                error("Failed to disconnect database connection [{$connection}]: " . $e->getMessage());
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * Reconnect to the database
+     *
+     * @param string|null $connection
+     * @return PDO
+     * @throws \RuntimeException
+     */
+    public function reconnect(?string $connection = null): PDO
+    {
+        $connection = $connection ?: config('database.default');
+
+        static::disconnect($connection);
+
+        return static::getPdoInstance($connection);
+    }
+
+    /**
+     * Check if connection is alive
+     *
+     * @param string|null $connection
+     * @return bool
+     */
+    public function isConnected(?string $connection = null): bool
+    {
+        $connection = $connection ?: config('database.default');
+
+        if (!isset(static::$connections[$connection])) {
+            return false;
+        }
+
+        try {
+            $stmt = static::$connections[$connection]->query('SELECT 1');
+            return $stmt !== false;
+        } catch (\PDOException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Get a fresh database connection (new instance)
+     *
+     * @param string|null $connection
+     * @return PDO
+     */
+    public function getFreshConnection(?string $connection = null): PDO
+    {
+        $connection = $connection ?: config('database.default');
+        $config = config("database.connections.{$connection}");
+
+        if (empty($config)) {
+            throw new \RuntimeException("Database connection [{$connection}] not configured.");
+        }
+
+        $driver = ConnectionFactory::createDriver($config);
+
+        return $driver->connect($config);
+    }
+
+    /**
+     * Clean up all database connections
+     *
+     * @return void
+     */
+    public function cleanupAllConnections(): void
+    {
+        foreach (array_keys(static::$connections) as $connection) {
+            static::disconnect($connection);
+        }
+
+        // Clear all arrays
+        static::$connections = [];
+        static::$drivers = [];
+        static::$transactions = [];
+    }
 }
