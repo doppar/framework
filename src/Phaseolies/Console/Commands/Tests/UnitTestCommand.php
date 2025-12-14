@@ -14,6 +14,7 @@ class UnitTestCommand extends Command
      */
     protected $name = 'unit:test
                        {--class= : Specific test class file path to run}
+                       {--details : Add --testdox and --disallow-test-output}
                        {--filter= : Filter tests by name pattern}';
 
     /**
@@ -36,8 +37,9 @@ class UnitTestCommand extends Command
 
         $classPath = $this->option('class');
         $filter = $this->option('filter');
+        $testdox = $this->option('details');
 
-        $command = $this->buildPHPUnitCommand($classPath, $filter);
+        $command = $this->buildPHPUnitCommand($classPath, $filter, $testdox);
 
         $this->line('🔍 Running tests...', 'fg=yellow');
         $this->newLine();
@@ -65,9 +67,10 @@ class UnitTestCommand extends Command
      *
      * @param string|null $classPath
      * @param string|null $filter
+     * @param string|null $testdox
      * @return array
      */
-    private function buildPHPUnitCommand(?string $classPath, ?string $filter): array
+    private function buildPHPUnitCommand(?string $classPath, ?string $filter, ?string $testdox): array
     {
         $command = [base_path('vendor/bin/phpunit')];
 
@@ -81,9 +84,11 @@ class UnitTestCommand extends Command
             $command[] = $filter;
         }
 
-        $command[] = '--testdox';
-        $command[] = '--disallow-test-output';
-        $command[] = '--colors=never';
+        if($testdox){
+            $command[] = '--testdox';
+            $command[] = '--disallow-test-output';
+            $command[] = '--colors=never';
+        }
 
         return $command;
     }
@@ -101,7 +106,8 @@ class UnitTestCommand extends Command
         $lines = explode("\n", $buffer);
 
         foreach ($lines as $line) {
-            if (empty(trim($line))) {
+            $line = trim($line);
+            if (empty($line)) {
                 continue;
             }
 
@@ -116,7 +122,7 @@ class UnitTestCommand extends Command
                 continue;
             }
 
-            // Detect test class headers - format: "ClassName (Namespace)"
+            // Detect test class headers
             if (preg_match('/^([A-Z][A-Za-z0-9 ]+)\s+\(([^)]+)\)$/', trim($line), $matches)) {
                 $this->newLine();
                 $this->line("✓ {$matches[2]}", 'fg=white;options=bold');
@@ -126,7 +132,7 @@ class UnitTestCommand extends Command
             }
 
             // Detect passed tests
-            if (preg_match('/^\s*[✔✓√]\s+(.+)$/', $line, $matches)) {
+            if (preg_match('/^[\s]*[✔]\s*(.+)$/u', $line, $matches)) {
                 $this->line("  ✓ {$matches[1]}", 'fg=green');
                 $inFailureDetails = false;
                 continue;
@@ -172,7 +178,11 @@ class UnitTestCommand extends Command
             }
 
             // Stop processing failure details when we hit summary section
-            if (str_contains($line, 'FAILURES!') || str_contains($line, 'ERRORS!') || str_contains($line, 'OK (')) {
+            if (
+                str_contains($line, 'FAILURES!')
+                || str_contains($line, 'ERRORS!')
+                || str_contains($line, 'OK (')
+            ) {
                 $inFailureDetails = false;
             }
         }
@@ -270,7 +280,7 @@ class UnitTestCommand extends Command
             $this->line('🎉 ALL TESTS PASSED! 🎉', 'fg=green;options=bold');
             $assertionText = $assertions > 0 ? " with {$assertions} assertion(s)" : "";
             $this->newLine();
-            $this->displaySuccess("Test suite completed successfully{$assertionText}!");
+            $this->displaySuccess("Test suite completed successfully{$assertionText}");
         } else if ($totalTests === 0) {
             $this->displayWarning('No tests were executed');
         } else {
