@@ -1,32 +1,25 @@
 <?php
 
-namespace Phaseolies\Console\Commands;
+namespace Phaseolies\Console\Commands\Migrations;
 
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Database\Migration\MigrationCreator;
 
-class CreateMigrationCommand extends Command
+class AddColumnMigrationCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'make:migration {name} {--create=} {--table=}';
+    protected $name = 'make:migration {name} {--create=} {--table=} {--column=} {--type=} {--after=}';
 
     /**
      * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Creates a new migration file';
-
-    /**
-     * The migration creator instance.
-     *
-     * @var MigrationCreator
-     */
-    protected MigrationCreator $creator;
+    protected $description = 'Creates a new migration file with optional column addition';
 
     /**
      * Create a new command instance.
@@ -34,11 +27,9 @@ class CreateMigrationCommand extends Command
      * @param MigrationCreator $creator
      * @return void
      */
-    public function __construct(MigrationCreator $creator)
+    public function __construct(protected MigrationCreator $creator)
     {
         parent::__construct();
-
-        $this->creator = $creator;
     }
 
     /**
@@ -52,6 +43,9 @@ class CreateMigrationCommand extends Command
             $name = $this->argument('name');
             $table = $this->option('table');
             $create = $this->option('create') ?: false;
+            $column = $this->option('column');
+            $type = $this->option('type');
+            $after = $this->option('after');
 
             if (!$table && is_string($create)) {
                 $table = $create;
@@ -62,11 +56,15 @@ class CreateMigrationCommand extends Command
                 $name,
                 $this->getMigrationPath(),
                 $table,
-                $create
+                $create,
+                $column,
+                $type,
+                $after
             );
 
             $this->displaySuccess('Migration created successfully.');
             $this->line("<fg=yellow>📁 File:</> <fg=white>{$file}</>");
+            
             return Command::SUCCESS;
         });
     }

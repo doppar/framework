@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Console\Commands;
+namespace Phaseolies\Console\Commands\Migrations;
 
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Database\Migration\Migrator;
