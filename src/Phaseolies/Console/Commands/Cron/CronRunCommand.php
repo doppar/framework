@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Console\Commands;
+namespace Phaseolies\Console\Commands\Cron;
 
 use App\Schedule\Schedule;
 use Phaseolies\Console\Schedule\Command;
