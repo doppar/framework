@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.1.0 - 2025-12-14
+
+* database connection reset and reconnect method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/159
+* new database class function added in DB facades by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/160
+* [unit:test] command added with details and fliter options by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/161
+
 ## v3.0.4 - 2025-12-07
 
 * Improve container resolution error message for unbound interfaces by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/158
