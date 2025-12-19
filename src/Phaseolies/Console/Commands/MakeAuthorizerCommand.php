@@ -52,12 +52,8 @@ class MakeAuthorizerCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Authorizer created successfully');
-            $this->line('<fg=yellow>🛡️ File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
             $this->newLine();
-            $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
-            if ($model) {
-                $this->line('<fg=yellow>🏷️ Model:</> <fg=white>' . $model . '</>');
-            }
 
             return Command::SUCCESS;
         });
@@ -91,7 +87,7 @@ EOT;
         $modelType = 'App\\Models\\' . $model;
 
         return <<<EOT
-    /**
+/**
      * Determine whether the user can view any models.
      *
      * @param \App\Models\User \${$userVar}

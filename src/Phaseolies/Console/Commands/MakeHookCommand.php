@@ -52,7 +52,7 @@ class MakeHookCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Hook created successfully');
-            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Hook Class:</> <fg=white>' . $className . '</>');
 

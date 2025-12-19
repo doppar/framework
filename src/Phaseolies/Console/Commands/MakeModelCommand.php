@@ -73,7 +73,7 @@ class MakeModelCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Model created successfully');
-            $this->line('<fg=yellow>📦 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📦 File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
 
@@ -86,7 +86,7 @@ class MakeModelCommand extends Command
                 $this->newLine();
                 $this->line('<bg=blue;options=bold> MIGRATION </> Created migration:');
                 $this->newLine();
-                $this->line('<fg=white>' . str_replace(base_path(), '', $migrationFile) . '</>');
+                $this->line('<fg=white>' . str_replace(base_path('/'), '', $migrationFile) . '</>');
             }
 
             return Command::SUCCESS;

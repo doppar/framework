@@ -52,7 +52,7 @@ class MakeMiddlewareCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Middleware created successfully');
-            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>🔒 Class:</> <fg=white>' . $className . '</>');
 

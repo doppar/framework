@@ -242,7 +242,7 @@ class MakeControllerCommand extends Command
      */
     protected function outputFilePath(string $label, string $path): void
     {
-        $this->line('<fg=yellow>' . $label . ':</> <fg=white>' . str_replace(base_path(), '', $path) . '</>');
+        $this->line('<fg=yellow>' . $label . ':</> <fg=white>' . str_replace(base_path('/'), '', $path) . '</>');
     }
 
     /**
