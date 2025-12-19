@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.1.1 - 2025-12-19
+
+* Fix file path in CLI output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/162
+
 ## v3.1.0 - 2025-12-14
 
 * database connection reset and reconnect method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/159
