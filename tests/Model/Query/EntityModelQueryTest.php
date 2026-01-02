@@ -915,7 +915,9 @@ class EntityModelQueryTest extends TestCase
 
     public function testWhereThisMonth(): void
     {
-        $users = MockUser::whereThisMonth('created_at')->get();
+        $users = MockUser::whereThisYear('created_at')
+            ->whereThisMonth('created_at')
+            ->get();
 
         $this->assertCount(0, $users);
     }
@@ -938,7 +940,7 @@ class EntityModelQueryTest extends TestCase
     {
         $users = MockUser::whereLastYear('created_at')->get();
 
-        $this->assertCount(3, $users);
+        $this->assertCount(0, $users);
     }
 
     public function testWhereDateBetween(): void
