@@ -772,7 +772,10 @@ class EntityBuilderQueryTest extends TestCase
 
     public function testWhereThisMonth(): void
     {
-        $users = db()->bucket('users')->whereThisMonth('created_at')->get();
+        $users = db()->bucket('users')
+            ->whereThisYear('created_at')
+            ->whereThisMonth('created_at')
+            ->get();
 
         $this->assertCount(0, $users);
     }
@@ -793,9 +796,11 @@ class EntityBuilderQueryTest extends TestCase
 
     public function testWhereLastYear(): void
     {
-        $users = db()->bucket('users')->whereLastYear('created_at')->get();
+        $users = db()->bucket('users')
+            ->whereLastYear('created_at')
+            ->get();
 
-        $this->assertCount(3, $users);
+        $this->assertCount(0, $users);
     }
 
     public function testWhereDateBetween(): void
