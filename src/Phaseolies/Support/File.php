@@ -24,7 +24,7 @@ class File extends \SplFileInfo
     /**
      * Constructor that initializes the File object with the given file data.
      *
-     * @param array $file The uploaded file's data from the $_FILES array.
+     * @param array $file
      */
     public function __construct(\SplFileInfo|string|array $file, bool $checkPath = true)
     {
@@ -131,7 +131,7 @@ class File extends \SplFileInfo
     /**
      * Checks if the uploaded file is of a specific MIME type.
      *
-     * @param string|array $mimeType The MIME type(s) to check against.
+     * @param string|array $mimeType
      * @return bool
      */
     public function isMimeType(string|array $mimeType): bool
@@ -190,8 +190,8 @@ class File extends \SplFileInfo
     /**
      * Moves the uploaded file to a new location.
      *
-     * @param string $destination The destination path to move the file to.
-     * @param string|null $fileName Optional filename to use. If null, the original filename is used.
+     * @param string $destination
+     * @param string|null $fileName
      * @return bool
      */
     public function move(string $destination, ?string $fileName = null): bool
@@ -267,10 +267,10 @@ class File extends \SplFileInfo
     /**
      * Store the file with filename
      *
-     * @param string $path The directory path to store the file
-     * @param string $fileName The filename to use
-     * @param string $disk The storage disk to use (default: 'public')
-     * @param callable|null $callback Optional validation callback
+     * @param string $path
+     * @param string $fileName
+     * @param string $disk
+     * @param callable|null $callback
      * @return string|false
      */
     public function storeAs(string $path, string $fileName = '', string $disk = 'public', ?callable $callback = null): string|false

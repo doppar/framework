@@ -9,8 +9,8 @@ class View
     /**
      * Renders the email view into a string.
      *
-     * @param Mailable $mailable The Mailable object containing the view and data.
-     * @return string The rendered view content as a string.
+     * @param Mailable $mailable
+     * @return string
      */
     public static function render(Mailable $mailable): string
     {

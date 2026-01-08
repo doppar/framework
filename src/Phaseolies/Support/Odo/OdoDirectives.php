@@ -10,8 +10,8 @@ trait OdoDirectives
     /**
      * Extend this class (Add custom directives).
      *
-     * #param Closure $compiler
-     * #return void
+     * @param Closure $compiler
+     * @return void
      */
     public function extend(Closure $compiler): void
     {
@@ -21,7 +21,7 @@ trait OdoDirectives
     /**
      * Compile the #auth directive.
      *
-     * #return string
+     * @return string
      */
     public function compileAuth(): string
     {
@@ -31,7 +31,7 @@ trait OdoDirectives
     /**
      * Compile the #endauth directive.
      *
-     * #return string
+     * @return string
      */
     public function compileEndauth(): string
     {
@@ -41,7 +41,7 @@ trait OdoDirectives
     /**
      * Compile the #guest directive.
      *
-     * #return string
+     * @return string
      */
     public function compileGuest(): string
     {
@@ -51,7 +51,7 @@ trait OdoDirectives
     /**
      * Compile the #endguest directive.
      *
-     * #return string
+     * @return string
      */
     public function compileEndguest(): string
     {
@@ -61,7 +61,7 @@ trait OdoDirectives
     /**
      * Compile the #errors directive.
      *
-     * #return string
+     * @return string
      */
     public function compileErrors(): string
     {
@@ -71,7 +71,7 @@ trait OdoDirectives
     /**
      * Compile the #enderrors directive.
      *
-     * #return string
+     * @return string
      */
     public function compileEnderrors(): string
     {
@@ -81,8 +81,8 @@ trait OdoDirectives
     /**
      * Compile the #error directive.
      *
-     * #param string $key
-     * #return string
+     * @param string $key
+     * @return string
      */
     public function compileError($key): string
     {
@@ -94,7 +94,7 @@ trait OdoDirectives
     /**
      * Compile the #enderror directive.
      *
-     * #return string
+     * @return string
      */
     public function compileEnderror(): string
     {
@@ -104,8 +104,8 @@ trait OdoDirectives
     /**
      * Another (simpler) way to add custom directives.
      *
-     * #param string $name
-     * #param string $callback
+     * @param string $name
+     * @param string $callback
      */
     public function directive($name, Closure $callback): void
     {
@@ -122,7 +122,7 @@ trait OdoDirectives
     /**
      * Get all defined directives.
      *
-     * #return array
+     * @return array
      */
     public function getAllDirectives(): array
     {

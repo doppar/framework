@@ -9,10 +9,10 @@ class RealLens implements Lensable
     /**
      * Retrieve an item from an array using "dot" notation.
      *
-     * @param array $array The array to search in
-     * @param string|int|null $key The key to search for (can use dot notation for nested arrays)
-     * @param mixed $default Default value to return if key not found
-     * @return mixed The found value or default if not found
+     * @param array $array
+     * @param string|int|null $key
+     * @param mixed $default
+     * @return mixed
      */
     public function grab(array $array, string|int|null $key, $default = null)
     {
@@ -34,9 +34,9 @@ class RealLens implements Lensable
     /**
      * Set an array item to a given value using "dot" notation.
      *
-     * @param array $array The array to modify (passed by reference)
-     * @param string $key The key to set (can use dot notation for nested arrays)
-     * @param mixed $value The value to set
+     * @param array $array
+     * @param string $key
+     * @param mixed $value
      */
     public function put(array &$array, string $key, $value)
     {
@@ -56,9 +56,9 @@ class RealLens implements Lensable
     /**
      * Check if one or more items exist in an array using "dot" notation.
      *
-     * @param array $array The array to check
-     * @param string|array $keys The key(s) to check for existence
-     * @return bool True if all keys exist, false otherwise
+     * @param array $array
+     * @param string|array $keys
+     * @return bool
      */
     public function got(array $array, string|array $keys): bool
     {
@@ -78,9 +78,9 @@ class RealLens implements Lensable
     /**
      * Check if at least one of the given items exists in an array using "dot" notation.
      *
-     * @param array $array The array to check
-     * @param string|array $keys The key(s) to check for existence
-     * @return bool True if at least one key exists, false otherwise
+     * @param array $array
+     * @param string|array $keys
+     * @return bool
      */
     public function some(array $array, string|array $keys): bool
     {
@@ -94,8 +94,8 @@ class RealLens implements Lensable
     /**
      * Remove one or more array items from a given array using "dot" notation.
      *
-     * @param array $array The array to modify (passed by reference)
-     * @param string|array $keys The key(s) to remove
+     * @param array $array
+     * @param string|array $keys
      */
     public function zap(array &$array, string|array $keys)
     {
@@ -118,10 +118,10 @@ class RealLens implements Lensable
     /**
      * Pluck an array of values from an array of arrays or objects.
      *
-     * @param array $array The array to pluck from
-     * @param string $value The value to pluck (can use dot notation)
-     * @param string|null $key Optional key to use as array keys in result
-     * @return array The plucked values
+     * @param array $array
+     * @param string $value
+     * @param string|null $key
+     * @return array
      */
     public function pick(array $array, string $value, ?string $key = null): array
     {
@@ -143,9 +143,9 @@ class RealLens implements Lensable
     /**
      * Flatten a multi-dimensional array into a single level.
      *
-     * @param array $array The array to flatten
-     * @param int $depth Maximum depth to flatten (PHP_INT_MAX for unlimited)
-     * @return array The flattened array
+     * @param array $array
+     * @param int $depth
+     * @return array
      */
     public function flat(array $array, int $depth = \PHP_INT_MAX): array
     {
@@ -171,10 +171,10 @@ class RealLens implements Lensable
     /**
      * Get the first element of an array, optionally filtered by a callback.
      *
-     * @param array $array The array to search
-     * @param callable|null $callback Optional filter callback
-     * @param mixed $default Default value if no element found
-     * @return mixed The first element or default
+     * @param array $array
+     * @param callable|null $callback
+     * @param mixed $default
+     * @return mixed
      */
     public function head(array $array, ?callable $callback = null, $default = null)
     {
@@ -192,10 +192,10 @@ class RealLens implements Lensable
     /**
      * Get the last element of an array, optionally filtered by a callback.
      *
-     * @param array $array The array to search
-     * @param callable|null $callback Optional filter callback
-     * @param mixed $default Default value if no element found
-     * @return mixed The last element or default
+     * @param array $array
+     * @param callable|null $callback
+     * @param mixed $default
+     * @return mixed
      */
     public function tail(array $array, ?callable $callback = null, $default = null)
     {
@@ -213,8 +213,8 @@ class RealLens implements Lensable
     /**
      * Flatten a multi-dimensional array into a single level (shallow flatten).
      *
-     * @param array $array The array to flatten
-     * @return array The flattened array
+     * @param array $array
+     * @return array
      */
     public function squash(array $array): array
     {
@@ -234,9 +234,9 @@ class RealLens implements Lensable
     /**
      * Return only the specified keys from the array.
      *
-     * @param array $array The source array
-     * @param array $keys The keys to keep
-     * @return array The filtered array
+     * @param array $array
+     * @param array $keys
+     * @return array
      */
     public function keep(array $array, array $keys): array
     {
@@ -254,9 +254,9 @@ class RealLens implements Lensable
     /**
      * Remove the specified keys from the array.
      *
-     * @param array $array The source array
-     * @param array $keys The keys to remove
-     * @return array The filtered array
+     * @param array $array
+     * @param array $keys
+     * @return array
      */
     public function drop(array $array, array $keys): array
     {
@@ -270,8 +270,8 @@ class RealLens implements Lensable
     /**
      * Determine if the array is associative (non-sequential).
      *
-     * @param array $array The array to check
-     * @return bool True if associative, false if sequential
+     * @param array $array
+     * @return bool
      */
     public function assoc(array $array): bool
     {
@@ -283,9 +283,9 @@ class RealLens implements Lensable
     /**
      * Filter the array using the given callback.
      *
-     * @param array $array The array to filter
-     * @param callable $callback The filter callback
-     * @return array The filtered array
+     * @param array $array
+     * @param callable $callback
+     * @return array
      */
     public function whr(array $array, callable $callback): array
     {
@@ -303,8 +303,8 @@ class RealLens implements Lensable
     /**
      * If the given value is not an array, wrap it in one.
      *
-     * @param mixed $value The value to wrap
-     * @return array The wrapped value
+     * @param mixed $value
+     * @return array
      */
     public function wrap($value): array
     {
@@ -316,9 +316,9 @@ class RealLens implements Lensable
     /**
      * Flatten a multi-dimensional associative array with dots.
      *
-     * @param array $array The array to flatten
-     * @param string $prepend String to prepend to flattened keys
-     * @return array The flattened array
+     * @param array $array
+     * @param string $prepend
+     * @return array
      */
     public function dot(array $array, string $prepend = ''): array
     {
@@ -340,8 +340,8 @@ class RealLens implements Lensable
     /**
      * Convert a flattened "dot" notation array into an expanded array.
      *
-     * @param array $array The array to expand
-     * @return array The expanded array
+     * @param array $array
+     * @return array
      */
     public function undot(array $array): array
     {
@@ -357,8 +357,8 @@ class RealLens implements Lensable
     /**
      * Randomly shuffle the values of the given array.
      *
-     * @param array $array The array to shuffle
-     * @return array The shuffled array
+     * @param array $array
+     * @return array
      */
     public function rand(array $array): array
     {

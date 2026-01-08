@@ -15,7 +15,7 @@ class SmtpMailDriver implements MailDriverInterface
     private $config;
 
     /**
-     * @param array $config Configuration array containing SMTP server details.
+     * @param array $config
      */
     public function __construct(array $config)
     {
@@ -25,9 +25,9 @@ class SmtpMailDriver implements MailDriverInterface
     /**
      * Sends an email using the SMTP protocol.
      *
-     * @param Mailable $message The Mailable object containing email details.
-     * @return bool Returns true if the email is sent successfully, false otherwise.
-     * @throws \Exception Throws an exception if the email could not be sent.
+     * @param Mailable $message
+     * @return bool
+     * @throws \Exception
      */
     public function send(Mailable $message)
     {

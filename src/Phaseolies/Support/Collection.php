@@ -36,8 +36,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Access collection data properties directly.
      *
-     * @param string $name The property name to access
-     * @return mixed|null The value if exists, null otherwise
+     * @param string $name
+     * @return mixed|null
      */
     public function __get($name)
     {
@@ -93,8 +93,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Check if a property exists in the collection data
      *
-     * @param string $name The property name to check
-     * @return bool True if property exists, false otherwise
+     * @param string $name
+     * @return bool
      */
     public function __isset($name)
     {
@@ -265,7 +265,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Flatten a multi-dimensional collection into a single level.
      *
-     * @param int $depth The maximum depth to flatten (default: infinite)
+     * @param int $depth
      * @return static
      */
     public function flatten(int $depth = PHP_INT_MAX): self
@@ -322,8 +322,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Return a new collection with unique items.
      *
-     * @param string|null $key Optional key to use for determining uniqueness
-     * @param bool $strict Whether to use strict comparison (===)
+     * @param string|null $key
+     * @param bool $strict
      * @return static
      */
     public function unique(?string $key = null, bool $strict = false): self
@@ -350,8 +350,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Pluck an array of values from a given key.
      *
-     * @param string $value The key to pluck values from
-     * @param string|null $key Optional key to use as array keys in the result
+     * @param string $value
+     * @param string|null $key
      * @return static
      */
     public function pluck(string $value, ?string $key = null): self
@@ -400,7 +400,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Output or return memory usage stats related to the current collection.
      *
-     * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
+     * @param bool $asString
      * @return string|array
      */
     public function withMemoryUsage(bool $asString = true): string|array
@@ -429,8 +429,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Map the collection and group the results by the given key.
      *
-     * @param callable|string $groupBy Key to group by or callback that returns the group key
-     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @param callable|string $groupBy
+     * @param callable|null $mapCallback
      * @return array
      */
     public function mapAsGroup($groupBy, ?callable $mapCallback = null): array
@@ -456,8 +456,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Map the collection and use the given key as array keys.
      *
-     * @param callable|string $keyBy Key to use as array key or callback that returns the key
-     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @param callable|string $keyBy
+     * @param callable|null $mapCallback
      * @return array
      */
     public function mapAsKey($keyBy, ?callable $mapCallback = null): array
@@ -572,7 +572,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Convert the collection to JSON.
      *
-     * @param int $options JSON encoding options
+     * @param int $options
      * @return string
      */
     public function toJson(int $options = 0): string
