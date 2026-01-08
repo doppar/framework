@@ -620,6 +620,7 @@ class Controller extends View
         }
 
         $last = end($this->loopStacks);
+
         return $last ? (object) $last : null;
     }
 

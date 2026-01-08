@@ -24,9 +24,9 @@ class SchedulePool
     /**
      * Call a command through the pool
      *
-     * @param string $command The command to execute
-     * @param bool $background Run in background (recommended for web)
-     * @return array Process information
+     * @param string $command
+     * @param bool $background
+     * @return array
      */
     public static function call(string $command, bool $background = false): array
     {

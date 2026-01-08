@@ -33,8 +33,8 @@ trait RequestHelper
     /**
      * Retrieves all input data except for the specified keys.
      *
-     * @param array|string $keys The keys to exclude.
-     * @return array<string, mixed> The filtered input data.
+     * @param array|string $keys
+     * @return array<string, mixed>
      */
     public function except(array|string ...$keys): array
     {
@@ -48,8 +48,8 @@ trait RequestHelper
     /**
      * Retrieves only the specified keys from the input data.
      *
-     * @param array|string $keys The keys to include.
-     * @return array<string, mixed> The filtered input data.
+     * @param array|string $keys
+     * @return array<string, mixed>
      */
     public function only(array|string ...$keys): array
     {
@@ -63,8 +63,8 @@ trait RequestHelper
     /**
      * Retrieves the validation passed data, excluding specified fields.
      *
-     * @param array<string> $excludeKeys The keys to exclude (e.g., ['csrf_token', 'other_field']).
-     * @return array<string, mixed> The validation passed data without the excluded fields.
+     * @param array<string> $excludeKeys
+     * @return array<string, mixed>
      */
     public function passed(array $excludeKeys = ['csrf_token']): array
     {
@@ -76,7 +76,7 @@ trait RequestHelper
     /**
      * Retrieves the validation errors, excluding the `csrf_token` field.
      *
-     * @return array<string, mixed> The validation errors without `csrf_token`.
+     * @return array<string, mixed>
      */
     public function failed(array $excludeKeys = ['csrf_token']): array
     {
@@ -86,8 +86,8 @@ trait RequestHelper
     /**
      * Sets the validation passed data.
      *
-     * @param array<string, mixed> $data The validation passed data.
-     * @return self The current instance.
+     * @param array<string, mixed> $data
+     * @return self
      */
     public function setPassedData(array $data): self
     {
@@ -99,8 +99,8 @@ trait RequestHelper
     /**
      * Sets the validation errors.
      *
-     * @param array<string, mixed> $errors The validation errors.
-     * @return self The current instance.
+     * @param array<string, mixed> $errors
+     * @return self
      */
     public function setErrors(array $errors): self
     {
@@ -112,7 +112,7 @@ trait RequestHelper
     /**
      * Checks if the input data is empty.
      *
-     * @return bool True if the input data is empty, false otherwise.
+     * @return bool
      */
     public function isEmpty(): bool
     {
@@ -122,9 +122,9 @@ trait RequestHelper
     /**
      * Retrieves a specific input parameter or all input data.
      *
-     * @param string|null $key The parameter to retrieve (null returns all input)
-     * @param mixed $default Default value if parameter doesn't exist
-     * @return mixed The input value, default value, or all input
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
      */
     public function input(?string $key = null, $default = null): mixed
     {
@@ -138,8 +138,8 @@ trait RequestHelper
     /**
      * Checks if a specific parameter exists in the input data.
      *
-     * @param string $param The parameter to check.
-     * @return bool True if the parameter exists, false otherwise.
+     * @param string $param
+     * @return bool
      */
     public function has(string $param): bool
     {
@@ -153,7 +153,7 @@ trait RequestHelper
     /**
      * Get the authenticated user.
      *
-     * @return \App\Models\User|null The authenticated user instance or null if no user is authenticated.
+     * @return \App\Models\User|null
      */
     public function auth(): ?User
     {
@@ -173,7 +173,7 @@ trait RequestHelper
     /**
      * Determine if any of the specified keys are present in the request
      *
-     * @param string $keys Keys to check
+     * @param string $keys
      * @return bool
      */
     public function hasAny(string ...$keys): bool
@@ -190,7 +190,7 @@ trait RequestHelper
     /**
      * Merge default values for missing keys
      *
-     * @param array $defaults Key-value pairs to merge
+     * @param array $defaults
      * @return static
      */
     public function mergeIfMissing(array $defaults): static
@@ -222,9 +222,9 @@ trait RequestHelper
     /**
      * Convert empty inputs to null with customizable rules
      *
-     * @param bool $includeStrings Convert empty strings
-     * @param bool $includeArrays Convert empty arrays 
-     * @param bool $includeWhitespace Convert whitespace-only strings
+     * @param bool $includeStrings
+     * @param bool $includeArrays
+     * @param bool $includeWhitespace
      * @return static
      */
     public function nullifyBlanks(

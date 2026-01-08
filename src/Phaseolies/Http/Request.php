@@ -155,6 +155,8 @@ class Request
 
     /**
      * Initializes headers from the $_SERVER superglobal.
+     *
+     * @return void
      */
     protected function initializeHeaders(): void
     {
@@ -169,8 +171,8 @@ class Request
     /**
      * Magic method to allow dynamic access to input or file data.
      *
-     * @param string $name The name of the input or file.
-     * @return mixed The input value or File object, or null if not found.
+     * @param string $name
+     * @return mixed
      */
     public function __get(string $name): mixed
     {
@@ -180,7 +182,7 @@ class Request
     /**
      * Creates request data from PHP superglobals.
      *
-     * @return array The request data.
+     * @return array
      */
     public function createFromGlobals(): array
     {

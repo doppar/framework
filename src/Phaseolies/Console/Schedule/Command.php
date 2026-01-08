@@ -222,7 +222,7 @@ abstract class Command extends SymfonyCommand
     /**
      * Write a blank line to the output.
      *
-     * @param int $count Number of newlines to write
+     * @param int $count
      * @return void
      */
     protected function newLine($count = 1): void
