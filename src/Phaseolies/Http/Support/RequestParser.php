@@ -9,7 +9,7 @@ trait RequestParser
     /**
      * Retrieves the client's IP address.
      *
-     * @return string|null The IP address or null if not available.
+     * @return string|null
      */
     public function ip(): ?string
     {
@@ -90,7 +90,7 @@ trait RequestParser
     /**
      * Retrieves the full request URI.
      *
-     * @return string The full URI.
+     * @return string
      */
     public function uri(): string
     {
@@ -100,7 +100,7 @@ trait RequestParser
     /**
      * Retrieves the server data.
      *
-     * @return array The server data.
+     * @return array
      */
     public function server(): array
     {
@@ -110,7 +110,7 @@ trait RequestParser
     /**
      * Retrieves the request headers.
      *
-     * @return array<string, string> The request headers.
+     * @return array<string, string>
      */
     public function headers(): array
     {
@@ -120,8 +120,8 @@ trait RequestParser
     /**
      * Retrieves a specific request header.
      *
-     * @param string $name The header name.
-     * @return string|null The header value or null if not found.
+     * @param string $name
+     * @return string|null.
      */
     public function header(string $name): ?string
     {
@@ -131,7 +131,7 @@ trait RequestParser
     /**
      * Retrieves the request scheme (http or https).
      *
-     * @return string The request scheme.
+     * @return string
      */
     public function scheme(): string
     {
@@ -141,7 +141,7 @@ trait RequestParser
     /**
      * Retrieves the request URL (scheme + host + URI).
      *
-     * @return string The full request URL.
+     * @return string
      */
     public function url(): string
     {
@@ -151,9 +151,9 @@ trait RequestParser
     /**
      * Retrieves the request query parameter value by key.
      *
-     * @param string|null $key The key to retrieve the query parameter value.
-     * @param mixed $default The default value to return if the key is not found.
-     * @return mixed The value of the query parameter, or the default value if not found.
+     * @param string|null $key
+     * @param mixed $default
+     * @return mixed
      */
     public function query(?string $key = null, $default = null): mixed
     {
@@ -174,7 +174,7 @@ trait RequestParser
     /**
      * Retrieves the full request URL including query string.
      *
-     * @return string The full URL with query string
+     * @return string
      */
     public function fullUrl(): string
     {
@@ -186,7 +186,7 @@ trait RequestParser
     /**
      * Retrieves the raw body content of the request.
      *
-     * @return string|resource|false|null The raw body content.
+     * @return string|resource|false|null
      */
     public function content()
     {
@@ -196,7 +196,7 @@ trait RequestParser
     /**
      * Retrieves the HTTP method used for the request.
      *
-     * @return string The HTTP method in lowercase.
+     * @return string
      */
     public function method(): string
     {
@@ -206,7 +206,7 @@ trait RequestParser
     /**
      * Retrieves the request cookies.
      *
-     * @return array|null The cookies.
+     * @return array|null
      */
     public function cookie(): ?array
     {
@@ -216,7 +216,7 @@ trait RequestParser
     /**
      * Retrieves the request user agent.
      *
-     * @return string|null The user agent or null if not available.
+     * @return string|null
      */
     public function userAgent(): ?string
     {
@@ -226,7 +226,7 @@ trait RequestParser
     /**
      * Retrieves the request referer.
      *
-     * @return string|null The referer or null if not available.
+     * @return string|null
      */
     public function referer(): ?string
     {
@@ -278,7 +278,7 @@ trait RequestParser
     /**
      * Retrieves the request content type.
      *
-     * @return string|null The content type or null if not available.
+     * @return string|null
      */
     public function contentType(): ?string
     {
@@ -288,7 +288,7 @@ trait RequestParser
     /**
      * Retrieves the request content length.
      *
-     * @return int|null The content length or null if not available.
+     * @return int|null
      */
     public function contentLength(): ?int
     {
@@ -300,8 +300,8 @@ trait RequestParser
     /**
      * Checks if the current request path matches a given pattern.
      *
-     * @param string $pattern The pattern to match against (e.g., 'api/*', 'admin/*')
-     * @return bool True if the path matches the pattern, false otherwise
+     * @param string $pattern
+     * @return bool
      */
     public static function is(string $pattern): bool
     {
@@ -314,6 +314,7 @@ trait RequestParser
 
     /**
      * Checking a Request is API Request or not
+     *
      * @return bool
      */
     public function isApiRequest(): bool

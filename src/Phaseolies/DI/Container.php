@@ -49,21 +49,46 @@ class Container implements ArrayAccess
      */
     public function __wakeup() {}
 
+    /**
+     * Check if a binding exists at the specified offset.
+     *
+     * @param mixed $offset
+     * @return bool
+     */
     public function offsetExists($offset): bool
     {
         return $this->has($offset);
     }
 
+    /**
+     * Get the binding value at the specified offset.
+     *
+     * @param mixed $offset
+     * @return mixed
+     */
     public function offsetGet($offset): mixed
     {
         return $this->get($offset);
     }
 
+    /**
+     * Set a binding at the specified offset.
+     *
+     * @param mixed $offset
+     * @param mixed $value
+     * @return void
+     */
     public function offsetSet($offset, $value): void
     {
         $this->bind($offset, $value);
     }
 
+    /**
+     * Unset/remove a binding at the specified offset.
+     *
+     * @param mixed $offset
+     * @return void
+     */
     public function offsetUnset($offset): void
     {
         unset(self::$bindings[$offset], self::$instances[$offset]);
@@ -72,9 +97,9 @@ class Container implements ArrayAccess
     /**
      * Bind a service to the container.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param callable|string|null $concrete The concrete implementation or class name.
-     * @param bool $singleton Whether the binding should be a singleton.
+     * @param string $abstract
+     * @param callable|string|null $concrete
+     * @param bool $singleton
      * @return void
      */
     public function bind(string $abstract, callable|string|null $concrete = null, bool $singleton = false): void
@@ -96,8 +121,8 @@ class Container implements ArrayAccess
     /**
      * Bind a singleton service to the container.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param callable|string|null $concrete The concrete implementation or class name.
+     * @param string $abstract
+     * @param callable|string|null $concrete
      * @return void
      */
     public function singleton(string $abstract, callable|string|null $concrete = null): void
@@ -108,8 +133,8 @@ class Container implements ArrayAccess
     /**
      * Bind an instance as a singleton.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param mixed $instance The instance to bind.
+     * @param string $abstract
+     * @param mixed $instance
      * @return void
      */
     public function instance(string $abstract, mixed $instance): void
@@ -126,8 +151,8 @@ class Container implements ArrayAccess
      * Resolve a service from the container.
      *
      * @template T of object
-     * @param class-string<T> $abstract The service name or class name
-     * @param array $parameters Additional parameters for the constructor
+     * @param class-string<T> $abstract
+     * @param array $parameters
      * @return T
      * @throws RuntimeException
      */
@@ -199,8 +224,8 @@ class Container implements ArrayAccess
      * Resolve a class with its dependencies (alias for get)
      *
      * @template T of object
-     * @param class-string<T> $abstract The class or interface name
-     * @param array $parameters Constructor parameters
+     * @param class-string<T> $abstract
+     * @param array $parameters
      * @return T
      */
     public function make(string $abstract, array $parameters = []): mixed
@@ -212,8 +237,8 @@ class Container implements ArrayAccess
      * Build a concrete instance with dependency injection
      *
      * @template T of object
-     * @param class-string<T> $concrete The class name
-     * @param array $parameters Constructor parameters
+     * @param class-string<T> $concrete
+     * @param array $parameters
      * @return T
      * @throws RuntimeException
      */
@@ -318,8 +343,8 @@ class Container implements ArrayAccess
     /**
      * Conditionally execute bindings.
      *
-     * @param callable|bool $condition A boolean or a function returning a boolean.
-     * @return self|null Returns self if condition is true, otherwise null.
+     * @param callable|bool $condition
+     * @return self|null
      */
     public function when(callable|bool $condition): ?self
     {
@@ -333,7 +358,7 @@ class Container implements ArrayAccess
     /**
      * Check if the container has a binding for the given service.
      *
-     * @param string $key The service name or class name.
+     * @param string $key
      * @return bool
      */
     public function has(string $key): bool
