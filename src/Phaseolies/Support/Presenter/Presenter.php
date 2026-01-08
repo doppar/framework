@@ -40,7 +40,7 @@ abstract class Presenter implements JsonSerializable
     /**
      * Initialize with the object or data to present
      *
-     * @param mixed $presenter The raw data source (model, array, etc.)
+     * @param mixed $presenter
      */
     public function __construct(mixed $presenter)
     {

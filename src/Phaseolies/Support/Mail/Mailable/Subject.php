@@ -14,7 +14,7 @@ class Subject
     /**
      * Constructor for the Subject class.
      *
-     * @param string $subject The subject of the email.
+     * @param string $subject
      */
     public function __construct(string $subject)
     {

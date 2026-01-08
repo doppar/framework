@@ -7,8 +7,8 @@ trait OdoCondition
     /**
      * Usage: #if ($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileIf($condition): string
     {
@@ -18,8 +18,8 @@ trait OdoCondition
     /**
      * Usage: #elseif (condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileElseif($condition): string
     {
@@ -29,7 +29,7 @@ trait OdoCondition
     /**
      * Usage: #else.
      *
-     * #return string
+     * @return string
      */
     protected function compileElse(): string
     {
@@ -39,7 +39,7 @@ trait OdoCondition
     /**
      * Usage: #endif.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndif(): string
     {
@@ -49,8 +49,8 @@ trait OdoCondition
     /**
      * Usage: #unless($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileUnless($condition): string
     {
@@ -60,7 +60,7 @@ trait OdoCondition
     /**
      * Usage: #endunless.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndunless(): string
     {
@@ -70,8 +70,8 @@ trait OdoCondition
     /**
      * Usage: #isset($variable).
      *
-     * #param mixed $variable
-     * #return string
+     * @param mixed $variable
+     * @return string
      */
     protected function compileIsset($variable): string
     {
@@ -81,7 +81,7 @@ trait OdoCondition
     /**
      * Usage: #endisset.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndisset(): string
     {
@@ -91,8 +91,8 @@ trait OdoCondition
     /**
      * Usage: #switch ($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileSwitch($condition): string
     {
@@ -103,8 +103,8 @@ trait OdoCondition
     /**
      * Usage: #case ($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileCase($condition): string
     {
@@ -119,7 +119,7 @@ trait OdoCondition
     /**
      * Usage: #default.
      *
-     * #return string
+     * @return string
      */
     protected function compileDefault(): string
     {
@@ -129,8 +129,8 @@ trait OdoCondition
     /**
      * Usage: #break or #break($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileBreak($condition): string
     {
@@ -147,7 +147,7 @@ trait OdoCondition
     /**
      * Usage: #endswitch.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndswitch(): string
     {
@@ -157,8 +157,8 @@ trait OdoCondition
     /**
      * Usage: #continue or #continue($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileContinue($condition): string
     {
@@ -175,8 +175,8 @@ trait OdoCondition
     /**
      * Usage: #exit or #exit($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileExit($condition): string
     {
@@ -192,8 +192,8 @@ trait OdoCondition
     /**
      * Usage: #php($varName = 'value').
      *
-     * #param string $value
-     * #return string
+     * @param string $value
+     * @return string
      */
     protected function compilePhp($value): string
     {
@@ -203,8 +203,8 @@ trait OdoCondition
     /**
      * Usage: #json($data).
      *
-     * #param mixed $data
-     * #return string
+     * @param mixed $data
+     * @return string
      */
     protected function compileJson($data): string
     {
@@ -224,8 +224,8 @@ trait OdoCondition
     /**
      * Usage: #unset($var).
      *
-     * #param mixed $variable
-     * #return string
+     * @param mixed $variable
+     * @return string
      */
     protected function compileUnset($variable): string
     {
@@ -235,8 +235,8 @@ trait OdoCondition
     /**
      * Usage: #for ($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileFor($condition): string
     {
@@ -246,7 +246,7 @@ trait OdoCondition
     /**
      * Usage: #endfor.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndfor(): string
     {
@@ -256,8 +256,8 @@ trait OdoCondition
     /**
      * Usage: #foreach ($expression).
      *
-     * #param mixed $expression
-     * #return string
+     * @param mixed $expression
+     * @return string
      */
     protected function compileForeach($expression): string
     {
@@ -274,7 +274,7 @@ trait OdoCondition
     /**
      * Usage: #endforeach.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndforeach(): string
     {
@@ -284,8 +284,8 @@ trait OdoCondition
     /**
      * Usage: #forelse ($condition).
      *
-     * #param mixed $expression
-     * #return string
+     * @param mixed $expression
+     * @return string
      */
     protected function compileForelse($expression): string
     {
@@ -306,7 +306,7 @@ trait OdoCondition
     /**
      * Usage: #empty.
      *
-     * #return string
+     * @return string
      */
     protected function compileEmpty(): string
     {
@@ -319,7 +319,7 @@ trait OdoCondition
     /**
      * Usage: #endforelse.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndforelse(): string
     {
@@ -329,8 +329,8 @@ trait OdoCondition
     /**
      * Usage: #while ($condition).
      *
-     * #param mixed $condition
-     * #return string
+     * @param mixed $condition
+     * @return string
      */
     protected function compileWhile($condition): string
     {
@@ -340,7 +340,7 @@ trait OdoCondition
     /**
      * Usage: #endwhile.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndwhile(): string
     {
@@ -350,8 +350,8 @@ trait OdoCondition
     /**
      * Usage: #extends($parent).
      *
-     * #param string $parent
-     * #return string
+     * @param string $parent
+     * @return string
      */
     protected function compileExtends($parent): string
     {
@@ -365,8 +365,8 @@ trait OdoCondition
     /**
      * Usage: #include($view).
      *
-     * #param string $expression
-     * #return string
+     * @param string $expression
+     * @return string
      */
     protected function compileInclude($expression): string
     {
@@ -385,8 +385,8 @@ trait OdoCondition
     /**
      * Usage: #yield($string).
      *
-     * #param string $string
-     * #return string
+     * @param string $string
+     * @return string
      */
     protected function compileYield($string): string
     {
@@ -397,7 +397,7 @@ trait OdoCondition
      * Usage: #section($name).
      *
      * #param string $name
-     * #return string
+     * @return string
      */
     protected function compileSection($name): string
     {
@@ -407,7 +407,7 @@ trait OdoCondition
     /**
      * Usage: #endsection.
      *
-     * #return string
+     * @return string
      */
     protected function compileEndsection(): string
     {
@@ -417,7 +417,7 @@ trait OdoCondition
     /**
      * Usage: #show.
      *
-     * #return string
+     * @return string
      */
     protected function compileShow(): string
     {
@@ -427,7 +427,7 @@ trait OdoCondition
     /**
      * Usage: #append.
      *
-     * #return string
+     * @return string
      */
     protected function compileAppend(): string
     {
@@ -437,7 +437,7 @@ trait OdoCondition
     /**
      * Usage: #stop.
      *
-     * #return string
+     * @return string
      */
     protected function compileStop(): string
     {
@@ -447,7 +447,7 @@ trait OdoCondition
     /**
      * Usage: #overwrite.
      *
-     * #return string
+     * @return string
      */
     protected function compileOverwrite(): string
     {
@@ -457,8 +457,8 @@ trait OdoCondition
     /**
      * Usage: #method('put').
      *
-     * #param string $method
-     * #return string
+     * @param string $method
+     * @return string
      */
     protected function compileMethod($method): string
     {
@@ -470,7 +470,7 @@ trait OdoCondition
      *
      * Generate random string to protect spammy form submit
      *
-     * #return string
+     * @return string
      */
     protected function compileCsrf(): string
     {
@@ -481,8 +481,8 @@ trait OdoCondition
     /**
      * Usage: #scope('ability-name'[, $args])
      *
-     * #param string $expression
-     * #return string
+     * @param string $expression
+     * @return string
      */
     protected function compileScope($expression): string
     {
@@ -492,8 +492,8 @@ trait OdoCondition
     /**
      * Usage: #elsescope('ability-name'[, $args])
      *
-     * #param string $expression
-     * #return string
+     * @param string $expression
+     * @return string
      */
     protected function compileElsescope($expression): string
     {
@@ -503,7 +503,7 @@ trait OdoCondition
     /**
      * Usage: #endscope
      *
-     * #return string
+     * @return string
      */
     protected function compileEndscope(): string
     {
@@ -513,8 +513,8 @@ trait OdoCondition
     /**
      * Usage: #scopenot('ability-name'[, $args])
      *
-     * #param string $expression
-     * #return string
+     * @param string $expression
+     * @return string
      */
     protected function compileScopenot($expression): string
     {
@@ -524,8 +524,8 @@ trait OdoCondition
     /**
      * Usage: #elsescopenot('ability-name'[, $args])
      *
-     * #param string $expression
-     * #return string
+     * @param string $expression
+     * @return string
      */
     protected function compileElsescopenot($expression): string
     {
@@ -535,7 +535,7 @@ trait OdoCondition
     /**
      * Usage: #endscopenot
      *
-     * #return string
+     * @return string
      */
     protected function compileEndscopenot(): string
     {

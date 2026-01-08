@@ -39,8 +39,8 @@ class Sanitizer
     /**
      * Create a new Sanitizer instance.
      *
-     * @param array $data The input data to validate.
-     * @param array $rules The validation rules.
+     * @param array $data
+     * @param array $rules
      */
     public function __construct(array $data, array $rules)
     {
@@ -51,8 +51,8 @@ class Sanitizer
     /**
      * Create a new Validator instance statically.
      *
-     * @param array $data The input data to validate.
-     * @param array $rules The validation rules.
+     * @param array $data
+     * @param array $rules
      * @return self
      */
     public function request(array $data, array $rules): self

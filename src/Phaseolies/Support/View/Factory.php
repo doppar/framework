@@ -14,8 +14,8 @@ class Factory
     /**
      * Register a namespace with its corresponding paths.
      *
-     * @param string $namespace The name of the namespace.
-     * @param string|array $paths One or more paths to associate with the namespace.
+     * @param string $namespace
+     * @param string|array $paths
      * @return void
      */
     public function addNamespace(string $namespace, $paths): void
@@ -26,8 +26,8 @@ class Factory
     /**
      * Retrieve the paths associated with a given namespace.
      *
-     * @param string $namespace The namespace to look up.
-     * @return array The array of paths associated with the namespace, or an empty array if none are found.
+     * @param string $namespace
+     * @return array
      */
     public function getNamespacePaths(string $namespace): array
     {
@@ -37,8 +37,8 @@ class Factory
     /**
      * Determine whether a namespace has been registered.
      *
-     * @param string $namespace The namespace to check.
-     * @return bool True if the namespace exists, false otherwise.
+     * @param string $namespace.
+     * @return bool
      */
     public function hasNamespace(string $namespace): bool
     {
