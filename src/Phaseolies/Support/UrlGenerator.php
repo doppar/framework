@@ -51,8 +51,8 @@ class UrlGenerator
     /**
      * Create a new UrlGenerator instance.
      *
-     * @param string|null $baseUrl The base URL for generating URLs
-     * @param bool|null $secure Whether to use HTTPS by default
+     * @param string|null $baseUrl
+     * @param bool|null $secure
      */
     public function __construct(?string $baseUrl = null, ?bool $secure = null)
     {
@@ -93,8 +93,8 @@ class UrlGenerator
     /**
      * Generate a full URL for the given path.
      *
-     * @param string $path The path to append
-     * @param bool|null $secure Whether to force HTTPS
+     * @param string $path
+     * @param bool|null $secure
      * @return string
      */
     public function enqueue(string $path = '/', ?bool $secure = null): string
@@ -126,8 +126,8 @@ class UrlGenerator
      * Generate a URL for a named route.
      *
      * @param string $name The route name
-     * @param array|string|int $parameters Route parameters
-     * @param bool|null $secure Whether to force HTTPS
+     * @param array|string|int $parameters
+     * @param bool|null $secure
      * @return string
      */
     public function route(string $name, array|string|int $parameters = [], ?bool $secure = null): string

@@ -8,13 +8,6 @@ use Phaseolies\Support\Contracts\Lensable;
 /**
  * Static proxy class for array manipulation operations.
  *
- * Provides a fluent, static interface to the RealLens implementation while handling
- * reference parameters properly. This class serves as a facade that:
- *
- * 1. Manages a singleton instance of RealLens
- * 2. Proxies method calls to the implementation
- * 3. Special-cases reference-based methods (put/zap)
- *
  * @method mixed grab(array $array, string|int|null $key, mixed $default = null) Get array value using dot notation
  * @method array put(array &$array, string $key, mixed $value) Set array value using dot notation (modifies by reference)
  * @method bool got(array $array, string|array $keys) Check if key(s) exist in array
@@ -62,12 +55,8 @@ class Lens
     /**
      * Handle static method calls
      *
-     * Proxies calls to the implementation instance with special handling for:
-     * - put(): Modifies array by reference
-     * - zap(): Modifies array by reference
-     *
-     * @param string $method Method name
-     * @param array $args Method arguments
+     * @param string $method
+     * @param array $args
      * @return mixed
      */
     public static function __callStatic($method, $args)

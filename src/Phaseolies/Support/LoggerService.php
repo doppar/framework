@@ -22,8 +22,8 @@ class LoggerService extends LogService
     /**
      * Sets the logging channel.
      *
-     * @param string $channel The channel name (e.g., 'stack', 'daily', etc.).
-     * @return self Returns the current instance for method chaining.
+     * @param string $channel
+     * @return self
      */
     public function channel(string $channel): self
     {
@@ -43,8 +43,8 @@ class LoggerService extends LogService
     /**
      * Logs an informational message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function info(mixed $message, array $context = []): void
@@ -57,8 +57,8 @@ class LoggerService extends LogService
     /**
      * Logs a notice message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function notice(mixed $message, array $context = []): void
@@ -71,8 +71,8 @@ class LoggerService extends LogService
     /**
      * Logs a warning message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function warning(mixed $message, array $context = []): void
@@ -85,8 +85,8 @@ class LoggerService extends LogService
     /**
      * Logs an error message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function error(mixed $message, array $context = []): void
@@ -99,8 +99,8 @@ class LoggerService extends LogService
     /**
      * Logs a debug message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function debug(mixed $message, array $context = []): void
@@ -113,8 +113,8 @@ class LoggerService extends LogService
     /**
      * Logs a critical message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function critical(mixed $message, array $context = []): void
@@ -127,8 +127,8 @@ class LoggerService extends LogService
     /**
      * Logs an alert message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function alert(mixed $message, array $context = []): void
@@ -141,8 +141,8 @@ class LoggerService extends LogService
     /**
      * Logs an emergency message.
      *
-     * @param mixed $message The message to log.
-     * @param array $context Additional context data.
+     * @param mixed $message
+     * @param array $context
      * @return void
      */
     public function emergency(mixed $message, array $context = []): void
@@ -155,7 +155,7 @@ class LoggerService extends LogService
     /**
      * Overrides reader to pass the dynamic channel.
      *
-     * @return Logger The configured Monolog logger instance.
+     * @return Logger
      */
     protected function reader(): Logger
     {

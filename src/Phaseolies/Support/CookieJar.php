@@ -175,7 +175,7 @@ class CookieJar
     /**
      * Get all cookies that were sent with the current request
      *
-     * @param bool $decodeValues Whether to URL-decode cookie values (default: true)
+     * @param bool $decodeValues
      * @return array
      */
     public function all(bool $decodeValues = true): array
