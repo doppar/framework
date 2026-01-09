@@ -15,6 +15,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 use PDO;
+use Tests\Support\Model\MockProduct;
 
 class EntityModelQueryTest extends TestCase
 {
@@ -97,7 +98,20 @@ class EntityModelQueryTest extends TestCase
             )
         ");
 
+        $this->pdo->exec("
+            CREATE TABLE product (
+                price INTEGER
+            )
+        ");
+
         // Insert test data
+        $this->pdo->exec("
+            INSERT INTO product (price) VALUES
+            (875),
+            (435),
+            (999)
+        ");
+
         $this->pdo->exec("
             INSERT INTO users (name, email, age, status, created_at) VALUES
             ('John Doe', 'john@example.com', 30, 'active', '2024-01-01 10:00:00'),
@@ -2604,5 +2618,47 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals([4], array_keys($changes['attached']));
         $this->assertEquals([2], array_keys($changes['detached']));
         $this->assertEquals([], $changes['updated']);
+    }
+
+    public function testRepairMethodFetchingRecords()
+    {
+        $products = MockProduct::repair(function ($product) {
+            $product->price = preg_replace('/[^0-9]/', '', $product->price);
+        }, false);
+
+        $this->assertEquals(3, count($products));
+    }
+
+    public function testRepairPreviewsPriceCleanupWithoutPersistingChanges()
+    {
+        $products = MockProduct::repair(function ($product) {
+            $product->price = preg_replace('/[^0-5]/', '', $product->price);
+        }, false);
+
+        foreach ($products[0] as $product) {
+            $this->assertTrue(str_contains($product->price, 5));
+        }
+
+        // Cause product 3 id price is = 999
+        foreach ($products[2] as $product) {
+            $this->assertNull($product->price);
+        }
+    }
+
+    public function testRepairMethodSaveChanges()
+    {
+        $products = MockProduct::query()
+            ->repair(function ($product) {
+                $product->price = preg_replace('/[^0-9]/', '', $product->price);
+            }, true);
+
+        foreach ($products[0] as $product) {
+            $this->assertTrue(str_contains($product->price, 5));
+        }
+
+        // Cause product 3 id price is = 999
+        foreach ($products[2] as $product) {
+            $this->assertNull($product->price);
+        }
     }
 }
