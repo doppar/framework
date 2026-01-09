@@ -21,7 +21,6 @@ use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
-
 use Phaseolies\Database\Entity\Model;
 
 class Builder
@@ -2962,6 +2961,29 @@ class Builder
         };
 
         return $this->where($searchQuery);
+    }
+
+    /**
+     * Get records and fix/normalize data
+     *
+     * @param callable $fixer
+     * @param bool $saveChanges
+     * @return Collection
+     */
+    public function repair(callable $fixer, bool $saveChanges = false): Collection
+    {
+        $results = $this->get();
+
+        foreach ($results as $item) {
+            $original = $item->getAttributes();
+            $fixer($item);
+
+            if ($saveChanges && $item->getAttributes() !== $original) {
+                $item->save();
+            }
+        }
+
+        return $results;
     }
 
     /**
