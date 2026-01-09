@@ -2987,6 +2987,28 @@ class Builder
     }
 
     /**
+     * Get records grouped by a callback result
+     *
+     * @param callable $callback
+     * @return array
+     */
+    public function groupByCallback(callable $callback): array
+    {
+        $results = $this->get();
+        $grouped = [];
+
+        foreach ($results as $item) {
+            $key = $callback($item);
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [];
+            }
+            $grouped[$key][] = $item;
+        }
+
+        return $grouped;
+    }
+
+    /**
      * Convert camelCase to snake_case for column names
      *
      * @param string $input
