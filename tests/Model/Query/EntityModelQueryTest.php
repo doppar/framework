@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Model\Query;
 
+use App\Models\Product;
 use Tests\Support\Model\MockUser;
 use Tests\Support\Model\MockTag;
 use Tests\Support\Model\MockPost;
@@ -2659,6 +2660,35 @@ class EntityModelQueryTest extends TestCase
         // Cause product 3 id price is = 999
         foreach ($products[2] as $product) {
             $this->assertNull($product->price);
+        }
+    }
+
+    public function testGroupByCallback()
+    {
+        $products = MockProduct::groupByCallback(function ($product) {
+            if ($product->price < 500) return 'lower_than_500';
+            if ($product->price > 500) return 'bigger_than_500';
+            return 'default';
+        });
+
+        $this->assertCount(1, $products['lower_than_500']);
+
+        foreach ($products['lower_than_500'] as $key => $product) {
+            $this->assertEquals(
+                435,
+                $product->price,
+                "Expected product ID {$product->id} to have price 435"
+            );
+        }
+
+        $this->assertCount(2, $products['bigger_than_500']);
+
+        foreach ($products['bigger_than_500'] as $product) {
+            $this->assertGreaterThan(
+                500,
+                $product->price,
+                "Expected product ID {$product->id} to have price > 500"
+            );
         }
     }
 }
