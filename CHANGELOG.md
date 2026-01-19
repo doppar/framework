@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.2.1 - 2026-01-19
+
+* Application installer file updated, remove system requirements check by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/169
+
 ## v3.2.0 - 2026-01-19
 
 ### What's Changed
