@@ -8,8 +8,9 @@ use Phaseolies\Database\Entity\Model;
 use IteratorAggregate;
 use ArrayIterator;
 use ArrayAccess;
+use JsonSerializable;
 
-class Collection extends RamseyCollection implements IteratorAggregate, ArrayAccess
+class Collection extends RamseyCollection implements IteratorAggregate, ArrayAccess, JsonSerializable
 {
     /**
      * @var array
@@ -148,12 +149,22 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
     /**
      * Required for looping data
-     * 
+     *
      * @return Traversable
      */
     public function getIterator(): Traversable
     {
         return new ArrayIterator($this->data);
+    }
+
+    /**
+     * Specify data which should be serialized to JSON
+     *
+     * @return array
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 
     /**

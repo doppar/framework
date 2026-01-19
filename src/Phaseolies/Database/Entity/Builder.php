@@ -3009,6 +3009,32 @@ class Builder
     }
 
     /**
+     * Partition results into two groups based on a callback
+     *
+     * @param callable $callback
+     * @return array [matched, unmatched]
+     */
+    public function partition(callable $callback): array
+    {
+        $results = $this->get();
+        $matched = [];
+        $unmatched = [];
+
+        foreach ($results as $item) {
+            if ($callback($item)) {
+                $matched[] = $item;
+            } else {
+                $unmatched[] = $item;
+            }
+        }
+
+        return [
+            new Collection($this->modelClass, $matched),
+            new Collection($this->modelClass, $unmatched)
+        ];
+    }
+
+    /**
      * Convert camelCase to snake_case for column names
      *
      * @param string $input
