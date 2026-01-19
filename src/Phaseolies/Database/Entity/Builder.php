@@ -3005,7 +3005,10 @@ class Builder
             $grouped[$key][] = $item;
         }
 
-        return $grouped;
+        return array_map(
+            fn($items) => new Collection($this->modelClass, $items),
+            $grouped
+        );
     }
 
     /**
