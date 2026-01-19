@@ -1,5 +1,18 @@
 # Release Notes
 
+## v3.2.0 - 2026-01-19
+
+### What's Changed
+
+* Unit test issue resolve for new year date: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/163
+* Update Doc Comments to Maintain Doppar Comment Convention by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/164
+* update doc for maintaining doppar convention by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/165
+* New Entity ORM repair() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/166
+* New Entity ORM Method groupByCallback by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/167
+* New Entity ORM partition method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/168
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v3.1.1...v3.2.0
+
 ## v3.1.1 - 2025-12-19
 
 * Fix file path in CLI output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/162
