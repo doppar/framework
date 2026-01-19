@@ -2691,4 +2691,24 @@ class EntityModelQueryTest extends TestCase
             );
         }
     }
+
+    public function testPartition()
+    {
+        [$higher, $lower] = MockProduct::query()
+            ->partition(fn($product) => $product->price > 500);
+
+        // We have 2 products greater than 500
+        $this->assertCount(2, $higher);
+
+        // We have 1 products lower than 500
+        $this->assertCount(1, $lower);
+
+        foreach ($higher as $product) {
+            $this->assertGreaterThan(
+                500,
+                $product->price,
+                "Expected product ID {$product->id} to have price > 500"
+            );
+        }
+    }
 }
