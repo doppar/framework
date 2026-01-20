@@ -2723,4 +2723,51 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertCount(1, $processed);
     }
+
+    public function testSample()
+    {
+        $products = MockProduct::sample(3);
+
+        $this->assertCount(3, $products);
+    }
+
+    public function testParallel()
+    {
+        // We have only 1 product price greater than 900
+        $processed = MockProduct::parallel([
+            'bigger' => fn($q) => $q->where('price', '>', 900),
+            'lower'  => fn($q) => $q->where('price', '<', 500),
+        ]);
+
+        // Should get only 1
+        $this->assertCount(1, $processed['bigger']);
+
+        // Should get only 1
+        $this->assertCount(1, $processed['lower']);
+    }
+
+    public function testValidate()
+    {
+        ['valid' => $valid, 'invalid' => $invalid] = MockUser::validate([
+            'email' => fn($v) => filter_var($v, FILTER_VALIDATE_EMAIL),
+            'name'  => 'required',
+        ]);
+
+        // All the users have name and valid email
+        $this->assertCount(0, $invalid);
+    }
+
+    public function testWithAge(): void
+    {
+        $users = MockUser::withAge('created_at', 'hours');
+
+        foreach ($users as $user) {
+            // All the users created in 2024-01-01
+            $this->assertTrue($user->age > 24);
+            $this->assertTrue($user->age > 48);
+            $this->assertTrue($user->age > 72);
+            $this->assertTrue($user->age > 150);
+            $this->assertFalse($user->age > 10000000000);
+        }
+    }
 }
