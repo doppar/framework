@@ -3055,6 +3055,154 @@ class Builder
     }
 
     /**
+     * Sample random records using reservoir sampling (memory efficient)
+     *
+     * @param int $count
+     * @return Collection
+     */
+    public function sample(int $count): Collection
+    {
+        $reservoir = [];
+        $index = 0;
+
+        $this->cursor(function ($item) use (&$reservoir, &$index, $count) {
+            if ($index < $count) {
+                $reservoir[] = $item;
+            } else {
+                $j = mt_rand(0, $index);
+                if ($j < $count) {
+                    $reservoir[$j] = $item;
+                }
+            }
+            $index++;
+        });
+
+        return new Collection($this->modelClass, $reservoir);
+    }
+
+    /**
+     * Execute multiple queries in parallel using promises
+     *
+     * @param array $queries
+     * @return array
+     */
+    public function parallel(array $queries): array
+    {
+        $fibers = [];
+        $results = [];
+
+        foreach ($queries as $key => $queryCallback) {
+            $query = clone $this;
+            $queryCallback($query);
+
+            $fibers[$key] = new \Fiber(function () use ($query) {
+                return $query->get();
+            });
+
+            $fibers[$key]->start();
+        }
+
+        foreach ($fibers as $key => $fiber) {
+            if (!$fiber->isTerminated()) {
+                $results[$key] = $fiber->resume();
+            } else {
+                $results[$key] = $fiber->getReturn();
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get records with validation errors
+     *
+     * @param array $rules
+     * @return array [valid, invalid]
+     */
+    public function validate(array $rules): array
+    {
+        $results = $this->get();
+        $valid = [];
+        $invalid = [];
+
+        foreach ($results as $item) {
+            $errors = [];
+
+            foreach ($rules as $field => $rule) {
+                $value = $item->$field ?? null;
+
+                if (is_callable($rule)) {
+                    if (!$rule($value, $item)) {
+                        $errors[$field] = "Validation failed for {$field}";
+                    }
+                } elseif ($rule === 'required' && empty($value)) {
+                    $errors[$field] = "{$field} is required";
+                }
+            }
+
+            if (empty($errors)) {
+                $valid[] = $item;
+            } else {
+                $item->validation_errors = $errors;
+                $invalid[] = $item;
+            }
+        }
+
+        return [
+            'valid' => new Collection($this->modelClass, $valid),
+            'invalid' => new Collection($this->modelClass, $invalid)
+        ];
+    }
+
+    /**
+     * Get records and apply side effects without modifying them
+     *
+     * @param callable $callback
+     * @return Collection
+     */
+    public function tap(callable $callback): Collection
+    {
+        $results = $this->get();
+
+        $callback($results);
+
+        return $results;
+    }
+
+    /**
+     * Get records with their age/duration since a timestamp
+     *
+     * @param string $timestampColumn
+     * @param string $unit (seconds, minutes, hours, days)
+     * @return Collection
+     */
+    public function withAge(string $timestampColumn, string $unit = 'days'): Collection
+    {
+        $results = $this->get();
+        $now = time();
+
+        $divisors = [
+            'seconds' => 1,
+            'minutes' => 60,
+            'hours' => 3600,
+            'days' => 86400,
+            'weeks' => 604800,
+            'months' => 2592000,
+            'years' => 31536000
+        ];
+
+        $divisor = $divisors[$unit] ?? 86400;
+
+        foreach ($results as $item) {
+            $timestamp = strtotime($item->$timestampColumn);
+            $item->age = ($now - $timestamp) / $divisor;
+            $item->age_unit = $unit;
+        }
+
+        return $results;
+    }
+
+    /**
      * Convert camelCase to snake_case for column names
      *
      * @param string $input
