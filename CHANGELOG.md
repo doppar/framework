@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.3.0 - 2026-01-20
+
+* remove array return and add collection return for groupByCallback by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/170
+* New pipeline() entity orm method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/171
+* Add 5 new Entity ORM methods for improved query ergonomics by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/172
+
 ## v3.2.1 - 2026-01-19
 
 * Application installer file updated, remove system requirements check by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/169
