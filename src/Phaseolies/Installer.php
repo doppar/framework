@@ -10,13 +10,11 @@ class Installer
     {
         $io = $event->getIO();
 
-        $io->write("<info>🚀 Setting up doppar skeleton application...</info>");
+        $io->write("<info>🎉 Setting up doppar skeleton application...</info>");
 
         if (!file_exists('.env')) {
             copy('.env.example', '.env');
             $io->write("<comment>  ✓ Created .env file from .env.example</comment>");
         }
-
-        $io->write("\n<info>🎉 Doppar project setup complete</info>");
     }
 }

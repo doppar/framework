@@ -2711,4 +2711,16 @@ class EntityModelQueryTest extends TestCase
             );
         }
     }
+
+    public function testPipeline()
+    {
+        // We have only 1 product price greater than 900
+        $processed = MockProduct::query()
+            ->pipeline([
+                fn($col) => $col->filter(fn($o) => $o->price > 900),
+                fn($col) => $col->take(10)
+            ]);
+
+        $this->assertCount(1, $processed);
+    }
 }

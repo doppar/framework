@@ -3038,6 +3038,23 @@ class Builder
     }
 
     /**
+     * Get records and apply transformations in pipeline
+     *
+     * @param array $transformers
+     * @return Collection
+     */
+    public function pipeline(array $transformers): Collection
+    {
+        $results = $this->get();
+
+        foreach ($transformers as $transformer) {
+            $results = $transformer($results);
+        }
+
+        return $results;
+    }
+
+    /**
      * Convert camelCase to snake_case for column names
      *
      * @param string $input
