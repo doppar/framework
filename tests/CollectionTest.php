@@ -1040,4 +1040,213 @@ class CollectionTest extends TestCase
             ['id' => 4, 'name' => 'Diana']
         ], $result->all());
     }
+
+    public function testSortByWithStringKey()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by name
+        $result = $collection->sortBy('name');
+        $this->assertEquals([
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ], $result->all());
+
+        // Sort by age
+        $result2 = $collection->sortBy('age');
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30]
+        ], $result2->all());
+    }
+
+    public function testSortByWithCallback()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by name length
+        $result = $collection->sortBy(fn($user) => strlen($user['name']));
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ], $result->all());
+    }
+
+    public function testSortByWithObjects()
+    {
+        $model1 = $this->makeTestModel(3, 'Charlie');
+        $model2 = $this->makeTestModel(1, 'Alice');
+        $model3 = $this->makeTestModel(2, 'Bob');
+
+        $collection = new Collection(get_class($model1), [$model1, $model2, $model3]);
+
+        // Sort by id
+        $result = $collection->sortBy('id');
+        $this->assertEquals([$model2, $model3, $model1], $result->all());
+
+        // Sort by name
+        $result2 = $collection->sortBy('name');
+        $this->assertEquals([$model2, $model3, $model1], $result2->all());
+    }
+
+    public function testSortByDesc()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by age descending
+        $result = $collection->sortByDesc('age');
+        $this->assertEquals([
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20]
+        ], $result->all());
+
+        // Sort by name descending
+        $result2 = $collection->sortByDesc('name');
+        $this->assertEquals([
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30]
+        ], $result2->all());
+    }
+
+    public function testSortByWithNumericOptions()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $items = [
+            ['value' => '100'],
+            ['value' => '20'],
+            ['value' => '3']
+        ];
+
+        $collection = new Collection($modelClass, $items);
+
+        // String sort (lexicographic comparison)
+        $result1 = $collection->sortBy('value', SORT_STRING);
+        $this->assertEquals([
+            ['value' => '100'],
+            ['value' => '20'],
+            ['value' => '3']
+        ], $result1->all());
+
+        // Numeric sort
+        $result2 = $collection->sortBy('value', SORT_NUMERIC);
+        $this->assertEquals([
+            ['value' => '3'],
+            ['value' => '20'],
+            ['value' => '100']
+        ], $result2->all());
+    }
+
+    public function testSortByWithEmptyCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $result = $collection->sortBy('name');
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testSortByPreservesModelType()
+    {
+        $model1 = $this->makeTestModel(3, 'Charlie');
+        $model2 = $this->makeTestModel(1, 'Alice');
+
+        $collection = new Collection(get_class($model1), [$model1, $model2]);
+
+        $result = $collection->sortBy('id');
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model1), $result->getModel());
+    }
+
+    public function testSortByChainability()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'department' => 'IT', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'department' => 'IT', 'age' => 25],
+            ['id' => 3, 'name' => 'Charlie', 'department' => 'HR', 'age' => 35]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Chain sortBy with filter
+        $result = $collection
+            ->filter(fn($user) => $user['department'] === 'IT')
+            ->sortBy('age');
+
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'department' => 'IT', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'department' => 'IT', 'age' => 30]
+        ], $result->all());
+    }
+
+    public function testSortByWithNullValues()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'score' => 100],
+            ['id' => 2, 'name' => 'Bob', 'score' => null],
+            ['id' => 3, 'name' => 'Charlie', 'score' => 50]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        $result = $collection->sortBy('score');
+
+        // Null values should sort to the beginning with SORT_REGULAR
+        $this->assertEquals(null, $result->all()[0]['score']);
+        $this->assertEquals(50, $result->all()[1]['score']);
+        $this->assertEquals(100, $result->all()[2]['score']);
+    }
+
+    public function testSortByWithMixedTypes()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $collection = new Collection($modelClass, [
+            ['data' => 'zebra'],
+            ['data' => 100],
+            ['data' => 'apple'],
+            ['data' => 50]
+        ]);
+
+        // This tests that sortBy handles mixed types gracefully
+        $result = $collection->sortBy('data');
+
+        // Should not throw an error
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertCount(4, $result);
+    }
 }

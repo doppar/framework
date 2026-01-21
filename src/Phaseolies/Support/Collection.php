@@ -539,6 +539,50 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
+     * Sort the collection by a given key or callback.
+     *
+     * @param callable|string $callback
+     * @param int $options
+     * @param bool $descending
+     * @return static
+     */
+    public function sortBy($callback, int $options = SORT_REGULAR, bool $descending = false): self
+    {
+        $results = [];
+
+        $resolver = $this->buildKeyResolver($callback);
+
+        foreach ($this->data as $key => $item) {
+            $results[$key] = $resolver($item, $key);
+        }
+
+        if ($descending) {
+            arsort($results, $options);
+        } else {
+            asort($results, $options);
+        }
+
+        $sortedData = [];
+        foreach (array_keys($results) as $key) {
+            $sortedData[] = $this->data[$key];
+        }
+
+        return new static($this->model, $sortedData);
+    }
+
+    /**
+     * Sort the collection in descending order by a given key or callback.
+     *
+     * @param callable|string $callback
+     * @param int $options
+     * @return static
+     */
+    public function sortByDesc($callback, int $options = SORT_REGULAR): self
+    {
+        return $this->sortBy($callback, $options, true);
+    }
+
+    /**
      * Transform each item in the collection into one or more key-value pairs grouped by keys.
      *
      * @param callable $callback
