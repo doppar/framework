@@ -801,4 +801,17 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return new static($this->model, $result);
     }
+
+    /**
+     * Execute a callback over the collection without modifying it.
+     *
+     * @param callable $callback
+     * @return $this
+     */
+    public function tap(callable $callback): self
+    {
+        $callback($this);
+
+        return $this;
+    }
 }

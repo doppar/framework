@@ -1357,4 +1357,19 @@ class CollectionTest extends TestCase
 
         $this->assertEquals([2, 3], $intersect->all());
     }
+
+    public function testTapExecutesCallbackWithoutModifying()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $tapped = null;
+        $result = $collection->tap(function ($col) use (&$tapped) {
+            $tapped = $col->count();
+        });
+
+        $this->assertEquals(3, $tapped);
+        $this->assertSame($collection, $result);
+        $this->assertEquals([1, 2, 3], $collection->all());
+    }
 }
