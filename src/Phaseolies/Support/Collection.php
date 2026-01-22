@@ -814,4 +814,149 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this;
     }
+
+    /**
+     * Pass the collection to a callback and return the result
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function pipe(callable $callback): mixed
+    {
+        return $callback($this);
+    }
+
+    /**
+     * Find duplicate items in the collection.
+     *
+     * @param string|null $key
+     * @return static
+     */
+    public function duplicates(?string $key = null): self
+    {
+        $seen = [];
+        $duplicates = [];
+
+        foreach ($this->data as $item) {
+            $value = $key !== null
+                ? (is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null))
+                : $item;
+
+            $serialized = is_scalar($value) ? (string) $value : serialize($value);
+
+            if (isset($seen[$serialized])) {
+                $duplicates[] = $item;
+            } else {
+                $seen[$serialized] = true;
+            }
+        }
+
+        return new static($this->model, $duplicates);
+    }
+
+    /**
+     * Get the sum of values
+     *
+     * @param string|callable|null $callback
+     * @return int|float
+     */
+    public function sum($callback = null): int|float
+    {
+        if ($callback === null) {
+            return array_sum($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->sum();
+        }
+
+        return $this->map($callback)->sum();
+    }
+
+    /**
+     * Get the average (mean) value.
+     *
+     * @param string|callable|null $callback
+     * @return int|float|null
+     */
+    public function avg($callback = null): int|float|null
+    {
+        $count = $this->count();
+
+        if ($count === 0) {
+            return null;
+        }
+
+        return $this->sum($callback) / $count;
+    }
+
+    /**
+     * Get the minimum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function min($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return min($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->min();
+        }
+
+        return $this->map($callback)->min();
+    }
+
+    /**
+     * Get the maximum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function max($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return max($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->max();
+        }
+
+        return $this->map($callback)->max();
+    }
+
+    /**
+     * Get a single item that matches the criteria, or throw an exception.
+     *
+     * @param callable|null $callback
+     * @return mixed
+     * @throws \RuntimeException
+     */
+    public function sole(?callable $callback = null): mixed
+    {
+        $filtered = $callback ? $this->filter($callback) : $this;
+
+        $count = $filtered->count();
+
+        if ($count === 0) {
+            throw new \RuntimeException('No items found matching the criteria');
+        }
+
+        if ($count > 1) {
+            throw new \RuntimeException("Multiple items found ({$count} items), expected exactly one");
+        }
+
+        return $filtered->first();
+    }
 }

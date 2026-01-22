@@ -1372,4 +1372,208 @@ class CollectionTest extends TestCase
         $this->assertSame($collection, $result);
         $this->assertEquals([1, 2, 3], $collection->all());
     }
+
+    public function testPipePassesCollectionToCallback()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $result = $collection->pipe(fn($col) => $col->sum());
+
+        $this->assertEquals(6, $result);
+    }
+
+    public function testPipeCanReturnAnything()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, ['a', 'b', 'c']);
+
+        $result = $collection->pipe(fn($col) => implode(',', $col->all()));
+
+        $this->assertEquals('a,b,c', $result);
+    }
+
+    public function testDuplicatesFindsRepeatedValues()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 2, 3, 3, 3, 4]);
+
+        $duplicates = $collection->duplicates();
+
+        // Should return all duplicate occurrences except the first
+        $this->assertEquals([2, 3, 3], $duplicates->all());
+    }
+
+    public function testDuplicatesWithKey()
+    {
+        $users = [
+            ['id' => 1, 'email' => 'alice@example.com'],
+            ['id' => 2, 'email' => 'bob@example.com'],
+            ['id' => 3, 'email' => 'alice@example.com'],
+            ['id' => 4, 'email' => 'charlie@example.com'],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $duplicates = $collection->duplicates('email');
+
+        $this->assertCount(1, $duplicates);
+        $this->assertEquals('alice@example.com', $duplicates->first()['email']);
+    }
+
+    public function testSumCalculatesTotal()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(15, $collection->sum());
+    }
+
+    public function testSumWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 200],
+            ['price' => 300],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(600, $collection->sum('price'));
+    }
+
+    public function testSumWithCallback()
+    {
+        $items = [
+            ['quantity' => 2, 'price' => 10],
+            ['quantity' => 3, 'price' => 20],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $total = $collection->sum(fn($item) => $item['quantity'] * $item['price']);
+
+        $this->assertEquals(80, $total);
+    }
+
+    public function testAvgCalculatesAverage()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(3, $collection->avg());
+    }
+
+    public function testAvgWithKey()
+    {
+        $users = [
+            ['age' => 20],
+            ['age' => 30],
+            ['age' => 40],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $this->assertEquals(30, $collection->avg('age'));
+    }
+
+    public function testAvgWithEmptyCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->assertNull($collection->avg());
+    }
+
+    public function testMinReturnsSmallestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(1, $collection->min());
+    }
+
+    public function testMaxReturnsLargestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(9, $collection->max());
+    }
+
+    public function testMinWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(50, $collection->min('price'));
+    }
+
+    public function testMaxWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(200, $collection->max('price'));
+    }
+
+    public function testSoleReturnsOnlyItem()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [42]);
+
+        $this->assertEquals(42, $collection->sole());
+    }
+
+    public function testSoleWithCallback()
+    {
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'active' => true],
+            ['id' => 2, 'name' => 'Bob', 'active' => false],
+            ['id' => 3, 'name' => 'Charlie', 'active' => true],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $inactive = $collection->sole(fn($user) => !$user['active']);
+
+        $this->assertEquals('Bob', $inactive['name']);
+    }
+
+    public function testSoleThrowsWhenEmpty()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No items found');
+        $collection->sole();
+    }
+
+    public function testSoleThrowsWhenMultiple()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Multiple items found');
+        $collection->sole();
+    }
 }
