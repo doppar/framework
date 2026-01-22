@@ -716,4 +716,24 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     {
         return $this->model ?? null;
     }
+
+    /**
+     * Split collection into chunks of given size.
+     *
+     * @param int $size
+     * @return static
+     */
+    public function chunk(int $size): self
+    {
+        if ($size <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than 0');
+        }
+
+        $chunks = [];
+        foreach (array_chunk($this->data, $size, false) as $chunk) {
+            $chunks[] = $chunk;
+        }
+
+        return new static($this->model, $chunks);
+    }
 }
