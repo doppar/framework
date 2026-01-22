@@ -1,5 +1,14 @@
 # Release Notes
 
+## v3.4.0 - 2026-01-22
+
+* New sortBy() collection method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/173
+* Added new chunk() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/174
+* New partition() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/175
+* tap() intersect() and diff() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/176
+* Some collection method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/177
+* cron daemon second based issue resolved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/178
+
 ## v3.3.0 - 2026-01-20
 
 * remove array return and add collection return for groupByCallback by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/170
