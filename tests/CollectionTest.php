@@ -1336,4 +1336,25 @@ class CollectionTest extends TestCase
 
         $this->assertEquals([1, 2], $diff->all());
     }
+
+    public function testIntersectReturnsCommonItems()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $intersect = $collection1->intersect($collection2);
+
+        $this->assertEquals([3, 4, 5], $intersect->all());
+    }
+
+    public function testIntersectWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $intersect = $collection->intersect([2, 3, 6]);
+
+        $this->assertEquals([2, 3], $intersect->all());
+    }
 }

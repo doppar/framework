@@ -781,4 +781,24 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return new static($this->model, $result);
     }
+
+    /**
+     * Get items present in both this collection and given items
+     *
+     * @param mixed $items
+     * @return static
+     */
+    public function intersect($items): self
+    {
+        $compare = $items instanceof self ? $items->all() : (array) $items;
+
+        $result = [];
+        foreach ($this->data as $item) {
+            if (in_array($item, $compare, true)) {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
 }
