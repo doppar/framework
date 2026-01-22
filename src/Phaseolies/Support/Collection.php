@@ -844,4 +844,32 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this->map($callback)->sum();
     }
+
+    /**
+     * Find duplicate items in the collection.
+     *
+     * @param string|null $key
+     * @return static
+     */
+    public function duplicates(?string $key = null): self
+    {
+        $seen = [];
+        $duplicates = [];
+
+        foreach ($this->data as $item) {
+            $value = $key !== null
+                ? (is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null))
+                : $item;
+
+            $serialized = is_scalar($value) ? (string) $value : serialize($value);
+
+            if (isset($seen[$serialized])) {
+                $duplicates[] = $item;
+            } else {
+                $seen[$serialized] = true;
+            }
+        }
+
+        return new static($this->model, $duplicates);
+    }
 }

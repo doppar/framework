@@ -1392,4 +1392,33 @@ class CollectionTest extends TestCase
 
         $this->assertEquals('a,b,c', $result);
     }
+
+    public function testDuplicatesFindsRepeatedValues()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 2, 3, 3, 3, 4]);
+
+        $duplicates = $collection->duplicates();
+
+        // Should return all duplicate occurrences except the first
+        $this->assertEquals([2, 3, 3], $duplicates->all());
+    }
+
+    public function testDuplicatesWithKey()
+    {
+        $users = [
+            ['id' => 1, 'email' => 'alice@example.com'],
+            ['id' => 2, 'email' => 'bob@example.com'],
+            ['id' => 3, 'email' => 'alice@example.com'],
+            ['id' => 4, 'email' => 'charlie@example.com'],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $duplicates = $collection->duplicates('email');
+
+        $this->assertCount(1, $duplicates);
+        $this->assertEquals('alice@example.com', $duplicates->first()['email']);
+    }
 }
