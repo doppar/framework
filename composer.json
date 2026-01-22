@@ -28,6 +28,7 @@
     "phpmailer/phpmailer": "^6.9",
     "psr/simple-cache": "^3.0",
     "ramsey/collection": "^2.1",
+    "react/event-loop": "^1.6",
     "spomky-labs/otphp": "^11.3",
     "symfony/cache": "^7.4",
     "symfony/console": "^7.4",
