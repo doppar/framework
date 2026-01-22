@@ -827,25 +827,6 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
-     * Get the sum of values
-     *
-     * @param string|callable|null $callback
-     * @return int|float
-     */
-    public function sum($callback = null): int|float
-    {
-        if ($callback === null) {
-            return array_sum($this->data);
-        }
-
-        if (is_string($callback)) {
-            return $this->pluck($callback)->sum();
-        }
-
-        return $this->map($callback)->sum();
-    }
-
-    /**
      * Find duplicate items in the collection.
      *
      * @param string|null $key
@@ -871,5 +852,87 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
         }
 
         return new static($this->model, $duplicates);
+    }
+
+    /**
+     * Get the sum of values
+     *
+     * @param string|callable|null $callback
+     * @return int|float
+     */
+    public function sum($callback = null): int|float
+    {
+        if ($callback === null) {
+            return array_sum($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->sum();
+        }
+
+        return $this->map($callback)->sum();
+    }
+
+    /**
+     * Get the average (mean) value.
+     *
+     * @param string|callable|null $callback
+     * @return int|float|null
+     */
+    public function avg($callback = null): int|float|null
+    {
+        $count = $this->count();
+
+        if ($count === 0) {
+            return null;
+        }
+
+        return $this->sum($callback) / $count;
+    }
+
+    /**
+     * Get the minimum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function min($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return min($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->min();
+        }
+
+        return $this->map($callback)->min();
+    }
+
+    /**
+     * Get the maximum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function max($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return max($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->max();
+        }
+
+        return $this->map($callback)->max();
     }
 }

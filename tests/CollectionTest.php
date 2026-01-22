@@ -1421,4 +1421,115 @@ class CollectionTest extends TestCase
         $this->assertCount(1, $duplicates);
         $this->assertEquals('alice@example.com', $duplicates->first()['email']);
     }
+
+    public function testSumCalculatesTotal()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(15, $collection->sum());
+    }
+
+    public function testSumWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 200],
+            ['price' => 300],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(600, $collection->sum('price'));
+    }
+
+    public function testSumWithCallback()
+    {
+        $items = [
+            ['quantity' => 2, 'price' => 10],
+            ['quantity' => 3, 'price' => 20],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $total = $collection->sum(fn($item) => $item['quantity'] * $item['price']);
+
+        $this->assertEquals(80, $total);
+    }
+
+    public function testAvgCalculatesAverage()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(3, $collection->avg());
+    }
+
+    public function testAvgWithKey()
+    {
+        $users = [
+            ['age' => 20],
+            ['age' => 30],
+            ['age' => 40],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $this->assertEquals(30, $collection->avg('age'));
+    }
+
+    public function testAvgWithEmptyCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->assertNull($collection->avg());
+    }
+
+    public function testMinReturnsSmallestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(1, $collection->min());
+    }
+
+    public function testMaxReturnsLargestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(9, $collection->max());
+    }
+
+    public function testMinWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(50, $collection->min('price'));
+    }
+
+    public function testMaxWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(200, $collection->max('price'));
+    }
 }
