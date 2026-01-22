@@ -761,4 +761,57 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
             new static($this->model, $failed)
         ];
     }
+
+    /**
+     * Get items not present in the given items.
+     *
+     * @param mixed $items
+     * @return static
+     */
+    public function diff($items): self
+    {
+        $compare = $items instanceof self ? $items->all() : (array) $items;
+
+        $result = [];
+        foreach ($this->data as $item) {
+            if (!in_array($item, $compare, true)) {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
+
+    /**
+     * Get items present in both this collection and given items
+     *
+     * @param mixed $items
+     * @return static
+     */
+    public function intersect($items): self
+    {
+        $compare = $items instanceof self ? $items->all() : (array) $items;
+
+        $result = [];
+        foreach ($this->data as $item) {
+            if (in_array($item, $compare, true)) {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
+
+    /**
+     * Execute a callback over the collection without modifying it.
+     *
+     * @param callable $callback
+     * @return $this
+     */
+    public function tap(callable $callback): self
+    {
+        $callback($this);
+
+        return $this;
+    }
 }

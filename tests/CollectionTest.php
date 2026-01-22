@@ -1315,4 +1315,61 @@ class CollectionTest extends TestCase
         $this->assertCount(2, $active);
         $this->assertCount(1, $inactive);
     }
+
+    public function testDiffReturnsItemsNotInOtherCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $diff = $collection1->diff($collection2);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
+
+    public function testDiffWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $diff = $collection->diff([3, 4, 5]);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
+
+    public function testIntersectReturnsCommonItems()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $intersect = $collection1->intersect($collection2);
+
+        $this->assertEquals([3, 4, 5], $intersect->all());
+    }
+
+    public function testIntersectWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $intersect = $collection->intersect([2, 3, 6]);
+
+        $this->assertEquals([2, 3], $intersect->all());
+    }
+
+    public function testTapExecutesCallbackWithoutModifying()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $tapped = null;
+        $result = $collection->tap(function ($col) use (&$tapped) {
+            $tapped = $col->count();
+        });
+
+        $this->assertEquals(3, $tapped);
+        $this->assertSame($collection, $result);
+        $this->assertEquals([1, 2, 3], $collection->all());
+    }
 }
