@@ -935,4 +935,28 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this->map($callback)->max();
     }
+
+    /**
+     * Get a single item that matches the criteria, or throw an exception.
+     *
+     * @param callable|null $callback
+     * @return mixed
+     * @throws \RuntimeException
+     */
+    public function sole(?callable $callback = null): mixed
+    {
+        $filtered = $callback ? $this->filter($callback) : $this;
+
+        $count = $filtered->count();
+
+        if ($count === 0) {
+            throw new \RuntimeException('No items found matching the criteria');
+        }
+
+        if ($count > 1) {
+            throw new \RuntimeException("Multiple items found ({$count} items), expected exactly one");
+        }
+
+        return $filtered->first();
+    }
 }

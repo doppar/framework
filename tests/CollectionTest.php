@@ -1532,4 +1532,48 @@ class CollectionTest extends TestCase
 
         $this->assertEquals(200, $collection->max('price'));
     }
+
+    public function testSoleReturnsOnlyItem()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [42]);
+
+        $this->assertEquals(42, $collection->sole());
+    }
+
+    public function testSoleWithCallback()
+    {
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'active' => true],
+            ['id' => 2, 'name' => 'Bob', 'active' => false],
+            ['id' => 3, 'name' => 'Charlie', 'active' => true],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $inactive = $collection->sole(fn($user) => !$user['active']);
+
+        $this->assertEquals('Bob', $inactive['name']);
+    }
+
+    public function testSoleThrowsWhenEmpty()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No items found');
+        $collection->sole();
+    }
+
+    public function testSoleThrowsWhenMultiple()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Multiple items found');
+        $collection->sole();
+    }
 }
