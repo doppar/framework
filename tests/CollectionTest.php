@@ -1315,4 +1315,25 @@ class CollectionTest extends TestCase
         $this->assertCount(2, $active);
         $this->assertCount(1, $inactive);
     }
+
+    public function testDiffReturnsItemsNotInOtherCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $diff = $collection1->diff($collection2);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
+
+    public function testDiffWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $diff = $collection->diff([3, 4, 5]);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
 }
