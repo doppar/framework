@@ -1249,4 +1249,41 @@ class CollectionTest extends TestCase
         $this->assertInstanceOf(Collection::class, $result);
         $this->assertCount(4, $result);
     }
+
+    public function testChunkDividesCollectionIntoChunks()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6, 7]);
+
+        $chunks = $collection->chunk(3);
+
+        $this->assertEquals([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7]
+        ], $chunks->all());
+    }
+
+    public function testChunkWithExactDivision()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6]);
+
+        $chunks = $collection->chunk(2);
+
+        $this->assertEquals([
+            [1, 2],
+            [3, 4],
+            [5, 6]
+        ], $chunks->all());
+    }
+
+    public function testChunkWithInvalidSize()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $collection->chunk(0);
+    }
 }
