@@ -814,4 +814,34 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $this;
     }
+
+    /**
+     * Pass the collection to a callback and return the result
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function pipe(callable $callback): mixed
+    {
+        return $callback($this);
+    }
+
+    /**
+     * Get the sum of values
+     *
+     * @param string|callable|null $callback
+     * @return int|float
+     */
+    public function sum($callback = null): int|float
+    {
+        if ($callback === null) {
+            return array_sum($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->sum();
+        }
+
+        return $this->map($callback)->sum();
+    }
 }

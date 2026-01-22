@@ -1372,4 +1372,24 @@ class CollectionTest extends TestCase
         $this->assertSame($collection, $result);
         $this->assertEquals([1, 2, 3], $collection->all());
     }
+
+    public function testPipePassesCollectionToCallback()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $result = $collection->pipe(fn($col) => $col->sum());
+
+        $this->assertEquals(6, $result);
+    }
+
+    public function testPipeCanReturnAnything()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, ['a', 'b', 'c']);
+
+        $result = $collection->pipe(fn($col) => implode(',', $col->all()));
+
+        $this->assertEquals('a,b,c', $result);
+    }
 }
