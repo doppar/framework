@@ -736,4 +736,29 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return new static($this->model, $chunks);
     }
+
+    /**
+     * Split collection into two groups based on condition
+     *
+     * @param callable $callback
+     * @return array [passedCollection, failedCollection]
+     */
+    public function partition(callable $callback): array
+    {
+        $passed = [];
+        $failed = [];
+
+        foreach ($this->data as $key => $item) {
+            if ($callback($item, $key)) {
+                $passed[] = $item;
+            } else {
+                $failed[] = $item;
+            }
+        }
+
+        return [
+            new static($this->model, $passed),
+            new static($this->model, $failed)
+        ];
+    }
 }

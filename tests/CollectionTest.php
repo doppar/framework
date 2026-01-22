@@ -1286,4 +1286,33 @@ class CollectionTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $collection->chunk(0);
     }
+
+
+    public function testPartitionDividesCollectionByCondition()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6]);
+
+        [$even, $odd] = $collection->partition(fn($num) => $num % 2 === 0);
+
+        $this->assertEquals([2, 4, 6], $even->all());
+        $this->assertEquals([1, 3, 5], $odd->all());
+    }
+
+    public function testPartitionWithObjects()
+    {
+        $users = [
+            ['name' => 'Alice', 'active' => true],
+            ['name' => 'Bob', 'active' => false],
+            ['name' => 'Charlie', 'active' => true],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        [$active, $inactive] = $collection->partition(fn($user) => $user['active']);
+
+        $this->assertCount(2, $active);
+        $this->assertCount(1, $inactive);
+    }
 }
