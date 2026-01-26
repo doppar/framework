@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.4.1 - 2026-01-26
+
+* Handle dynamic method calls into the model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/179
+
 ## v3.4.0 - 2026-01-22
 
 * New sortBy() collection method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/173
