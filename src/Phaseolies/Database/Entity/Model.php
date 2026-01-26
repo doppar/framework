@@ -965,4 +965,16 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
         return $result;
     }
+
+    /**
+     * Handle dynamic method calls into the model.
+     *
+     * @param string $method
+     * @param array $parameters
+     * @return mixed
+     */
+    public function __call($method, $parameters)
+    {
+        return $this->newQuery()->$method(...$parameters);
+    }
 }
