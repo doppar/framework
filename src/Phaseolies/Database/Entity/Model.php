@@ -337,10 +337,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function newQuery(): Builder
     {
         return new Builder(
-            $this->getConnection(),
-            $this->getTable(),
-            static::class,
-            $this->pageSize
+            pdo: $this->getConnection(),
+            table: $this->getTable(),
+            modelClass: static::class,
+            rowPerPage: $this->pageSize
         );
     }
 
@@ -348,8 +348,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * Mass-assign attributes to the model.
      *
      * @param array $attributes
+     * @return void
      */
-    public function fill(array $attributes)
+    public function fill(array $attributes): void
     {
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
@@ -363,7 +364,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      * @param mixed $value
      * @return void
      */
-    public function setAttribute($key, $value)
+    public function setAttribute($key, $value): void
     {
         $value = $this->sanitize($value);
 
@@ -478,7 +479,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
-     * Checks if an attribute exists (ArrayAccess implementation).
+     * Checks if an attribute exists
      *
      * @param mixed $offset
      * @return bool
@@ -489,7 +490,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
-     * Retrieves an attribute value (ArrayAccess implementation).
+     * Retrieves an attribute value
      *
      * @param mixed $offset
      * @return mixed
@@ -500,7 +501,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
-     * Sets an attribute value (ArrayAccess implementation).
+     * Sets an attribute value
      *
      * @param mixed $offset
      * @param mixed $value
@@ -511,7 +512,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     }
 
     /**
-     * Unsets an attribute (ArrayAccess implementation).
+     * Unsets an attribute
      *
      * @param mixed $offset
      */
