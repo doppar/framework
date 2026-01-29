@@ -26,7 +26,7 @@ class RouteCacheCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function () {
             $cacheDir = base_path('storage/framework/cache');

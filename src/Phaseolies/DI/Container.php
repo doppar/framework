@@ -501,6 +501,13 @@ class Container implements ArrayAccess
      */
     public function call(callable $callback, array $parameters = []): mixed
     {
+        if (!is_callable($callback)) {
+            throw new \TypeError(sprintf(
+                'Callback must be callable, %s given',
+                is_object($callback) ? get_class($callback) : gettype($callback)
+            ));
+        }
+
         if (is_array($callback)) {
             $reflection = new \ReflectionMethod($callback[0], $callback[1]);
         } elseif (is_object($callback) && method_exists($callback, '__invoke')) {

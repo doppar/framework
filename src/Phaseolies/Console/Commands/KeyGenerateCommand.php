@@ -26,7 +26,7 @@ class KeyGenerateCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
             $randomKey = base64_encode(random_bytes(32));

@@ -12,6 +12,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
+use Phaseolies\Support\Facades\Log;
+use Phaseolies\DI\Container;
 
 abstract class Command extends SymfonyCommand
 {
@@ -132,15 +134,22 @@ abstract class Command extends SymfonyCommand
         $this->input = $input;
         $this->output = $output;
 
-        return $this->handle();
-    }
+        if (!method_exists($this, 'handle')) {
+            throw new \LogicException(
+                sprintf('Command [%s] must have a handle() method.', static::class)
+            );
+        }
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    abstract protected function handle(): int;
+        try {
+            $container = Container::getInstance();
+            $result = $container->call([$this, 'handle']);
+
+            return is_int($result) ? $result : self::SUCCESS;
+        } catch (\Throwable $e) {
+            Log::error($e);
+            throw new \Exception($e->getMessage());
+        }
+    }
 
     /**
      * Get the value of a command argument.

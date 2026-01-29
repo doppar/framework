@@ -25,7 +25,7 @@ class SetCreatablePropertyCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         $tableName = $this->argument("table");
 

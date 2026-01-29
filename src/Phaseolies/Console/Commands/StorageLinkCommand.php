@@ -27,7 +27,7 @@ class StorageLinkCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
             $links = config('filesystem.links');

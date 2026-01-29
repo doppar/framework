@@ -34,7 +34,7 @@ class ViewCacheCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
             $viewPath = base_path('resources/views');

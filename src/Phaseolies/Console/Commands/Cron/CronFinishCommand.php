@@ -25,7 +25,7 @@ class CronFinishCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         $finishId = $this->argument('finish_id');
         $shouldReleaseLock = (bool)$this->argument('release_lock');

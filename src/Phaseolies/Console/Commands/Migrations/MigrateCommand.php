@@ -42,7 +42,7 @@ class MigrateCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function () {
             $connection = $this->option('connection') ?: config('database.default');

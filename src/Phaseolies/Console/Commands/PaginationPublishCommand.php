@@ -25,7 +25,7 @@ class PaginationPublishCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
             $paginationPath = resource_path('views/vendor/pagination');
