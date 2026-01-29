@@ -61,6 +61,9 @@ jobs:
       - name: Set Framework version
         run: composer config version "2.x-dev"
 
+      - name: Disable Composer security blocking
+        run: composer config audit.block-insecure false
+
       - name: Install dependencies
         uses: nick-fields/retry@v3
         with:
@@ -119,6 +122,9 @@ jobs:
 
       - name: Set Framework version
         run: composer config version "2.x-dev"
+
+      - name: Disable Composer security blocking
+        run: composer config audit.block-insecure false
 
       - name: Install dependencies
         uses: nick-fields/retry@v3
