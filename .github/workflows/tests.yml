@@ -31,22 +31,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-         include:
-          # Prefer-stable with PHPUnit 12
-          - php: 8.3
-            phpunit: '12.1.5'
-            stability: prefer-stable
-          - php: 8.4
-            phpunit: '12.1.5'
-            stability: prefer-stable
-
-          # Prefer-lowest with PHPUnit 11
+        php: [8.3, 8.4]
+        phpunit: ['12.0.0', '12.1.5']
+        stability: [prefer-lowest, prefer-stable]
+        exclude:
           - php: 8.3
             phpunit: '12.0.0'
-            stability: prefer-lowest
           - php: 8.4
             phpunit: '12.0.0'
-            stability: prefer-lowest
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }}
 
@@ -97,22 +89,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-         include:
-          # Prefer-stable with PHPUnit 12
-          - php: 8.3
-            phpunit: '12.1.5'
-            stability: prefer-stable
-          - php: 8.4
-            phpunit: '12.1.5'
-            stability: prefer-stable
-
-          # Prefer-lowest with PHPUnit 11
+        php: [8.3, 8.4]
+        phpunit: ['12.0.0', '12.1.5']
+        stability: [prefer-lowest, prefer-stable]
+        exclude:
           - php: 8.3
             phpunit: '12.0.0'
-            stability: prefer-lowest
           - php: 8.4
             phpunit: '12.0.0'
-            stability: prefer-lowest
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }} - Windows
 
