@@ -26,7 +26,7 @@ class CronDaemonCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         $action = $this->argument('action');
 

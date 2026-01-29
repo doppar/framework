@@ -495,11 +495,11 @@ class Container implements ArrayAccess
     /**
      * Call the given callback with dependency injection
      *
-     * @param callable $callback
+     * @param $callback
      * @param array $parameters
      * @return mixed
      */
-    public function call(callable $callback, array $parameters = []): mixed
+    public function call($callback, array $parameters = []): mixed
     {
         if (is_array($callback)) {
             $reflection = new \ReflectionMethod($callback[0], $callback[1]);

@@ -35,7 +35,7 @@ class CronRunCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         $isDaemon = $this->option('daemon');
 

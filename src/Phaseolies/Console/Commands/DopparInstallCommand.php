@@ -27,7 +27,7 @@ class DopparInstallCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         if ($this->confirm('Do you want to install authentication?', false)) {
             $this->installAuthentication();

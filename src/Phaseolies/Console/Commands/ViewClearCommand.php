@@ -26,7 +26,7 @@ class ViewClearCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->withTiming(function() {
             $viewCacheDir = base_path('storage/framework/views');

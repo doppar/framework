@@ -27,7 +27,7 @@ class MakeControllerCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function () {
             [$name, $routeName, $isInvokable, $isResource, $isApi, $isComplete] = $this->parseFlags();
