@@ -32,7 +32,7 @@ jobs:
       fail-fast: true
       matrix:
         php: [8.3, 8.4]
-        phpunit: ['12.0.0', '12.1.5']
+        phpunit: ['12.1.5', '12.5.0']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
@@ -61,15 +61,12 @@ jobs:
       - name: Set Framework version
         run: composer config version "2.x-dev"
 
-      - name: Disable Composer security blocking
-        run: composer config audit.block-insecure false
-
       - name: Install dependencies
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
           max_attempts: 5
-          command: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress --no-audit --with="phpunit/phpunit:~${{ matrix.phpunit }}"
+          command: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress --with="phpunit/phpunit:~${{ matrix.phpunit }}"
 
       - name: Execute tests
         run: vendor/bin/phpunit --display-deprecation ${{ matrix.stability == 'prefer-stable' && '--fail-on-deprecation' || '' }}
@@ -93,7 +90,7 @@ jobs:
       fail-fast: true
       matrix:
         php: [8.3, 8.4]
-        phpunit: ['12.0.0', '12.1.5']
+        phpunit: ['12.1.5', '12.5.0']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
@@ -123,15 +120,12 @@ jobs:
       - name: Set Framework version
         run: composer config version "2.x-dev"
 
-      - name: Disable Composer security blocking
-        run: composer config audit.block-insecure false
-
       - name: Install dependencies
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
           max_attempts: 5
-          command: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress --no-audit --with="phpunit/phpunit:~${{ matrix.phpunit }}"
+          command: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress --with="phpunit/phpunit:~${{ matrix.phpunit }}"
 
       - name: Execute tests
         run: vendor/bin/phpunit
