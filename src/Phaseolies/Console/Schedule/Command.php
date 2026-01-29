@@ -12,6 +12,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
+use Phaseolies\Support\Facades\Log;
 use Phaseolies\DI\Container;
 
 abstract class Command extends SymfonyCommand
@@ -145,7 +146,8 @@ abstract class Command extends SymfonyCommand
 
             return is_int($result) ? $result : self::SUCCESS;
         } catch (\Throwable $e) {
-            return self::FAILURE;
+            Log::error($e);
+            throw new \Exception($e->getMessage());
         }
     }
 
