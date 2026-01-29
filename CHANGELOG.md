@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.4.2 - 2026-01-29
+
+* Entity Model: some comments updated: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/180
+* github action tests.yml updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/181
+
 ## v3.4.1 - 2026-01-26
 
 * Handle dynamic method calls into the model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/179
