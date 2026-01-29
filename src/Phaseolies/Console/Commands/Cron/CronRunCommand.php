@@ -460,7 +460,7 @@ class CronRunCommand extends Command
         if ($process->isSuccessful()) {
             // Only show success for non-second-based
             if (!$command->isSecondSchedule()) {
-                $this->displayInfo('Success: ' . $command->getCommand());
+                $this->info('Success: ' . $command->getCommand());
             }
         } else {
             $this->displayError('Error: ' . $command->getCommand());
