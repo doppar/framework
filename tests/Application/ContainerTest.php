@@ -1913,11 +1913,11 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteRepository::class, $service->repository);
     }
 
-    // public function testInvalidCallableThrows()
-    // {
-    //     $this->expectException(\TypeError::class);
-    //     $this->container->call('not_a_callable');
-    // }
+    public function testInvalidCallableThrows()
+    {
+        $this->expectException(\TypeError::class);
+        $this->container->call('not_a_callable');
+    }
 
     public function testUnresolvableDependencyThrows()
     {
