@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.5.0 - 2026-01-30
+
+* console command handle() method dependency injection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/182
+
 ## v3.4.2 - 2026-01-29
 
 * Entity Model: some comments updated: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/180
