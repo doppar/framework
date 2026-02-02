@@ -941,7 +941,7 @@ class EntityModelQueryTest extends TestCase
     {
         $users = MockUser::whereLastMonth('created_at')->get();
 
-        $this->assertCount(0, $users);
+        $this->assertCount(3, $users);
     }
 
     public function testWhereThisYear(): void

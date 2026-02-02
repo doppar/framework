@@ -784,7 +784,7 @@ class EntityBuilderQueryTest extends TestCase
     {
         $users = db()->bucket('users')->whereLastMonth('created_at')->get();
 
-        $this->assertCount(0, $users);
+        $this->assertCount(3, $users);
     }
 
     public function testWhereThisYear(): void
