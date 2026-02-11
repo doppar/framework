@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.5.1 - 2026-02-11
+
+* Unit test count isssue resolved for Last month by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/183
+* Fix: PHP 8.5 PDO MySQL Constant Deprecations (Backward Compatible) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/184
+
 ## v3.5.0 - 2026-01-30
 
 * console command handle() method dependency injection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/182
