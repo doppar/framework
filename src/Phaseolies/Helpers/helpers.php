@@ -60,17 +60,11 @@ if (!function_exists('app')) {
      */
     function app($abstract = null, array $parameters = [])
     {
-        $container = Container::getInstance();
-
         if (is_null($abstract)) {
-            return $container;
+            return Container::getInstance();
         }
 
-        if (!$container->has($abstract)) {
-            return null;
-        }
-
-        return $container->get($abstract, $parameters);
+        return Container::getInstance()->get($abstract, $parameters);
     }
 }
 
