@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.5.2 - 2026-02-11
+
+* Prevent fatal errors in app() helper on PHP 8.5 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/185
+
 ## v3.5.1 - 2026-02-11
 
 * Unit test count isssue resolved for Last month by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/183
