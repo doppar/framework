@@ -125,11 +125,11 @@ class Translator extends FileLoader
         // Handle regular translations (group.item)
         if (strpos($key, '.') !== false) {
             list($group, $item) = explode('.', $key, 2);
-            return [null, $group, $item];
+            return ['', $group, $item];
         }
 
         // Fallback for simple keys
-        return [null, '*', $key];
+        return ['', '*', $key];
     }
 
     /**
