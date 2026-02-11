@@ -16,11 +16,14 @@ class ErrorHandlerFactory
      */
     public static function createHandlers(): array
     {
-        return [
-            new JsonErrorHandler(),
-            new CliErrorHandler(),
-            new WebErrorHandler(),
-        ];
+        $handlers = [new CliErrorHandler()];
+
+        if (PHP_SAPI !== 'cli' && !defined('STDIN')) {
+            $handlers[] = new JsonErrorHandler();
+            $handlers[] = new WebErrorHandler();
+        }
+
+        return $handlers;
     }
 
     /**
