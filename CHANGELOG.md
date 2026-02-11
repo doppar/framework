@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.5.3 - 2026-02-11
+
+* web error handler supports method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/186
+* load only CLiErrorHandler for cli request: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/187
+* Fix: PHP 8.5 Compatibility – Null Array Offset Deprecation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/188
+
 ## v3.5.2 - 2026-02-11
 
 * Prevent fatal errors in app() helper on PHP 8.5 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/185
