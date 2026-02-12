@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.5.4 - 2026-02-12
+
+* Add PHP 8.5 to CI Test Matrix and Fix PHP 8.5 null as an array offset is deprecated issue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/189
+
 ## v3.5.3 - 2026-02-11
 
 * web error handler supports method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/186
