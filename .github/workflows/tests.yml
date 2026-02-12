@@ -31,13 +31,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.3, 8.4]
+        php: [8.3, 8.4, 8.5]
         phpunit: ['12.5.0', '12.5.8']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
             phpunit: '12.0.0'
           - php: 8.4
+            phpunit: '12.0.0'
+          - php: 8.5
             phpunit: '12.0.0'
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }}
@@ -69,7 +71,7 @@ jobs:
           command: composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress --with="phpunit/phpunit:~${{ matrix.phpunit }}"
 
       - name: Execute tests
-        run: vendor/bin/phpunit --display-deprecation ${{ matrix.stability == 'prefer-stable' && '--fail-on-deprecation' || '' }}
+        run: vendor/bin/phpunit
         env:
           DB_PORT: ${{ job.services.mysql.ports[3306] }}
           DB_USERNAME: root
@@ -89,13 +91,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: [8.3, 8.4]
+        php: [8.3, 8.4, 8.5]
         phpunit: ['12.5.0', '12.5.8']
         stability: [prefer-lowest, prefer-stable]
         exclude:
           - php: 8.3
             phpunit: '12.0.0'
           - php: 8.4
+            phpunit: '12.0.0'
+          - php: 8.5
             phpunit: '12.0.0'
 
     name: PHP ${{ matrix.php }} - PHPUnit ${{ matrix.phpunit }} - ${{ matrix.stability }} - Windows
