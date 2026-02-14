@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.6.0 - 2026-02-14
+
+* Adding noContent() and redirect() method in ResponseFactory by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/190
+
 ## v3.5.4 - 2026-02-12
 
 * Add PHP 8.5 to CI Test Matrix and Fix PHP 8.5 null as an array offset is deprecated issue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/189
