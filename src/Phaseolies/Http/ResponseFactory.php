@@ -7,6 +7,9 @@ use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Http\Response\Stream\BinaryFileResponse;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Exceptions\StreamedResponseException;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Database\Entity\Builder;
+use Phaseolies\Support\Collection;
 
 class ResponseFactory extends Response
 {
@@ -25,18 +28,31 @@ class ResponseFactory extends Response
      */
     public function make($content = '', $status = 200, array $headers = []): Response
     {
-        return $this->json($content, $status, $headers);
+        if ($this->shouldBeJson($content)) {
+            return $this->json($content, $status, $headers);
+        }
+
+        return new Response($content, $status, $headers);
+    }
+
+    /**
+     * Return an empty response.
+     *
+     * @param int $status
+     * @param array $headers
+     * @return Response
+     */
+    public function noContent(int $status = 204, array $headers = []): Response
+    {
+        return new Response('', $status, $headers);
     }
 
     /**
      * Return a JSON response.
      *
-     * This method sets the appropriate headers for a JSON response and returns the JSON-encoded data.
-     *
-     * @param mixed $data The data to encode as JSON.
-     * @param int $status The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
-     * @param array $headers
+     * @param mixed $data
+     * @param int $status
+     * @param array<string, string> $headers
      * @return JsonResponse
      */
     public function json(mixed $data, int $status = 200, array $headers = []): JsonResponse
@@ -47,14 +63,14 @@ class ResponseFactory extends Response
     /**
      * Return a plain text response.
      *
-     * @param string $content The plain text content.
-     * @param int $statusCode The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
+     * @param string $content
+     * @param int $status
+     * @param array<string, string> $headers
      * @return Response
      */
-    public function text(string $content, int $statusCode = 200, array $headers = []): Response
+    public function text(string $content, int $status = 200, array $headers = []): Response
     {
-        return app(Response::class)->text($content, $statusCode, $headers);
+        return app(Response::class)->text($content, $status, $headers);
     }
 
     /**
@@ -122,23 +138,6 @@ class ResponseFactory extends Response
     }
 
     /**
-     * Convert the string to ASCII characters that are equivalent to the given name.
-     *
-     * @param  string  $name
-     * @return string
-     */
-    protected function fallbackName($name)
-    {
-        $name = iconv('UTF-8', 'ASCII//TRANSLIT', $name);
-
-        $name = preg_replace('/[^\x20-\x7E]/', '', $name);
-
-        $name = str_replace('%', '', $name);
-
-        return $name;
-    }
-
-    /**
      * Create a new file download response.
      *
      * @param \SplFileInfo|string $file
@@ -168,5 +167,63 @@ class ResponseFactory extends Response
     public function file($file, array $headers = [])
     {
         return new BinaryFileResponse($file, 200, $headers);
+    }
+
+    /**
+     * Create a redirect response.
+     *
+     * @param string $url
+     * @param int $status
+     * @param array $headers
+     * @return Response
+     */
+    public function redirect(string $url, int $status = 302, array $headers = []): Response
+    {
+        $headers['Location'] = $url;
+
+        return new Response('', $status, $headers);
+    }
+
+    /**
+     * Convert the string to ASCII characters that are equivalent to the given name.
+     *
+     * @param  string  $name
+     * @return string
+     */
+    protected function fallbackName($name)
+    {
+        $name = iconv('UTF-8', 'ASCII//TRANSLIT', $name);
+
+        $name = preg_replace('/[^\x20-\x7E]/', '', $name);
+
+        $name = str_replace('%', '', $name);
+
+        return $name;
+    }
+
+    /**
+     * Determine if the given data should be returned as JSON.
+     *
+     * @param mixed $data
+     * @return bool
+     */
+    protected function shouldBeJson($data): bool
+    {
+        if ($data instanceof JsonResponse) {
+            return false;
+        }
+
+        if ($data instanceof \Stringable) {
+            return false;
+        }
+
+        return is_array($data) ||
+            is_object($data) ||
+            $data instanceof \JsonSerializable ||
+            $data instanceof Model ||
+            $data instanceof Collection ||
+            $data instanceof Builder ||
+            $data instanceof \stdClass ||
+            $data instanceof \ArrayObject;
     }
 }
