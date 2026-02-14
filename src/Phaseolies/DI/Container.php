@@ -516,12 +516,57 @@ class Container implements ArrayAccess
             $reflection = new \ReflectionFunction($callback);
         }
 
-        $dependencies = $this->resolveDependencies(
+        $dependencies = $this->resolveDependenciesWithAttributes(
             $reflection->getParameters(),
-            $parameters
+            $parameters,
+            is_array($callback) ? $callback[0] : null
         );
 
         return call_user_func_array($callback, $dependencies);
+    }
+
+    /**
+     * Resolve dependencies with attribute support
+     *
+     * @param array $parameters
+     * @param array $primitives
+     * @param object|string|null $context
+     * @return array
+     */
+    protected function resolveDependenciesWithAttributes(array $parameters, array $primitives = [], $context = null): array
+    {
+        $dependencies = [];
+
+        foreach ($parameters as $parameter) {
+            $bindAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Bind::class);
+
+            if (!empty($bindAttributes)) {
+                $bindAttribute = $bindAttributes[0]->newInstance();
+                $paramType = $parameter->getType();
+
+                if (!$paramType || $paramType->isBuiltin()) {
+                    throw new \RuntimeException(
+                        "Parameter '\${$parameter->getName()}' must be class-typed when using #[Bind]"
+                    );
+                }
+
+                $abstract = $paramType->getName();
+
+                $bindAttribute->singleton
+                    ? $this->singleton($abstract, $bindAttribute->concrete)
+                    : $this->bind($abstract, $bindAttribute->concrete);
+
+                $dependencies[] = $this->get($abstract);
+                continue;
+            }
+
+            $contextClass = is_object($context) ? get_class($context) : (string) $context;
+
+            $dependency = $this->resolveDependency($parameter, $primitives, $contextClass);
+            $dependencies[] = $dependency;
+        }
+
+        return $dependencies;
     }
 
     /**
