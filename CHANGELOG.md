@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.7.0 - 2026-02-15
+
+* Add Support for #[Bind] Attribute in Console Command Handle Methods by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/191
+
 ## v3.6.0 - 2026-02-14
 
 * Adding noContent() and redirect() method in ResponseFactory by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/190
