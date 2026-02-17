@@ -758,7 +758,6 @@ class Router extends Kernel
     {
         $method = $request->getMethod();
         $url    = $request->getPath();
-        $host   = $request->getHost();
 
         $url = ($url !== '/') ? rtrim($url, '/') : $url;
 
@@ -768,7 +767,7 @@ class Router extends Kernel
             ['callback' => $callback, 'domain' => $domain] = $this->unwrapRouteEntry($entry);
 
             // Domain guard — skip routes whose domain pattern doesn't match the request host
-            if ($domain !== null && !$this->matchesDomain($host, $domain, $request)) {
+            if ($domain !== null && !$this->matchesDomain($domain, $request)) {
                 continue;
             }
 
@@ -805,13 +804,13 @@ class Router extends Kernel
      *   - Wildcard subdomain:      '{tenant}.example.com' (injects param into route params)
      *   - Universal wildcard:      '*'
      *
-     * @param string $host
      * @param string $domain
      * @param mixed  $request
      * @return bool
      */
-    protected function matchesDomain(string $host, string $domain, $request): bool
+    protected function matchesDomain(string $domain, $request): bool
     {
+        $host = $request->getHost();
         $host = strtolower($host);
 
         // Universal wildcard: match any host
