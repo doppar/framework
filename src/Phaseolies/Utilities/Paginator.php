@@ -4,6 +4,11 @@ namespace Phaseolies\Utilities;
 
 class Paginator
 {
+     /**
+     * Pagination data array.
+     *
+     * @var array<string, mixed>
+     */
     protected $data;
 
     public function __construct($data)
