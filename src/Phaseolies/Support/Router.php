@@ -141,9 +141,13 @@ class Router extends Kernel
         $cacheableRoutes = [];
 
         foreach (self::$routes as $method => $routes) {
-            foreach ($routes as $path => $callback) {
-                if ($this->isCacheableRoute($callback)) {
-                    $cacheableRoutes[$method][$path] = $callback;
+            foreach ($routes as $path => $entry) {
+                ['callback' => $callback, 'domain' => $domain] = $this->unwrapRouteEntry($entry);
+
+                if ($this->isCacheableRoute($entry)) {
+                    $cacheableRoutes[$method][$path] = $domain
+                        ? ['__callback' => $callback, '__domain' => $domain]
+                        : $callback;
                 }
             }
         }
@@ -159,6 +163,10 @@ class Router extends Kernel
      */
     protected function isCacheableRoute($callback): bool
     {
+        if (is_array($callback) && isset($callback['__callback'], $callback['__domain'])) {
+            $callback = $callback['__callback'];
+        }
+
         if (
             is_array($callback) &&
             count($callback) === 2 &&
@@ -369,9 +377,10 @@ class Router extends Kernel
         $middleware = $route->middleware ?? [];
         $rateLimit = $route->rateLimit ?? null;
         $rateLimitDecay = $route->rateLimitDecay ?? 1;
+        $domain = $route->domain ?? null;
 
         foreach ($httpMethods as $httpMethod) {
-            $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name);
+            $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name, $domain);
             if (!empty($middleware)) {
                 $this->middleware($middleware);
             }
@@ -389,11 +398,12 @@ class Router extends Kernel
      * @param string $path
      * @param callable|array $callback
      * @param string|null $name
+     * @param string|null $domain
      * @return self
      */
-    protected function addRouteNameToAttributesRouting(string $method, string $path, $callback, ?string $name = null): self
+    protected function addRouteNameToAttributesRouting(string $method, string $path, $callback, ?string $name = null, ?string $domain = null): self
     {
-        $this->addRoute($method, $path, $callback);
+        $this->addRoute($method, $path, $callback, $domain);
 
         if ($name) {
             self::$namedRoutes[$name] = $this->currentRoutePath;
@@ -543,14 +553,30 @@ class Router extends Kernel
     }
 
     /**
+     * Unwrap the route entry, separating the callback from optional domain metadata.
+     *
+     * @param mixed $entry
+     * @return array{callback: mixed, domain: string|null}
+     */
+    protected function unwrapRouteEntry(mixed $entry): array
+    {
+        if (is_array($entry) && isset($entry['__callback'], $entry['__domain'])) {
+            return ['callback' => $entry['__callback'], 'domain' => $entry['__domain']];
+        }
+
+        return ['callback' => $entry, 'domain' => null];
+    }
+
+    /**
      * Add a route with group attributes applied.
      *
      * @param string $method
      * @param string $path
      * @param callable|array $callback
+     * @param string|null $domain
      * @return self
      */
-    protected function addRoute(string $method, string $path, $callback): self
+    protected function addRoute(string $method, string $path, $callback, ?string $domain = null): self
     {
         $this->failFastOnBadRouteDefinition($callback);
 
@@ -570,15 +596,12 @@ class Router extends Kernel
                 : $fullPath;
         }
 
-        // Special handling for root within a group
-        if ($path === '' && $prefix !== '') {
-            self::$routes[$method][$fullPath] = $callback;
-            $this->currentRoutePath = $fullPath;
-        } else {
-            self::$routes[$method][$fullPath] = $callback;
-            $this->currentRoutePath = $fullPath;
-        }
+        $entry = $domain
+            ? ['__callback' => $callback, '__domain' => $domain]
+            : $callback;
 
+        self::$routes[$method][$fullPath] = $entry;
+        $this->currentRoutePath = $fullPath;
         $this->currentRequestMethod = $method;
 
         if (!static::$cacheLoaded) {
@@ -635,6 +658,31 @@ class Router extends Kernel
     {
         if ($this->currentRoutePath) {
             self::$namedRoutes[$name] = $this->currentRoutePath;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Restricts the last registered route to a specific domain.
+     * Supports exact domains ('api.example.com'), wildcard subdomains
+     * ('{tenant}.example.com'), and universal wildcard ('*').
+     *
+     * @param string $domain The domain pattern to restrict to.
+     * @return self
+     */
+    public function domain(string $domain): self
+    {
+        if ($this->currentRoutePath) {
+            $method = $this->getCurrentRequestMethod();
+            $entry  = self::$routes[$method][$this->currentRoutePath];
+
+            ['callback' => $callback] = $this->unwrapRouteEntry($entry);
+
+            self::$routes[$method][$this->currentRoutePath] = [
+                '__callback' => $callback,
+                '__domain'   => $domain,
+            ];
         }
 
         return $this;
@@ -709,25 +757,32 @@ class Router extends Kernel
     public function getCallback($request): mixed
     {
         $method = $request->getMethod();
-        $url = $request->getPath();
+        $url    = $request->getPath();
+        $host   = $request->getHost();
 
         $url = ($url !== '/') ? rtrim($url, '/') : $url;
 
         $routes = self::$routes[$method] ?? [];
 
-        if (isset($routes[$url])) {
-            return $routes[$url];
-        }
+        foreach ($routes as $route => $entry) {
+            ['callback' => $callback, 'domain' => $domain] = $this->unwrapRouteEntry($entry);
 
-        foreach ($routes as $route => $callback) {
-            if ($route === $url) {
+            // Domain guard — skip routes whose domain pattern doesn't match the request host
+            if ($domain !== null && !$this->matchesDomain($host, $domain, $request)) {
                 continue;
             }
 
+            // Exact match
+            if ($route === $url) {
+                return $callback;
+            }
+
+            // Catch-all wildcard
             if ($route === '(.*)') {
                 return $callback;
             }
 
+            // Pattern match with named parameters
             $routeRegex = $this->convertRouteToRegex($route);
 
             if (preg_match($routeRegex, $url, $matches)) {
@@ -740,6 +795,50 @@ class Router extends Kernel
         }
 
         return false;
+    }
+
+    /**
+     * Match the incoming host against a route domain pattern.
+     * Supports:
+     *   - Exact domain:            'api.example.com'
+     *   - Port-qualified domain:   'localhost:8000'
+     *   - Wildcard subdomain:      '{tenant}.example.com' (injects param into route params)
+     *   - Universal wildcard:      '*'
+     *
+     * @param string $host
+     * @param string $domain
+     * @param mixed  $request
+     * @return bool
+     */
+    protected function matchesDomain(string $host, string $domain, $request): bool
+    {
+        $host = strtolower($host);
+
+        // Universal wildcard: match any host
+        if ($domain === '*') {
+            return true;
+        }
+
+        // Named subdomain wildcard: {subdomain}.example.com
+        if (preg_match('/^\{(\w+)\}\.(.+)$/', $domain, $m)) {
+            // Strip port from host before matching the suffix
+            $bareHost     = explode(':', $host)[0];
+            $domainSuffix = strtolower($m[2]);
+            $pattern      = '/^([^.]+)\.' . preg_quote($domainSuffix, '/') . '$/';
+
+            if (preg_match($pattern, $bareHost, $hostMatch)) {
+                // Inject the captured subdomain segment as a route parameter
+                $existing        = $request->getRouteParams();
+                $existing[$m[1]] = $hostMatch[1];
+                $request->setRouteParams($existing);
+                return true;
+            }
+
+            return false;
+        }
+
+        // Exact match — intentionally port-aware so 'localhost:8000' != 'localhost'
+        return $host === strtolower($domain);
     }
 
     /**
