@@ -196,6 +196,7 @@ class Application extends Container
     /**
      * Set the application base path
      *
+     * @param string $basePath
      * @return self
      */
     public function withBasePath(string $basePath): self
@@ -343,6 +344,7 @@ class Application extends Container
     /**
      * Gets the resources path.
      *
+     * @param string $path
      * @return string
      */
     public function resourcesPath($path = ''): string
@@ -353,6 +355,7 @@ class Application extends Container
     /**
      * Gets the bootstrap path.
      *
+     * @param string $path
      * @return string
      */
     public function bootstrapPath($path = ''): string
@@ -363,6 +366,7 @@ class Application extends Container
     /**
      * Gets the database path.
      *
+     * @param string $path
      * @return string
      */
     public function databasePath($path = ''): string
@@ -373,6 +377,7 @@ class Application extends Container
     /**
      * Gets the public path.
      *
+     * @param string $path
      * @return string
      */
     public function publicPath($path = ''): string
@@ -383,6 +388,7 @@ class Application extends Container
     /**
      * Gets the storage path.
      *
+     * @param string $path
      * @return string
      */
     public function storagePath($path = ''): string
