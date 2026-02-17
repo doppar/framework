@@ -4,8 +4,18 @@ namespace Phaseolies\Utilities;
 
 class Paginator
 {
+    /**
+     * Underlying pagination payload used to generate navigation links.
+     *
+     * @var array<string, mixed>
+     */
     protected $data;
 
+    /**
+     * Create a new paginator instance.
+     *
+     * @param array<string, mixed> $data
+     */
     public function __construct($data)
     {
         $this->data = $data;
