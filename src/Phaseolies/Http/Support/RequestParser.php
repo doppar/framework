@@ -333,11 +333,7 @@ trait RequestParser
      */
     public static function route(?string $name = null): string|bool|null
     {
-        $routeName = array_search(
-            request()->uri(),
-            app('route')->getRouteNames(),
-            true
-        ) ?: null;
+        $routeName = array_search(request()->uri(), app('route')->getRouteNames(), true) ?: null;
 
         if (\is_null($name)) {
             return $routeName;

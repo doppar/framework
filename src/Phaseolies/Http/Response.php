@@ -656,26 +656,28 @@ class Response implements HttpStatus
     /**
      * Render an HTML error page.
      *
-     * @param int $statusCode The HTTP status code.
-     * @param string $message The error message.
+     * @param int $status
+     * @param string $message
      * @return void
      */
-    protected static function renderErrorPage(int $statusCode, string $message): void
+    protected static function renderErrorPage(int $status, string $message): void
     {
-        $customPath = base_path("resources/views/errors/{$statusCode}.odo.php");
-        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.odo.php");
+        $customPath = base_path("resources/views/errors/{$status}.odo.php");
+        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$status}.odo.php");
 
         if (file_exists($customPath)) {
             include $customPath;
         } elseif (file_exists($errorPage)) {
             include $errorPage;
         } else {
-            abort($statusCode, $message);
+            abort($status, $message);
         }
     }
 
     /**
      * Renders a view with the given data and returns the rendered content as a string.
+     *
+     * @return string
      */
     public function render(): string
     {
@@ -701,9 +703,9 @@ class Response implements HttpStatus
     /**
      * Renders a view with the given data and returns a Response object.
      *
-     * @param string $view The name of the view file to render.
-     * @param array $data An associative array of data to pass to the view (default is an empty array).
-     * @return Response A Response object containing the rendered view.
+     * @param string $view
+     * @param array $data
+     * @return Response
      */
     public function view(string $view, array $data = [], array $headers = []): Response
     {
@@ -720,9 +722,9 @@ class Response implements HttpStatus
     /**
      * Renders a view with the given data and returns the rendered content as a string.
      *
-     * @param string $view The name of the view file to render.
-     * @param array $data An associative array of data to pass to the view.
-     * @return string The rendered view content.
+     * @param string $view
+     * @param array $data
+     * @return string
      */
     public function renderView(string $view, array $data = []): string
     {
@@ -738,35 +740,35 @@ class Response implements HttpStatus
     }
 
     /**
-     * Return a JSON response.
-     *
      * This method sets the appropriate headers for a JSON response and returns the JSON-encoded data.
      *
-     * @param mixed $data The data to encode as JSON.
-     * @param int $statusCode The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
+     * @param mixed $data
+     * @param int $status
+     * @param array<string, string> $headers
      * @return JsonResponse
      */
-    public function json(mixed $data, int $statusCode = 200, array $headers = []): JsonResponse
+    public function json(mixed $data, int $status = 200, array $headers = []): JsonResponse
     {
-        return response()->json($data, $statusCode, $headers);
+        return response()->json($data, $status, $headers);
     }
 
     /**
      * Return a plain text response.
      *
-     * @param string $content The plain text content.
-     * @param int $statusCode The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
+     * @param string $content
+     * @param int $status
+     * @param array<string, string> $headers
      * @return Response
      */
-    public function text(string $content, int $statusCode = 200, array $headers = []): Response
+    public function text(string $content, int $status = 200, array $headers = []): Response
     {
         $this->body = $content;
-        $this->statusCode = $statusCode;
+        $this->statusCode = $status;
+
         foreach ($headers as $name => $value) {
             $this->headers->set($name, $value);
         }
+
         $this->headers->set('Content-Type', 'text/plain');
 
         return $this;

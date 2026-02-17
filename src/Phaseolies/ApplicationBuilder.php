@@ -33,10 +33,7 @@ class ApplicationBuilder
 
         date_default_timezone_set($timezone);
 
-        $this->app->singleton(
-            'timezone',
-            fn() => new TimezoneHandler($timezone)
-        );
+        $this->app->singleton('timezone', fn() => new TimezoneHandler($timezone));
 
         return $this;
     }
