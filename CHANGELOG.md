@@ -1,5 +1,12 @@
 # Release Notes
 
+## v3.8.0 - 2026-02-21
+
+* Some comments updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/192
+* Paginator class doc updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/193
+* Domain-Restricted Route Matching by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/194
+* Error Page Improved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/195
+
 ## v3.7.0 - 2026-02-15
 
 * Add Support for #[Bind] Attribute in Console Command Handle Methods by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/191
