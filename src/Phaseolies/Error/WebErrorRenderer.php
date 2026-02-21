@@ -9,6 +9,8 @@ use Phaseolies\Error\Utils\Highlighter;
 use Phaseolies\Http\Controllers\Controller;
 use Throwable;
 
+use function Tests\Unit\Application\config;
+
 class WebErrorRenderer
 {
     /**
@@ -47,8 +49,6 @@ class WebErrorRenderer
             'email' => $user->email ?? 'N/A',
         ] : null;
 
-        date_default_timezone_set(config('app.timezone'));
-
         $mdReport = new ExceptionMarkdownReport($exception);
 
         // setup the controller to point out to different views location
@@ -68,6 +68,7 @@ class WebErrorRenderer
             'php_version'     => PHP_VERSION,
             'doppar_version'  => Application::VERSION,
             'request_method'  => request()->getMethod(),
+            'request_body'    => request()->all(),
             'request_url'     => trim(request()->fullUrl(), '/'),
             'timestamp'       => now()->toDayDateTimeString(),
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
@@ -79,6 +80,10 @@ class WebErrorRenderer
             'exception_class' => class_basename($exception),
             'status_code'     => $exception->getCode() ?: 500,
             'md_content' => $mdReport->generate(),
+            'current_middleware' => \Phaseolies\Support\Facades\Route::getCurrentMiddlewareNames(),
+            'current_route_name' => \Phaseolies\Support\Facades\Route::currentRouteName(),
+            'current_route_action' => \Phaseolies\Support\Facades\Route::currentRouteAction(),
+            'current_route_params' => request()->getRouteParams()
         ]);
     }
 
