@@ -204,7 +204,6 @@
             background: rgba(255, 255, 255, .02);
         }
 
-        /* ── IMPROVED: exception class pill with live dot ── */
         .exception-pill {
             display: inline-flex;
             align-items: center;
@@ -248,7 +247,6 @@
             }
         }
 
-        /* ── IMPROVED: subtle hero glow ── */
         .hero-glow {
             position: absolute;
             top: -80px;
@@ -256,15 +254,9 @@
             width: 500px;
             height: 400px;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(225, 29, 72, 0.06) 0%, transparent 70%);
             pointer-events: none;
         }
 
-        html.dark .hero-glow {
-            background: radial-gradient(circle, rgba(251, 113, 133, 0.07) 0%, transparent 70%);
-        }
-
-        /* ── IMPROVED: status badge with live dot ── */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -292,7 +284,6 @@
             animation: pulse-dot 1.8s ease infinite;
         }
 
-        /* ── IMPROVED: code line hover ── */
         .code-line:not(.code-line-error):hover {
             background: rgba(0, 0, 0, .025);
         }
@@ -301,7 +292,6 @@
             background: rgba(255, 255, 255, .02);
         }
 
-        /* ── IMPROVED: param dotted connector ── */
         .param-dot-line {
             flex-grow: 1;
             border-bottom: 1px dashed rgba(0, 0, 0, .1);
@@ -312,7 +302,6 @@
             border-bottom-color: rgba(255, 255, 255, .07);
         }
 
-        /* ── IMPROVED: "Line N" badge in code header ── */
         .line-badge {
             display: inline-flex;
             align-items: center;
@@ -332,7 +321,6 @@
             color: #fb7185;
         }
 
-        /* ── IMPROVED: route live indicator ── */
         .route-live-dot {
             width: 7px;
             height: 7px;
@@ -345,7 +333,6 @@
             background: #fb7185;
         }
 
-        /* ── IMPROVED: request bar ── */
         .request-bar {
             border-top: 1px solid rgba(0, 0, 0, .06);
             border-bottom: 1px solid rgba(0, 0, 0, .06);
@@ -359,7 +346,6 @@
             background: rgba(255, 255, 255, .02);
         }
 
-        /* ── IMPROVED: frame count badge ── */
         .frame-count-badge {
             display: inline-flex;
             align-items: center;
@@ -385,13 +371,11 @@
     <!-- ── HERO BANNER ── -->
     <div class="anim-1 relative overflow-hidden py-8 md:py-10">
         <div class="hero-glow"></div>
-        <div class="pointer-events-none absolute -bottom-16 left-1/3 w-64 h-64 rounded-full bg-orange-400/6 blur-3xl"></div>
+        <div class="pointer-events-none absolute -bottom-16 left-1/3 w-64 h-64 rounded-full blur-3xl"></div>
 
         <div class="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
 
-            <!-- Top row: exception pill left, controls right -->
             <div class="flex items-start justify-between gap-4 mb-5 flex-wrap">
-                <!-- IMPROVED: pill replaces plain section-label -->
                 <div class="exception-pill">
                     <span class="exception-pill-dot"></span>
                     [[ $exception_class ]]
@@ -429,34 +413,45 @@
                 </div>
             </div>
 
-            <!-- Error message — IMPROVED: italic for serif character -->
-            <h1 class="text-xl md:text-2xl lg:text-3xl text-slate-900 dark:text-slate-50 leading-tight mb-4 break-words max-w-4xl"
-                style="font-family:'Instrument Serif',serif; font-style:italic;">
+            <h1 class="text-xl md:text-2xl lg:text-2xl text-slate-900 dark:text-slate-50 leading-tight mb-4 break-words max-w-4xl"
+                style="font-family:'Instrument Serif',serif;">
                 [[ $error_message ]]
             </h1>
         </div>
     </div>
 
     <!-- ── REQUEST BAR ── -->
-    <div class="anim-2 request-bar py-3">
-        <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10 flex items-center gap-3 flex-wrap">
-            <span data-request-type="[[ $request_method ]]" class="badge">[[ $request_method ]]</span>
-            <span class="font-mono text-sm text-slate-600 dark:text-slate-400 flex-1 min-w-0 truncate">[[ $request_url ]]</span>
+    <div class="anim-2 bg-white/20 dark:bg-black/10 p-4">
+        <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
+            <div class="flex items-center h-12
+            bg-white/80 dark:bg-white/2
+            backdrop-blur
+            border border-gray-200/70 dark:border-white/10
+            rounded-lg px-3 shadow-sm">
+                <span data-request-type="[[ $request_method ]]" class="badge">[[ $request_method ]]</span>
+                <span class="font-mono text-sm text-gray-600 dark:text-gray-400 ml-3 flex-1 truncate">[[ $request_url ]]</span>
+                <button id="copyUrlBtn"
+                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    title="Copy URL">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- ── OVERVIEW STRIP ── -->
     <div class="anim-2 bg-white/20 dark:bg-black/10">
         <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
-            <div class="flex items-center py-2.5 border-b border-black/5 dark:border-white/5">
+            <div class="flex items-center py-2.5">
                 <span class="section-label">Date</span>
                 <div class="flex-1"></div>
                 <span class="text-xs font-mono text-slate-600 dark:text-slate-400">[[ $timestamp ]]</span>
             </div>
-            <div class="flex items-center py-2.5 border-b border-black/5 dark:border-white/5">
+            <div class="flex items-center py-2.5">
                 <span class="section-label">Status Code</span>
                 <div class="flex-1"></div>
-                <!-- IMPROVED: live dot status badge replaces static red badge -->
                 <span class="status-badge">
                     <span class="status-badge-dot"></span>
                     [[ $status_code ]]
@@ -484,7 +479,6 @@
                     <div class="w-3 h-3 rounded-full bg-emerald-400/70"></div>
                 </div>
                 <span class="font-mono text-xs text-slate-500 flex-1 truncate">[[ $error_file ]]</span>
-                <!-- IMPROVED: rose-tinted line badge instead of plain text -->
                 <span class="line-badge shrink-0">Line [[ $error_line ]]</span>
             </div>
             <div class="overflow-x-auto bg-white/60 dark:bg-black/20">
@@ -500,7 +494,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                     <h2 class="text-sm font-semibold">Stack Trace</h2>
-                    <!-- IMPROVED: frame count pill -->
                     <span id="frameCountBadge" class="frame-count-badge"></span>
                 </div>
                 <button id="toggleAllFramesBtn"
@@ -599,7 +592,6 @@
 
         <!-- ── REQUEST BODY ── -->
         <div class="anim-5 glass-card overflow-hidden">
-            <!-- IMPROVED: whole header row is clickable with hover state -->
             <div id="reqBodyToggle"
                 class="flex items-center gap-3 px-5 py-4 border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2 cursor-pointer select-none hover:bg-black/3 dark:hover:bg-white/3 transition-colors">
                 <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center shrink-0">
@@ -629,7 +621,7 @@
         </div>
 
         <!-- ── ROUTING DEBUGGER ── -->
-        <div class="anim-6 glass-card overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl">
+        <div class="anim-6 glass-card overflow-hidden backdrop-blur-xl">
 
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
                 <div class="flex items-center gap-3">
@@ -640,7 +632,6 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Routing</h3>
-                        <p class="section-label mt-0.5">Internal Request State</p>
                     </div>
                 </div>
             </div>
@@ -695,7 +686,6 @@
                     </div>
                 </div>
 
-                <!-- Route Params — IMPROVED: dotted connector line -->
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2 text-emerald-500 dark:text-emerald-400">
@@ -741,7 +731,6 @@
     <textarea id="mdContent" class="hidden">[[ $md_content ]]</textarea>
 
     <script>
-        // ── Theme ──
         const ThemeManager = {
             getTheme() {
                 const s = localStorage.getItem('theme');
@@ -767,7 +756,6 @@
         };
         ThemeManager.init();
 
-        // ── Copy as Markdown ──
         document.getElementById('copyToClipBoard')?.addEventListener('click', async function() {
             const md = document.getElementById('mdContent')?.value;
             if (!md) return;
@@ -786,7 +774,6 @@
             }
         });
 
-        // ── Request Body Toggle ──
         (function() {
             const toggle = document.getElementById('reqBodyToggle');
             const panel = document.getElementById('reqBodyPanel');
@@ -799,7 +786,6 @@
             });
         })();
 
-        // ── Stack Trace Toggle ──
         (function() {
             const container = document.getElementById('traceFrames');
             if (!container) return;
@@ -842,13 +828,11 @@
                 if (text) text.textContent = allOpen ? 'Collapse All' : 'Expand All';
             });
 
-            // Frame count badge
             const count = container.querySelectorAll('[data-frame-toggle]').length;
             const badge = document.getElementById('frameCountBadge');
             if (badge && count > 0) badge.textContent = count + ' frames';
         })();
 
-        // ── Headers Toggle ──
         (function() {
             const toggle = document.querySelector('[data-headers-toggle]');
             const panel = document.querySelector('[data-headers-panel]');
@@ -867,6 +851,29 @@
                 }
             });
         })();
+        document.getElementById('copyUrlBtn')?.addEventListener('click', async function() {
+            const url = '[[ $request_url ]]';
+            try {
+                await navigator.clipboard.writeText(url);
+
+                const originalSvg = this.innerHTML;
+
+                this.innerHTML = `
+            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+        `;
+                this.classList.add('bg-green-50', 'dark:bg-green-500/10');
+
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    this.innerHTML = originalSvg;
+                    this.classList.remove('bg-green-50', 'dark:bg-green-500/10');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
     </script>
 </body>
 
