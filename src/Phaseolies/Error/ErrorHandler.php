@@ -54,7 +54,7 @@ class ErrorHandler
 
     protected static function handleFallback(Throwable $exception): void
     {
-        abort(500, "An error occurred. Please try again later.");
+        abort($exception->getCode() ?: 500, "An error occurred. Please try again later.");
 
         exit(1);
     }
