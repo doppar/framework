@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.8.1 - 2026-02-22
+
+* Improved CLI Error Output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/196
+
 ## v3.8.0 - 2026-02-21
 
 * Some comments updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/192
