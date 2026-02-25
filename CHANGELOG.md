@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.8.2 - 2026-02-25
+
+* route parameter issue resolved for tenant based routing: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/197
+
 ## v3.8.1 - 2026-02-22
 
 * Improved CLI Error Output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/196
