@@ -244,6 +244,7 @@ trait RequestHelper
         });
 
         $this->request->replace($data);
+        $this->input = [];
 
         return $this;
     }
