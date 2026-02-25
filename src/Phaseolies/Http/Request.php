@@ -599,6 +599,7 @@ class Request
     public function merge(array $input): self
     {
         $this->request->replace(array_merge($this->request->all(), $input));
+        $this->input = [];
 
         return $this;
     }
