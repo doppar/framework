@@ -787,7 +787,9 @@ class Router extends Kernel
             if (preg_match($routeRegex, $url, $matches)) {
                 $params = $this->extractRouteParameters($route, $matches);
                 if ($params !== false) {
-                    $request->setRouteParams($params);
+                    $existing = $request->getRouteParams();
+                    $merged = array_merge($existing, $params);
+                    $request->setRouteParams($merged);
                     return $callback;
                 }
             }
@@ -830,6 +832,8 @@ class Router extends Kernel
                 $existing        = $request->getRouteParams();
                 $existing[$m[1]] = $hostMatch[1];
                 $request->setRouteParams($existing);
+                $request->merge([$m[1] => $hostMatch[1]]);
+
                 return true;
             }
 
