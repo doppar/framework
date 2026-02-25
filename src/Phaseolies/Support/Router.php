@@ -832,7 +832,7 @@ class Router extends Kernel
                 $existing        = $request->getRouteParams();
                 $existing[$m[1]] = $hostMatch[1];
                 $request->setRouteParams($existing);
-                $request->merge([$m[1] => $hostMatch[1]]);
+                $request->mergeIfMissing([$m[1] => $hostMatch[1]]);
 
                 return true;
             }
