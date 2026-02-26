@@ -2,12 +2,6 @@
 
 namespace Phaseolies\Http;
 
-/**
- * Class InputBag
- *
- * A simple container for managing input data (e.g., query parameters, form data).
- * Provides methods to retrieve, set, check, and replace input data.
- */
 class InputBag
 {
     /**
@@ -18,7 +12,7 @@ class InputBag
     /**
      * InputBag constructor.
      *
-     * @param array $data Initial data to populate the bag.
+     * @param array $data
      */
     public function __construct(array $data = [])
     {
@@ -28,9 +22,9 @@ class InputBag
     /**
      * Retrieves the value for a given key from the input data.
      *
-     * @param string $key The key to retrieve.
-     * @param mixed $default The default value to return if the key does not exist.
-     * @return mixed The value associated with the key, or the default value if the key is not found.
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
      */
     public function get(string $key, mixed $default = null): mixed
     {
@@ -40,8 +34,9 @@ class InputBag
     /**
      * Sets a value for a given key in the input data.
      *
-     * @param string $key The key to set.
-     * @param mixed $value The value to associate with the key.
+     * @param string $key
+     * @param mixed $value
+     * @return void
      */
     public function set(string $key, mixed $value): void
     {
@@ -51,8 +46,8 @@ class InputBag
     /**
      * Checks if a key exists in the input data.
      *
-     * @param string $key The key to check.
-     * @return bool True if the key exists, false otherwise.
+     * @param string $key
+     * @return bool
      */
     public function has(string $key): bool
     {
@@ -62,7 +57,7 @@ class InputBag
     /**
      * Retrieves all input data as an associative array.
      *
-     * @return array The entire input data.
+     * @return array
      */
     public function all(): array
     {
@@ -72,7 +67,8 @@ class InputBag
     /**
      * Replaces the entire input data with a new set of data.
      *
-     * @param array $data The new data to replace the existing input data.
+     * @param array $data
+     * @return void
      */
     public function replace(array $data): void
     {
