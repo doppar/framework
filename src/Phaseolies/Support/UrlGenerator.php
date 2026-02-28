@@ -87,7 +87,7 @@ class UrlGenerator
      */
     protected function determineBaseUrl(): string
     {
-        return \base_url();
+        return base_url();
     }
 
     /**
