@@ -7,7 +7,7 @@
     <title>Error — [[ $error_message ]]</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <script>
@@ -22,8 +22,8 @@
 
     <style type="text/tailwindcss">
         @theme {
-            --font-mono: 'Geist Mono', monospace;
-            --font-serif: 'Instrument Serif', serif;
+            --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+            --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
             --color-hl-tag: #94a3b8;
             --color-hl-variable: #f97316;
             --color-hl-string: #6366f1;
@@ -50,7 +50,9 @@
             }
         }
         @custom-variant dark (&:where(.dark, .dark *));
-        * { font-family: 'Geist Mono', monospace; }
+        body {
+            font-family: var(--font-sans);
+        }
         @layer components {
             .badge { @apply inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-widest uppercase; }
             .badge[data-request-type="GET"]    { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400; }
@@ -413,8 +415,7 @@
                 </div>
             </div>
 
-            <h1 class="text-xl md:text-2xl lg:text-2xl text-slate-900 dark:text-slate-50 leading-tight mb-4 break-words max-w-4xl"
-                style="font-family:'Instrument Serif',serif;">
+            <h1 class="text-xl md:text-2xl lg:text-2xl text-slate-900 dark:text-slate-50 leading-tight mb-4 break-words max-w-4xl">
                 [[ $error_message ]]
             </h1>
         </div>
@@ -512,6 +513,141 @@
             #include('template-headers', ['headers' => $headers])
         </div>
 
+        <!-- ── REQUEST BODY ── -->
+        <div class="anim-5 glass-card overflow-hidden">
+            <div id="reqBodyToggle"
+                class="flex items-center gap-3 px-5 py-4 border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2 cursor-pointer select-none hover:bg-black/3 dark:hover:bg-white/3 transition-colors">
+                <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center shrink-0">
+                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                </div>
+                <span class="text-sm font-semibold flex-1">Request Body</span>
+                #if (!empty($request_body))
+                <svg id="reqBodyArrow" class="arrow-icon w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+                #endif
+            </div>
+            #if (!empty($request_body))
+            <div id="reqBodyPanel" style="display:none;">
+                <pre class="text-xs p-5 overflow-x-auto bg-white/60 dark:bg-black/10 leading-relaxed"><code>[[ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ]]</code></pre>
+            </div>
+            #else
+            <div class="flex flex-col items-center justify-center py-12 text-slate-300 dark:text-slate-700">
+                <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+                <p class="text-xs font-mono tracking-widest uppercase">Empty Request Body</p>
+            </div>
+            #endif
+        </div>
+
+        <!-- ── ROUTING DEBUGGER ── -->
+        <div class="anim-5 glass-card overflow-hidden">
+
+            <div class="headers-toggle border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2">
+                <div class="flex items-center gap-3">
+                    <div class="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 flex items-center justify-center">
+                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Routing</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-6">
+
+                <!-- Route Name -->
+                <div>
+                    <div class="section-label mb-3">Route Name</div>
+                    <div class="flex items-baseline group py-1.5">
+                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
+                            Name
+                        </span>
+                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
+                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
+                            [[ $current_route_name ?? 'unnamed_route' ]]
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Controller Action -->
+                <div>
+                    <div class="section-label mb-3">Controller</div>
+
+                    <div class="flex items-baseline group py-1.5">
+                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
+                            Action
+                        </span>
+                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
+
+                        #if(!empty($current_route_action))
+                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
+                            [[ $current_route_action ]]
+                        </span>
+                        #else
+                        <span class="font-mono text-sm italic text-slate-400 shrink-0">
+                            Closure / No Action
+                        </span>
+                        #endif
+                    </div>
+                </div>
+
+                <!-- Middleware -->
+                <div>
+                    <div class="section-label mb-3">Middleware ([[ count($current_middleware ?? []) ]])</div>
+
+                    #if (!empty($current_middleware))
+                    #foreach(($current_middleware ?? []) as $index => $mw)
+                    <div class="flex items-baseline group py-1.5">
+                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
+                            [[ $index + 1 ]]
+                        </span>
+                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
+                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
+                            [[ $mw ]]
+                        </span>
+                    </div>
+                    #endforeach
+                    #else
+                    <div class="flex items-center gap-2 py-1 opacity-40">
+                        <div class="w-1 h-1 rounded-full bg-slate-400"></div>
+                        <span class="text-xs font-mono italic text-slate-500">No middleware</span>
+                    </div>
+                    #endif
+                </div>
+
+                <!-- Route Parameters -->
+                <div>
+                    <div class="section-label mb-3">Route Parameters</div>
+
+                    #if (!empty($current_route_params))
+                    #foreach ($current_route_params as $key => $val)
+                    <div class="flex items-baseline group py-1.5">
+                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
+                            [[ $key ]]
+                        </span>
+                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
+                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
+                            [[ $val ]]
+                        </span>
+                    </div>
+                    #endforeach
+                    #else
+                    <div class="flex items-center gap-2 py-1 opacity-40">
+                        <div class="w-1 h-1 rounded-full bg-slate-400"></div>
+                        <span class="text-xs font-mono italic text-slate-500">No parameters</span>
+                    </div>
+                    #endif
+                </div>
+
+            </div>
+        </div>
+
         <!-- ── INFO GRID ── -->
         <div class="anim-5 grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- System -->
@@ -590,139 +726,8 @@
             </div>
         </div>
 
-        <!-- ── REQUEST BODY ── -->
-        <div class="anim-5 glass-card overflow-hidden">
-            <div id="reqBodyToggle"
-                class="flex items-center gap-3 px-5 py-4 border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2 cursor-pointer select-none hover:bg-black/3 dark:hover:bg-white/3 transition-colors">
-                <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center shrink-0">
-                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                    </svg>
-                </div>
-                <span class="text-sm font-semibold flex-1">Request Body</span>
-                #if (!empty($request_body))
-                <svg id="reqBodyArrow" class="arrow-icon w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-                #endif
-            </div>
-            #if (!empty($request_body))
-            <div id="reqBodyPanel" style="display:none;">
-                <pre class="text-xs p-5 overflow-x-auto bg-white/60 dark:bg-black/10 leading-relaxed"><code>[[ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ]]</code></pre>
-            </div>
-            #else
-            <div class="flex flex-col items-center justify-center py-12 text-slate-300 dark:text-slate-700">
-                <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <p class="text-xs font-mono tracking-widest uppercase">Empty Request Body</p>
-            </div>
-            #endif
-        </div>
-
-        <!-- ── ROUTING DEBUGGER ── -->
-        <div class="anim-6 glass-card overflow-hidden backdrop-blur-xl">
-
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                <div class="flex items-center gap-3">
-                    <div class="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Routing</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 space-y-6">
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-                    <div>
-                        <div class="section-label mb-2">Route Name</div>
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" stroke-width="2" stroke-linecap="round" />
-                            </svg>
-                            <span class="font-mono text-sm font-bold text-violet-600 dark:text-violet-300 break-all">
-                                [[ $current_route_name ?? 'unnamed_route' ]]
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="section-label mb-2">Controller Action</div>
-                        #if(!empty($current_route_action))
-                        <div class="font-mono text-xs flex flex-wrap items-center gap-1.5 leading-6">
-                            <span class="text-slate-500 dark:text-slate-400 break-all">[[ $current_route_action ]]</span>
-                        </div>
-                        #else
-                        <span class="text-xs italic text-slate-400 leading-6">Closure / No Action</span>
-                        #endif
-                    </div>
-                </div>
-
-                <!-- Middleware -->
-                <div>
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2 text-indigo-500 dark:text-indigo-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            <span class="section-label">Middleware</span>
-                        </div>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                            [[ count($current_middleware ?? []) ]] Layers
-                        </span>
-                    </div>
-                    <div class="flex flex-wrap gap-2">
-                        #foreach(($current_middleware ?? []) as $mw)
-                        <div class="mw-chip">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 dark:bg-indigo-500 shrink-0"></span>
-                            [[ $mw ]]
-                        </div>
-                        #endforeach
-                    </div>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-3">
-                        <div class="flex items-center gap-2 text-emerald-500 dark:text-emerald-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span class="section-label">Route Parameters</span>
-                        </div>
-                        #if (!empty($current_route_params))
-                        <span class="text-[10px] font-bold tabular-nums text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                            [[ count($current_route_params) ]]
-                        </span>
-                        #endif
-                    </div>
-
-                    #if (!empty($current_route_params))
-                    <div class="space-y-0.5">
-                        #foreach ($current_route_params as $key => $val)
-                        <div class="flex items-baseline group py-1.5">
-                            <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">[[ $key ]]</span>
-                            <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
-                            <span class="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400 shrink-0 break-all">[[ $val ]]</span>
-                        </div>
-                        #endforeach
-                    </div>
-                    #else
-                    <div class="flex items-center gap-2 py-1 opacity-40">
-                        <div class="w-1 h-1 rounded-full bg-slate-400"></div>
-                        <span class="text-xs font-mono italic text-slate-500">No parameters</span>
-                    </div>
-                    #endif
-                </div>
-            </div>
-        </div>
-
         <!-- Footer -->
-        <div class="text-center py-4 text-[10px] font-mono text-slate-300 dark:text-slate-700 tracking-[0.2em] uppercase">
+        <div class="text-center py-4 text-[10px] font-mono text-slate-700 dark:text-slate-700 tracking-[0.2em] uppercase">
             Doppar Framework
         </div>
 

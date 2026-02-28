@@ -15,7 +15,7 @@
  <div class="headers-panel bg-white/40 dark:bg-black/10" data-headers-panel>
      <div class="px-5 py-4 font-mono text-xs space-y-1">
          #foreach ($headers as $header_name => $header_value)
-         <div class="flex items-center gap-3 py-1.5 border-b border-black/3 dark:border-white/3 last:border-0">
+         <div class="flex items-center gap-3 py-1.5 ">
              <span class="uppercase text-slate-500 shrink-0 w-44 truncate">[[ $header_name ]]</span>
              <div class="flex-1 border-t border-dashed border-black/10 dark:border-white/10 h-px"></div>
              <span class="text-slate-700 dark:text-slate-300 text-right truncate max-w-xs">[[ $header_value ]]</span>
