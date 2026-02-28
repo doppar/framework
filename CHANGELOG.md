@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.8.4 - 2026-02-28
+
+* InputBag doc comment updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/199
+* Domain Restriction Route Test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/200
+* Enhanced UrlGenerator with Multi-tenancy Support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/201
+
 ## v3.8.3 - 2026-02-25
 
 * fix: mergeIfMissing function: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/198
