@@ -56,7 +56,7 @@ class UrlGenerator
      */
     public function __construct(?string $baseUrl = null, ?bool $secure = null)
     {
-        $this->baseUrl = $baseUrl ? rtrim($baseUrl, '/') : $this->determineBaseUrl();
+        $this->baseUrl = $this->determineBaseUrl() ?? $baseUrl;
 
         $this->secure = $secure ?? $this->isSecureRequest();
     }
@@ -87,7 +87,7 @@ class UrlGenerator
      */
     protected function determineBaseUrl(): string
     {
-        return \base_url();
+        return base_url();
     }
 
     /**

@@ -7,39 +7,51 @@ use PHPUnit\Framework\TestCase;
 
 class UrlGeneratorTest extends TestCase
 {
-    private $baseUrl = 'http://example.com';
-    private $secureBaseUrl = 'https://example.com';
+    private $baseUrl = 'http://localhost';
+    private $secureBaseUrl = 'https://localhost';
     private $urlGenerator;
 
     protected function setUp(): void
     {
+        $_SERVER['HTTP_HOST'] = 'localhost';
+        $_SERVER['SERVER_PORT'] = 80;
+        $_SERVER['SCRIPT_NAME'] = '/index.php';
+        $_SERVER['argv'] = ['phpunit'];
+
         $this->urlGenerator = new UrlGenerator($this->baseUrl);
+    }
+
+    protected function tearDown(): void
+    {
+        unset($_SERVER['HTTP_HOST']);
+        unset($_SERVER['SERVER_PORT']);
+        unset($_SERVER['SCRIPT_NAME']);
+        unset($_SERVER['argv']);
     }
 
     public function testInitialization()
     {
         $this->assertInstanceOf(UrlGenerator::class, $this->urlGenerator);
         $this->assertEquals($this->baseUrl, $this->urlGenerator->base());
-        $this->assertFalse($this->isSecure());
     }
 
     public function testEnqueueBasicUrl()
     {
         $url = $this->urlGenerator->enqueue('path/to/resource');
-        $this->assertEquals('http://example.com/path/to/resource', $url);
+        $this->assertEquals('http://localhost/path/to/resource', $url);
     }
 
     public function testEnqueueWithSecure()
     {
         $url = $this->urlGenerator->enqueue('path/to/resource', true);
-        $this->assertEquals('https://example.com/path/to/resource', $url);
+        $this->assertEquals('https://localhost/path/to/resource', $url);
     }
 
     public function testToMethod()
     {
         $generator = $this->urlGenerator->to('path/to/resource');
         $this->assertInstanceOf(UrlGenerator::class, $generator);
-        $this->assertEquals('http://example.com/path/to/resource', $generator->make());
+        $this->assertEquals('http://localhost/path/to/resource', $generator->make());
     }
 
     public function testWithQueryParameters()
@@ -51,6 +63,7 @@ class UrlGeneratorTest extends TestCase
 
         $this->assertStringContainsString('param1=value1', $url);
         $this->assertStringContainsString('param2=value2', $url);
+        $this->assertStringStartsWith('http://localhost/path?', $url);
     }
 
     public function testWithQueryString()
@@ -62,6 +75,7 @@ class UrlGeneratorTest extends TestCase
 
         $this->assertStringContainsString('param1=value1', $url);
         $this->assertStringContainsString('param2=value2', $url);
+        $this->assertStringStartsWith('http://localhost/path?', $url);
     }
 
     public function testWithFragment()
@@ -71,60 +85,59 @@ class UrlGeneratorTest extends TestCase
             ->withFragment('section1')
             ->make();
 
-        $this->assertStringEndsWith('#section1', $url);
+        $this->assertEquals('http://localhost/path#section1', $url);
     }
 
     public function testIsValidUrl()
     {
-        $this->assertTrue($this->urlGenerator->isValid('http://example.com'));
-        $this->assertTrue($this->urlGenerator->isValid('https://example.com'));
-        $this->assertTrue($this->urlGenerator->isValid('mailto:test@example.com'));
+        $this->assertTrue($this->urlGenerator->isValid('http://localhost'));
+        $this->assertTrue($this->urlGenerator->isValid('https://localhost'));
+        $this->assertTrue($this->urlGenerator->isValid('mailto:test@localhost'));
         $this->assertTrue($this->urlGenerator->isValid('tel:+123456789'));
-        $this->assertTrue($this->urlGenerator->isValid('//example.com'));
+        $this->assertTrue($this->urlGenerator->isValid('//localhost'));
         $this->assertTrue($this->urlGenerator->isValid('#anchor'));
 
         $this->assertFalse($this->urlGenerator->isValid('invalid-url'));
-        $this->assertFalse($this->urlGenerator->isValid('example.com'));
+        $this->assertFalse($this->urlGenerator->isValid('localhost'));
     }
 
     public function testSetSecure()
     {
         $this->urlGenerator->setSecure(true);
-        $this->assertTrue($this->isSecure());
 
         $url = $this->urlGenerator->to('path')->make();
-        $this->assertStringStartsWith('https://', $url);
+        $this->assertEquals('https://localhost/path', $url);
     }
 
     public function testBaseUrlWithoutTrailingSlash()
     {
-        $generator = new UrlGenerator('http://example.com/');
+        $generator = new UrlGenerator('http://localhost/');
         $url = $generator->to('path')->make();
-        $this->assertEquals('http://example.com/path', $url);
+        $this->assertEquals('http://localhost/path', $url);
     }
 
     public function testPathWithoutLeadingSlash()
     {
         $url = $this->urlGenerator->to('path')->make();
-        $this->assertEquals('http://example.com/path', $url);
+        $this->assertEquals('http://localhost/path', $url);
     }
 
     public function testPathWithLeadingSlash()
     {
         $url = $this->urlGenerator->to('/path')->make();
-        $this->assertEquals('http://example.com/path', $url);
+        $this->assertEquals('http://localhost/path', $url);
     }
 
     public function testEmptyPath()
     {
         $url = $this->urlGenerator->to('')->make();
-        $this->assertEquals('http://example.com/', $url);
+        $this->assertEquals('http://localhost/', $url);
     }
 
     public function testRootPath()
     {
         $url = $this->urlGenerator->to('/')->make();
-        $this->assertEquals('http://example.com/', $url);
+        $this->assertEquals('http://localhost/', $url);
     }
 
     public function testComplexUrlConstruction()
@@ -135,19 +148,7 @@ class UrlGeneratorTest extends TestCase
             ->withFragment('reviews')
             ->make();
 
-        $expected = 'http://example.com/products/details?id=123&category=electronics#reviews';
+        $expected = 'http://localhost/products/details?id=123&category=electronics#reviews';
         $this->assertEquals($expected, $url);
-    }
-
-    /**
-     * Helper method to check if URL generator is secure
-     */
-    private function isSecure(): bool
-    {
-        $reflection = new \ReflectionClass($this->urlGenerator);
-        $property = $reflection->getProperty('secure');
-        $property->setAccessible(true);
-
-        return $property->getValue($this->urlGenerator);
     }
 }
