@@ -61,6 +61,7 @@ class RouterTest extends TestCase
 {
     private Router $router;
     private Application $app;
+    private Request $request;
 
     protected function setUp(): void
     {
