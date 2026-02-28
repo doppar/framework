@@ -764,8 +764,22 @@
         document.getElementById('copyToClipBoard')?.addEventListener('click', async function() {
             const md = document.getElementById('mdContent')?.value;
             if (!md) return;
+            const copyText = (text) => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+                document.body.appendChild(el);
+                el.focus();
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            };
             try {
-                await navigator.clipboard.writeText(md);
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(md);
+                } else {
+                    copyText(md);
+                }
                 const orig = this.innerHTML;
                 this.innerHTML = '<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
                 this.classList.add('bg-green-500/10', '!border-green-400/30');
@@ -858,19 +872,25 @@
         })();
         document.getElementById('copyUrlBtn')?.addEventListener('click', async function() {
             const url = '[[ $request_url ]]';
+            const copyText = (text) => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+                document.body.appendChild(el);
+                el.focus();
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            };
             try {
-                await navigator.clipboard.writeText(url);
-
+                if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(url);
+                } else {
+                    copyText(url);
+                }
                 const originalSvg = this.innerHTML;
-
-                this.innerHTML = `
-            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-        `;
+                this.innerHTML = `<svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
                 this.classList.add('bg-green-50', 'dark:bg-green-500/10');
-
-                // Reset after 2 seconds
                 setTimeout(() => {
                     this.innerHTML = originalSvg;
                     this.classList.remove('bg-green-50', 'dark:bg-green-500/10');
