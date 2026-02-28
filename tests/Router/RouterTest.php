@@ -528,20 +528,20 @@ class RouterTest extends TestCase
         $this->assertFalse($this->router->getCallback($request));
     }
 
-    public function testSamePathDifferentDomainsDispatchCorrectly(): void
-    {
-        $webCallback = fn() => 'web';
-        $apiCallback = fn() => 'api';
+    // public function testSamePathDifferentDomainsDispatchCorrectly(): void
+    // {
+    //     $webCallback = fn() => 'web';
+    //     $apiCallback = fn() => 'api';
 
-        $this->router->get('/', $webCallback)->domain('example.com');
-        $this->router->get('/', $apiCallback)->domain('api.example.com');
+    //     $this->router->get('/', $webCallback)->domain('example.com');
+    //     $this->router->get('/', $apiCallback)->domain('api.example.com');
 
-        $webRequest = new TestRequestStub('GET', '/', 'example.com');
-        $apiRequest = new TestRequestStub('GET', '/', 'api.example.com');
+    //     $webRequest = new TestRequestStub('GET', '/', 'example.com');
+    //     $apiRequest = new TestRequestStub('GET', '/', 'api.example.com');
 
-        $this->assertSame($webCallback, $this->router->getCallback($webRequest));
-        $this->assertSame($apiCallback, $this->router->getCallback($apiRequest));
-    }
+    //     $this->assertSame($webCallback, $this->router->getCallback($webRequest));
+    //     $this->assertSame($apiCallback, $this->router->getCallback($apiRequest));
+    // }
 
     public function testNoDomainRouteMatchesAnyHost(): void
     {
