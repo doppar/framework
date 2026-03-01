@@ -3,6 +3,7 @@
 namespace Tests\Application;
 
 use Phaseolies\DI\Container;
+use Phaseolies\DI\Exceptions\ImmutableViolationException;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Tests\Application\Mock\Abstracts\AbstractClass;
@@ -2538,4 +2539,152 @@ class ContainerTest extends TestCase
         $this->assertEquals(0.00, $result['tax']);
         $this->assertEquals(0.00, $result['total']);
     }
+
+    // =========================================================================
+    // MUTATION BLOCKING TESTS — core immutability contract
+    // =========================================================================
+
+    public function testWriteStringPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->gateway = 'paypal';
+    }
+
+    public function testWriteFloatPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->taxRate = 0.0;
+    }
+
+    public function testWriteBoolPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->liveMode = true;
+    }
+
+    public function testWriteIntPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->retries = 99;
+    }
+
+    public function testWriteArrayPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->methods = ['crypto'];
+    }
+
+    public function testWriteNewDynamicPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->brandNewProp = 'sneaky';
+    }
+
+    public function testUnsetPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        unset($service->gateway);
+    }
+
+    public function testExceptionMessageContainsClassName()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('MockPaymentService', $e->getMessage());
+        }
+    }
+
+    public function testExceptionMessageContainsPropertyName()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('taxRate', $e->getMessage());
+        }
+    }
+
+    public function testExceptionMessageContainsBothClassAndProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->gateway = 'paypal';
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('MockPaymentService', $e->getMessage());
+            $this->assertStringContainsString('gateway',            $e->getMessage());
+        }
+    }
+
+    public function testPropertyValueUnchangedAfterBlockedWrite()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+        } catch (ImmutableViolationException $e) {
+            // expected — swallow
+        }
+
+        $this->assertEquals(0.08, $service->taxRate);
+    }
+
+    public function testGatewayUnchangedAfterBlockedWrite()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->gateway = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            // expected — swallow
+        }
+
+        $this->assertEquals('stripe', $service->gateway);
+    }
+
+    public function testAllWriteAttemptsThrow()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $caught  = 0;
+
+        $attempts = [
+            fn() => ($service->gateway  = 'paypal'),
+            fn() => ($service->taxRate  = 0.0),
+            fn() => ($service->liveMode = true),
+            fn() => ($service->retries  = 99),
+        ];
+
+        foreach ($attempts as $attempt) {
+            try {
+                $attempt();
+            } catch (ImmutableViolationException $e) {
+                $caught++;
+            }
+        }
+
+        $this->assertEquals(4, $caught);
+    }
+
+    
 }
