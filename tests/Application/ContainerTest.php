@@ -2486,4 +2486,56 @@ class ContainerTest extends TestCase
         $service = $this->container->make(MockPaymentService::class);
         $this->assertFalse(isset($service->nonExistent));
     }
+
+    // =========================================================================
+    // METHOD CALL TESTS
+    // =========================================================================
+
+    public function testMethodCallAfterFreezeWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(100.00);
+
+        $this->assertEquals('stripe',  $result['gateway']);
+        $this->assertEquals(100.00,    $result['amount']);
+        $this->assertEquals(8.00,      $result['tax']);
+        $this->assertEquals(108.00,    $result['total']);
+        $this->assertEquals('charged', $result['status']);
+    }
+
+    public function testMethodThatReadsStringPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals('stripe', $service->getGateway());
+    }
+
+    public function testMethodThatReadsBoolPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse($service->isLive());
+    }
+
+    public function testMethodThatReadsIntPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(3, $service->getRetries());
+    }
+
+    public function testChargeComputesTaxCorrectly()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(200.00);
+
+        $this->assertEquals(16.00,  $result['tax']);
+        $this->assertEquals(216.00, $result['total']);
+    }
+
+    public function testChargeWithZeroAmount()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(0.00);
+
+        $this->assertEquals(0.00, $result['tax']);
+        $this->assertEquals(0.00, $result['total']);
+    }
 }
