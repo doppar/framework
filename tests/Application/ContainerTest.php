@@ -68,6 +68,7 @@ use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\ConcreteServiceLayer;
 use Tests\Application\Mock\Services\MockMutableService;
 use Tests\Application\Mock\Services\MockPaymentService;
+use Tests\Application\Mock\Services\MockServiceWithConstructor;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\StaticCallableClass;
 use TypeError;
@@ -2889,6 +2890,51 @@ class ContainerTest extends TestCase
 
         $this->assertTrue($firstThrew);
         $this->assertTrue($secondThrew);
+    }
+
+    // =========================================================================
+    // CONSTRUCTOR INJECTION WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableServiceWithConstructorArgsIsFrozen()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->assertTrue($service->isFrozen());
+    }
+
+    public function testImmutableServiceWithConstructorArgsPreservesValues()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->assertEquals('doppar', $service->name);
+        $this->assertEquals(42,       $service->value);
+    }
+
+    public function testImmutableServiceWithConstructorArgsMutationThrows()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->name = 'hacked';
+    }
+
+    public function testImmutableServiceConstructorDefaultsPreserved()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class);
+
+        $this->assertEquals('default', $service->name);
+        $this->assertEquals(0,         $service->value);
+        $this->assertTrue($service->isFrozen());
     }
 }
 
