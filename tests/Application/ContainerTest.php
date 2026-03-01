@@ -2429,4 +2429,61 @@ class ContainerTest extends TestCase
 
         $this->assertTrue($service->isFrozen());
     }
+
+    // =========================================================================
+    // PROPERTY READ TESTS
+    // =========================================================================
+
+    public function testReadStringPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals('stripe', $service->gateway);
+    }
+
+    public function testReadFloatPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(0.08, $service->taxRate);
+    }
+
+    public function testReadBoolPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse($service->liveMode);
+    }
+
+    public function testReadIntPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(3, $service->retries);
+    }
+
+    public function testReadArrayPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(['card', 'bank'], $service->methods);
+    }
+
+    public function testAllPropertiesRetainCorrectValuesAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->assertEquals('stripe',         $service->gateway);
+        $this->assertEquals(0.08,             $service->taxRate);
+        $this->assertFalse($service->liveMode);
+        $this->assertEquals(3,                $service->retries);
+        $this->assertEquals(['card', 'bank'], $service->methods);
+    }
+
+    public function testIssetOnFrozenPropertyReturnsTrue()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertTrue(isset($service->gateway));
+    }
+
+    public function testIssetOnNonExistentPropertyReturnsFalse()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse(isset($service->nonExistent));
+    }
 }
