@@ -2801,6 +2801,51 @@ class ContainerTest extends TestCase
         $b = $this->container->get(MockMutableService::class);
         $this->assertEquals(1, $b->count);
     }
+
+    // =========================================================================
+    // SINGLETON BEHAVIOUR WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableSingletonReturnsSameInstance()
+    {
+        $this->container->singleton(MockPaymentService::class);
+
+        $first  = $this->container->get(MockPaymentService::class);
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testImmutableSingletonIsFrozenOnFirstResolve()
+    {
+        $this->container->singleton(MockPaymentService::class);
+        $first = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+    }
+
+    public function testImmutableSingletonBlocksMutationOnSecondResolve()
+    {
+        $this->container->singleton(MockPaymentService::class);
+        $this->container->get(MockPaymentService::class);
+
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $second->taxRate = 0.0;
+    }
+
+    public function testImmutableSingletonBothReferencesAreFrozen()
+    {
+        $this->container->singleton(MockPaymentService::class);
+
+        $first  = $this->container->get(MockPaymentService::class);
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+        $this->assertSame($first, $second);
+    }
 }
 
 function config_mock(string $key, mixed $default = null): mixed
