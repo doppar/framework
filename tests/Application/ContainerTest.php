@@ -2686,5 +2686,23 @@ class ContainerTest extends TestCase
         $this->assertEquals(4, $caught);
     }
 
-    
+    // =========================================================================
+    // CLONE PROTECTION TESTS
+    // =========================================================================
+
+    public function testCloningFrozenServiceThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $cloned = clone $service;
+    }
+
+    public function testCloningUnfrozenServiceIsAllowed()
+    {
+        $service = new MockPaymentService(); // not through container — not frozen yet
+        $cloned  = clone $service;
+
+        $this->assertNotSame($service, $cloned);
+    }
 }
