@@ -66,6 +66,7 @@ use Tests\Application\Mock\Repository\ConcreteRepository;
 use Tests\Application\Mock\Services\AlternateDependency;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\ConcreteServiceLayer;
+use Tests\Application\Mock\Services\MockMailerService;
 use Tests\Application\Mock\Services\MockMutableService;
 use Tests\Application\Mock\Services\MockPaymentService;
 use Tests\Application\Mock\Services\MockServiceWithConstructor;
@@ -2935,6 +2936,50 @@ class ContainerTest extends TestCase
         $this->assertEquals('default', $service->name);
         $this->assertEquals(0,         $service->value);
         $this->assertTrue($service->isFrozen());
+    }
+
+    // =========================================================================
+    // MULTIPLE IMMUTABLE SERVICES
+    // =========================================================================
+
+    public function testMultipleImmutableServicesAreIndependentlyFrozen()
+    {
+        $payment = $this->container->make(MockPaymentService::class);
+        $mailer  = $this->container->make(MockMailerService::class);
+
+        $this->assertTrue($payment->isFrozen());
+        $this->assertTrue($mailer->isFrozen());
+    }
+
+    public function testMultipleImmutableServicesGuardedIndependently()
+    {
+        $payment = $this->container->make(MockPaymentService::class);
+        $mailer  = $this->container->make(MockMailerService::class);
+
+        $paymentThrew = false;
+        $mailerThrew  = false;
+
+        try {
+            $payment->gateway  = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $paymentThrew = true;
+        }
+        try {
+            $mailer->host      = 'smtp.hacked.com';
+        } catch (ImmutableViolationException $e) {
+            $mailerThrew  = true;
+        }
+
+        $this->assertTrue($paymentThrew);
+        $this->assertTrue($mailerThrew);
+    }
+
+    public function testMailerServiceReadsWorkAfterFreeze()
+    {
+        $mailer = $this->container->make(MockMailerService::class);
+
+        $this->assertEquals('smtp.example.com', $mailer->host);
+        $this->assertEquals(587,                $mailer->port);
     }
 }
 
