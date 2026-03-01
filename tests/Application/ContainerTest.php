@@ -66,6 +66,7 @@ use Tests\Application\Mock\Repository\ConcreteRepository;
 use Tests\Application\Mock\Services\AlternateDependency;
 use Tests\Application\Mock\Services\ConcreteService;
 use Tests\Application\Mock\Services\ConcreteServiceLayer;
+use Tests\Application\Mock\Services\MockMutableService;
 use Tests\Application\Mock\Services\MockPaymentService;
 use Tests\Application\Mock\SimpleClass;
 use Tests\Application\Mock\StaticCallableClass;
@@ -2705,4 +2706,104 @@ class ContainerTest extends TestCase
 
         $this->assertNotSame($service, $cloned);
     }
+
+
+    // =========================================================================
+    // PRE-FREEZE (BOOT WINDOW) TESTS
+    // =========================================================================
+
+    public function testWriteBeforeFreezeSucceeds()
+    {
+        $service          = new MockPaymentService();
+        $service->gateway = 'paypal'; // not frozen — must succeed
+
+        $this->assertEquals('paypal', $service->gateway);
+    }
+
+    public function testMultipleWritesBeforeFreezeAllSucceed()
+    {
+        $service           = new MockPaymentService();
+        $service->gateway  = 'paypal';
+        $service->taxRate  = 0.15;
+        $service->liveMode = true;
+
+        $this->assertEquals('paypal', $service->gateway);
+        $this->assertEquals(0.15,     $service->taxRate);
+        $this->assertTrue($service->liveMode);
+    }
+
+    public function testFreezeSnapshotsValuesSetBeforeFreeze()
+    {
+        $service           = new MockPaymentService();
+        $service->gateway  = 'braintree';
+        $service->taxRate  = 0.10;
+        $service->liveMode = true;
+        $service->freeze();
+
+        $this->assertEquals('braintree', $service->gateway);
+        $this->assertEquals(0.10,        $service->taxRate);
+        $this->assertTrue($service->liveMode);
+    }
+
+    public function testWriteAfterManualFreezeThrows()
+    {
+        $service          = new MockPaymentService();
+        $service->gateway = 'braintree'; // ok — pre-freeze
+        $service->freeze();
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->gateway = 'paypal'; // must throw — post-freeze
+    }
+
+    public function testServiceProviderBootWindowPattern()
+    {
+        // Simulates a ServiceProvider configuring the service before binding
+        $payment          = new MockPaymentService();
+        $payment->gateway = config_mock('payment.gateway', 'braintree');
+        $payment->taxRate = config_mock('payment.tax_rate', 0.15);
+
+        $this->container->singleton(MockPaymentService::class, fn() => $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertEquals('braintree', $resolved->gateway);
+        $this->assertEquals(0.15,        $resolved->taxRate);
+    }
+
+    // =========================================================================
+    // MUTABLE SERVICE CONTROL — non-immutable services must be unaffected
+    // =========================================================================
+
+    public function testMutableServiceCanBeModified()
+    {
+        $service        = $this->container->make(MockMutableService::class);
+        $service->state = 'modified';
+
+        $this->assertEquals('modified', $service->state);
+    }
+
+    public function testMutableServiceMethodMutatesState()
+    {
+        $service = $this->container->make(MockMutableService::class);
+        $service->increment();
+        $service->increment();
+
+        $this->assertEquals(2, $service->count);
+    }
+
+    public function testMutableSingletonStateIsShared()
+    {
+        $this->container->singleton(MockMutableService::class);
+
+        $a = $this->container->get(MockMutableService::class);
+        $a->increment();
+
+        $b = $this->container->get(MockMutableService::class);
+        $this->assertEquals(1, $b->count);
+    }
+}
+
+function config_mock(string $key, mixed $default = null): mixed
+{
+    return $default;
 }
