@@ -3,6 +3,7 @@
 namespace Phaseolies\DI;
 
 use ArrayAccess;
+use Phaseolies\DI\Attributes\Immutable;
 
 class Container implements ArrayAccess
 {
@@ -154,7 +155,7 @@ class Container implements ArrayAccess
      * @param class-string<T> $abstract
      * @param array $parameters
      * @return T
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function get(string $abstract, array $parameters = []): mixed
     {
@@ -240,7 +241,7 @@ class Container implements ArrayAccess
      * @param class-string<T> $concrete
      * @param array $parameters
      * @return T
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function build(string $concrete, array $parameters = []): object
     {
@@ -257,16 +258,36 @@ class Container implements ArrayAccess
         $constructor = $reflector->getConstructor();
 
         if (is_null($constructor)) {
-            return new $concrete(...$parameters);
+            $instance = new $concrete(...$parameters);
+        } else {
+            $dependencies = $this->resolveDependencies(
+                $constructor->getParameters(),
+                $parameters,
+                $concrete
+            );
+            $instance = $reflector->newInstanceArgs($dependencies);
         }
 
-        $dependencies = $this->resolveDependencies(
-            $constructor->getParameters(),
-            $parameters,
-            $concrete
-        );
+        $this->freezeIfImmutable($reflector, $instance);
 
-        return $reflector->newInstanceArgs($dependencies);
+        return $instance;
+    }
+
+    /**
+     * Freeze the instance if the class has the #[Immutable] attribute and uses the EnforcesImmutability trait.
+     *
+     * @param \ReflectionClass $reflector
+     * @param object $instance
+     * @return void
+     */
+    private function freezeIfImmutable(\ReflectionClass $reflector, object $instance): void
+    {
+        $hasAttribute = !empty($reflector->getAttributes(Immutable::class));
+        $usesTrait    = method_exists($instance, 'freeze') && method_exists($instance, 'isFrozen');
+
+        if ($hasAttribute && $usesTrait) {
+            $instance->freeze();
+        }
     }
 
     /**
@@ -292,7 +313,7 @@ class Container implements ArrayAccess
     /**
      * Resolve a single dependency
      *
-     * @param ReflectionParameter $parameter
+     * @param \ReflectionParameter $parameter
      * @param array $primitives
      * @param string $className
      * @return mixed
