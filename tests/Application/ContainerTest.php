@@ -2846,6 +2846,50 @@ class ContainerTest extends TestCase
         $this->assertTrue($second->isFrozen());
         $this->assertSame($first, $second);
     }
+
+    // =========================================================================
+    // TRANSIENT BEHAVIOUR WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableTransientReturnsDifferentInstances()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertNotSame($first, $second);
+    }
+
+    public function testImmutableTransientEachInstanceIsFrozen()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+    }
+
+    public function testImmutableTransientMutationBlockedOnBothInstances()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $firstThrew  = false;
+        $secondThrew = false;
+
+        try {
+            $first->gateway  = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $firstThrew  = true;
+        }
+        try {
+            $second->gateway = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $secondThrew = true;
+        }
+
+        $this->assertTrue($firstThrew);
+        $this->assertTrue($secondThrew);
+    }
 }
 
 function config_mock(string $key, mixed $default = null): mixed
