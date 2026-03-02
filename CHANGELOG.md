@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.9.0 - 2026-03-02
+
+* Unit test new month count issue: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/202
+* Boot-time Frozen Services via #[Immutable] by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/203
+
 ## v3.8.4 - 2026-02-28
 
 * InputBag doc comment updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/199
