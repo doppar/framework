@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.9.1 - 2026-03-03
+
+* Fix: copy as mark down and url in error page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/204
+
 ## v3.9.0 - 2026-03-02
 
 * Unit test new month count issue: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/202
