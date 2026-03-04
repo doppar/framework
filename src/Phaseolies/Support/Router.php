@@ -9,6 +9,7 @@ use Phaseolies\Utilities\Attributes\BindPayload;
 use Phaseolies\Utilities\Attributes\Bind;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
+use Phaseolies\Support\Router\InteractsWithDynamicControllerBinding;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
@@ -20,7 +21,7 @@ use App\Http\Kernel;
 
 class Router extends Kernel
 {
-    use InteractsWithBundleRouter, InteractsWithCurrentRouter;
+    use InteractsWithBundleRouter, InteractsWithCurrentRouter, InteractsWithDynamicControllerBinding;
 
     /**
      * Holds the registered routes.
@@ -288,34 +289,52 @@ class Router extends Kernel
     }
 
     /**
-     * Get all controller classes from app directory
+     * Get all controller classes using Composer autodiscovery
      *
      * @return array
      */
     protected function getControllerClasses(): array
     {
-        $controllerPath = base_path('app/Http/Controllers');
         $controllers = [];
+        $composerLoader = $this->getComposerClassLoader();
 
-        if (!is_dir($controllerPath)) {
-            return $controllers;
-        }
+        $prefixes = $composerLoader->getPrefixesPsr4();
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($controllerPath)
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->isDir() || $file->getExtension() !== 'php') {
+        foreach ($prefixes as $namespace => $paths) {
+            if (
+                !str_starts_with($namespace, 'App\\') &&
+                !str_starts_with($namespace, 'Modules\\')
+            ) {
                 continue;
             }
-            $relativePath = str_replace($controllerPath . DIRECTORY_SEPARATOR, '', $file->getPathname());
-            $relativePath = str_replace(DIRECTORY_SEPARATOR, '\\', $relativePath);
-            $className = 'App\\Http\\Controllers\\' . str_replace('.php', '', $relativePath);
 
-            if (class_exists($className)) {
-                $controllers[] = $className;
+            foreach ($paths as $path) {
+
+                if (!is_dir($path)) {
+                    continue;
+                }
+
+                $files = $this->findPhpFiles($path);
+
+                foreach ($files as $file) {
+
+                    $class = $this->convertFileToClassName($file, $path, $namespace);
+
+                    if (!$class || !class_exists($class)) {
+                        continue;
+                    }
+
+                    if ($this->isControllerClass($class)) {
+                        $controllers[] = $class;
+                    }
+                }
             }
+        }
+
+        $controllers = array_unique($controllers);
+
+        if (empty($controllers)) {
+            return $this->scanDefaultControllerDirectory();
         }
 
         return $controllers;
