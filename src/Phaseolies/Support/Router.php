@@ -1054,6 +1054,28 @@ class Router extends Kernel
     }
 
     /**
+     * Process Throttle attribute from controller method
+     *
+     * @param \ReflectionMethod $method
+     * @return void
+     */
+    protected function processThrottleAttribute(\ReflectionMethod $method): void
+    {
+        $throttleAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Throttle::class);
+
+        if (empty($throttleAttributes)) {
+            return;
+        }
+
+        $throttle = $throttleAttributes[0]->newInstance();
+
+        // Convert to middleware format: throttle:60,1
+        $middlewareKey = "throttle:{$throttle->maxAttempts},{$throttle->decayMinutes}";
+
+        $this->middleware($middlewareKey);
+    }
+
+    /**
      * Handle attributes based middleware defination
      *
      * @param array $callback
@@ -1080,6 +1102,7 @@ class Router extends Kernel
             $methodMiddlewareAttributes = $method->getAttributes(Middleware::class);
             $this->processAttributesMiddlewares($methodMiddlewareAttributes);
             $this->processRateLimitAnnotation($method);
+            $this->processThrottleAttribute($method);
         }
     }
 
