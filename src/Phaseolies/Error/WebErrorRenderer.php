@@ -96,7 +96,7 @@ class WebErrorRenderer
     {
         $controller = new Controller();
 
-        $relative = str_replace(base_path() . '/', '', __DIR__);
+        $relative = str_replace(base_path() . DIRECTORY_SEPARATOR, '', __DIR__);
 
         $viewsPath = $relative . '/views';
 
