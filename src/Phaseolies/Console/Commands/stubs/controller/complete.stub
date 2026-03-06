@@ -10,6 +10,10 @@ class {{ class }} extends Controller
     #[Route(uri:'/{{ routeName }}', name:'{{ routingName }}.default')]
     public function index()
     {
-        return view('{{ routeView }}.default', ['className' => '{{ class }}']);
+        return view('{{ routeView }}.default', [
+            'className' => '{{ class }}',
+            'controllerPath' => '{{ controllerPath }}',
+            'routeName' => '{{ routeName }}'
+        ]);
     }
 }
