@@ -11,6 +11,7 @@ use Phaseolies\Database\Contracts\Support\Jsonable;
 use PDO;
 use JsonSerializable;
 use ArrayAccess;
+use Phaseolies\Database\Entity\Attributes\Hook;
 
 abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsonable
 {
@@ -136,6 +137,13 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected $connection = null;
 
     /**
+     * Cache of scanned #[Hook] attribute metadata, keyed by class name
+     *
+     * @var array<string, list<array{event: string, method: string, when: string|null}>>
+     */
+    private static array $hookAttributeCache = [];
+
+    /**
      * Model constructor.
      *
      * @param array $attributes Initial attributes to populate the model.
@@ -175,6 +183,113 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     {
         if (!empty($this->hooks)) {
             HookHandler::register(static::class, $this->hooks);
+        }
+
+        $this->registerAttributeHooks();
+    }
+
+    /**
+     * Register hooks defined in the model
+     *
+     * @return void
+     */
+    private function registerAttributeHooks(): void
+    {
+        $class = static::class;
+
+        if (!array_key_exists($class, self::$hookAttributeCache)) {
+            self::$hookAttributeCache[$class] = self::scanHookAttributes($class);
+        }
+
+        if (empty(self::$hookAttributeCache[$class])) {
+            return;
+        }
+
+        foreach (self::$hookAttributeCache[$class] as $entry) {
+            $methodName = $entry['method'];
+            $whenValue  = $entry['when'];
+
+            $condition = $whenValue === null
+                ? true
+                : static function (Model $model) use ($whenValue): bool {
+                    if (!method_exists($model, $whenValue)) {
+                        throw new \RuntimeException(
+                            "Hook condition method '{$whenValue}' does not exist on "
+                                . get_class($model)
+                        );
+                    }
+
+                    $result = $model->$whenValue();
+
+                    if (!is_bool($result)) {
+                        throw new \RuntimeException(
+                            "Hook condition method '{$whenValue}' must return bool, got "
+                                . gettype($result)
+                        );
+                    }
+
+                    return $result;
+                };
+
+            $handler = static function (Model $model) use ($methodName): void {
+                $model->$methodName();
+            };
+
+            HookHandler::register($class, [
+                $entry['event'] => [
+                    'handler' => $handler,
+                    'when'    => $condition,
+                ],
+            ]);
+        }
+    }
+
+    /**
+     * Run reflection ONCE and return plain scalar metadata for all
+     * #[Hook]-annotated methods on the given class.
+     *
+     * @param  string $class
+     * @return list<array{event: string, method: string, when: string|null}>
+     */
+    private static function scanHookAttributes(string $class): array
+    {
+        $found      = [];
+        $reflection = new \ReflectionClass($class);
+
+        foreach (
+            $reflection->getMethods(\ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED)
+            as $method
+        ) {
+            $hookAttributes = $method->getAttributes(Hook::class);
+
+            if (empty($hookAttributes)) {
+                continue;
+            }
+
+            foreach ($hookAttributes as $hookAttribute) {
+                $hook    = $hookAttribute->newInstance();
+                $found[] = [
+                    'event'  => $hook->event,
+                    'method' => $method->getName(),
+                    'when'   => $hook->when,
+                ];
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Reset the cache of scanned #[Hook] attribute metadata
+     *
+     * @param string|null $class
+     */
+    public static function resetAttributeHookCache(?string $class = null): void
+    {
+        if ($class !== null) {
+            unset(self::$hookAttributeCache[$class]);
+        } else {
+            self::$hookAttributeCache = [];
         }
     }
 
