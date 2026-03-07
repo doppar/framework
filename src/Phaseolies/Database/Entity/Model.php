@@ -137,6 +137,13 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     protected $connection = null;
 
     /**
+     * Cache of scanned #[Hook] attribute metadata, keyed by class name
+     *
+     * @var array<string, list<array{event: string, method: string, when: string|null}>>
+     */
+    private static array $hookAttributeCache = [];
+
+    /**
      * Model constructor.
      *
      * @param array $attributes Initial attributes to populate the model.
@@ -190,17 +197,15 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     {
         $class = static::class;
 
-        static $cache = [];
-
-        if (!array_key_exists($class, $cache)) {
-            $cache[$class] = self::scanHookAttributes($class);
+        if (!array_key_exists($class, self::$hookAttributeCache)) {
+            self::$hookAttributeCache[$class] = self::scanHookAttributes($class);
         }
 
-        if (empty($cache[$class])) {
+        if (empty(self::$hookAttributeCache[$class])) {
             return;
         }
 
-        foreach ($cache[$class] as $entry) {
+        foreach (self::$hookAttributeCache[$class] as $entry) {
             $methodName = $entry['method'];
             $whenValue  = $entry['when'];
 
@@ -272,6 +277,20 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         }
 
         return $found;
+    }
+
+    /**
+     * Reset the cache of scanned #[Hook] attribute metadata
+     *
+     * @param string|null $class
+     */
+    public static function resetAttributeHookCache(?string $class = null): void
+    {
+        if ($class !== null) {
+            unset(self::$hookAttributeCache[$class]);
+        } else {
+            self::$hookAttributeCache = [];
+        }
     }
 
     /**
