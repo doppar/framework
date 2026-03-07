@@ -1,5 +1,11 @@
 # Release Notes
 
+## v3.11.0 - 2026-03-07
+
+* fix: make:controller --c commande by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/208
+* fix: duplicate multiple path on windows for error page by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/207
+* feat(orm): #[Hook] attribute system for declarative model lifecycle hooks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/209
+
 ## v3.9.2 - 2026-03-04
 
 * Controller Registration Improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/205
