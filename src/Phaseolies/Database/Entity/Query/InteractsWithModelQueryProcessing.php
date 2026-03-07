@@ -198,6 +198,10 @@ trait InteractsWithModelQueryProcessing
         $isUpdatable = isset($this->attributes[$this->primaryKey]);
 
         if ($isUpdatable) {
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                return false;
+            }
+
             $dirtyAttributes = $this->getDirtyAttributes();
             if (!empty($this->creatable)) {
                 $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
@@ -213,10 +217,6 @@ trait InteractsWithModelQueryProcessing
 
             $primaryKeyValue = $this->attributes[$this->primaryKey];
 
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
-                return false;
-            }
-
             $response = $this->query()
                 ->where($this->primaryKey, $primaryKeyValue)
                 ->update($dirtyAttributes);
@@ -229,15 +229,15 @@ trait InteractsWithModelQueryProcessing
             return $response;
         }
 
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
+            return false;
+        }
+
         $attributes = $this->getCreatableAttributes();
 
         if ($this->timeStamps) {
             $attributes['created_at'] = $dateTime;
             $attributes['updated_at'] = $dateTime;
-        }
-
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
-            return false;
         }
 
         $id = $this->query()->insert($attributes);
