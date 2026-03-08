@@ -378,9 +378,10 @@ class Authenticate
      * Check if the user is authorized to do some action.
      *
      * @param string $scope
+     * @param mixed  ...$arguments
      * @return bool
      */
-    public function can(string $scope): bool
+    public function can(string $scope, mixed ...$arguments): bool
     {
         if (!class_exists(\Doppar\Authorizer\Support\Facades\Guard::class)) {
             throw new \RuntimeException(
@@ -388,11 +389,7 @@ class Authenticate
             );
         }
 
-        return (bool) Cache::stash(
-            "auth_scope_{$scope}_" . $this->id(),
-            3600,
-            fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
-        );
+        return (bool) \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
     }
 
     /**
