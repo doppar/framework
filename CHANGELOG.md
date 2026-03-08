@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.11.1 - 2026-03-08
+
+* Remove cache from can() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/210
+
 ## v3.11.0 - 2026-03-07
 
 * fix: make:controller --c commande by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/208
