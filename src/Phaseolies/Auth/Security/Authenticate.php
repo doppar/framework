@@ -31,13 +31,6 @@ class Authenticate
     private static $versionCheckCache = [];
 
     /**
-     * Ability request level cache
-     *
-     * @var array
-     */
-    private array $abilityCache = [];
-
-    /**
      * Get the current authenticated user
      *
      * @var Model|null
