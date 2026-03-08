@@ -31,7 +31,7 @@ class Authenticate
     private static $versionCheckCache = [];
 
     /**
-     * Ability check request-level memoization
+     * Ability request level cache
      *
      * @var array
      */
@@ -396,13 +396,7 @@ class Authenticate
             );
         }
 
-        $key = $scope . ':' . md5(serialize($arguments));
-
-        if (!array_key_exists($key, $this->abilityCache)) {
-            $this->abilityCache[$key] = \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
-        }
-
-        return (bool) $this->abilityCache[$key];
+        return (bool) \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
     }
 
     /**
