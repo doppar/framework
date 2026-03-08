@@ -31,6 +31,13 @@ class Authenticate
     private static $versionCheckCache = [];
 
     /**
+     * Ability check request-level memoization
+     *
+     * @var array
+     */
+    private array $abilityCache = [];
+
+    /**
      * Get the current authenticated user
      *
      * @var Model|null
@@ -389,7 +396,13 @@ class Authenticate
             );
         }
 
-        return (bool) \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
+        $key = $scope . ':' . md5(serialize($arguments));
+
+        if (!array_key_exists($key, $this->abilityCache)) {
+            $this->abilityCache[$key] = \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
+        }
+
+        return (bool) $this->abilityCache[$key];
     }
 
     /**
