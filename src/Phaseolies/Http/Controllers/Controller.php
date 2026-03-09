@@ -467,10 +467,13 @@ class Controller extends View
                 // Make sure the file has proper permissions
                 @chmod($tempFile, 0644);
 
-                // Atomic rename (on Unix systems)
-                if (!rename($tempFile, $cache)) {
+                // Atomic rename (on Unix/Mac), fallback copy for Windows
+                if (!@rename($tempFile, $cache)) {
+                    if (!@copy($tempFile, $cache)) {
+                        @unlink($tempFile);
+                        throw new RuntimeException("Failed to move compiled view to cache: {$cache}");
+                    }
                     @unlink($tempFile);
-                    throw new RuntimeException("Failed to move compiled view to cache: {$cache}");
                 }
 
                 // Verify the cache file was created successfully

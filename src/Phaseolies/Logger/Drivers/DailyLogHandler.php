@@ -17,16 +17,27 @@ class DailyLogHandler extends AbstractHandler implements LogHandlerInterface
      */
     public function configureHandler(Logger $logger, string $channel): void
     {
-        $path = base_path('storage/logs');
+        $path = base_path('storage' . DIRECTORY_SEPARATOR . 'logs');
 
         if (!is_dir($path)) {
-            mkdir($path, 0775, true);
+            if (!mkdir($path, 0775, true) && !is_dir($path)) {
+                throw new \RuntimeException('Unable to create log directory: ' . $path);
+            }
         }
 
-        $logFile = $path . '/' . date('Y_m_d') . '_doppar.log';
+        if (!is_writable($path)) {
+            throw new \RuntimeException('Log directory is not writable: ' . $path);
+        }
+
+        $logFile = $path . DIRECTORY_SEPARATOR . date('Y_m_d') . '_doppar.log';
 
         if (!is_file($logFile)) {
-            touch($logFile);
+            if (touch($logFile) === false) {
+                throw new \RuntimeException('Unable to create log file: ' . $logFile);
+            }
+
+            // Ignored on Windows but correct for Mac/Ubuntu
+            chmod($logFile, 0664);
         }
 
         $this->handleConfiguration($logger, $logFile);
