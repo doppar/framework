@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.11.2 - 2026-03-09
+
+* fix: cross-platform path handling, cache reliability, and error handler robustness by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/211
+
 ## v3.11.1 - 2026-03-08
 
 * Remove cache from can() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/210
