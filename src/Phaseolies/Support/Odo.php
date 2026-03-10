@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Support\Odo;
+namespace Phaseolies\Support;
 
 use Phaseolies\Http\Controllers\Controller;
 
