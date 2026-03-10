@@ -37,7 +37,7 @@ trait OdoCompiler
      *
      * @var array
      */
-    protected static $directives = [];
+    public static $directives = [];
 
     /**
      * Compile ODO statements (directives like #if, #foreach, etc.)
@@ -55,6 +55,7 @@ trait OdoCompiler
 
         return preg_replace_callback($pattern, function ($match) {
             $directiveName = $match[1];
+            $isCompiled = false;
 
             // Handle escaped directives (##directive becomes #directive)
             if (str_starts_with($directiveName, $this->directivePrefix)) {
@@ -64,25 +65,26 @@ trait OdoCompiler
             // Check for built-in compile methods
             if (method_exists($this, $method = 'compile' . ucfirst($directiveName))) {
                 $match[0] = $this->{$method}(isset($match[3]) ? $match[3] : '');
+                $isCompiled = true;
             }
 
             // Check for custom directives
             if (isset(self::$directives[$directiveName])) {
                 $expression = isset($match[3]) ? $match[3] : '';
 
-                // Remove surrounding parentheses
                 if ((isset($expression[0]) && '(' === $expression[0])
                     && (isset($expression[strlen($expression) - 1]) && ')' === $expression[strlen($expression) - 1])
                 ) {
                     $expression = substr($expression, 1, -1);
                 }
 
-                if ($expression !== '' && $expression !== '()') {
-                    $match[0] = call_user_func(self::$directives[$directiveName], trim($expression));
-                }
+                $match[0] = call_user_func(self::$directives[$directiveName], trim($expression));
+                $isCompiled = true;
             }
 
-            return isset($match[3]) ? $match[0] : $match[0] . $match[2];
+            // If compiled, return as-is
+            // If not compiled and has no expression, preserve original with whitespace
+            return $isCompiled ? $match[0] : (isset($match[3]) ? $match[0] : $match[0] . $match[2]);
         }, $statement);
     }
 
