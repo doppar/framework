@@ -238,7 +238,10 @@ trait InteractsWithModelQueryProcessing
     {
         $dirty = [];
         foreach ($this->attributes as $key => $value) {
-            if (!$this->valuesAreEqual($this->originalAttributes[$key], $value)) {
+            if (
+                !array_key_exists($key, $this->originalAttributes) ||
+                !$this->valuesAreEqual($this->originalAttributes[$key], $value)
+            ) {
                 $dirty[$key] = $value;
             }
         }
