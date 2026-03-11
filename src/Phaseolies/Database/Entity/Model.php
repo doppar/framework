@@ -1017,14 +1017,15 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         $attributes = $this->makeVisible();
 
         foreach ($this->relations as $key => $relation) {
-            if ($relation instanceof Model) {
+            if ($relation === null) {
+                $attributes[$key] = null;
+            } elseif ($relation instanceof Model) {
                 $attributes[$key] = $relation->toArray();
             } elseif ($relation instanceof Collection) {
                 $attributes[$key] = $relation->map(function ($item) {
                     $result = $item instanceof Model ? $item->toArray() : (array)$item;
-                    if (isset($item->pivot_data)) {
-                        $result['pivot'] = (array)$item->pivot_data;
-                        unset($result['pivot_data']);
+                    if (isset($item->pivot)) {
+                        $result['pivot'] = (array)$item->pivot;
                     }
                     return $result;
                 })->all();
