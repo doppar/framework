@@ -3,20 +3,21 @@
 namespace Tests\Unit\Model\Query;
 
 use App\Models\Product;
-use Tests\Support\Model\MockUser;
-use Tests\Support\Model\MockTag;
-use Tests\Support\Model\MockPost;
-use Tests\Support\Model\MockComment;
-use Tests\Support\MockContainer;
-use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Support\Facades\DB;
-use Phaseolies\Support\Collection;
-use Phaseolies\Http\Request;
+use PDO;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
+use Phaseolies\Http\Request;
+use Phaseolies\Support\Collection;
+use Phaseolies\Support\Facades\DB;
+use Phaseolies\Support\UrlGenerator;
 use PHPUnit\Framework\TestCase;
-use PDO;
+use Tests\Support\MockContainer;
+use Tests\Support\Model\MockAnotherUser;
+use Tests\Support\Model\MockComment;
+use Tests\Support\Model\MockPost;
 use Tests\Support\Model\MockProduct;
+use Tests\Support\Model\MockTag;
+use Tests\Support\Model\MockUser;
 
 class EntityModelQueryTest extends TestCase
 {
@@ -54,6 +55,18 @@ class EntityModelQueryTest extends TestCase
                 age INTEGER,
                 status TEXT DEFAULT 'active',
                 created_at TEXT
+            )
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE userss (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE,
+                age INTEGER,
+                status TEXT DEFAULT 'active',
+                created_at TEXT,
+                updated_at TEXT
             )
         ");
 
@@ -2848,4 +2861,32 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals(300, MockPost::find(3)->views);
         $this->assertEquals(250, MockPost::find(4)->views);
     }
+
+    public function testSaveManyAddsTimestamps(): void
+    {
+        // MockAnotherUser has timestamps true
+        MockAnotherUser::saveMany([
+            ['name' => 'Timestamp Test', 'email' => 'ts@example.com', 'age' => 20, 'status' => 'active'],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'ts@example.com')->first();
+
+        $this->assertNotNull($user->created_at, 'created_at must be set by saveMany()');
+        $this->assertNotNull($user->updated_at, 'updated_at must be set by saveMany()');
+    }
+
+    public function testSaveManyWithExistingCreatedAtIsNotOverwritten(): void
+    {
+        $fixed = '2020-01-01 00:00:00';
+
+        MockAnotherUser::saveMany([
+            ['name' => 'Fixed Date', 'email' => 'fixed@example.com', 'age' => 20, 'status' => 'active', 'created_at' => $fixed],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'fixed@example.com')->first();
+
+        $this->assertEquals($fixed, $user->created_at, 'Existing created_at must not be overwritten');
+    }
+
+    
 }
