@@ -282,8 +282,15 @@ trait InteractsWithModelQueryProcessing
      */
     public static function saveMany(array $rows, int $chunkSize = 100): int
     {
-        $filteredRows = array_map(function ($row) {
-            $model = new static();
+        $model = new static();
+        $usesTimestamps = $model->timeStamps;
+        $hasCastToDate = $usesTimestamps
+            ? (new static())->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class)
+            : false;
+
+        $dateTime = $hasCastToDate ? now()->startOfDay() : now();
+
+        $filteredRows = array_map(function ($row) use ($model, $usesTimestamps, $dateTime) {
             $creatable = $model->creatable;
 
             if (empty($creatable)) {
@@ -293,7 +300,14 @@ trait InteractsWithModelQueryProcessing
                 }
             }
 
-            return array_intersect_key($row, array_flip($creatable));
+            $filtered = array_intersect_key($row, array_flip($creatable));
+
+            if ($usesTimestamps) {
+                $filtered['created_at'] = $filtered['created_at'] ?? $dateTime;
+                $filtered['updated_at'] = $dateTime;
+            }
+
+            return $filtered;
         }, $rows);
 
         return static::query()->insertMany($filteredRows, $chunkSize);
