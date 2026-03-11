@@ -2770,4 +2770,24 @@ class EntityModelQueryTest extends TestCase
             $this->assertFalse($user->age > 10000000000);
         }
     }
+
+
+    public function testOrWhereNullGeneratesIsNull(): void
+    {
+        $users = MockUser::where('status', 'active')
+            ->orWhere('email', null)
+            ->get();
+
+        $this->assertCount(2, $users);
+    }
+
+    public function testOrWhereNullSql(): void
+    {
+        $sql = MockUser::where('status', 'active')
+            ->orWhere('email', null)
+            ->toSql();
+
+        $this->assertStringContainsString('IS NULL', $sql);
+        $this->assertStringNotContainsString('email = ?', $sql);
+    }
 }
