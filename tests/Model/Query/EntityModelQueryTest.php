@@ -2950,4 +2950,44 @@ class EntityModelQueryTest extends TestCase
         $this->assertInstanceOf(Collection::class, $posts);
         $this->assertCount(3, $posts);
     }
+
+
+    public function testToArrayIncludesPivotData(): void
+    {
+        $post = MockPost::query()
+            ->select('id', 'title', 'user_id')
+            ->embed('tags')
+            ->find(1);
+
+        $array = $post->toArray();
+
+        $this->assertArrayHasKey('tags', $array);
+        $this->assertArrayHasKey('pivot', $array['tags'][0]);
+        $this->assertIsObject($array['tags'][0]['pivot']);
+        $this->assertEquals(1, $array['tags'][0]['pivot']->post_id);
+    }
+
+    public function testToArrayNullRelationIncludedAsNull(): void
+    {
+        $user = MockUser::find(1);
+
+        // Manually set a null relation
+        $user->setRelation('profile', null);
+
+        $array = $user->toArray();
+
+        $this->assertArrayHasKey('profile', $array);
+        $this->assertNull($array['profile']);
+    }
+
+    public function testToArrayRecursesIntoNestedRelations(): void
+    {
+        $post = MockPost::embed('user')->find(1);
+
+        $array = $post->toArray();
+
+        $this->assertArrayHasKey('user', $array);
+        $this->assertIsArray($array['user']);
+        $this->assertEquals('John Doe', $array['user']['name']);
+    }
 }
