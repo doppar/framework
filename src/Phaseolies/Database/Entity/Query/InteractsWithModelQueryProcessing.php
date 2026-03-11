@@ -191,67 +191,67 @@ trait InteractsWithModelQueryProcessing
             $attributeCache[$class] = $this->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class);
         }
 
-        $dateTime = $attributeCache[$class]
-            ? now()->startOfDay()
-            : now();
+        $dateTime = $attributeCache[$class] ? now()->startOfDay() : now();
 
-        $isUpdatable = isset($this->attributes[$this->primaryKey]);
+        try {
+            $isUpdatable = isset($this->attributes[$this->primaryKey]);
 
-        if ($isUpdatable) {
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+            if ($isUpdatable) {
+                if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                    return false;
+                }
+
+                $dirtyAttributes = $this->getDirtyAttributes();
+                if (!empty($this->creatable)) {
+                    $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+                }
+
+                if (empty($dirtyAttributes)) {
+                    return true;
+                }
+
+                if ($this->timeStamps) {
+                    $dirtyAttributes['updated_at'] = $dateTime;
+                }
+
+                $response = $this->query()
+                    ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+                    ->update($dirtyAttributes);
+
+                if (self::$isHookShouldBeCalled && $response) {
+                    $this->fireAfterHooks('updated');
+                    $this->originalAttributes = $this->attributes;
+                }
+
+                return $response;
+            }
+
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
                 return false;
             }
 
-            $dirtyAttributes = $this->getDirtyAttributes();
-            if (!empty($this->creatable)) {
-                $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+            $attributes = $this->getCreatableAttributes();
+
+            if ($this->timeStamps) {
+                $attributes['created_at'] = $dateTime;
+                $attributes['updated_at'] = $dateTime;
             }
 
-            if (empty($dirtyAttributes)) {
+            $id = $this->query()->insert($attributes);
+
+            if ($id && self::$isHookShouldBeCalled) {
+                $this->fireAfterHooks('created');
+            }
+
+            if ($id) {
+                $this->attributes[$this->primaryKey] = $id;
                 return true;
             }
 
-            if ($this->timeStamps) {
-                $dirtyAttributes['updated_at'] = $dateTime;
-            }
-
-            $primaryKeyValue = $this->attributes[$this->primaryKey];
-
-            $response = $this->query()
-                ->where($this->primaryKey, $primaryKeyValue)
-                ->update($dirtyAttributes);
-
-            if (self::$isHookShouldBeCalled && $response) {
-                $this->fireAfterHooks('updated');
-                $this->originalAttributes = $this->attributes;
-            }
-
-            return $response;
-        }
-
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
             return false;
+        } finally {
+            self::$isHookShouldBeCalled = true;
         }
-
-        $attributes = $this->getCreatableAttributes();
-
-        if ($this->timeStamps) {
-            $attributes['created_at'] = $dateTime;
-            $attributes['updated_at'] = $dateTime;
-        }
-
-        $id = $this->query()->insert($attributes);
-
-        if ($id && self::$isHookShouldBeCalled) {
-            $this->fireAfterHooks('created');
-        }
-
-        if ($id) {
-            $this->attributes[$this->primaryKey] = $id;
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -459,12 +459,12 @@ trait InteractsWithModelQueryProcessing
             return false;
         }
 
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
-            return false;
-        }
-
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
+        }
+
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+            return false;
         }
 
         $dirty = $this->getDirtyAttributes();
@@ -484,15 +484,19 @@ trait InteractsWithModelQueryProcessing
                 : now();
         }
 
-        $result = static::query()
-            ->where($this->primaryKey, $this->attributes[$this->primaryKey])
-            ->update($dirty);
+        try {
+            $result = static::query()
+                ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+                ->update($dirty);
 
-        if ($result) {
-            if (self::$isHookShouldBeCalled) {
-                $this->fireAfterHooks('updated');
+            if ($result) {
+                if (self::$isHookShouldBeCalled) {
+                    $this->fireAfterHooks('updated');
+                }
+                $this->originalAttributes = $this->attributes;
             }
-            $this->originalAttributes = $this->attributes;
+        } finally {
+            self::$isHookShouldBeCalled = true;
         }
 
         return $result;

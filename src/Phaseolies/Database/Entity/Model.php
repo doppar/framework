@@ -643,23 +643,27 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
      */
     public function delete(): bool
     {
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('deleted') === false) {
-            return false;
-        }
-
         if (!isset($this->attributes[$this->primaryKey])) {
             return false;
         }
 
-        $result = static::query()
-            ->where($this->primaryKey, $this->attributes[$this->primaryKey])
-            ->delete();
+        try {
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('deleted') === false) {
+                return false;
+            }
 
-        if ($result && self::$isHookShouldBeCalled) {
-            $this->fireAfterHooks('deleted');
+            $result = static::query()
+                ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+                ->delete();
+
+            if ($result && self::$isHookShouldBeCalled) {
+                $this->fireAfterHooks('deleted');
+            }
+
+            return $result;
+        } finally {
+            self::$isHookShouldBeCalled = true;
         }
-
-        return $result;
     }
 
     /**
