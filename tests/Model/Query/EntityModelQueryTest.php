@@ -2923,4 +2923,31 @@ class EntityModelQueryTest extends TestCase
 
         $this->assertArrayNotHasKey('email', $dirty, 'null === null must not be dirty');
     }
+
+    public function testMagicGetReturnsAttributeCorrectly(): void
+    {
+        $user = MockUser::find(1);
+
+        $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('john@example.com', $user->email);
+    }
+
+    public function testMagicGetReturnsNullForNonExistentProperty(): void
+    {
+        $user = MockUser::find(1);
+
+        // Non-existent property must return null, not throw
+        $this->assertNull($user->nonExistentProperty);
+    }
+
+    public function testMagicGetReturnsRelationCollection(): void
+    {
+        $user = MockUser::find(1);
+
+        // Lazy load posts via __get
+        $posts = $user->posts;
+
+        $this->assertInstanceOf(Collection::class, $posts);
+        $this->assertCount(3, $posts);
+    }
 }
