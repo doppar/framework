@@ -1511,33 +1511,34 @@ class Builder
         $relatedModelInstance = new $relatedModel();
 
         $pivotColumns = $this->getTableColumns($pivotTable);
-
         $pivotSelects = array_map(function ($column) use ($pivotTable) {
             return "{$pivotTable}.{$column} as pivot_{$column}";
         }, $pivotColumns);
 
-        $query = $relatedModelInstance->query();
-
         // Check if constraint specifies columns
         $hasCustomSelect = false;
+        $selectedColumns = null;
+
         if (is_callable($constraint)) {
-            // Create a test query to check if select is called
-            $testQuery = $relatedModelInstance->query();
-            $constraint($testQuery);
-            if ($testQuery->fields !== ['*']) {
+            $inspectQuery = $relatedModelInstance->query();
+            $constraint($inspectQuery);
+
+            if ($inspectQuery->fields !== ['*']) {
                 $hasCustomSelect = true;
                 $selectedColumns = array_map(function ($field) use ($relatedModelInstance) {
                     if (strpos($field, '.') === false) {
                         return "{$relatedModelInstance->getTable()}.{$field}";
                     }
                     return $field;
-                }, $testQuery->fields);
-
-                $query->select(array_merge($selectedColumns, $pivotSelects));
+                }, $inspectQuery->fields);
             }
         }
 
-        if (!$hasCustomSelect) {
+        $query = $relatedModelInstance->query();
+
+        if ($hasCustomSelect) {
+            $query->select(array_merge($selectedColumns, $pivotSelects));
+        } else {
             $query->select(array_merge(
                 ["{$relatedModelInstance->getTable()}.*"],
                 $pivotSelects
@@ -1551,25 +1552,18 @@ class Builder
             "{$relatedModelInstance->getTable()}.{$relatedModelInstance->getKeyName()}"
         )->whereIn("{$pivotTable}.{$foreignKey}", $keys);
 
-        // Apply constraint for additional conditions
-        // Without overriding select
-        if (is_callable($constraint) && $hasCustomSelect) {
-            $constraint($query);
-        } elseif (is_callable($constraint)) {
-            // Create a new constraint that doesn't override select
-            $constraintWithoutSelect = function ($q) use ($constraint, $relatedModelInstance) {
-                $testQuery = $relatedModelInstance->query();
-                $constraint($testQuery);
-
-                // Apply non-select operations
-                foreach ($testQuery->conditions as $condition) {
-                    $q->conditions[] = $condition;
-                }
-                foreach ($testQuery->orderBy as $order) {
-                    $q->orderBy[] = $order;
-                }
-            };
-            $constraintWithoutSelect($query);
+        // Apply non-select conditions from the already-executed inspectQuery
+        if (is_callable($constraint)) {
+            foreach ($inspectQuery->conditions as $condition) {
+                // Skip the whereIn we added for keys
+                $query->conditions[] = $condition;
+            }
+            foreach ($inspectQuery->orderBy as $order) {
+                $query->orderBy[] = $order;
+            }
+            if ($inspectQuery->limit !== null) {
+                $query->limit($inspectQuery->limit);
+            }
         }
 
         $results = $query->get();
@@ -1577,15 +1571,11 @@ class Builder
 
         foreach ($results as $result) {
             $pivot = [];
-
             foreach ($pivotColumns as $column) {
                 $pivot[$column] = $result["pivot_{$column}"];
                 unset($result["pivot_{$column}"]);
             }
-
-            $pivotObj = (object)$pivot;
-            $result->pivot = $pivotObj;
-
+            $result->pivot = (object) $pivot;
             $grouped[$pivot[$foreignKey]][] = $result;
         }
 
