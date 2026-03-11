@@ -15,7 +15,8 @@ use Phaseolies\Database\Entity\Query\{
     InteractsWithAggregateFucntion,
     CollectsRelations,
     InteractsWithNestedRelations,
-    InteractsWithConditionBinding
+    InteractsWithConditionBinding,
+    InteractsWithCursorPagination
 };
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
@@ -35,6 +36,7 @@ class Builder
     use CollectsRelations;
     use InteractsWithNestedRelations;
     use InteractsWithConditionBinding;
+    use InteractsWithCursorPagination;
 
     /**
      * Holds the PDO instance for database connectivity.

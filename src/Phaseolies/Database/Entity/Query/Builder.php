@@ -14,6 +14,7 @@ class Builder
     use Grammar;
     use InteractsWithBuilderAggregateFucntion;
     use InteractsWithConditionBinding;
+    use InteractsWithCursorPagination;
 
     /**
      * Holds the PDO instance for database connectivity.
