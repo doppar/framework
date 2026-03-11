@@ -959,4 +959,14 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
         return $filtered->first();
     }
+
+    /**
+     * Get all items in the collection
+     *
+     * @return array
+     */
+    public function get(): array
+    {
+        return $this->data;
+    }
 }

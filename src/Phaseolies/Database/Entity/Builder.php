@@ -2529,24 +2529,17 @@ class Builder
      */
     public function distinct(string $column): Collection
     {
-        // Validate the column exists
         if (!in_array($column, $this->getTableColumns())) {
             throw new \InvalidArgumentException("Column {$column} does not exist in table {$this->table}");
         }
 
-        // Build the distinct query
         $sql = "SELECT DISTINCT {$column} FROM {$this->table}";
 
-        // Add WHERE conditions if any
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $bindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
-        // Add ORDER BY if any
         if (!empty($this->orderBy)) {
             $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
@@ -2554,13 +2547,10 @@ class Builder
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
+            $this->bindAllValues($stmt);
             $stmt->execute();
 
-            // Fetch just the column values
-            $results = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
-
-            return new Collection('array', $results);
+            return new Collection('array', $stmt->fetchAll(PDO::FETCH_COLUMN, 0));
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
