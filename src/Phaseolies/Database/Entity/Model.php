@@ -502,10 +502,6 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     {
         if (is_string($value)) {
             $value = trim($value);
-
-            if ($value === '') {
-                $value = null;
-            }
         }
 
         return $value;
