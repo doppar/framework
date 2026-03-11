@@ -21,10 +21,11 @@ class JsonErrorHandler implements ErrorHandlerInterface
 
         if ($exception instanceof HttpResponseException) {
             $responseErrors = $exception->getValidationErrors();
-            $statusCode = $exception->getStatusCode() ?: 500;
+  
+            $statusCode = (int) $exception->getStatusCode() ?: 500;
             $renderer->render($exception, $statusCode, $responseErrors);
         } else {
-            $statusCode = $exception->getCode() ?: 500;
+            $statusCode = (int) $exception->getCode() ?: 500;
             $renderer->render($exception, $statusCode);
         }
 
