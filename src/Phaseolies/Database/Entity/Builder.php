@@ -919,9 +919,6 @@ class Builder
         $collection = new Collection($this->modelClass, $models);
 
         unset($models);
-        if (gc_enabled()) {
-            gc_collect_cycles();
-        }
 
         if (!empty($this->eagerLoad)) {
             $this->eagerLoadRelations($collection);

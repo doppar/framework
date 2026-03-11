@@ -476,9 +476,6 @@ class Builder
         $collection = new Collection('array', $rows);
 
         unset($rows);
-        if (gc_enabled()) {
-            gc_collect_cycles();
-        }
 
         return $collection;
     }
