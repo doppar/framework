@@ -2990,4 +2990,38 @@ class EntityModelQueryTest extends TestCase
         $this->assertIsArray($array['user']);
         $this->assertEquals('John Doe', $array['user']['name']);
     }
+
+    public function testSanitizePreservesEmptyString(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '';
+
+        // Must remain '' not become null
+        $this->assertSame('', $tag->name);
+    }
+
+    public function testSanitizeTrimsWhitespace(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '  PHP  ';
+
+        $this->assertSame('PHP', $tag->name);
+    }
+
+    public function testSanitizePreservesNull(): void
+    {
+        $user = MockUser::find(1);
+        $user->setAttribute('status', null);
+
+        $this->assertNull($user->status);
+    }
+
+    public function testSanitizeWhitespaceOnlyBecomesEmptyStringNotNull(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '   ';
+
+        // Must trim to '' not null
+        $this->assertSame('', $tag->name);
+    }
 }
