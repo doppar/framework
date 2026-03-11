@@ -1,5 +1,13 @@
 # Release Notes
 
+## v3.12.0 - 2026-03-11
+
+* feat: custom Odo template directives via Odo::stamp() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/212
+* fix: preventing hook suppression from leaking into subsequent calls by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/213
+* fix: orWhere() null handling delegates to whereNull() with correct boolean by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/214
+* fix: distinct() uses buildWhereClause() instead of legacy condition loop by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/215
+* fix: updateColumn() / increment() / decrement() use buildWhereClause() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/216
+
 ## v3.11.2 - 2026-03-09
 
 * fix: cross-platform path handling, cache reliability, and error handler robustness by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/211
