@@ -1,5 +1,15 @@
 # Release Notes
 
+## v3.12.1 - 2026-03-11
+
+* feat: saveMany() now injects timestamps by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/217
+* Add proper error message if creatable attribute not defined in model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/218
+* Refactored entity builder class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/219
+* Improved get dirty attr value get method: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/220
+* remove gc_collect_cycles() from get() in both builders by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/221
+* fix: loadManyToManyRelation() runs constraint callback only once by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/222
+* remove implicit empty string to null conversion in sanitize() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/223
+
 ## v3.12.0 - 2026-03-11
 
 * feat: custom Odo template directives via Odo::stamp() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/212
