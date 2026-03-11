@@ -5,11 +5,6 @@ namespace Phaseolies\Database\Entity\Query;
 use PDOStatement;
 use PDOException;
 use PDO;
-use Phaseolies\Database\Entity\Query\{
-    Grammar,
-    InteractsWithTimeframe,
-    InteractsWithBuilderAggregateFucntion
-};
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Collection;
 
@@ -18,6 +13,7 @@ class Builder
     use InteractsWithTimeframe;
     use Grammar;
     use InteractsWithBuilderAggregateFucntion;
+    use InteractsWithConditionBinding;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -289,28 +285,9 @@ class Builder
                 ' ON ' . $join['first'] . ' ' . $join['operator'] . ' ' . $join['second'];
         }
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                if (isset($condition['type']) && $condition['type'] === 'NESTED') {
-                    $nestedSql = $condition['query']->toSql();
-                    $nestedWhere = substr($nestedSql, strpos($nestedSql, 'WHERE') + 5);
-                    $conditionStrings[] = "({$nestedWhere})";
-                } elseif (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
-                    $conditionStrings[] = $condition['sql'];
-                } elseif (isset($condition['type']) && ($condition['type'] === 'EXISTS' || $condition['type'] === 'NOT EXISTS')) {
-                    $conditionStrings[] = "{$condition['type']} ({$condition['subquery']})";
-                } elseif ($condition[2] === 'BETWEEN' || $condition[2] === 'NOT BETWEEN') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ? AND ?";
-                } elseif ($condition[2] === 'IS NULL' || $condition[2] === 'IS NOT NULL') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]}";
-                } elseif ($condition[2] === 'IN') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} {$condition[4]}";
-                } else {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                }
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $bindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         if (!empty($this->groupBy)) {
@@ -402,54 +379,6 @@ class Builder
         }
 
         return $value !== null;
-    }
-
-    /**
-     * Format conditions with AND/OR.
-     *
-     * @param array $conditionStrings
-     * @return array
-     */
-    protected function formatConditions(array $conditionStrings): array
-    {
-        $formattedConditions = [];
-
-        foreach ($this->conditions as $index => $condition) {
-            // Handle nested conditions
-            $hasType = isset($condition['type']);
-
-            if ($hasType) {
-                // Handle nested conditions
-                if ($condition['type'] === 'NESTED') {
-                    if ($index > 0) {
-                        $formattedConditions[] = $condition['boolean'] ?? 'AND';
-                    }
-                    $formattedConditions[] = $conditionStrings[$index];
-                }
-                // Handle EXISTS/NOT EXISTS conditions
-                elseif (in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
-                    if ($index > 0) {
-                        $formattedConditions[] = $condition['boolean'] ?? 'AND';
-                    }
-                    $formattedConditions[] = $conditionStrings[$index];
-                }
-                // Handle raw conditions
-                elseif ($condition['type'] === 'RAW_WHERE') {
-                    if ($index > 0) {
-                        $formattedConditions[] = $condition['boolean'];
-                    }
-                    $formattedConditions[] = $conditionStrings[$index];
-                }
-            } else {
-                // For regular conditions (without 'type' key)
-                if ($index > 0) {
-                    $formattedConditions[] = $condition[0]; // AND/OR
-                }
-                $formattedConditions[] = $conditionStrings[$index];
-            }
-        }
-
-        return $formattedConditions;
     }
 
     /**
@@ -867,98 +796,7 @@ class Builder
      */
     protected function bindValues(PDOStatement $stmt): void
     {
-        $index = 1;
-
-        foreach ($this->orderBy as $order) {
-            if (isset($order['type']) && $order['type'] === 'RAW_ORDER_BY' && !empty($order['bindings'])) {
-                foreach ($order['bindings'] as $value) {
-                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                }
-            }
-        }
-
-        foreach ($this->conditions as $condition) {
-            if (isset($condition['type'])) {
-                // Handle nested conditions - recursively binding values
-                if ($condition['type'] === 'NESTED') {
-                    $this->bindNestedValues($stmt, $condition['query'], $index);
-                    continue;
-                }
-
-                // Bind all RAW_* bindings
-                if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY', 'RAW_WHERE'])) {
-                    if (!empty($condition['bindings']) && is_array($condition['bindings'])) {
-                        foreach ($condition['bindings'] as $value) {
-                            $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                        }
-                    }
-
-                    continue;
-                }
-
-                // Skip EXISTS/NOT EXISTS
-                if (in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
-                    continue;
-                }
-            }
-
-            // Handle IS NULL / IS NOT NULL (no binding needed)
-            if (isset($condition[2]) && in_array($condition[2], ['IS NULL', 'IS NOT NULL'])) {
-                continue;
-            }
-
-            // BETWEEN / NOT BETWEEN
-            if (isset($condition[2]) && in_array($condition[2], ['BETWEEN', 'NOT BETWEEN'])) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-                $stmt->bindValue($index++, $condition[4], $this->getPdoParamType($condition[4]));
-                continue;
-            }
-
-            // IN clause
-            if (isset($condition[2]) && $condition[2] === 'IN') {
-                foreach ($condition[3] as $value) {
-                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                }
-                continue;
-            }
-
-            // Standard case: column, operator, value
-            if (isset($condition[3])) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
-        }
-    }
-
-    /**
-     * Bind values from nested queries
-     *
-     * @param PDOStatement $stmt
-     * @param self $nestedQuery
-     * @param int $index
-     * @return void
-     */
-    protected function bindNestedValues(PDOStatement $stmt, self $nestedQuery, int &$index): void
-    {
-        foreach ($nestedQuery->conditions as $nestedCondition) {
-            if (isset($nestedCondition['type']) && $nestedCondition['type'] === 'NESTED') {
-                $this->bindNestedValues($stmt, $nestedCondition['query'], $index);
-                continue;
-            }
-
-            // Bind regular nested conditions
-            if (!isset($nestedCondition['type'])) {
-                if (in_array($nestedCondition[2], ['BETWEEN', 'NOT BETWEEN'])) {
-                    $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
-                    $stmt->bindValue($index++, $nestedCondition[4], $this->getPdoParamType($nestedCondition[4]));
-                } elseif ($nestedCondition[2] === 'IN') {
-                    foreach ($nestedCondition[3] as $value) {
-                        $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                    }
-                } elseif (!in_array($nestedCondition[2], ['IS NULL', 'IS NOT NULL'])) {
-                    $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
-                }
-            }
-        }
+        $this->bindAllValues($stmt);
     }
 
     /**
@@ -1089,31 +927,16 @@ class Builder
     public function update(array $attributes): bool
     {
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
-
         $sql = "UPDATE {$this->table} SET $setClause";
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
-
-            // Bind SET clause values
-            $index = 1;
-            foreach ($attributes as $value) {
-                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-            }
-
-            // Bind WHERE clause values
-            foreach ($this->conditions as $condition) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
-
+            $this->bindAllValues($stmt, array_values($attributes));
             return $stmt->execute();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
@@ -1130,21 +953,14 @@ class Builder
     {
         $sql = "DELETE FROM {$this->table}";
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $index = 1;
-            foreach ($this->conditions as $condition) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
-
+            $this->bindAllValues($stmt);
             return $stmt->execute();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
@@ -1174,24 +990,17 @@ class Builder
      */
     public function distinct(string $column): Collection
     {
-        // Validate the column exists
         if (!in_array($column, $this->getTableColumns())) {
             throw new \InvalidArgumentException("Column {$column} does not exist in table {$this->table}");
         }
 
-        // Build the distinct query
         $sql = "SELECT DISTINCT {$column} FROM {$this->table}";
 
-        // Add WHERE conditions if any
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
-        // Add ORDER BY if any
         if (!empty($this->orderBy)) {
             $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
@@ -1199,13 +1008,10 @@ class Builder
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
+            $this->bindAllValues($stmt);
             $stmt->execute();
 
-            // Fetch just the column values
-            $results = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
-
-            return new Collection('array', $results);
+            return new Collection('array', $stmt->fetchAll(PDO::FETCH_COLUMN, 0));
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -1398,24 +1204,23 @@ class Builder
             $sql .= ', ' . implode(', ', $extraUpdates);
         }
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                $bindings[] = $condition[3];
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            foreach ($bindings as $index => $value) {
-                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
+            $index = 1;
+            foreach ($bindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+            }
+            foreach ($whereBindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
             }
 
             $stmt->execute();
-
             return $stmt->rowCount();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());

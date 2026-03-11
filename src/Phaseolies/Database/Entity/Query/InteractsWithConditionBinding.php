@@ -40,6 +40,8 @@ trait InteractsWithConditionBinding
                         $sqlParts[] = "{$condition['type']} ({$condition['subquery']})";
                         $bindings = array_merge($bindings, $condition['bindings'] ?? []);
                         break;
+                    case 'RAW_GROUP_BY':
+                        break;
                 }
             } else {
                 // Handle regular conditions
@@ -111,20 +113,27 @@ trait InteractsWithConditionBinding
     protected function formatConditionStrings(array $conditionStrings): array
     {
         $formatted = [];
+        $sqlIndex = 0;
 
         foreach ($this->conditions as $index => $condition) {
             $hasType = isset($condition['type']);
 
-            if ($hasType) {
-                $boolean = $condition['boolean'] ?? ($index > 0 ? 'AND' : '');
-            } else {
-                $boolean = $condition[0] ?? ($index > 0 ? 'AND' : '');
+            if ($hasType && $condition['type'] === 'RAW_GROUP_BY') {
+                continue;
             }
 
-            if ($index > 0 && $boolean) {
+            if ($hasType) {
+                $boolean = $condition['boolean'] ?? ($sqlIndex > 0 ? 'AND' : '');
+            } else {
+                $boolean = $condition[0] ?? ($sqlIndex > 0 ? 'AND' : '');
+            }
+
+            if ($sqlIndex > 0 && $boolean) {
                 $formatted[] = $boolean;
             }
-            $formatted[] = $conditionStrings[$index];
+
+            $formatted[] = $conditionStrings[$sqlIndex];
+            $sqlIndex++;
         }
 
         return $formatted;
@@ -151,6 +160,15 @@ trait InteractsWithConditionBinding
         foreach ($this->orderBy as $order) {
             if (isset($order['type']) && $order['type'] === 'RAW_ORDER_BY' && !empty($order['bindings'])) {
                 foreach ($order['bindings'] as $value) {
+                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                }
+            }
+        }
+
+        // Bind GROUP BY raw bindings
+        foreach ($this->conditions as $condition) {
+            if (isset($condition['type']) && $condition['type'] === 'RAW_GROUP_BY') {
+                foreach ($condition['bindings'] ?? [] as $value) {
                     $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
                 }
             }
