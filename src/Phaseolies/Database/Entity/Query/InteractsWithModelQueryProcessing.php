@@ -422,6 +422,12 @@ trait InteractsWithModelQueryProcessing
      */
     protected function getCreatableAttributes(): array
     {
+        if (empty($this->creatable)) {
+            throw new \RuntimeException(
+                "Model " . static::class . " has no \$creatable attributes defined."
+            );
+        }
+
         $creatableAttributes = [];
         foreach ($this->creatable as $attribute) {
             if (isset($this->attributes[$attribute])) {
