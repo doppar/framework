@@ -106,31 +106,6 @@ trait InteractsWithModelQueryProcessing
     }
 
     /**
-     * Converts the model's attributes to an array.
-     *
-     * @return array.
-     */
-    public function toArray(): array
-    {
-        $attributes = $this->makeVisible();
-
-        // Include loaded relationships
-        foreach ($this->relations as $key => $relation) {
-            if ($relation === null) {
-                $attributes[$key] = null;
-            } elseif ($relation instanceof Model) {
-                $attributes[$key] = $relation->toArray();
-            } elseif ($relation instanceof Collection) {
-                $attributes[$key] = $relation->all();
-            } else {
-                $attributes[$key] = $relation;
-            }
-        }
-
-        return $attributes;
-    }
-
-    /**
      * Pluck an array of values from a single column.
      *
      * @param string $value
@@ -265,13 +240,28 @@ trait InteractsWithModelQueryProcessing
         foreach ($this->attributes as $key => $value) {
             if (
                 !array_key_exists($key, $this->originalAttributes) ||
-                $this->originalAttributes[$key] != $value
+                !$this->valuesAreEqual($this->originalAttributes[$key], $value)
             ) {
                 $dirty[$key] = $value;
             }
         }
 
         return $dirty;
+    }
+
+    /**
+     * Compare original and current values for equality, treating nulls as equal
+     *
+     * @param mixed $original
+     * @param mixed $current
+     * @return bool
+     */
+    protected function valuesAreEqual(mixed $original, mixed $current): bool
+    {
+        if ($original === null && $current === null) return true;
+        if ($original === null || $current === null) return false;
+
+        return (string)$original === (string)$current;
     }
 
     /**
