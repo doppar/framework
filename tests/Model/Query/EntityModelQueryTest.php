@@ -3,20 +3,21 @@
 namespace Tests\Unit\Model\Query;
 
 use App\Models\Product;
-use Tests\Support\Model\MockUser;
-use Tests\Support\Model\MockTag;
-use Tests\Support\Model\MockPost;
-use Tests\Support\Model\MockComment;
-use Tests\Support\MockContainer;
-use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Support\Facades\DB;
-use Phaseolies\Support\Collection;
-use Phaseolies\Http\Request;
+use PDO;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
+use Phaseolies\Http\Request;
+use Phaseolies\Support\Collection;
+use Phaseolies\Support\Facades\DB;
+use Phaseolies\Support\UrlGenerator;
 use PHPUnit\Framework\TestCase;
-use PDO;
+use Tests\Support\MockContainer;
+use Tests\Support\Model\MockAnotherUser;
+use Tests\Support\Model\MockComment;
+use Tests\Support\Model\MockPost;
 use Tests\Support\Model\MockProduct;
+use Tests\Support\Model\MockTag;
+use Tests\Support\Model\MockUser;
 
 class EntityModelQueryTest extends TestCase
 {
@@ -54,6 +55,18 @@ class EntityModelQueryTest extends TestCase
                 age INTEGER,
                 status TEXT DEFAULT 'active',
                 created_at TEXT
+            )
+        ");
+
+        $this->pdo->exec("
+            CREATE TABLE userss (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE,
+                age INTEGER,
+                status TEXT DEFAULT 'active',
+                created_at TEXT,
+                updated_at TEXT
             )
         ");
 
@@ -2769,5 +2782,246 @@ class EntityModelQueryTest extends TestCase
             $this->assertTrue($user->age > 150);
             $this->assertFalse($user->age > 10000000000);
         }
+    }
+
+
+    public function testOrWhereNullGeneratesIsNull(): void
+    {
+        $users = MockUser::where('status', 'active')
+            ->orWhere('email', null)
+            ->get();
+
+        $this->assertCount(2, $users);
+    }
+
+    public function testOrWhereNullSql(): void
+    {
+        $sql = MockUser::where('status', 'active')
+            ->orWhere('email', null)
+            ->toSql();
+
+        $this->assertStringContainsString('IS NULL', $sql);
+        $this->assertStringNotContainsString('email = ?', $sql);
+    }
+
+    public function testDistinctWithWhereIn(): void
+    {
+        // distinct() must work with whereIn, not just simple = conditions
+        $userIds = MockPost::query()
+            ->whereIn('user_id', [1, 2])
+            ->distinct('user_id');
+
+        $this->assertEquals([1, 2], $userIds->toArray());
+    }
+
+    public function testIncrementWithWhereIn(): void
+    {
+        // increment() with whereIn must update all matched rows correctly
+        $affected = MockPost::query()
+            ->whereIn('id', [1, 2])
+            ->increment('views', 10);
+
+        $this->assertEquals(2, $affected);
+
+        $post1 = MockPost::find(1);
+        $post2 = MockPost::find(2);
+
+        $this->assertEquals(110, $post1->views);
+        $this->assertEquals(60, $post2->views);
+    }
+
+    public function testDecrementWithWhereIn(): void
+    {
+        $affected = MockPost::query()
+            ->whereIn('id', [1, 2])
+            ->decrement('views', 5);
+
+        $this->assertEquals(2, $affected);
+
+        $post1 = MockPost::find(1);
+        $post2 = MockPost::find(2);
+
+        $this->assertEquals(95, $post1->views);
+        $this->assertEquals(45, $post2->views);
+    }
+
+    public function testIncrementWithNestedWhere(): void
+    {
+        $affected = MockPost::query()
+            ->where(function ($q) {
+                $q->where('status', 1)
+                    ->whereIn('user_id', [1, 2]);
+            })
+            ->increment('views', 100);
+
+        // post 1 (views=100), post 3 (views=200), post 4 (views=150) match
+        $this->assertEquals(3, $affected);
+
+        $this->assertEquals(200, MockPost::find(1)->views);
+        $this->assertEquals(300, MockPost::find(3)->views);
+        $this->assertEquals(250, MockPost::find(4)->views);
+    }
+
+    public function testSaveManyAddsTimestamps(): void
+    {
+        // MockAnotherUser has timestamps true
+        MockAnotherUser::saveMany([
+            ['name' => 'Timestamp Test', 'email' => 'ts@example.com', 'age' => 20, 'status' => 'active'],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'ts@example.com')->first();
+
+        $this->assertNotNull($user->created_at, 'created_at must be set by saveMany()');
+        $this->assertNotNull($user->updated_at, 'updated_at must be set by saveMany()');
+    }
+
+    public function testSaveManyWithExistingCreatedAtIsNotOverwritten(): void
+    {
+        $fixed = '2020-01-01 00:00:00';
+
+        MockAnotherUser::saveMany([
+            ['name' => 'Fixed Date', 'email' => 'fixed@example.com', 'age' => 20, 'status' => 'active', 'created_at' => $fixed],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'fixed@example.com')->first();
+
+        $this->assertEquals($fixed, $user->created_at, 'Existing created_at must not be overwritten');
+    }
+
+    public function testDirtyAttributesDetectsZeroToEmptyString(): void
+    {
+        $post = MockPost::find(1); // views = 100 (string from DB)
+
+        // Simulate setting views to '' (empty string)
+        $post->setAttribute('views', '');
+
+        $dirty = $post->getDirtyAttributes();
+
+        $this->assertArrayHasKey('views', $dirty, "'' vs '100' must be detected as dirty");
+    }
+
+    public function testDirtyAttributesDoesNotFalselyMarkStringIntAsDirty(): void
+    {
+        $post = MockPost::find(1); // views comes back as string "100" from SQLite
+
+        // Setting same value as integer — should NOT be dirty due to string cast
+        $post->setAttribute('views', 100);
+
+        $dirty = $post->getDirtyAttributes();
+
+        $this->assertArrayNotHasKey('views', $dirty, "'100' vs 100 must not be dirty");
+    }
+
+    public function testDirtyAttributesBothNullNotDirty(): void
+    {
+        $user = MockUser::find(1);
+        // email exists, force-set original to null and current to null
+        $user->setOriginalAttributes(array_merge($user->getOriginalAttributes(), ['email' => null]));
+        $user->setAttribute('email', null);
+
+        $dirty = $user->getDirtyAttributes();
+
+        $this->assertArrayNotHasKey('email', $dirty, 'null === null must not be dirty');
+    }
+
+    public function testMagicGetReturnsAttributeCorrectly(): void
+    {
+        $user = MockUser::find(1);
+
+        $this->assertEquals('John Doe', $user->name);
+        $this->assertEquals('john@example.com', $user->email);
+    }
+
+    public function testMagicGetReturnsNullForNonExistentProperty(): void
+    {
+        $user = MockUser::find(1);
+
+        // Non-existent property must return null, not throw
+        $this->assertNull($user->nonExistentProperty);
+    }
+
+    public function testMagicGetReturnsRelationCollection(): void
+    {
+        $user = MockUser::find(1);
+
+        // Lazy load posts via __get
+        $posts = $user->posts;
+
+        $this->assertInstanceOf(Collection::class, $posts);
+        $this->assertCount(3, $posts);
+    }
+
+
+    public function testToArrayIncludesPivotData(): void
+    {
+        $post = MockPost::query()
+            ->select('id', 'title', 'user_id')
+            ->embed('tags')
+            ->find(1);
+
+        $array = $post->toArray();
+
+        $this->assertArrayHasKey('tags', $array);
+        $this->assertArrayHasKey('pivot', $array['tags'][0]);
+        $this->assertIsObject($array['tags'][0]['pivot']);
+        $this->assertEquals(1, $array['tags'][0]['pivot']->post_id);
+    }
+
+    public function testToArrayNullRelationIncludedAsNull(): void
+    {
+        $user = MockUser::find(1);
+
+        // Manually set a null relation
+        $user->setRelation('profile', null);
+
+        $array = $user->toArray();
+
+        $this->assertArrayHasKey('profile', $array);
+        $this->assertNull($array['profile']);
+    }
+
+    public function testToArrayRecursesIntoNestedRelations(): void
+    {
+        $post = MockPost::embed('user')->find(1);
+
+        $array = $post->toArray();
+
+        $this->assertArrayHasKey('user', $array);
+        $this->assertIsArray($array['user']);
+        $this->assertEquals('John Doe', $array['user']['name']);
+    }
+
+    public function testSanitizePreservesEmptyString(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '';
+
+        // Must remain '' not become null
+        $this->assertSame('', $tag->name);
+    }
+
+    public function testSanitizeTrimsWhitespace(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '  PHP  ';
+
+        $this->assertSame('PHP', $tag->name);
+    }
+
+    public function testSanitizePreservesNull(): void
+    {
+        $user = MockUser::find(1);
+        $user->setAttribute('status', null);
+
+        $this->assertNull($user->status);
+    }
+
+    public function testSanitizeWhitespaceOnlyBecomesEmptyStringNotNull(): void
+    {
+        $tag = new MockTag();
+        $tag->name = '   ';
+
+        // Must trim to '' not null
+        $this->assertSame('', $tag->name);
     }
 }
