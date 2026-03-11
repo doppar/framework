@@ -2790,4 +2790,62 @@ class EntityModelQueryTest extends TestCase
         $this->assertStringContainsString('IS NULL', $sql);
         $this->assertStringNotContainsString('email = ?', $sql);
     }
+
+    public function testDistinctWithWhereIn(): void
+    {
+        // distinct() must work with whereIn, not just simple = conditions
+        $userIds = MockPost::query()
+            ->whereIn('user_id', [1, 2])
+            ->distinct('user_id');
+
+        $this->assertEquals([1, 2], $userIds->toArray());
+    }
+
+    public function testIncrementWithWhereIn(): void
+    {
+        // increment() with whereIn must update all matched rows correctly
+        $affected = MockPost::query()
+            ->whereIn('id', [1, 2])
+            ->increment('views', 10);
+
+        $this->assertEquals(2, $affected);
+
+        $post1 = MockPost::find(1);
+        $post2 = MockPost::find(2);
+
+        $this->assertEquals(110, $post1->views);
+        $this->assertEquals(60, $post2->views);
+    }
+
+    public function testDecrementWithWhereIn(): void
+    {
+        $affected = MockPost::query()
+            ->whereIn('id', [1, 2])
+            ->decrement('views', 5);
+
+        $this->assertEquals(2, $affected);
+
+        $post1 = MockPost::find(1);
+        $post2 = MockPost::find(2);
+
+        $this->assertEquals(95, $post1->views);
+        $this->assertEquals(45, $post2->views);
+    }
+
+    public function testIncrementWithNestedWhere(): void
+    {
+        $affected = MockPost::query()
+            ->where(function ($q) {
+                $q->where('status', 1)
+                    ->whereIn('user_id', [1, 2]);
+            })
+            ->increment('views', 100);
+
+        // post 1 (views=100), post 3 (views=200), post 4 (views=150) match
+        $this->assertEquals(3, $affected);
+
+        $this->assertEquals(200, MockPost::find(1)->views);
+        $this->assertEquals(300, MockPost::find(3)->views);
+        $this->assertEquals(250, MockPost::find(4)->views);
+    }
 }
