@@ -235,6 +235,14 @@ class Builder
             $operator = '=';
         }
 
+        if ($value === null) {
+            if ($operator === '=') {
+                return $this->whereNull($field, 'OR');
+            } elseif ($operator === '!=') {
+                return $this->whereNull($field, 'OR', true);
+            }
+        }
+
         $this->conditions[] = ['OR', $field, $operator, $value];
 
         return $this;
