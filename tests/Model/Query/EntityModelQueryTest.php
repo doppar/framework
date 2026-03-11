@@ -2888,5 +2888,39 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals($fixed, $user->created_at, 'Existing created_at must not be overwritten');
     }
 
-    
+    public function testDirtyAttributesDetectsZeroToEmptyString(): void
+    {
+        $post = MockPost::find(1); // views = 100 (string from DB)
+
+        // Simulate setting views to '' (empty string)
+        $post->setAttribute('views', '');
+
+        $dirty = $post->getDirtyAttributes();
+
+        $this->assertArrayHasKey('views', $dirty, "'' vs '100' must be detected as dirty");
+    }
+
+    public function testDirtyAttributesDoesNotFalselyMarkStringIntAsDirty(): void
+    {
+        $post = MockPost::find(1); // views comes back as string "100" from SQLite
+
+        // Setting same value as integer — should NOT be dirty due to string cast
+        $post->setAttribute('views', 100);
+
+        $dirty = $post->getDirtyAttributes();
+
+        $this->assertArrayNotHasKey('views', $dirty, "'100' vs 100 must not be dirty");
+    }
+
+    public function testDirtyAttributesBothNullNotDirty(): void
+    {
+        $user = MockUser::find(1);
+        // email exists, force-set original to null and current to null
+        $user->setOriginalAttributes(array_merge($user->getOriginalAttributes(), ['email' => null]));
+        $user->setAttribute('email', null);
+
+        $dirty = $user->getDirtyAttributes();
+
+        $this->assertArrayNotHasKey('email', $dirty, 'null === null must not be dirty');
+    }
 }
