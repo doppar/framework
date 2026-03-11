@@ -2743,24 +2743,23 @@ class Builder
             $sql .= ', ' . implode(', ', $extraUpdates);
         }
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                $bindings[] = $condition[3];
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            foreach ($bindings as $index => $value) {
-                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
+            $index = 1;
+            foreach ($bindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+            }
+            foreach ($whereBindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
             }
 
             $stmt->execute();
-
             return $stmt->rowCount();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
