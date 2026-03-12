@@ -2241,9 +2241,20 @@ class Builder
             $stmt = $this->pdo->prepare($sql);
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
-            $lastInsertId = $this->pdo->lastInsertId();
 
-            return $lastInsertId ? (int) $lastInsertId : false;
+            $model = $this->getModel();
+            $primaryKey = $model->getKeyName();
+
+            if (isset($attributes[$primaryKey])) {
+                return $attributes[$primaryKey];
+            }
+
+            try {
+                $lastInsertId = $this->pdo->lastInsertId();
+                return $lastInsertId ? (int) $lastInsertId : false;
+            } catch (\PDOException $e) {
+                return false;
+            }
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }

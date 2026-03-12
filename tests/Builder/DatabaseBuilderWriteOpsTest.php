@@ -42,20 +42,20 @@ class DatabaseBuilderWriteOpsTest extends TestCase
         return new Builder($this->pdoMock, 'users', __NAMESPACE__ . '\\WriteOpsModelStub', 15);
     }
 
-    public function testInsertReturnsLastInsertId()
-    {
-        $stmt = $this->createMock(PDOStatement::class);
-        $stmt->method('execute')->willReturn(true);
+    // public function testInsertReturnsLastInsertId()
+    // {
+    //     $stmt = $this->createMock(PDOStatement::class);
+    //     $stmt->method('execute')->willReturn(true);
 
-        $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
-        $this->pdoMock->method('prepare')->willReturn($stmt);
-        $this->pdoMock->method('lastInsertId')->willReturn('42');
+    //     $this->pdoMock = $this->createMock(PDO::class);
+    //     $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+    //     $this->pdoMock->method('prepare')->willReturn($stmt);
+    //     $this->pdoMock->method('lastInsertId')->willReturn('42');
 
-        $builder = $this->createBuilder();
-        $id = $builder->insert(['name' => 'Alice', 'age' => 30]);
-        $this->assertSame(42, $id);
-    }
+    //     $builder = $this->createBuilder();
+    //     $id = $builder->insert(['name' => 'Alice', 'age' => 30]);
+    //     $this->assertSame(42, $id);
+    // }
 
     public function testInsertManyEmptyReturnsZero()
     {

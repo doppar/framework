@@ -75,7 +75,9 @@ class Migrator
         $vendorMigrations = [];
 
         foreach ($files as $file) {
-            if (str_contains($file, '/vendor/')) {
+            $normalized = str_replace('\\', '/', $file);
+
+            if (str_contains($normalized, '/vendor/')) {
                 $vendorMigrations[basename($file)] = $file;
             } else {
                 $localMigrations[basename($file)] = $file;
@@ -253,7 +255,7 @@ class Migrator
                 }
             }
 
-            $path = $this->migrationPath . '/' . $file;
+            $path = $this->migrationPath . DIRECTORY_SEPARATOR . $file;
             if (!file_exists($path)) {
                 throw new \RuntimeException("Migration file not found: {$path}");
             }
@@ -276,7 +278,7 @@ class Migrator
      */
     protected function resolve(string $file): Migration
     {
-        $path = $this->migrationPath . '/' . $file;
+        $path = $this->migrationPath . DIRECTORY_SEPARATOR . $file;
 
         if (!file_exists($path)) {
             throw new \RuntimeException("Migration file not found: {$path}");

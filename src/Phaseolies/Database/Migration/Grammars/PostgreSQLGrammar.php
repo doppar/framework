@@ -39,6 +39,13 @@ class PostgreSQLGrammar extends Grammar
                     $column->name
                 );
                 $primaryKeyColumns[] = trim($column->name, '"');
+            } elseif ($column->type === 'uuid' && !empty($column->attributes['primary'])) {
+                // UUID primary key with auto-generation
+                $columnSql = sprintf(
+                    '"%s" UUID NOT NULL DEFAULT gen_random_uuid()',
+                    $column->name
+                );
+                $primaryKeyColumns[] = trim($column->name, '"');
             } elseif (isset($column->attributes['primary']) && $column->attributes['primary']) {
                 $primaryKeyColumns[] = trim($column->name, '"');
             }
