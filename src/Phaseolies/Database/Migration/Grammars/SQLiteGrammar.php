@@ -45,19 +45,12 @@ class SQLiteGrammar extends Grammar
                            $column->type === 'bigIncrements';
 
             if ($isPrimaryKey) {
-                if (($column->type === 'id' || $column->type === 'bigIncrements') &&
-                    strpos($originalSql, 'PRIMARY KEY') === false) {
-                    error_log("[DEBUG] Found auto-incrementing primary key: {$column->name}");
-                    // For auto-incrementing IDs, add PRIMARY KEY directly to the column
-                    $columnSql = str_replace('INTEGER', 'INTEGER PRIMARY KEY AUTOINCREMENT', $originalSql);
+                if (($column->type === 'id' || $column->type === 'bigIncrements')) {
+                    $cleanSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
+                    $columnSql = str_replace('INTEGER', 'INTEGER PRIMARY KEY AUTOINCREMENT', $cleanSql);
                     $hasAutoIncrementId = true;
-                } elseif (!empty($column->attributes['primary']) &&
-                          $column->type !== 'id' &&
-                          $column->type !== 'bigIncrements') {
-                    error_log("[DEBUG] Found non-auto-incrementing primary key: {$column->name}");
-                    // For other primary keys, collect them for a separate PRIMARY KEY clause
+                } elseif (!empty($column->attributes['primary'])) {
                     $tablePrimaryKeys[] = $column->name;
-                    // Remove any PRIMARY KEY from the column definition
                     $columnSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
                 }
             }
