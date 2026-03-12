@@ -49,7 +49,13 @@ class SQLiteGrammar extends Grammar
                     $cleanSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
                     $columnSql = str_replace('INTEGER', 'INTEGER PRIMARY KEY AUTOINCREMENT', $cleanSql);
                     $hasAutoIncrementId = true;
-                } elseif (!empty($column->attributes['primary'])) {
+                } elseif ($column->type === 'uuid' && !empty($column->attributes['primary'])) {
+                    // SQLite has no UUID function — strip PRIMARY KEY from column
+                    // and add as separate clause, UUID generated at application layer
+                    $columnSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
+                    $tablePrimaryKeys[] = $column->name;
+                    $hasAutoIncrementId = true; // prevent duplicate PRIMARY KEY clause
+                }elseif (!empty($column->attributes['primary'])) {
                     $tablePrimaryKeys[] = $column->name;
                     $columnSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
                 }

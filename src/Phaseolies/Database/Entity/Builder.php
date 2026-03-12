@@ -2241,6 +2241,24 @@ class Builder
             $stmt = $this->pdo->prepare($sql);
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
+
+            $driver = $this->getDriver();
+            $model = $this->getModel();
+            $primaryKey = $model->getKeyName();
+
+            if (isset($attributes[$primaryKey])) {
+                return $attributes[$primaryKey];
+            }
+
+            if ($driver === 'pgsql') {
+                try {
+                    $lastInsertId = $this->pdo->lastInsertId();
+                    return $lastInsertId ? (int) $lastInsertId : false;
+                } catch (\PDOException $e) {
+                    return false;
+                }
+            }
+
             $lastInsertId = $this->pdo->lastInsertId();
 
             return $lastInsertId ? (int) $lastInsertId : false;
