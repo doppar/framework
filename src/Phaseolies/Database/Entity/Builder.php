@@ -2242,7 +2242,6 @@ class Builder
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
 
-            $driver = $this->getDriver();
             $model = $this->getModel();
             $primaryKey = $model->getKeyName();
 
@@ -2250,18 +2249,12 @@ class Builder
                 return $attributes[$primaryKey];
             }
 
-            if ($driver === 'pgsql') {
-                try {
-                    $lastInsertId = $this->pdo->lastInsertId();
-                    return $lastInsertId ? (int) $lastInsertId : false;
-                } catch (\PDOException $e) {
-                    return false;
-                }
+            try {
+                $lastInsertId = $this->pdo->lastInsertId();
+                return $lastInsertId ? (int) $lastInsertId : false;
+            } catch (\PDOException $e) {
+                return false;
             }
-
-            $lastInsertId = $this->pdo->lastInsertId();
-
-            return $lastInsertId ? (int) $lastInsertId : false;
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
