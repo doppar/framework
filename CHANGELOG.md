@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.13.0 - 2026-03-12
+
+* feat: add cursor pagination with direction support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/224
+* test: add regression tests for ORM bug fixes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/225
+
 ## v3.12.1 - 2026-03-11
 
 * feat: saveMany() now injects timestamps by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/217
