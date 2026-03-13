@@ -44,8 +44,7 @@ class Authenticate
     private static $versionCheckCache = [];
 
     /**
-     * Per-instance resolved user cache (replaces the static $currentUser so
-     * each actor maintains its own authenticated user independently).
+     * Per-instance resolved user cache
      *
      * @var Model|null
      */
@@ -439,7 +438,6 @@ class Authenticate
 
         $userId = $cache['user']->id;
 
-        // Check if we already verified this user's version during this request
         if (isset(self::$versionCheckCache[$this->actorName][$userId])) {
             return $cache['version'] === self::$versionCheckCache[$this->actorName][$userId];
         }
@@ -449,7 +447,6 @@ class Authenticate
             ->where('id', $userId)
             ->first();
 
-        // Cache the version check result for this request, keyed per actor
         self::$versionCheckCache[$this->actorName][$userId] = $currentVersion?->updated_at;
 
         return $cache['version'] === $currentVersion?->updated_at;
