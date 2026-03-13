@@ -7,7 +7,6 @@ use chillerlan\QRCode\QRCode;
 use Symfony\Component\Clock\NativeClock;
 use Psr\Clock\ClockInterface;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Database\Entity\Model;
 use ParagonIE\ConstantTime\Base32;
 use OTPHP\TOTP;
@@ -31,7 +30,7 @@ trait InteractsWithTwoFactorAuth
      */
     public function enableTwoFactorAuth(): array
     {
-        $user = Auth::user();
+        $user = $this->user();
 
         if (!is_null($user->two_factor_secret)) {
             throw new \Exception("2FA Already enabled");
@@ -44,11 +43,11 @@ trait InteractsWithTwoFactorAuth
             30,
             'sha1',
             6,
-            auth()->id(),
+            $this->id(),
             $this->getClock()
         );
 
-        $host = parse_url(config('app.url'), PHP_URL_HOST);
+        $host   = parse_url(config('app.url'), PHP_URL_HOST);
         $issuer = preg_replace('/[^a-zA-Z0-9.\-_]/', '', $host);
 
         $totp->setLabel(strtolower(trim(config('app.name'))));
@@ -56,13 +55,13 @@ trait InteractsWithTwoFactorAuth
 
         $recoveryCodes = $this->generateRecoveryCodes();
 
-        $user->two_factor_secret = Crypt::encrypt($secret);
+        $user->two_factor_secret         = Crypt::encrypt($secret);
         $user->two_factor_recovery_codes = Crypt::encrypt(json_encode($recoveryCodes));
         $user->save();
 
         return [
-            'secret' => $secret,
-            'qr_code_url' => $totp->getProvisioningUri(),
+            'secret'         => $secret,
+            'qr_code_url'    => $totp->getProvisioningUri(),
             'recovery_codes' => $recoveryCodes,
         ];
     }
@@ -74,9 +73,9 @@ trait InteractsWithTwoFactorAuth
      */
     public function disableTwoFactorAuth(): bool
     {
-        $user = Auth::user();
+        $user = $this->user();
 
-        $user->two_factor_secret = null;
+        $user->two_factor_secret         = null;
         $user->two_factor_recovery_codes = null;
 
         return $user->save();
@@ -105,8 +104,8 @@ trait InteractsWithTwoFactorAuth
      */
     public function verifyTwoFactorCode(string $code): bool
     {
-        $authModel = app(config('auth.model'));
-        $user = $authModel::find(session('2fa_user_id'));
+        $authModel = $this->getModel();
+        $user      = $authModel::find(session($this->getTwoFactorUserKey()));
 
         if (is_null($user->two_factor_secret)) {
             return false;
@@ -120,7 +119,7 @@ trait InteractsWithTwoFactorAuth
                 30,
                 'sha1',
                 6,
-                session('2fa_user_id'),
+                session($this->getTwoFactorUserKey()),
                 $this->getClock()
             );
 
@@ -172,7 +171,7 @@ trait InteractsWithTwoFactorAuth
     {
         $recoveryCodes = $this->generateRecoveryCodes();
 
-        $user = Auth::user();
+        $user = $this->user();
         $user->two_factor_recovery_codes = Crypt::encrypt(json_encode($recoveryCodes));
         $user->save();
 
@@ -197,14 +196,14 @@ trait InteractsWithTwoFactorAuth
      */
     public function completeTwoFactorLogin(): bool
     {
-        $authModel = app(config('auth.model'));
-        $user = $authModel::find(session('2fa_user_id'));
-        $remember = session('2fa_remember');
+        $authModel = $this->getModel();
+        $user      = $authModel::find(session($this->getTwoFactorUserKey()));
+        $remember  = session($this->getTwoFactorRememberKey());
 
         $this->setUser($user);
 
-        session()->forget('2fa_user_id');
-        session()->forget('2fa_remember');
+        session()->forget($this->getTwoFactorUserKey());
+        session()->forget($this->getTwoFactorRememberKey());
 
         if ($remember) {
             if (!$this->viaRemember()) {
@@ -226,8 +225,8 @@ trait InteractsWithTwoFactorAuth
     {
         $options = new QROptions([
             'version'      => 10,
-            'outputType'  => QRCode::OUTPUT_MARKUP_SVG,
-            'eccLevel'    => QRCode::ECC_M,
+            'outputType'   => QRCode::OUTPUT_MARKUP_SVG,
+            'eccLevel'     => QRCode::ECC_M,
             'addQuietzone' => true,
         ]);
 

@@ -19,6 +19,7 @@ use Phaseolies\Config\Config;
 use Phaseolies\Cache\RateLimiter;
 use Phaseolies\Auth\Security\Authenticate;
 use Carbon\Carbon;
+use Phaseolies\Auth\ActorManager;
 
 if (!function_exists('env')) {
     /**
@@ -90,13 +91,22 @@ if (!function_exists('request')) {
 
 if (!function_exists('auth')) {
     /**
-     * Creates a new Authenticate instance
+     * Get the ActorManager, or resolve a specific actor by name.
      *
-     * @return Authenticate
+     * Usage:
+     *   auth()           → ActorManager (proxies calls to the default actor)
+     *   auth('web')      → Authenticate instance for the "web" actor
+     *   auth('admin')    → Authenticate instance for the "admin" actor
+     *
+     * @param string|null $actor
+     * @return ActorManager|Authenticate
      */
-    function auth(): Authenticate
+    function auth(?string $actor = null): ActorManager|Authenticate
     {
-        return app('auth');
+        /** @var ActorManager $manager */
+        $manager = app(ActorManager::class);
+
+        return $actor !== null ? $manager->actor($actor) : $manager;
     }
 }
 

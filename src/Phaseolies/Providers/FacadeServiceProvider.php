@@ -19,8 +19,8 @@ use Phaseolies\Database\Database;
 use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
-use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Application;
+use Phaseolies\Auth\ActorManager;
 
 class FacadeServiceProvider extends ServiceProvider
 {
@@ -47,9 +47,9 @@ class FacadeServiceProvider extends ServiceProvider
         // This provides password hashing and verification functionality.
         $this->app->singleton('hash', PasswordHashing::class);
 
-        // Bind the 'auth' service to a singleton instance of the Authenticate class.
+        // Bind the 'auth' service to a singleton instance of the GuardManager class.
         // This handles user authentication and authorization.
-        $this->app->singleton('auth', Authenticate::class);
+        $this->app->singleton('auth', ActorManager::class);
 
         // Bind the 'crypt' service to a singleton instance of the Encryption class.
         // This provides encryption and decryption functionality.
