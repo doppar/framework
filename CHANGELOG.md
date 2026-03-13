@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.14.0 - 2026-03-13
+
+* Add Comprehensive Relationship Test Suite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/226
+* UUID Primary Key Support for Entity ORM Model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/227
+
 ## v3.13.0 - 2026-03-12
 
 * feat: add cursor pagination with direction support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/224
