@@ -204,7 +204,6 @@ final class ApplicationTest extends TestCase
         $providers = $this->callProtectedMethod($this->app, 'loadCoreProviders');
 
         $this->assertIsArray($providers);
-        $this->assertContains(\Phaseolies\Providers\EnvServiceProvider::class, $providers);
         $this->assertContains(\Phaseolies\Providers\RouteServiceProvider::class, $providers);
         $this->assertContains(\Phaseolies\Providers\LanguageServiceProvider::class, $providers);
     }

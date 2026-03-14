@@ -11,6 +11,7 @@ use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\ApplicationBuilder;
+use Dotenv\Dotenv;
 
 class Application extends Container
 {
@@ -163,6 +164,7 @@ class Application extends Container
     public function __construct()
     {
         parent::setInstance($this);
+        $this->loadEnvironmentVariables();
         $this->withExceptionHandler();
         $this->withConfiguration();
         $this->bindSingletonClasses();
@@ -221,6 +223,21 @@ class Application extends Container
     }
 
     /**
+     * Load environment variables from .env file
+     *
+     * @return void
+     */
+    protected function loadEnvironmentVariables(): void
+    {
+        if (isset($_ENV['APP_ENV'])) {
+            return;
+        }
+
+        $dotenv = Dotenv::createImmutable(base_path());
+        $dotenv->safeLoad();
+    }
+
+    /**
      * Registers the application configuration
      *
      * @return self
@@ -232,7 +249,7 @@ class Application extends Container
             $this->cachedConfig = true;
         }
 
-        $this->environment = $this->cachedConfig['app.env'] ?? env('APP_ENV');
+        $this->environment = config('app.env') ?? env('APP_ENV');
 
         return $this;
     }
@@ -628,7 +645,6 @@ class Application extends Container
     protected function loadCoreProviders(): array
     {
         return [
-            \Phaseolies\Providers\EnvServiceProvider::class,
             \Phaseolies\Providers\FacadeServiceProvider::class,
             \Phaseolies\Providers\LanguageServiceProvider::class,
             \Phaseolies\Providers\SessionServiceProvider::class,

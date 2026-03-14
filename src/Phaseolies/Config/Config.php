@@ -62,6 +62,12 @@ final class Config
             foreach ($files as $file) {
                 $hashes[] = md5_file($file) . '|' . filemtime($file);
             }
+
+            $envFile = base_path('.env');
+            if (file_exists($envFile)) {
+                $hashes[] = md5_file($envFile) . '|' . filemtime($envFile);
+            }
+
             $cacheKey = 'config_' . md5(implode('', $hashes));
         }
 
@@ -111,6 +117,10 @@ final class Config
      */
     public static function cacheConfig(): void
     {
+        if (!isset($_ENV['APP_ENV'])) {
+            return;
+        }
+
         if (self::$loadedFromCache && !self::configWasModified()) {
             return;
         }
@@ -262,18 +272,13 @@ final class Config
      */
     public static function isCacheValid(): bool
     {
-        static $cacheValid = null;
-
-        if ($cacheValid === null) {
-            if (!file_exists(self::$cacheFile)) {
-                $cacheValid = false;
-            } else {
-                $cached = include self::$cacheFile;
-                $cacheValid = isset($cached['_meta']['cache_key']) &&
-                    $cached['_meta']['cache_key'] === self::getCacheKey();
-            }
+        if (!file_exists(self::$cacheFile)) {
+            return false;
         }
 
-        return $cacheValid;
+        $cached = include self::$cacheFile;
+
+        return isset($cached['_meta']['cache_key']) &&
+            $cached['_meta']['cache_key'] === self::getCacheKey();
     }
 }
