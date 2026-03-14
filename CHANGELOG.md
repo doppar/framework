@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.15.0 - 2026-03-14
+
+* feat: actor-based multi-session authentication by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/228
+* fix: load .env before config cache to prevent null env values on startup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/229
+
 ## v3.14.0 - 2026-03-13
 
 * Add Comprehensive Relationship Test Suite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/226
