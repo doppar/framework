@@ -29,7 +29,7 @@ class JsonErrorRenderer
         $response = isset($messages[$statusCode])
             ? [
                 'message' => $message,
-                'errors'  => $errorDetails,
+                'errors'  => $errorDetails ?? $exception->getMessage(),
             ]
             : [
                 'message' => $errorDetails ?? $exception->getMessage(),
