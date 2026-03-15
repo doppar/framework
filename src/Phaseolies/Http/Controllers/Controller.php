@@ -109,37 +109,33 @@ class Controller extends View
     protected const MAX_COMPILE_RETRIES = 3;
 
     /**
+     * Counter for tracking solo block uniqueness
+     *
+     * @var int
+     */
+    protected int $soloCounter = 0;
+
+    /**
+     * Tracks which solo blocks have already rendered
+     *
+     * @var array
+     */
+    protected array $soloStack = [];
+
+    /**
      * Constructor to initialize the template engine with default settings
      */
     public function __construct()
     {
         parent::__construct();
-
-        // Set the file extension for template files (changed to .odo.php)
         $this->setFileExtension('.odo.php');
-
-        // Set the directory where view files are stored
         $this->setViewFolder('resources/views' . DIRECTORY_SEPARATOR);
-
-        // Set the directory where cached files are stored
         $this->setCacheFolder('storage/framework/views' . DIRECTORY_SEPARATOR);
-
-        // Create the cache folder if it doesn't exist
         $this->createCacheFolder();
-
-        // Set the directory where cached files are stored
         $this->setSymlinkPathFolder('storage/app/public' . DIRECTORY_SEPARATOR);
-
-        // Create the cache folder if it doesn't exist
         $this->createPublicSymlinkFolder();
-
-        // Set the format for echoing variables in templates
         $this->setEchoFormat('$this->e(%s)');
-
-        // Initialize arrays for blocks, block stacks, and loop stacks
         $this->loopStacks = [];
-
-        // Load custom syntax from config if available
         $this->loadCustomSyntax();
     }
 
