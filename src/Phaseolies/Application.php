@@ -156,6 +156,7 @@ class Application extends Container
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
+     * - Loading environment variables from .env before anything else.
      * - Setting up exception handling.
      * - Loading configuration.
      * - Defining necessary folder paths.
