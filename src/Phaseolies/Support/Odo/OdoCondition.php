@@ -541,4 +541,111 @@ trait OdoCondition
     {
         return "<?php endif; ?>";
     }
+
+    /**
+     * Usage: #blank($variable)
+     * Renders block when variable is empty, null, or an empty array/string
+     *
+     * @param mixed $variable
+     * @return string
+     */
+    protected function compileBlank($variable): string
+    {
+        return "<?php if(empty{$variable}): ?>";
+    }
+
+    /**
+     * Usage: #endblank
+     *
+     * @return string
+     */
+    protected function compileEndblank(): string
+    {
+        return "<?php endif; ?>";
+    }
+
+    /**
+     * Usage: #notblank($variable)
+     * Renders block when variable is NOT empty
+     *
+     * @param mixed $variable
+     * @return string
+     */
+    protected function compileNotblank($variable): string
+    {
+        return "<?php if(!empty{$variable}): ?>";
+    }
+
+    /**
+     * Usage: #endnotblank
+     *
+     * @return string
+     */
+    protected function compileEndnotblank(): string
+    {
+        return "<?php endif; ?>";
+    }
+
+    /**
+     * Usage: #solo
+     * Renders its content only once, even if inside a loop
+     *
+     * @return string
+     */
+    protected function compileSolo(): string
+    {
+        return "<?php if(!isset(\$__solo['" . ($this->soloCounter ?? $this->soloCounter = 0) . "'])): \$__solo['" . $this->soloCounter++ . "'] = true; ?>";
+    }
+
+    /**
+     * Usage: #endsolo
+     *
+     * @return string
+     */
+    protected function compileEndsolo(): string
+    {
+        return "<?php endif; ?>";
+    }
+
+    /**
+     * Usage: #inject('stack-name')
+     * Pushes content into a named stack
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileInject($expression): string
+    {
+        if (isset($expression[0]) && '(' === $expression[0]) {
+            $expression = substr($expression, 1, -1);
+        }
+
+        return "<?php \$this->startInject({$expression}); ?>";
+    }
+
+    /**
+     * Usage: #endinject
+     *
+     * @return string
+     */
+    protected function compileEndinject(): string
+    {
+        return "<?php \$this->endInject(); ?>";
+    }
+
+    /**
+     * Usage: #slot('stack-name')
+     * Outputs all content pushed into a named stack
+     *
+     * @param string $expression
+     * @return string
+     */
+    protected function compileSlot($expression): string
+    {
+        if (isset($expression[0]) && '(' === $expression[0]) {
+            $expression = substr($expression, 1, -1);
+        }
+
+        return "<?php echo \$this->renderSlot({$expression}); ?>";
+    }
 }

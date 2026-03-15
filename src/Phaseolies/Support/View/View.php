@@ -44,11 +44,24 @@ class View extends Factory
 
     /**
      * Stack of currently rendering view names.
-     * Useful for debugging and internal state tracking.
      *
      * @var array<int, string>
      */
     protected $renderStack = [];
+
+    /**
+     * Named stacks for inject/slot system
+     *
+     * @var array<string, array>
+     */
+    protected array $stacks = [];
+
+    /**
+     * Currently open inject stack name
+     *
+     * @var string|null
+     */
+    protected ?string $currentInject = null;
 
     public function __construct()
     {
@@ -263,6 +276,74 @@ class View extends Factory
     }
 
     /**
+     * Start capturing content for a named inject stack
+     *
+     * @param string $name
+     * @return void
+     */
+    public function startInject(string $name): void
+    {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Inject stack name must not be empty');
+        }
+
+        $this->currentInject = trim($name, "'\"");
+        ob_start();
+    }
+
+    /**
+     * End capturing and push content into the named stack
+     *
+     * @return void
+     */
+    public function endInject(): void
+    {
+        if ($this->currentInject === null) {
+            throw new \RuntimeException('Cannot end inject — no inject block is open');
+        }
+
+        $content = ob_get_clean();
+        $name = $this->currentInject;
+
+        if (!isset($this->stacks[$name])) {
+            $this->stacks[$name] = [];
+        }
+
+        $this->stacks[$name][] = $content;
+        $this->currentInject = null;
+    }
+
+    /**
+     * Render all content pushed into a named stack
+     *
+     * @param string $name
+     * @return string
+     */
+    public function renderSlot(string $name): string
+    {
+        $name = trim($name, "'\"");
+
+        if (!isset($this->stacks[$name])) {
+            return '';
+        }
+
+        return implode('', $this->stacks[$name]);
+    }
+
+    /**
+     * Check if a stack has any content
+     *
+     * @param string $name
+     * @return bool
+     */
+    public function hasSlot(string $name): bool
+    {
+        $name = trim($name, "'\"");
+
+        return !empty($this->stacks[$name]);
+    }
+
+    /**
      * Clean the block state
      *
      * @return void
@@ -272,6 +353,8 @@ class View extends Factory
         $this->blocks = [];
         $this->blockStacks = [];
         $this->parents = [];
+        $this->stacks = [];
+        $this->currentInject = null;
     }
 
     public function __destruct()
