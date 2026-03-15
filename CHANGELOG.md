@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.16.1 - 2026-03-15
+
+* Error Message Exception Improvement for json response by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/232
+
 ## v3.16.0 - 2026-03-15
 
 * reduce glob and disk reads for config initialization by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/230
