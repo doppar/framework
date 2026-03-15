@@ -284,9 +284,7 @@ class Authenticate
         if (session()->has($cacheKey)) {
             $cache = session($cacheKey);
             if ($this->isUserCacheValid($cache)) {
-                if ($this->isUserCacheValid($cache)) {
-                    return $this->resolvedUser = $cache['user'];
-                }
+                return $this->resolvedUser = $cache['user'];
             }
         }
 

@@ -28,11 +28,25 @@ final class Config
     protected static bool $loadedFromCache = false;
 
     /**
+     * Tracks whether config was modified after loading from cache.
+     *
+     * @var bool
+     */
+    protected static bool $configModified = false;
+
+    /**
      * Stores hashes of configuration files used to detect changes.
      *
      * @var array<string, string>
      */
     protected static array $fileHashes = [];
+
+    /**
+     * Cached list of config file paths
+     *
+     * @var array|null
+     */
+    protected static ?array $configFiles = null;
 
     /**
      * Initialize the configuration system.
@@ -48,7 +62,17 @@ final class Config
     }
 
     /**
-     * Generate a unique cache key based on all configuration files.
+     * Get all config file paths, cached for the request lifetime.
+     *
+     * @return array
+     */
+    protected static function getConfigFiles(): array
+    {
+        return self::$configFiles ??= glob(base_path('config/*.php')) ?: [];
+    }
+
+    /**
+     * Generate a unique cache key based on all configuration files and .env.
      *
      * @return string
      */
@@ -57,9 +81,9 @@ final class Config
         static $cacheKey = null;
 
         if ($cacheKey === null) {
-            $files = glob(base_path('config/*.php'));
             $hashes = [];
-            foreach ($files as $file) {
+
+            foreach (self::getConfigFiles() as $file) {
                 $hashes[] = md5_file($file) . '|' . filemtime($file);
             }
 
@@ -83,7 +107,7 @@ final class Config
     {
         self::$config = [];
 
-        foreach (glob(base_path('config/*.php')) as $file) {
+        foreach (self::getConfigFiles() as $file) {
             $key = basename($file, '.php');
             self::$config[$key] = include $file;
         }
@@ -98,13 +122,23 @@ final class Config
      */
     public static function loadFromCache(): void
     {
-        if (!file_exists(self::$cacheFile) || !self::isCacheValid()) {
+        if (!file_exists(self::$cacheFile)) {
             self::$loadedFromCache = false;
             self::loadAll();
             return;
         }
 
         $cached = include self::$cacheFile;
+
+        if (
+            !isset($cached['_meta']['cache_key']) ||
+            $cached['_meta']['cache_key'] !== self::getCacheKey()
+        ) {
+            self::$loadedFromCache = false;
+            self::loadAll();
+            return;
+        }
+
         self::$config = $cached['data'] ?? [];
         self::$fileHashes = $cached['_meta']['file_hashes'] ?? [];
         self::$loadedFromCache = true;
@@ -121,7 +155,7 @@ final class Config
             return;
         }
 
-        if (self::$loadedFromCache && !self::configWasModified()) {
+        if (self::$loadedFromCache && !self::$configModified) {
             return;
         }
 
@@ -130,10 +164,8 @@ final class Config
             throw new RuntimeException("Failed to create cache directory: {$cacheDir}");
         }
 
-        $files = glob(base_path('config/*.php'));
-
         $hashes = [];
-        foreach ($files as $file) {
+        foreach (self::getConfigFiles() as $file) {
             $hashes[basename($file)] = md5_file($file) . '|' . filemtime($file);
         }
 
@@ -151,21 +183,8 @@ final class Config
         rename($tempFile, self::$cacheFile);
 
         self::$loadedFromCache = true;
+        self::$configModified = false;
         self::$fileHashes = $hashes;
-    }
-
-    /**
-     * Check if the configuration data has been modified compared to cache.
-     *
-     * @return bool
-     */
-    protected static function configWasModified(): bool
-    {
-        if (!file_exists(self::$cacheFile)) return true;
-
-        $cached = include self::$cacheFile;
-
-        return $cached['data'] !== self::$config;
     }
 
     /**
@@ -225,6 +244,7 @@ final class Config
             $current = $value;
         }
 
+        self::$configModified = true;
         self::cacheConfig();
     }
 
@@ -261,8 +281,9 @@ final class Config
         if (file_exists(self::$cacheFile)) @unlink(self::$cacheFile);
 
         self::$config = [];
-
         self::$fileHashes = [];
+        self::$configFiles = null;
+        self::$configModified = false;
     }
 
     /**
