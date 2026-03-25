@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.16.2 - 2026-03-25
+
+* performance bottlenecks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/233
+* delete pull-request.md by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/234
+
 ## v3.16.1 - 2026-03-15
 
 * Error Message Exception Improvement for json response by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/232
