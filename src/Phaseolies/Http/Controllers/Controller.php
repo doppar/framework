@@ -487,9 +487,11 @@ class Controller extends View
                     @unlink($tempFile);
                 }
 
-                // Small delay before retry to avoid race conditions
+                // Exponential backoff with jitter to prevent thundering herd
                 if ($retries < self::MAX_COMPILE_RETRIES) {
-                    usleep(10000 * $retries); // 10ms, 20ms, 30ms
+                    $baseDelay = 10000 * (2 ** ($retries - 1)); // 10ms, 20ms, 40ms, 80ms
+                    $jitter = random_int(0, $baseDelay / 4); // ±25% jitter
+                    usleep($baseDelay + $jitter);
                 }
             }
         }
