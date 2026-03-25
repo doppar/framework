@@ -38,11 +38,7 @@ trait InteractsWithBigDataProcessing
             $offset += $chunkSize;
 
             // prevent memory leaks
-            // unsetting and invoking garbage collection
             unset($chunkQuery, $results);
-            if (gc_enabled()) {
-                gc_collect_cycles();
-            }
         }
     }
 
