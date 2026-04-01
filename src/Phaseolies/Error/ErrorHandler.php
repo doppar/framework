@@ -24,6 +24,7 @@ class ErrorHandler
             $activeException = $loggerException ?? $exception;
 
             self::triggerBeforeException($activeException);
+
             self::dispatch($activeException);
         });
     }
@@ -186,7 +187,7 @@ class ErrorHandler
             $response->setExceptionError($exception, $statusCode);
             $before->handle($exception);
         } catch (Throwable $e) {
-            error_log(sprintf(
+            error(sprintf(
                 '[Doppar] BeforeExceptionHandler failed: %s in %s on line %d',
                 $e->getMessage(),
                 $e->getFile(),

@@ -9,8 +9,6 @@ use Phaseolies\Error\Utils\Highlighter;
 use Phaseolies\Http\Controllers\Controller;
 use Throwable;
 
-use function Tests\Unit\Application\config;
-
 class WebErrorRenderer
 {
     /**
@@ -42,12 +40,7 @@ class WebErrorRenderer
             ];
         }
 
-        $user = auth()?->user();
-
-        $userInfo = $user ? [
-            'id' => $user->id,
-            'email' => $user->email ?? 'N/A',
-        ] : null;
+        $userInfo = null;
 
         $mdReport = new ExceptionMarkdownReport($exception);
 
