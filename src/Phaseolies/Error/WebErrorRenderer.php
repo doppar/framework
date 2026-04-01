@@ -40,7 +40,12 @@ class WebErrorRenderer
             ];
         }
 
-        $userInfo = null;
+        $user = $exception instanceof \PDOException ? null : auth()?->user();
+
+        $userInfo = $user ? [
+            'id' => $user->id,
+            'email' => $user->email ?? 'N/A',
+        ] : null;
 
         $mdReport = new ExceptionMarkdownReport($exception);
 
@@ -53,7 +58,7 @@ class WebErrorRenderer
         return $controller->render('template', [
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
             'headers'         => ($this->getHeaders()),
-            'error_message'   => $exception->getMessage(),
+            'error_message'   => ucfirst($exception->getMessage()),
             'error_file'      => $errorFile,
             'error_line'      => $errorLine,
             'routing'          => $this->getRouteDetails(),
