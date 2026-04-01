@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.16.3 - 2026-04-01
+
+* fix: error message not showing in browser issue for some cases: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/235
+
 ## v3.16.2 - 2026-03-25
 
 * performance bottlenecks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/233
