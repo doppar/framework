@@ -822,7 +822,17 @@ trait ValidationRules
      */
     protected function isEmptyFieldRequired(array $input, string $fieldName): bool
     {
-        return !isset($input[$fieldName]) || $input[$fieldName] === '';
+        if (!isset($input[$fieldName])) {
+            return true;
+        }
+
+        $value = $input[$fieldName];
+
+        if (is_array($value)) {
+            return empty($value);
+        }
+
+        return $value === '' || $value === null;
     }
 
     /**
