@@ -6,6 +6,7 @@ use Phaseolies\Session\MessageBag;
 use Phaseolies\Http\Support\ValidationRules;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Http\Validation\Bind;
 
 trait Rule
 {
@@ -26,6 +27,15 @@ trait Rule
 
         if (is_array($input)) {
             foreach ($rules as $fieldName => $value) {
+                // Custom rule class bound via Bind::to(new Rule())->context([...])
+                if ($value instanceof Bind) {
+                    $errorMessage = $value->evaluate($fieldName, $input);
+                    if ($errorMessage) {
+                        $errors[$fieldName][] = $errorMessage;
+                    }
+                    continue;
+                }
+
                 $fieldRules = explode("|", $value);
                 foreach ($fieldRules as $rule) {
                     $ruleValue = $this->_getRuleSuffix($rule);
