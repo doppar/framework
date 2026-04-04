@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.17.0 - 2026-04-04
+
+* adding some new validation rules by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/236
+* feat(validation): introduce custom Bind rule system by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/237
+
 ## v3.16.3 - 2026-04-01
 
 * fix: error message not showing in browser issue for some cases: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/235
