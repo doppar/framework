@@ -135,9 +135,10 @@ class Sanitizer
     {
         $value = $this->data[$field] ?? null;
 
-        // Handle rules with parameters (e.g., min:2, max:100)
+        // Handle rules with parameters (e.g., min:2, date_format:Y-m-d H:i:s)
+        // Limit to 2 parts so values containing ':' (e.g., datetime formats) are preserved.
         if (str_contains($rule, ':')) {
-            [$rule, $param] = explode(':', $rule);
+            [$rule, $param] = explode(':', $rule, 2);
         }
 
         $errorMessage = $this->sanitizeUserRequest($this->data, $field, $rule, $param ?? null);

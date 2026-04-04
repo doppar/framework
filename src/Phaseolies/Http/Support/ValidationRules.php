@@ -63,6 +63,36 @@ trait ValidationRules
         $defaultMessages = [
             'required' => 'The :attribute field is required.',
             'exists_in' => 'The selected :attribute is invalid.',
+            'alpha'       => 'The :attribute may only contain letters.',
+            'alpha_num'   => 'The :attribute may only contain letters and numbers.',
+            'alpha_dash'  => 'The :attribute may only contain letters, numbers, dashes, and underscores.',
+            'numeric'     => 'The :attribute must be a number.',
+            'url'         => 'The :attribute must be a valid URL.',
+            'ip'          => 'The :attribute must be a valid IP address.',
+            'ipv4'        => 'The :attribute must be a valid IPv4 address.',
+            'ipv6'        => 'The :attribute must be a valid IPv6 address.',
+            'json'        => 'The :attribute must be a valid JSON string.',
+            'boolean'     => 'The :attribute field must be true or false.',
+            'confirmed'   => 'The :attribute confirmation does not match.',
+            'different'   => 'The :attribute and :other must be different.',
+            'in'          => 'The selected :attribute is invalid. Allowed: :values.',
+            'not_in'      => 'The selected :attribute is invalid.',
+            'regex'       => 'The :attribute format is invalid.',
+            'phone'       => 'The :attribute must be a valid phone number.',
+            'digits'      => 'The :attribute must be exactly :digits digits.',
+            'min_digits'  => 'The :attribute must have at least :min digits.',
+            'max_digits'  => 'The :attribute must not have more than :max digits.',
+            'size'        => 'The :attribute must be exactly :size characters.',
+            'starts_with' => 'The :attribute must start with :value.',
+            'ends_with'   => 'The :attribute must end with :value.',
+            'uuid'        => 'The :attribute must be a valid UUID.',
+            'date_format' => 'The :attribute does not match the format :format.',
+            'uppercase'   => 'The :attribute must be uppercase.',
+            'lowercase'   => 'The :attribute must be lowercase.',
+            'slug'        => 'The :attribute must be a valid slug (lowercase letters, numbers, and hyphens).',
+            'string'      => 'The :attribute must be a string.',
+            'array'       => 'The :attribute must be an array.',
+            'timezone'    => 'The :attribute must be a valid timezone.',
         ];
 
         return $defaultMessages[$rule] ?? 'Validation failed.';
@@ -235,6 +265,216 @@ trait ValidationRules
                 case 'exists_in':
                     if (!$this->isRecordExists($input, $fieldName, $ruleValue)) {
                         return $this->getErrorMessage('exists_in', $fieldName);
+                    }
+                    break;
+
+                case 'alpha':
+                    if (!$this->isAlpha($input, $fieldName)) {
+                        return $this->getErrorMessage('alpha', $fieldName);
+                    }
+                    break;
+
+                case 'alpha_num':
+                    if (!$this->isAlphaNum($input, $fieldName)) {
+                        return $this->getErrorMessage('alpha_num', $fieldName);
+                    }
+                    break;
+
+                case 'alpha_dash':
+                    if (!$this->isAlphaDash($input, $fieldName)) {
+                        return $this->getErrorMessage('alpha_dash', $fieldName);
+                    }
+                    break;
+
+                case 'numeric':
+                    if (!$this->isNumeric($input, $fieldName)) {
+                        return $this->getErrorMessage('numeric', $fieldName);
+                    }
+                    break;
+
+                case 'url':
+                    if (!$this->isUrl($input, $fieldName)) {
+                        return $this->getErrorMessage('url', $fieldName);
+                    }
+                    break;
+
+                case 'ip':
+                    if (!$this->isIp($input, $fieldName)) {
+                        return $this->getErrorMessage('ip', $fieldName);
+                    }
+                    break;
+
+                case 'ipv4':
+                    if (!$this->isIpv4($input, $fieldName)) {
+                        return $this->getErrorMessage('ipv4', $fieldName);
+                    }
+                    break;
+
+                case 'ipv6':
+                    if (!$this->isIpv6($input, $fieldName)) {
+                        return $this->getErrorMessage('ipv6', $fieldName);
+                    }
+                    break;
+
+                case 'json':
+                    if (!$this->isJsonable($input, $fieldName)) {
+                        return $this->getErrorMessage('json', $fieldName);
+                    }
+                    break;
+
+                case 'boolean':
+                    if (!$this->isBoolean($input, $fieldName)) {
+                        return $this->getErrorMessage('boolean', $fieldName);
+                    }
+                    break;
+
+                case 'confirmed':
+                    if (!$this->isConfirmed($input, $fieldName)) {
+                        return $this->getErrorMessage('confirmed', $fieldName);
+                    }
+                    break;
+
+                case 'different':
+                    if (!$this->isDifferent($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('different', $fieldName, [
+                            ':other' => $this->getAttributeName($ruleValue),
+                            'other' => $this->getAttributeName($ruleValue),
+                        ]);
+                    }
+                    break;
+
+                case 'in':
+                    if (!$this->isInList($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('in', $fieldName, [
+                            ':values' => $ruleValue,
+                            'values' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'not_in':
+                    if (!$this->isNotInList($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('not_in', $fieldName, [
+                            ':values' => $ruleValue,
+                            'values' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'regex':
+                    if (!$this->isRegexMatch($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('regex', $fieldName);
+                    }
+                    break;
+
+                case 'phone':
+                    if (!$this->isPhone($input, $fieldName)) {
+                        return $this->getErrorMessage('phone', $fieldName);
+                    }
+                    break;
+
+                case 'digits':
+                    if (!$this->isExactDigits($input, $fieldName, (int) $ruleValue)) {
+                        return $this->getErrorMessage('digits', $fieldName, [
+                            ':digits' => $ruleValue,
+                            'digits' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'min_digits':
+                    if (!$this->isMinDigits($input, $fieldName, (int) $ruleValue)) {
+                        return $this->getErrorMessage('min_digits', $fieldName, [
+                            ':min' => $ruleValue,
+                            'min' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'max_digits':
+                    if (!$this->isMaxDigits($input, $fieldName, (int) $ruleValue)) {
+                        return $this->getErrorMessage('max_digits', $fieldName, [
+                            ':max' => $ruleValue,
+                            'max' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'size':
+                    if (!$this->isExactSize($input, $fieldName, (int) $ruleValue)) {
+                        return $this->getErrorMessage('size', $fieldName, [
+                            ':size' => $ruleValue,
+                            'size' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'starts_with':
+                    if (!$this->isStartsWith($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('starts_with', $fieldName, [
+                            ':value' => $ruleValue,
+                            'value' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'ends_with':
+                    if (!$this->isEndsWith($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('ends_with', $fieldName, [
+                            ':value' => $ruleValue,
+                            'value' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'uuid':
+                    if (!$this->isUuid($input, $fieldName)) {
+                        return $this->getErrorMessage('uuid', $fieldName);
+                    }
+                    break;
+
+                case 'date_format':
+                    if (!$this->isDateFormat($input, $fieldName, $ruleValue)) {
+                        return $this->getErrorMessage('date_format', $fieldName, [
+                            ':format' => $ruleValue,
+                            'format' => $ruleValue,
+                        ]);
+                    }
+                    break;
+
+                case 'uppercase':
+                    if (!$this->isUppercase($input, $fieldName)) {
+                        return $this->getErrorMessage('uppercase', $fieldName);
+                    }
+                    break;
+
+                case 'lowercase':
+                    if (!$this->isLowercase($input, $fieldName)) {
+                        return $this->getErrorMessage('lowercase', $fieldName);
+                    }
+                    break;
+
+                case 'slug':
+                    if (!$this->isSlug($input, $fieldName)) {
+                        return $this->getErrorMessage('slug', $fieldName);
+                    }
+                    break;
+
+                case 'string':
+                    if (!$this->isString($input, $fieldName)) {
+                        return $this->getErrorMessage('string', $fieldName);
+                    }
+                    break;
+
+                case 'array':
+                    if (!$this->isArray($input, $fieldName)) {
+                        return $this->getErrorMessage('array', $fieldName);
+                    }
+                    break;
+
+                case 'timezone':
+                    if (!$this->isTimezone($input, $fieldName)) {
+                        return $this->getErrorMessage('timezone', $fieldName);
                     }
                     break;
             }
@@ -582,7 +822,17 @@ trait ValidationRules
      */
     protected function isEmptyFieldRequired(array $input, string $fieldName): bool
     {
-        return !isset($input[$fieldName]) || $input[$fieldName] === '';
+        if (!isset($input[$fieldName])) {
+            return true;
+        }
+
+        $value = $input[$fieldName];
+
+        if (is_array($value)) {
+            return empty($value);
+        }
+
+        return $value === '' || $value === null;
     }
 
     /**
@@ -692,6 +942,425 @@ trait ValidationRules
     }
 
     /**
+     * Check if the field value contains only alphabetic characters.
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isAlpha(array $input, string $fieldName): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z]+$/', $input[$fieldName] ?? '');
+    }
+
+    /**
+     * Check if the field value contains only alphanumeric characters.
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isAlphaNum(array $input, string $fieldName): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z0-9]+$/', $input[$fieldName] ?? '');
+    }
+
+    /**
+     * Check if the field value contains only letters, numbers, dashes, and underscores
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isAlphaDash(array $input, string $fieldName): bool
+    {
+        return (bool) preg_match('/^[a-zA-Z0-9_\-]+$/', $input[$fieldName] ?? '');
+    }
+
+    /**
+     * Check if the field value is numeric
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isNumeric(array $input, string $fieldName): bool
+    {
+        return is_numeric($input[$fieldName] ?? '');
+    }
+
+    /**
+     * Check if the field value is a valid URL
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isUrl(array $input, string $fieldName): bool
+    {
+        return filter_var($input[$fieldName] ?? '', FILTER_VALIDATE_URL) !== false;
+    }
+
+    /**
+     * Check if the field value is a valid IP address (v4 or v6)
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isIp(array $input, string $fieldName): bool
+    {
+        return filter_var($input[$fieldName] ?? '', FILTER_VALIDATE_IP) !== false;
+    }
+
+    /**
+     * Check if the field value is a valid IPv4 address
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isIpv4(array $input, string $fieldName): bool
+    {
+        return filter_var($input[$fieldName] ?? '', FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
+    }
+
+    /**
+     * Check if the field value is a valid IPv6 address
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isIpv6(array $input, string $fieldName): bool
+    {
+        return filter_var($input[$fieldName] ?? '', FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
+    }
+
+    /**
+     * Check if the field value is a valid JSON string
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isJsonable(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        if (!is_string($value) || $value === '') {
+            return false;
+        }
+
+        json_decode($value);
+
+        return json_last_error() === JSON_ERROR_NONE;
+    }
+
+    /**
+     * Check if the field value is a boolean-like value (true, false, 0, 1, "0", "1", "true", "false")
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isBoolean(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? null;
+
+        return in_array($value, [true, false, 0, 1, '0', '1', 'true', 'false'], true);
+    }
+
+    /**
+     * Check if the field value matches the {field}_confirmation counterpart
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isConfirmed(array $input, string $fieldName): bool
+    {
+        return ($input[$fieldName] ?? '') === ($input[$fieldName . '_confirmation'] ?? '');
+    }
+
+    /**
+     * Check if the field value is different from another field's value
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $otherField
+     * @return bool
+     */
+    protected function isDifferent(array $input, string $fieldName, string $otherField): bool
+    {
+        return ($input[$fieldName] ?? '') !== ($input[$otherField] ?? '');
+    }
+
+    /**
+     * Check if the field value is one of the allowed values
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
+     */
+    protected function isInList(array $input, string $fieldName, string $ruleValue): bool
+    {
+        $list = array_map('trim', explode(',', $ruleValue));
+
+        return in_array($input[$fieldName] ?? '', $list, true);
+    }
+
+    /**
+     * Check if the field value is not in the given list
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $ruleValue
+     * @return bool
+     */
+    protected function isNotInList(array $input, string $fieldName, string $ruleValue): bool
+    {
+        $list = array_map('trim', explode(',', $ruleValue));
+
+        return !in_array($input[$fieldName] ?? '', $list, true);
+    }
+
+    /**
+     * Check if the field value matches a regular expression pattern
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $pattern
+     * @return bool
+     */
+    protected function isRegexMatch(array $input, string $fieldName, string $pattern): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return (bool) @preg_match($pattern, $value);
+    }
+
+    /**
+     * Check if the field value is a valid phone number
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isPhone(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return (bool) preg_match('/^\+?[0-9\s\-\(\)]{7,20}$/', $value);
+    }
+
+    /**
+     * Check if the field value is a numeric string with exactly N digits
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param int $digits
+     * @return bool
+     */
+    protected function isExactDigits(array $input, string $fieldName, int $digits): bool
+    {
+        $value = (string)($input[$fieldName] ?? '');
+
+        return (bool) preg_match('/^\d{' . $digits . '}$/', $value);
+    }
+
+    /**
+     * Check if the field value is a numeric string with at least N digits
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param int $min
+     * @return bool
+     */
+    protected function isMinDigits(array $input, string $fieldName, int $min): bool
+    {
+        $value = (string)($input[$fieldName] ?? '');
+
+        return (bool) preg_match('/^\d+$/', $value) && strlen($value) >= $min;
+    }
+
+    /**
+     * Check if the field value is a numeric string with at most N digits
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param int $max
+     * @return bool
+     */
+    protected function isMaxDigits(array $input, string $fieldName, int $max): bool
+    {
+        $value = (string)($input[$fieldName] ?? '');
+
+        return (bool) preg_match('/^\d+$/', $value) && strlen($value) <= $max;
+    }
+
+    /**
+     * Check if the field value has exactly N characters (strings) or N elements (arrays).
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param int $size
+     *
+     * @return bool
+     */
+    protected function isExactSize(array $input, string $fieldName, int $size): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        if (is_array($value)) {
+            return count($value) === $size;
+        }
+
+        return strlen((string)$value) === $size;
+    }
+
+    /**
+     * Check if the field value starts with a given string
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $prefix
+     * @return bool
+     */
+    protected function isStartsWith(array $input, string $fieldName, string $prefix): bool
+    {
+        return str_starts_with($input[$fieldName] ?? '', $prefix);
+    }
+
+    /**
+     * Check if the field value ends with a given string
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $suffix
+     * @return bool
+     */
+    protected function isEndsWith(array $input, string $fieldName, string $suffix): bool
+    {
+        return str_ends_with($input[$fieldName] ?? '', $suffix);
+    }
+
+    /**
+     * Check if the field value is a valid UUID (v1–v5)
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isUuid(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return (bool) preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $value
+        );
+    }
+
+    /**
+     * Check if the field value matches a specific date format
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @param string $format
+     * @return bool
+     */
+    protected function isDateFormat(array $input, string $fieldName, string $format): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        $date = \DateTime::createFromFormat($format, $value);
+
+        return $date !== false && $date->format($format) === $value;
+    }
+
+    /**
+     * Check if the field value is entirely uppercase
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isUppercase(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return $value !== '' && $value === strtoupper($value) && preg_match('/[A-Z]/', $value);
+    }
+
+    /**
+     * Check if the field value is entirely lowercase
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isLowercase(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return $value !== '' && $value === strtolower($value) && preg_match('/[a-z]/', $value);
+    }
+
+    /**
+     * Check if the field value is a valid URL slug
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isSlug(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return (bool) preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value);
+    }
+
+    /**
+     * Check if the field value is a string type
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isString(array $input, string $fieldName): bool
+    {
+        return is_string($input[$fieldName] ?? null);
+    }
+
+    /**
+     * Check if the field value is an array type
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isArray(array $input, string $fieldName): bool
+    {
+        return is_array($input[$fieldName] ?? null);
+    }
+
+    /**
+     * Check if the field value is a valid IANA timezone identifier
+     *
+     * @param array $input
+     * @param string $fieldName
+     * @return bool
+     */
+    protected function isTimezone(array $input, string $fieldName): bool
+    {
+        $value = $input[$fieldName] ?? '';
+
+        return in_array($value, \DateTimeZone::listIdentifiers(), true);
+    }
+
+    /**
      * Remove the suffix from a rule string.
      *
      * @param string $string
@@ -710,7 +1379,7 @@ trait ValidationRules
      */
     protected function _getRuleSuffix(string $string): ?string
     {
-        $arr = explode(":", $string);
+        $arr = explode(":", $string, 2);
 
         return $arr[1] ?? null;
     }
