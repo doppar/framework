@@ -1201,23 +1201,23 @@ trait ValidationRules
     }
 
     /**
-     * Check if the field value has exactly N characters (or equals N for numeric values)
+     * Check if the field value has exactly N characters (strings) or N elements (arrays).
      *
      * @param array $input
      * @param string $fieldName
      * @param int $size
-     * 
+     *
      * @return bool
      */
     protected function isExactSize(array $input, string $fieldName, int $size): bool
     {
         $value = $input[$fieldName] ?? '';
 
-        if (is_numeric($value)) {
-            return (float)$value === (float)$size;
+        if (is_array($value)) {
+            return count($value) === $size;
         }
 
-        return strlen($value) === $size;
+        return strlen((string)$value) === $size;
     }
 
     /**
@@ -1379,7 +1379,7 @@ trait ValidationRules
      */
     protected function _getRuleSuffix(string $string): ?string
     {
-        $arr = explode(":", $string);
+        $arr = explode(":", $string, 2);
 
         return $arr[1] ?? null;
     }
