@@ -3,6 +3,7 @@
 namespace Phaseolies\Support\Validation;
 
 use Phaseolies\Http\Support\ValidationRules;
+use Phaseolies\Http\Validation\Bind;
 
 class Sanitizer
 {
@@ -68,6 +69,15 @@ class Sanitizer
     public function validate(): bool
     {
         foreach ($this->rules as $field => $ruleString) {
+            // Custom rule class bound via Bind::to(new Rule())->context([...])
+            if ($ruleString instanceof Bind) {
+                $errorMessage = $ruleString->evaluate($field, $this->data);
+                if ($errorMessage) {
+                    $this->addError($field, $errorMessage);
+                }
+                continue;
+            }
+
             $rulesArray = explode('|', $ruleString);
 
             foreach ($rulesArray as $rule) {
