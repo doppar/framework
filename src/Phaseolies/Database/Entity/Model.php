@@ -6,6 +6,7 @@ use Stringable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Entity\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Entity\Hooks\HookHandler;
+use Phaseolies\Database\Temporal\InteractsWithTemporal;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use PDO;
@@ -16,6 +17,7 @@ use Phaseolies\Database\Entity\Attributes\Hook;
 abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsonable
 {
     use InteractsWithModelQueryProcessing;
+    use InteractsWithTemporal;
 
     /**
      * The name of the database table associated with the model.
@@ -186,6 +188,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
         }
 
         $this->registerAttributeHooks();
+        $this->registerTemporalHooks();
     }
 
     /**
