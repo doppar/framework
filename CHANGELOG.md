@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.18.0 - 2026-04-05
+
+* (feat) Temporal  Time Travel ORM using #[Temporal] Attribute by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/238
+
 ## v3.17.0 - 2026-04-04
 
 * adding some new validation rules by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/236
