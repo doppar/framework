@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.18.1 - 2026-04-07
+
+* fix: resolve Builder::create() crash when chaining after withoutHook() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/239
+
 ## v3.18.0 - 2026-04-05
 
 * (feat) Temporal  Time Travel ORM using #[Temporal] Attribute by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/238
