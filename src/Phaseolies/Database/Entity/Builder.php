@@ -152,6 +152,22 @@ class Builder
     }
 
     /**
+     * Create a new model instance and save it to the database
+     *
+     * @param array $attributes
+     * @return Model
+     */
+    public function create(array $attributes): Model
+    {
+        $modelClass = $this->modelClass;
+        $model = new $modelClass();
+        $model->fill($attributes);
+        $model->save();
+
+        return $model;
+    }
+
+    /**
      * Set the relationship info
      *
      * @param array $info

@@ -38,13 +38,13 @@ trait InteractsWithModelQueryProcessing
     /**
      * Disable the execution of model hooks for the current instance.
      *
-     * @return self
+     * @return \Phaseolies\Database\Entity\Builder
      */
-    public static function withoutHook(): self
+    public static function withoutHook(): Builder
     {
         self::$isHookShouldBeCalled = false;
 
-        return app(static::class);
+        return static::query();
     }
 
     /**
