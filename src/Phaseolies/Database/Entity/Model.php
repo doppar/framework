@@ -6,6 +6,7 @@ use Stringable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Entity\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Entity\Hooks\HookHandler;
+use Phaseolies\Database\Entity\Casts\InteractsWithCasting;
 use Phaseolies\Database\Temporal\InteractsWithTemporal;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
@@ -18,6 +19,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 {
     use InteractsWithModelQueryProcessing;
     use InteractsWithTemporal;
+    use InteractsWithCasting;
 
     /**
      * The name of the database table associated with the model.
@@ -485,6 +487,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     public function setAttribute($key, $value): void
     {
         $value = $this->sanitize($value);
+        $value = $this->castForSet($key, $value);
 
         // Always track original value, when first setting
         if (!array_key_exists($key, $this->originalAttributes)) {
@@ -552,7 +555,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
         foreach ($this->attributes as $key => $value) {
             if (!in_array($key, $this->unexposable)) {
-                $visibleAttributes[$key] = $value;
+                $visibleAttributes[$key] = $this->castForGet($key, $value);
             }
         }
 
@@ -860,7 +863,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     {
         try {
             if (array_key_exists($name, $this->attributes)) {
-                return $this->attributes[$name];
+                return $this->castForGet($name, $this->attributes[$name]);
             }
 
             if (array_key_exists($name, $this->relations)) {
