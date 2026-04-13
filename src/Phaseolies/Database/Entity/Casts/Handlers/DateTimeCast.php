@@ -15,6 +15,12 @@ class DateTimeCast implements CastableInterface
         protected string $format = 'Y-m-d H:i:s'
     ) {}
 
+    /**
+     * Get the value as a Carbon instance.
+     *
+     * @param mixed $value
+     * @return Carbon|null
+     */
     public function get(mixed $value): mixed
     {
         if ($value === null || $value === '') {
@@ -32,6 +38,12 @@ class DateTimeCast implements CastableInterface
         return Carbon::parse($value);
     }
 
+    /**
+     * Set the value as a formatted date string
+     *
+     * @param mixed $value
+     * @return mixed
+     */
     public function set(mixed $value): mixed
     {
         if ($value === null || $value === '') {

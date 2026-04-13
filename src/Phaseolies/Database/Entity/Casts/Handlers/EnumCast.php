@@ -13,6 +13,13 @@ class EnumCast implements CastableInterface
         protected string $enumClass
     ) {}
 
+    /**
+     * Get the enum case from the given value.
+     *
+     * @param mixed $value
+     * @return mixed
+     * @throws \ValueError
+     */
     public function get(mixed $value): mixed
     {
         if ($value === null || $value === '') {
@@ -40,6 +47,12 @@ class EnumCast implements CastableInterface
         );
     }
 
+    /**
+     * Convert the enum case to a storable value.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
     public function set(mixed $value): mixed
     {
         if ($value === null) {

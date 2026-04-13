@@ -7,6 +7,12 @@ use Phaseolies\Support\Collection;
 
 class CollectionCast implements CastableInterface
 {
+    /**
+     * Get the value as a Collection
+     *
+     * @param mixed $value
+     * @return Collection
+     */
     public function get(mixed $value): mixed
     {
         if ($value instanceof Collection) {
@@ -26,6 +32,12 @@ class CollectionCast implements CastableInterface
         return new Collection('array', []);
     }
 
+    /**
+     * Set the value as a JSON string
+     *
+     * @param mixed $value
+     * @return mixed
+     */
     public function set(mixed $value): mixed
     {
         if ($value instanceof Collection) {
