@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.19.0 - 2026-04-14
+
+* (feat) Attribute-driven model casting by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/240
+* feat: Observable Model Properties (#[Watches] attribute system) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/241
+
 ## v3.18.1 - 2026-04-07
 
 * fix: resolve Builder::create() crash when chaining after withoutHook() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/239
