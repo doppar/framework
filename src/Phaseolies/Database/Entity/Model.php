@@ -8,6 +8,7 @@ use Phaseolies\Database\Entity\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\Database\Entity\Casts\InteractsWithCasting;
 use Phaseolies\Database\Temporal\InteractsWithTemporal;
+use Phaseolies\Database\Entity\Watches\InteractsWithWatches;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use PDO;
@@ -20,6 +21,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     use InteractsWithModelQueryProcessing;
     use InteractsWithTemporal;
     use InteractsWithCasting;
+    use InteractsWithWatches;
 
     /**
      * The name of the database table associated with the model.
@@ -191,6 +193,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
 
         $this->registerAttributeHooks();
         $this->registerTemporalHooks();
+        $this->registerWatchesAttributes();
     }
 
     /**
