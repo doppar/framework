@@ -195,6 +195,7 @@ trait InteractsWithModelQueryProcessing
 
                 if (self::$isHookShouldBeCalled && $response) {
                     $this->fireAfterHooks('updated');
+                    $this->firePropertyWatches($dirtyAttributes);
                     $this->originalAttributes = $this->attributes;
                 }
 
@@ -502,6 +503,7 @@ trait InteractsWithModelQueryProcessing
             if ($result) {
                 if (self::$isHookShouldBeCalled) {
                     $this->fireAfterHooks('updated');
+                    $this->firePropertyWatches($dirty);
                 }
                 $this->originalAttributes = $this->attributes;
             }
