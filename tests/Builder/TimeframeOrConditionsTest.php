@@ -6,6 +6,7 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
+use Tests\Support\Model\MockUser;
 
 class TimeframeOrConditionsTest extends TestCase
 {
@@ -13,7 +14,7 @@ class TimeframeOrConditionsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createMock(PDO::class);
+        $this->pdoMock = $this->createStub(PDO::class);
         $this->pdoMock->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('mysql');
@@ -32,14 +33,12 @@ class TimeframeOrConditionsTest extends TestCase
     {
         $ref = new \ReflectionClass($class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
-        $prop->setAccessible(false);
     }
 
     private function builder(): Builder
     {
-        return new Builder($this->pdoMock, 'events', 'App\\Models\\Event', 15);
+        return new Builder($this->pdoMock, 'users', MockUser::class, 15);
     }
 
     public function testOrWhereDateAddsOrConditionAlone()
@@ -208,12 +207,12 @@ class TimeframeOrConditionsTest extends TestCase
 
     public function testOrWhereTimeForPostgresUsesExtract()
     {
-        $pgPdo = $this->createMock(PDO::class);
+        $pgPdo = $this->createStub(PDO::class);
         $pgPdo->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('pgsql');
 
-        $b = new Builder($pgPdo, 'events', 'App\\Models\\Event', 15);
+        $b = new Builder($pgPdo, 'users', MockUser::class, 15);
 
         $sql = $b->where('active', 1)->orWhereTime('created_at', '09:00:00')->toSql();
 
@@ -223,12 +222,12 @@ class TimeframeOrConditionsTest extends TestCase
 
     public function testOrWhereMonthForSqliteUsesStrftime()
     {
-        $sqPdo = $this->createMock(PDO::class);
+        $sqPdo = $this->createStub(PDO::class);
         $sqPdo->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('sqlite');
 
-        $b = new Builder($sqPdo, 'events', 'App\\Models\\Event', 15);
+        $b = new Builder($sqPdo, 'users', MockUser::class, 15);
 
         $sql = $b->where('active', 1)->orWhereMonth('created_at', 4)->toSql();
 
