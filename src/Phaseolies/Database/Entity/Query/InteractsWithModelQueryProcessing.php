@@ -164,6 +164,12 @@ trait InteractsWithModelQueryProcessing
 
         if (!array_key_exists($class, $attributeCache)) {
             $attributeCache[$class] = $this->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class);
+            if ($attributeCache[$class]) {
+                trigger_error(
+                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                    E_USER_DEPRECATED
+                );
+            }
         }
 
         $dateTime = $attributeCache[$class] ? now()->startOfDay() : now();
@@ -278,6 +284,13 @@ trait InteractsWithModelQueryProcessing
         $hasCastToDate = $usesTimestamps
             ? (new static())->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class)
             : false;
+
+        if ($hasCastToDate) {
+            trigger_error(
+                'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                E_USER_DEPRECATED
+            );
+        }
 
         $dateTime = $hasCastToDate ? now()->startOfDay() : now();
 
@@ -490,6 +503,12 @@ trait InteractsWithModelQueryProcessing
 
         if ($this->usesTimestamps()) {
             $hasCastToDate = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
+            if ($hasCastToDate) {
+                trigger_error(
+                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                    E_USER_DEPRECATED
+                );
+            }
             $dirty['updated_at'] = $hasCastToDate
                 ? now()->startOfDay()
                 : now();

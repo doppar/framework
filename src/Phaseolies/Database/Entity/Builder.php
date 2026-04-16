@@ -2308,6 +2308,10 @@ class Builder
             $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
             if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
                 $hasCastToDateAttribute = true;
+                trigger_error(
+                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                    E_USER_DEPRECATED
+                );
             }
         }
 
