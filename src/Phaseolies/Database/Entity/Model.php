@@ -9,6 +9,7 @@ use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\Database\Entity\Casts\InteractsWithCasting;
 use Phaseolies\Database\Temporal\InteractsWithTemporal;
 use Phaseolies\Database\Entity\Watches\InteractsWithWatches;
+use Phaseolies\Database\Entity\Computed\InteractsWithComputedProperties;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use PDO;
@@ -22,6 +23,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     use InteractsWithTemporal;
     use InteractsWithCasting;
     use InteractsWithWatches;
+    use InteractsWithComputedProperties;
 
     /**
      * The name of the database table associated with the model.
@@ -562,6 +564,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
             }
         }
 
+        foreach ($this->getComputedAttributes() as $key => $value) {
+            $visibleAttributes[$key] = $value;
+        }
+
         return $visibleAttributes;
     }
 
@@ -873,6 +879,10 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
                 return $this->relations[$name];
             }
 
+            if ($this->isComputed($name)) {
+                return $this->resolveComputed($name);
+            }
+
             if (method_exists($this, $name)) {
                 $relation = $this->$name();
 
@@ -942,7 +952,7 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
             }
 
             return $this->attributes[$name];
-        } catch (\Throwable $th) {
+        } catch (\Throwable) {
             return;
         }
     }
