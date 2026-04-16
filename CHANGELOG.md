@@ -1,5 +1,13 @@
 # Release Notes
 
+## v3.20.0 - 2026-04-16
+
+* Adding some missing unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/242
+* adding missing unit test for or* query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/243
+* Deprecate CastToDate in favor of attribute cast system by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/244
+* feat: Add #[Computed] attribute for virtual model properties by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/245
+* Fix redundant instantiations and uncached reflection in model internals by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/246
+
 ## v3.19.0 - 2026-04-14
 
 * (feat) Attribute-driven model casting by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/240
