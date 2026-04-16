@@ -282,7 +282,7 @@ trait InteractsWithModelQueryProcessing
         $model = new static();
         $usesTimestamps = $model->timeStamps;
         $hasCastToDate = $usesTimestamps
-            ? (new static())->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class)
+            ? $model->propertyHasAttribute($model, 'timeStamps', CastToDate::class)
             : false;
 
         if ($hasCastToDate) {
@@ -502,14 +502,20 @@ trait InteractsWithModelQueryProcessing
         }
 
         if ($this->usesTimestamps()) {
-            $hasCastToDate = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
-            if ($hasCastToDate) {
-                trigger_error(
-                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                    E_USER_DEPRECATED
-                );
+            static $castToDateCache = [];
+            $class = static::class;
+
+            if (!array_key_exists($class, $castToDateCache)) {
+                $castToDateCache[$class] = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
+                if ($castToDateCache[$class]) {
+                    trigger_error(
+                        'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                        E_USER_DEPRECATED
+                    );
+                }
             }
-            $dirty['updated_at'] = $hasCastToDate
+
+            $dirty['updated_at'] = $castToDateCache[$class]
                 ? now()->startOfDay()
                 : now();
         }
@@ -547,7 +553,6 @@ trait InteractsWithModelQueryProcessing
 
         if ($reflection->hasProperty($attribute)) {
             $property = $reflection->getProperty($attribute);
-            $property->setAccessible(true);
 
             return $property->isStatic()
                 ? $property->getValue()

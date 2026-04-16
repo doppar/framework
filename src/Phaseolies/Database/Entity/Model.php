@@ -564,8 +564,12 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
             }
         }
 
-        foreach ($this->getComputedAttributes() as $key => $value) {
-            $visibleAttributes[$key] = $value;
+        $computed = $this->getComputedAttributes();
+
+        if (!empty($computed)) {
+            foreach ($computed as $key => $value) {
+                $visibleAttributes[$key] = $value;
+            }
         }
 
         return $visibleAttributes;

@@ -61,7 +61,13 @@ trait InteractsWithComputedProperties
     {
         $this->ensureComputedCached();
 
-        foreach (self::$computedAttributeCache[static::class] as $entry) {
+        $entries = self::$computedAttributeCache[static::class];
+
+        if (empty($entries)) {
+            return false;
+        }
+
+        foreach ($entries as $entry) {
             if ($entry['key'] === $name || $entry['method'] === $name) {
                 return true;
             }
