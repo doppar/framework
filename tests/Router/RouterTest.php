@@ -10,6 +10,7 @@ use Phaseolies\Http\Request;
 use Phaseolies\DI\Container;
 use Phaseolies\Application;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 if (!class_exists('App\Http\Kernel')) {
     class_alias(Kernel::class, 'App\Http\Kernel');
@@ -57,6 +58,7 @@ class TestRequestStub extends Request
     }
 }
 
+#[AllowMockObjectsWithoutExpectations]
 class RouterTest extends TestCase
 {
     private Router $router;
@@ -78,15 +80,12 @@ class RouterTest extends TestCase
         $reflection = new \ReflectionClass(Router::class);
 
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routesProperty->setValue(null, []);
 
         $namedRoutesProperty = $reflection->getProperty('namedRoutes');
-        $namedRoutesProperty->setAccessible(true);
         $namedRoutesProperty->setValue(null, []);
 
         $routeMiddlewaresProperty = $reflection->getProperty('routeMiddlewares');
-        $routeMiddlewaresProperty->setAccessible(true);
         $routeMiddlewaresProperty->setValue(null, [
             'GET' => [],
             'POST' => [],
@@ -123,7 +122,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routes);
@@ -140,7 +138,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('POST', $routes);
@@ -156,7 +153,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('PUT', $routes);
@@ -172,7 +168,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('PATCH', $routes);
@@ -188,7 +183,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('DELETE', $routes);
@@ -204,7 +198,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('OPTIONS', $routes);
@@ -220,7 +213,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('HEAD', $routes);
@@ -243,7 +235,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertEquals('GET', $request->getMethod());
@@ -261,7 +252,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $namedRoutesProperty = $reflection->getProperty('namedRoutes');
-        $namedRoutesProperty->setAccessible(true);
         $namedRoutes = $namedRoutesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('test.route', $namedRoutes);
@@ -295,7 +285,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routeMiddlewaresProperty = $reflection->getProperty('routeMiddlewares');
-        $routeMiddlewaresProperty->setAccessible(true);
         $routeMiddlewares = $routeMiddlewaresProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routeMiddlewares);
@@ -328,7 +317,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('/api/users', $routes['GET']);
@@ -344,7 +332,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('/api/v1/users', $routes['GET']);
@@ -358,11 +345,9 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $routeMiddlewaresProperty = $reflection->getProperty('routeMiddlewares');
-        $routeMiddlewaresProperty->setAccessible(true);
         $routeMiddlewares = $routeMiddlewaresProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routes);
@@ -441,7 +426,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routes);
@@ -457,7 +441,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routes);
@@ -473,7 +456,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $routesProperty = $reflection->getProperty('routes');
-        $routesProperty->setAccessible(true);
         $routes = $routesProperty->getValue($this->router);
 
         $this->assertArrayHasKey('GET', $routes);
@@ -570,7 +552,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('isCacheableRoute');
-        $method->setAccessible(true);
 
         $controller = new class {
             public function index() {}
@@ -588,7 +569,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $getCacheableRoutes = $reflection->getMethod('getCacheableRoutes');
-        $getCacheableRoutes->setAccessible(true);
 
         $this->router->get('/invokable', InvokableTestClass::class)->domain('api.example.com');
 
@@ -612,7 +592,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('extractRouteParameters');
-        $method->setAccessible(true);
 
         $matches = ['id' => '123', 'name' => 'john'];
         $result = $method->invoke($this->router, '/users/{id}/profile/{name}', $matches);
@@ -624,7 +603,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('convertRouteToRegex');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->router, '/users/{id}');
 
@@ -635,7 +613,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('isCacheableRoute');
-        $method->setAccessible(true);
 
         // Test controller array (should be cacheable if method exists)
         $controller = new class {
@@ -660,7 +637,6 @@ class RouterTest extends TestCase
     {
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('getCacheableRoutes');
-        $method->setAccessible(true);
 
         $this->router->get('/invokable', InvokableTestClass::class);
 
@@ -709,12 +685,10 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('processControllerMiddleware');
-        $method->setAccessible(true);
 
         $method->invoke($this->router, [get_class($controller), 'index']);
 
         $routeMiddlewaresProperty = $reflection->getProperty('routeMiddlewares');
-        $routeMiddlewaresProperty->setAccessible(true);
         $routeMiddlewares = $routeMiddlewaresProperty->getValue($this->router);
 
         $this->assertNotEmpty($routeMiddlewares);
@@ -731,7 +705,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('resolveAction');
-        $method->setAccessible(true);
 
         $app = $this->createMock(Application::class);
         $app->method('make')->willReturn($controller);
@@ -752,7 +725,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('resolveAction');
-        $method->setAccessible(true);
 
         $app = $this->createMock(Application::class);
         $app->method('make')->willReturn($controller);
@@ -768,7 +740,6 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('resolveAction');
-        $method->setAccessible(true);
 
         $app = $this->createMock(Application::class);
 
@@ -789,13 +760,11 @@ class RouterTest extends TestCase
 
         $reflection = new \ReflectionClass(Router::class);
         $method = $reflection->getMethod('processRateLimitAnnotation');
-        $method->setAccessible(true);
 
         $methodReflection = new \ReflectionMethod($controller, 'limited');
         $method->invoke($this->router, $methodReflection);
 
         $routeMiddlewaresProperty = $reflection->getProperty('routeMiddlewares');
-        $routeMiddlewaresProperty->setAccessible(true);
         $routeMiddlewares = $routeMiddlewaresProperty->getValue($this->router);
 
         $this->assertNotEmpty($routeMiddlewares);

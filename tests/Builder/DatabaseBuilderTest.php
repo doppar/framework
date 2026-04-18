@@ -41,9 +41,7 @@ class DatabaseBuilderTest extends TestCase
         try {
             $reflection = new \ReflectionClass($className);
             $property = $reflection->getProperty($propertyName);
-            $property->setAccessible(true);
             $property->setValue(null, $value);
-            $property->setAccessible(false);
         } catch (\ReflectionException $e) {
             $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
         }
@@ -75,9 +73,7 @@ class DatabaseBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('conditions');
-        $property->setAccessible(true);
         $conditions = $property->getValue($builder);
-        $property->setAccessible(false);
         return $conditions;
     }
 
@@ -219,7 +215,6 @@ class DatabaseBuilderTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $method = $reflection->getMethod('isCaseSensitiveColumn');
-        $method->setAccessible(true);
 
         // Should return true by default (safe fallback)
         $result = $method->invoke($builder, 'name');
@@ -233,7 +228,6 @@ class DatabaseBuilderTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $method = $reflection->getMethod('convertLikeToGlob');
-        $method->setAccessible(true);
 
         // Test basic conversion
         $result = $method->invoke($builder, '%test%');

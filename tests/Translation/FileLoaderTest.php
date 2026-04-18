@@ -49,7 +49,6 @@ final class FileLoaderTest extends TestCase
         $loader = new FileLoader($this->tempDir);
 
         $method = (new \ReflectionClass($loader))->getMethod('loadPath');
-        $method->setAccessible(true);
 
         $result = $method->invoke($loader, $this->tempDir, 'en', 'messages');
 
@@ -61,7 +60,6 @@ final class FileLoaderTest extends TestCase
         $loader = new FileLoader($this->tempDir);
 
         $method = (new \ReflectionClass($loader))->getMethod('loadPath');
-        $method->setAccessible(true);
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Translation group name cannot be empty');
@@ -73,7 +71,6 @@ final class FileLoaderTest extends TestCase
         $loader = new FileLoader($this->tempDir);
 
         $method = (new \ReflectionClass($loader))->getMethod('loadPath');
-        $method->setAccessible(true);
 
         $this->expectException(\RuntimeException::class);
         $method->invoke($loader, $this->tempDir, 'en', 'missing');
@@ -150,7 +147,6 @@ final class FileLoaderTest extends TestCase
 
         $loader = new FileLoader($this->tempDir);
         $method = (new \ReflectionClass($loader))->getMethod('loadNamespaceOverrides');
-        $method->setAccessible(true);
 
         $base = ['welcome' => 'hi'];
         $result = $method->invoke($loader, $base, 'en', 'messages', 'example');
@@ -165,7 +161,6 @@ final class FileLoaderTest extends TestCase
     {
         $loader = new FileLoader($this->tempDir);
         $method = (new \ReflectionClass($loader))->getMethod('loadNamespaceOverrides');
-        $method->setAccessible(true);
 
         $base = ['a' => 1];
         $result = $method->invoke($loader, $base, 'en', 'none', 'example');

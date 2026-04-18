@@ -117,9 +117,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
         try {
             $reflection = new \ReflectionClass($className);
             $property = $reflection->getProperty($propertyName);
-            $property->setAccessible(true);
             $property->setValue(null, $value);
-            $property->setAccessible(false);
         } catch (\ReflectionException $e) {
             $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
         }
@@ -140,9 +138,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('conditions');
-        $property->setAccessible(true);
         $conditions = $property->getValue($builder);
-        $property->setAccessible(false);
         return $conditions;
     }
 
@@ -153,9 +149,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('eagerLoad');
-        $property->setAccessible(true);
         $eagerLoad = $property->getValue($builder);
-        $property->setAccessible(false);
         return $eagerLoad;
     }
 
@@ -282,7 +276,6 @@ class DatabaseBuilderRelationshipTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('relationInfo');
-        $property->setAccessible(true);
         $storedInfo = $property->getValue($builder);
 
         $this->assertEquals($relationInfo, $storedInfo);
@@ -621,9 +614,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
 
         $reflection = new \ReflectionClass($builderWithoutEager);
         $property = $reflection->getProperty('suppressEagerLoad');
-        $property->setAccessible(true);
         $suppressEagerLoad = $property->getValue($builderWithoutEager);
-        $property->setAccessible(false);
 
         $this->assertTrue($suppressEagerLoad);
     }
@@ -770,9 +761,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('orderBy');
-        $property->setAccessible(true);
         $orderBy = $property->getValue($builder);
-        $property->setAccessible(false);
         return $orderBy;
     }
 
@@ -780,9 +769,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('limit');
-        $property->setAccessible(true);
         $limit = $property->getValue($builder);
-        $property->setAccessible(false);
         return $limit;
     }
 }

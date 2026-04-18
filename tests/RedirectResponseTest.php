@@ -135,7 +135,7 @@ class RedirectResponseTest extends TestCase
         $reflection = new ReflectionClass(RedirectResponse::class);
         // $routerProperty = $reflection->getProperty('router');
         // dd($routerProperty);
-        // $routerProperty->setAccessible(true);
+        // $routerProperty
 
         // // Store original router if needed
         // $this->originalRouter = $routerProperty->getValue();

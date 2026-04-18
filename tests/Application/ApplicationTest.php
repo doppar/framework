@@ -11,6 +11,7 @@ use Phaseolies\Config\Config;
 use Phaseolies\Support\Router;
 use Phaseolies\Console\Console;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
 
@@ -46,6 +47,7 @@ class ErrorHandler
     }
 }
 
+#[AllowMockObjectsWithoutExpectations]
 final class ApplicationTest extends TestCase
 {
     private Application $app;
@@ -61,12 +63,15 @@ final class ApplicationTest extends TestCase
         $this->createDirectoryStructure();
 
         // Create application instance without calling constructor
-        $this->app = $this->createPartialMock(Application::class, [
-            'registerCoreProviders',
-            'bootCoreProviders',
-            'withConfiguration',
-            'withExceptionHandler'
-        ]);
+        $this->app = $this->getMockBuilder(Application::class)
+            ->onlyMethods([
+                'registerCoreProviders',
+                'bootCoreProviders',
+                'withConfiguration',
+                'withExceptionHandler'
+            ])
+            ->disableOriginalConstructor()
+            ->getMock();
 
         // Set up the mock methods to do nothing
         $this->app->method('registerCoreProviders')->willReturnSelf();
@@ -77,7 +82,6 @@ final class ApplicationTest extends TestCase
         // Now call the parent constructor manually without the problematic initialization
         $reflection = new ReflectionClass(Application::class);
         $constructor = $reflection->getConstructor();
-        $constructor->setAccessible(true);
         $constructor->invoke($this->app);
 
         // Set base path for testing
@@ -140,7 +144,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         $property->setValue($object, $value);
     }
 
@@ -148,7 +151,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         return $property->getValue($object);
     }
 
@@ -156,7 +158,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $method = $reflection->getMethod($method);
-        $method->setAccessible(true);
         return $method->invokeArgs($object, $args);
     }
 

@@ -9,7 +9,9 @@ use Phaseolies\Support\Collection;
 use PHPUnit\Framework\TestCase;
 use PDO;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class ModelTest extends TestCase
 {
     private $pdo;

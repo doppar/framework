@@ -216,7 +216,20 @@ class FrameTest extends TestCase
 
     public function testGetShortFileRequiresBootstrappedApp()
     {
-        $this->markTestSkipped('getShortFile() requires a bootstrapped Application container (base_path).');
+        // Define BASE_PATH to simulate bootstrapped app
+        if (!defined('BASE_PATH')) {
+            define('BASE_PATH', '/var/www/html');
+        }
+
+        $frame = new Frame($this->makeTrace(['file' => '/var/www/html/app/Http/Controllers/TestController.php']));
+
+        // Test that getShortFile() works (the actual result depends on base_path() implementation)
+        $result = $frame->getShortFile();
+        $this->assertIsString($result);
+        $this->assertNotEmpty($result);
+
+        // Verify it contains the expected path parts
+        $this->assertStringContainsString('app/Http/Controllers/TestController.php', $result);
     }
 
     public function testSetStateRecreatesFrame()
