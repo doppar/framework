@@ -27,7 +27,6 @@ class ControllerTest extends TestCase
         // Test that file extension is set
         $reflection = new \ReflectionClass(Controller::class);
         $fileExtensionProperty = $reflection->getProperty('fileExtension');
-        $fileExtensionProperty->setAccessible(true);
 
         $this->assertEquals('.odo.php', $fileExtensionProperty->getValue($this->controller));
     }
@@ -38,7 +37,6 @@ class ControllerTest extends TestCase
 
         $reflection = new \ReflectionClass(Controller::class);
         $fileExtensionProperty = $reflection->getProperty('fileExtension');
-        $fileExtensionProperty->setAccessible(true);
 
         $this->assertEquals('.php', $fileExtensionProperty->getValue($this->controller));
     }
@@ -49,7 +47,6 @@ class ControllerTest extends TestCase
 
         $reflection = new \ReflectionClass(Controller::class);
         $viewFolderProperty = $reflection->getProperty('viewFolder');
-        $viewFolderProperty->setAccessible(true);
 
         $this->assertEquals('custom' . DIRECTORY_SEPARATOR . 'views', $viewFolderProperty->getValue($this->controller));
     }
@@ -60,7 +57,6 @@ class ControllerTest extends TestCase
 
         $reflection = new \ReflectionClass(Controller::class);
         $echoFormatProperty = $reflection->getProperty('echoFormat');
-        $echoFormatProperty->setAccessible(true);
 
         $this->assertEquals('custom_format(%s)', $echoFormatProperty->getValue($this->controller));
     }
@@ -72,7 +68,6 @@ class ControllerTest extends TestCase
 
         $reflection = new \ReflectionClass(Controller::class);
         $loopStacksProperty = $reflection->getProperty('loopStacks');
-        $loopStacksProperty->setAccessible(true);
         $loopStacks = $loopStacksProperty->getValue($this->controller);
 
         $this->assertCount(1, $loopStacks);
@@ -89,7 +84,6 @@ class ControllerTest extends TestCase
 
         $reflection = new \ReflectionClass(Controller::class);
         $loopStacksProperty = $reflection->getProperty('loopStacks');
-        $loopStacksProperty->setAccessible(true);
         $loopStacks = $loopStacksProperty->getValue($this->controller);
 
         $this->assertEquals(1, $loopStacks[0]['iteration']);
@@ -118,7 +112,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileIf');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($condition)');
         $this->assertEquals('<?php if($condition): ?>', $result);
@@ -128,7 +121,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileElseif');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($condition)');
         $this->assertEquals('<?php elseif($condition): ?>', $result);
@@ -138,7 +130,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileElse');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php else: ?>', $result);
@@ -148,7 +139,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndif');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endif; ?>', $result);
@@ -158,7 +148,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileUnless');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '$condition');
         $this->assertEquals('<?php if (! $condition): ?>', $result);
@@ -168,7 +157,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndunless');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endif; ?>', $result);
@@ -178,7 +166,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileIsset');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($var)');
         $this->assertEquals('<?php if (isset($var)): ?>', $result);
@@ -188,7 +175,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndisset');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endif; ?>', $result);
@@ -198,7 +184,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileSwitch');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($value)');
         $this->assertEquals('<?php switch($value):', $result);
@@ -208,7 +193,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileDefault');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php default: ?>', $result);
@@ -218,7 +202,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileBreak');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '');
         $this->assertEquals('<?php break; ?>', $result);
@@ -228,7 +211,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileBreak');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($condition)');
         $this->assertEquals('<?php if($condition) break; ?>', $result);
@@ -238,7 +220,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndswitch');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endswitch; ?>', $result);
@@ -248,7 +229,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileContinue');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '');
         $this->assertEquals('<?php continue; ?>', $result);
@@ -258,7 +238,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileContinue');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($condition)');
         $this->assertEquals('<?php if($condition) continue; ?>', $result);
@@ -268,7 +247,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compilePhp');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '$var = "value"');
         $this->assertEquals('<?php $var = "value"; ?>', $result);
@@ -278,7 +256,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileJson');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($data)');
         $this->assertStringContainsString('echo json_encode($data,', $result);
@@ -288,7 +265,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileUnset');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($var)');
         $this->assertEquals('<?php unset($var); ?>', $result);
@@ -298,7 +274,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileFor');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($i = 0; $i < 10; $i++)');
         $this->assertEquals('<?php for($i = 0; $i < 10; $i++): ?>', $result);
@@ -308,7 +283,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndfor');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endfor; ?>', $result);
@@ -318,7 +292,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileForeach');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($items as $item)');
         $this->assertStringContainsString('foreach', $result);
@@ -329,7 +302,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndforeach');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endforeach; $this->popLoop(); ?>', $result);
@@ -339,7 +311,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileWhile');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller, '($condition)');
         $this->assertEquals('<?php while($condition): ?>', $result);
@@ -349,7 +320,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEndwhile');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->controller);
         $this->assertEquals('<?php endwhile; ?>', $result);
@@ -372,7 +342,6 @@ class ControllerTest extends TestCase
     {
         $reflection = new \ReflectionClass(Controller::class);
         $method = $reflection->getMethod('compileEchos');
-        $method->setAccessible(true);
 
         $content = '[[ $variable ]]';
         $result = $method->invoke($this->controller, $content);

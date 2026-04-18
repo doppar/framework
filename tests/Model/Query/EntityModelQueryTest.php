@@ -190,9 +190,7 @@ class EntityModelQueryTest extends TestCase
         try {
             $reflection = new \ReflectionClass($className);
             $property = $reflection->getProperty($propertyName);
-            $property->setAccessible(true);
             $property->setValue(null, $value);
-            $property->setAccessible(false);
         } catch (\ReflectionException $e) {
             $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
         }

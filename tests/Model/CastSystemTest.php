@@ -267,9 +267,7 @@ class CastSystemTest extends TestCase
     {
         $ref = new \ReflectionClass($class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
-        $prop->setAccessible(false);
     }
 
     private function insertRecord(array $data): int
@@ -343,7 +341,6 @@ class CastSystemTest extends TestCase
 
         $ref   = new \ReflectionClass(Model::class);
         $cache = $ref->getProperty('castAttributeCache');
-        $cache->setAccessible(true);
 
         $before = $cache->getValue(null);
         $this->assertArrayNotHasKey(MockPrimitiveCastModel::class, $before);
@@ -354,7 +351,6 @@ class CastSystemTest extends TestCase
         $after = $cache->getValue(null);
         $this->assertArrayHasKey(MockPrimitiveCastModel::class, $after);
 
-        $cache->setAccessible(false);
     }
 
     public function testCacheIsSharedAcrossInstancesOfSameClass(): void
@@ -366,9 +362,7 @@ class CastSystemTest extends TestCase
 
         $ref   = new \ReflectionClass(Model::class);
         $cache = $ref->getProperty('castAttributeCache');
-        $cache->setAccessible(true);
         $data = $cache->getValue(null);
-        $cache->setAccessible(false);
 
         // Both instances share the same static cache entry
         $this->assertArrayHasKey(MockPrimitiveCastModel::class, $data);
@@ -384,9 +378,7 @@ class CastSystemTest extends TestCase
 
         $ref   = new \ReflectionClass(Model::class);
         $cache = $ref->getProperty('castAttributeCache');
-        $cache->setAccessible(true);
         $data = $cache->getValue(null);
-        $cache->setAccessible(false);
 
         $this->assertArrayNotHasKey(MockPrimitiveCastModel::class, $data);
     }
@@ -400,9 +392,7 @@ class CastSystemTest extends TestCase
 
         $ref   = new \ReflectionClass(Model::class);
         $cache = $ref->getProperty('castAttributeCache');
-        $cache->setAccessible(true);
         $data = $cache->getValue(null);
-        $cache->setAccessible(false);
 
         $this->assertEmpty($data);
     }
@@ -713,9 +703,7 @@ class CastSystemTest extends TestCase
 
         $ref      = new \ReflectionClass(CastManager::class);
         $resolved = $ref->getProperty('resolved');
-        $resolved->setAccessible(true);
         $value = $resolved->getValue(null);
-        $resolved->setAccessible(false);
 
         $this->assertEmpty($value);
     }

@@ -46,7 +46,6 @@ class SQLiteMigrationTest extends TestCase
         // Clear container instance
         $reflection = new \ReflectionClass(Container::class);
         $property = $reflection->getProperty('instance');
-        $property->setAccessible(true);
         $property->setValue(null, null);
     }
 

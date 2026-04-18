@@ -248,10 +248,21 @@ class CookieSessionHandler extends AbstractSessionHandler
     private function decrypt(string $data): string
     {
         $key = Config::get('app.key');
+
+        // Ensure key is not null to avoid deprecation
+        if ($key === null) {
+            throw new RuntimeException('Encryption key not configured');
+        }
+
         $data = base64_decode($data);
         $ivSize = openssl_cipher_iv_length('aes-256-cbc');
         $iv = substr($data, 0, $ivSize);
         $encrypted = substr($data, $ivSize);
+
+        // Ensure IV is the correct length (16 bytes for aes-256-cbc)
+        if (strlen($iv) < $ivSize) {
+            $iv = str_pad($iv, $ivSize, "\0");
+        }
 
         return openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
     }

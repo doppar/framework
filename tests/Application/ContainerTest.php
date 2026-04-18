@@ -89,15 +89,12 @@ class ContainerTest extends TestCase
         $reflection = new \ReflectionClass(Container::class);
 
         $bindings = $reflection->getProperty('bindings');
-        $bindings->setAccessible(true);
         $bindings->setValue(null, []);
 
         $instances = $reflection->getProperty('instances');
-        $instances->setAccessible(true);
         $instances->setValue(null, []);
 
         $instance = $reflection->getProperty('instance');
-        $instance->setAccessible(true);
         $instance->setValue(null, null);
     }
 

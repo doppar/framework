@@ -9,7 +9,9 @@ use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Http\Support\ValidationRules;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class SanitizerTest extends TestCase
 {
     private Sanitizer $sanitizer;
@@ -20,7 +22,7 @@ class SanitizerTest extends TestCase
         parent::setUp();
         Container::setInstance(new MockContainer());
         $container = new Container();
-        $container->bind('translator', function(){
+        $container->bind('translator', function () {
             // Mock the FileLoader dependency
             $loader = $this->createMock(FileLoader::class);
 

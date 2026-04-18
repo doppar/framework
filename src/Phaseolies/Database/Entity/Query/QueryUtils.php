@@ -56,6 +56,7 @@ trait QueryUtils
 
         foreach ($items as $item) {
             $parentId = $item->$parentColumn;
+            $parentId = $parentId === null ? '' : $parentId;
             if (!isset($grouped[$parentId])) {
                 $grouped[$parentId] = [];
             }
@@ -64,6 +65,7 @@ trait QueryUtils
 
         $buildTree = function ($parentId = null) use (&$buildTree, &$visited, $grouped, $index, $primaryKey) {
             $branch = [];
+            $parentId = $parentId === null ? '' : $parentId;
 
             if (isset($grouped[$parentId])) {
                 foreach ($grouped[$parentId] as $item) {

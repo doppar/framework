@@ -7,7 +7,9 @@ use PDOStatement;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderWriteOpsTest extends TestCase
 {
     private $database;
@@ -32,9 +34,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
     {
         $reflection = new \ReflectionClass($className);
         $property = $reflection->getProperty($propertyName);
-        $property->setAccessible(true);
         $property->setValue(null, $value);
-        $property->setAccessible(false);
     }
 
     private function createBuilder(): Builder

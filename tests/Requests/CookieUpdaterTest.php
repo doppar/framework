@@ -127,7 +127,6 @@ class CookieUpdaterTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->updater);
         $property = $reflection->getProperty('cookie');
-        $property->setAccessible(true);
 
         return $property->getValue($this->updater);
     }

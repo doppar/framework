@@ -62,7 +62,6 @@ class ConsoleTest extends TestCase
 
         $reflection = new \ReflectionClass(Console::class);
         $method = $reflection->getMethod('resolveCommand');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->console, $command);
 
@@ -81,7 +80,6 @@ class ConsoleTest extends TestCase
 
         $reflection = new \ReflectionClass(Console::class);
         $method = $reflection->getMethod('resolveCommand');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->console, $commandName);
 

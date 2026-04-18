@@ -5,11 +5,13 @@ namespace Tests\Unit\Translator;
 use Phaseolies\Translation\Translator;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Translation\FileLoader;
 use Tests\Support\MockContainer;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 
+#[AllowMockObjectsWithoutExpectations]
 class TranslatorTest extends TestCase
 {
     /** @var MockObject&FileLoader */
@@ -50,7 +52,6 @@ class TranslatorTest extends TestCase
     public function testParseKeyForNamespacedKey(): void
     {
         $method = (new \ReflectionClass($this->translator))->getMethod("parseKey");
-        $method->setAccessible(true);
 
         $this->assertSame(
             ["auth", "messages", "welcome"],
@@ -73,7 +74,6 @@ class TranslatorTest extends TestCase
     public function testParseNamespacedKeyMethod(): void
     {
         $method = (new \ReflectionClass($this->translator))->getMethod("parseNamespacedKey");
-        $method->setAccessible(true);
 
         $this->assertSame(
             ["auth", "messages", "welcome"],
@@ -190,7 +190,6 @@ class TranslatorTest extends TestCase
         $this->translator->get("messages.menu.file.new"); // preload group
         // Access getLine directly
         $method = (new \ReflectionClass($this->translator))->getMethod("getLine");
-        $method->setAccessible(true);
 
         $result = $method->invoke(
             $this->translator,
@@ -208,7 +207,6 @@ class TranslatorTest extends TestCase
     {
         $this->loader->method("load")->willReturn(["menu" => ["file" => []]]);
         $method = (new \ReflectionClass($this->translator))->getMethod("getLine");
-        $method->setAccessible(true);
 
         $result = $method->invoke(
             $this->translator,
@@ -244,13 +242,11 @@ class TranslatorTest extends TestCase
     {
         $ref = new \ReflectionClass($this->translator);
         $prop = $ref->getProperty("loaded");
-        $prop->setAccessible(true);
         $prop->setValue($this->translator, [
-            null => ["messages" => ["en" => ["welcome" => "hi"]]],
+            '' => ["messages" => ["en" => ["welcome" => "hi"]]],
         ]);
 
         $method = $ref->getMethod("isLoaded");
-        $method->setAccessible(true);
 
         $this->assertTrue(
             $method->invoke($this->translator, null, "messages", "en")
@@ -349,7 +345,6 @@ class TranslatorTest extends TestCase
     public function testParseKeyWithNamespacedSingleWord(): void
     {
         $method = (new \ReflectionClass($this->translator))->getMethod('parseKey');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->translator, 'package::welcome');
 
@@ -359,7 +354,6 @@ class TranslatorTest extends TestCase
     public function testParseNamespacedKeyWithInvalidFormat(): void
     {
         $method = (new \ReflectionClass($this->translator))->getMethod('parseNamespacedKey');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->translator, 'invalidkey');
 
@@ -377,7 +371,6 @@ class TranslatorTest extends TestCase
             ]);
 
         $method = (new \ReflectionClass($this->translator))->getMethod('getLine');
-        $method->setAccessible(true);
 
         $result = $method->invoke(
             $this->translator,
@@ -399,7 +392,6 @@ class TranslatorTest extends TestCase
             ->willReturn(['welcome' => 'Welcome!']);
 
         $method = (new \ReflectionClass($this->translator))->getMethod('getLine');
-        $method->setAccessible(true);
 
         $result = $method->invoke(
             $this->translator,
@@ -438,12 +430,11 @@ class TranslatorTest extends TestCase
         // Verify it's loaded
         $reflection = new \ReflectionClass($this->translator);
         $loadedProperty = $reflection->getProperty('loaded');
-        $loadedProperty->setAccessible(true);
         $loaded = $loadedProperty->getValue($this->translator);
 
-        $this->assertArrayHasKey(null, $loaded);
-        $this->assertArrayHasKey('messages', $loaded[null]);
-        $this->assertArrayHasKey('en', $loaded[null]['messages']);
+        $this->assertArrayHasKey('', $loaded);
+        $this->assertArrayHasKey('messages', $loaded['']);
+        $this->assertArrayHasKey('en', $loaded['']['messages']);
     }
 
     public function testGetWithDeeplyNestedKeys(): void

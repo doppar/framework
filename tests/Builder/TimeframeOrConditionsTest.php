@@ -14,7 +14,7 @@ class TimeframeOrConditionsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->pdoMock = $this->createStub(PDO::class);
+        $this->pdoMock = $this->createMock(PDO::class);
         $this->pdoMock->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('mysql');
@@ -207,7 +207,7 @@ class TimeframeOrConditionsTest extends TestCase
 
     public function testOrWhereTimeForPostgresUsesExtract()
     {
-        $pgPdo = $this->createStub(PDO::class);
+        $pgPdo = $this->createMock(PDO::class);
         $pgPdo->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('pgsql');
@@ -222,7 +222,7 @@ class TimeframeOrConditionsTest extends TestCase
 
     public function testOrWhereMonthForSqliteUsesStrftime()
     {
-        $sqPdo = $this->createStub(PDO::class);
+        $sqPdo = $this->createMock(PDO::class);
         $sqPdo->method('getAttribute')
             ->with(PDO::ATTR_DRIVER_NAME)
             ->willReturn('sqlite');

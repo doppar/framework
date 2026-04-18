@@ -6,7 +6,9 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderDynamicWhereTest extends TestCase
 {
     private $database;
@@ -31,9 +33,7 @@ class DatabaseBuilderDynamicWhereTest extends TestCase
     {
         $reflection = new \ReflectionClass($className);
         $property = $reflection->getProperty($propertyName);
-        $property->setAccessible(true);
         $property->setValue(null, $value);
-        $property->setAccessible(false);
     }
 
     private function createBuilder(): Builder
@@ -45,9 +45,7 @@ class DatabaseBuilderDynamicWhereTest extends TestCase
     {
         $r = new \ReflectionClass($builder);
         $p = $r->getProperty('conditions');
-        $p->setAccessible(true);
         $c = $p->getValue($builder);
-        $p->setAccessible(false);
         return $c;
     }
 

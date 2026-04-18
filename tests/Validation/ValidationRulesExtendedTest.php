@@ -8,7 +8,9 @@ use Phaseolies\Translation\FileLoader;
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class ValidationRulesExtendedTest extends TestCase
 {
     protected function setUp(): void

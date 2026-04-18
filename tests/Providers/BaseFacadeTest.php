@@ -59,7 +59,6 @@ class BaseFacadeTest extends TestCase
     {
         $reflection = new \ReflectionClass($facadeClass);
         $method = $reflection->getMethod('resolveInstance');
-        $method->setAccessible(true);
 
         return $method->invoke(null);
     }
@@ -76,7 +75,6 @@ class BaseFacadeTest extends TestCase
 
         $reflection = new \ReflectionClass(TestFacade::class);
         $property = $reflection->getProperty('app');
-        $property->setAccessible(true);
 
         $this->assertSame($this->app, $property->getValue());
     }

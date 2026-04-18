@@ -7,7 +7,9 @@ use Phaseolies\Cache\RateLimit;
 use Psr\SimpleCache\CacheInterface;
 use Psr\SimpleCache\InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class RateLimiterTest extends TestCase
 {
     protected $cache;

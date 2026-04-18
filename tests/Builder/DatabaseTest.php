@@ -6,6 +6,7 @@ use PDO;
 use PDOException;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Query\Builder;
@@ -13,6 +14,7 @@ use Phaseolies\Database\Query\RawExpression;
 use Phaseolies\Database\Connectors\ConnectionFactory;
 use Phaseolies\Database\Contracts\Driver\DriverInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseTest extends TestCase
 {
     private $database;
@@ -48,16 +50,10 @@ class DatabaseTest extends TestCase
             $reflection = new \ReflectionClass($className);
             $property = $reflection->getProperty($propertyName);
 
-            if (method_exists($property, 'setAccessible')) {
-                $property->setAccessible(true);
-            }
 
             $property->setValue(null, $value);
 
             // Reset accessibility if we changed it
-            if (method_exists($property, 'setAccessible')) {
-                $property->setAccessible(false);
-            }
         } catch (\ReflectionException $e) {
             $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
         }
@@ -449,7 +445,6 @@ class DatabaseTest extends TestCase
 
         $reflection = new \ReflectionClass(Database::class);
         $property = $reflection->getProperty('drivers');
-        $property->setAccessible(true);
         $property->setValue(null, ['default' => $driverMock]);
 
         $result = $this->database->dropAllTables();

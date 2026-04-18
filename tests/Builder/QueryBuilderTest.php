@@ -657,7 +657,6 @@ class QueryBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->builder);
         $method = $reflection->getMethod('camelToSnake');
-        $method->setAccessible(true);
 
         $result = $method->invoke($this->builder, 'camelCaseString');
         $this->assertEquals('camel_case_string', $result);
@@ -667,7 +666,6 @@ class QueryBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->builder);
         $method = $reflection->getMethod('getPdoParamType');
-        $method->setAccessible(true);
 
         $this->assertEquals(PDO::PARAM_INT, $method->invoke($this->builder, 123));
         $this->assertEquals(PDO::PARAM_BOOL, $method->invoke($this->builder, true));
@@ -679,7 +677,6 @@ class QueryBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->builder);
         $method = $reflection->getMethod('hasValue');
-        $method->setAccessible(true);
 
         $this->assertTrue($method->invoke($this->builder, true));
         $this->assertFalse($method->invoke($this->builder, false));
@@ -695,7 +692,6 @@ class QueryBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->builder);
         $method = $reflection->getMethod('quoteIdentifier');
-        $method->setAccessible(true);
 
         $this->assertEquals('`column`', $method->invoke($this->builder, 'column'));
         $this->assertEquals('`table`.`column`', $method->invoke($this->builder, 'table.column'));
@@ -705,7 +701,6 @@ class QueryBuilderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->builder);
         $method = $reflection->getMethod('getTableColumns');
-        $method->setAccessible(true);
 
         $columns = $method->invoke($this->builder);
         $this->assertIsArray($columns);

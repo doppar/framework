@@ -37,9 +37,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
     {
         $reflection = new \ReflectionClass($className);
         $property = $reflection->getProperty($propertyName);
-        $property->setAccessible(true);
         $property->setValue(null, $value);
-        $property->setAccessible(false);
     }
 
     private function createBuilder(): Builder
@@ -59,9 +57,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('conditions');
-        $property->setAccessible(true);
         $conditions = $property->getValue($builder);
-        $property->setAccessible(false);
         return $conditions;
     }
 
@@ -258,9 +254,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('conditions');
-        $property->setAccessible(true);
         $conditions = $property->getValue($builder);
-        $property->setAccessible(false);
 
         $this->assertCount(1, $conditions);
         $this->assertEquals('NESTED', $conditions[0]['type']);
@@ -268,9 +262,7 @@ class DatabaseBuilderLikeSearchTest extends TestCase
 
         $nestedReflection = new \ReflectionClass($nested);
         $nestedProp = $nestedReflection->getProperty('conditions');
-        $nestedProp->setAccessible(true);
         $nestedConds = $nestedProp->getValue($nested);
-        $nestedProp->setAccessible(false);
 
         $this->assertGreaterThanOrEqual(2, count($nestedConds));
         $this->assertEquals('OR', $nestedConds[0][0]);
@@ -300,7 +292,6 @@ class DatabaseBuilderLikeSearchTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $method = $reflection->getMethod('isCaseSensitiveColumn');
-        $method->setAccessible(true);
 
         $result = $method->invoke($builder, 'name');
         $this->assertIsBool($result);
@@ -313,7 +304,6 @@ class DatabaseBuilderLikeSearchTest extends TestCase
 
         $reflection = new \ReflectionClass($builder);
         $method = $reflection->getMethod('convertLikeToGlob');
-        $method->setAccessible(true);
 
         $result = $method->invoke($builder, '%test%');
         $this->assertEquals('*test*', $result);

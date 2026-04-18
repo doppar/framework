@@ -586,8 +586,6 @@ class ComputedPropertyTest extends TestCase
     {
         $ref  = new \ReflectionClass($class);
         $prop = $ref->getProperty($property);
-        $prop->setAccessible(true);
         $prop->setValue(null, $value);
-        $prop->setAccessible(false);
     }
 }

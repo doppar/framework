@@ -214,9 +214,7 @@ class EntityRelationshipTest extends TestCase
     {
         $r = new \ReflectionClass($class);
         $p = $r->getProperty($prop);
-        $p->setAccessible(true);
         $p->setValue(null, $value);
-        $p->setAccessible(false);
     }
 
     // =========================================================================
