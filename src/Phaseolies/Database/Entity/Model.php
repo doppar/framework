@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Database\Entity;
 
-use Stringable;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Entity\Query\InteractsWithModelQueryProcessing;
 use Phaseolies\Database\Entity\Hooks\HookHandler;
@@ -12,18 +11,11 @@ use Phaseolies\Database\Entity\Watches\InteractsWithWatches;
 use Phaseolies\Database\Entity\Computed\InteractsWithComputedProperties;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
-use PDO;
-use JsonSerializable;
-use ArrayAccess;
 use Phaseolies\Database\Entity\Attributes\Hook;
 
-abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsonable
+abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stringable
 {
-    use InteractsWithModelQueryProcessing;
-    use InteractsWithTemporal;
-    use InteractsWithCasting;
-    use InteractsWithWatches;
-    use InteractsWithComputedProperties;
+    use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties;
 
     /**
      * The name of the database table associated with the model.
@@ -432,9 +424,9 @@ abstract class Model implements ArrayAccess, JsonSerializable, Stringable, Jsona
     /**
      * Get the database connection for the model.
      *
-     * @return PDO
+     * @return \PDO
      */
-    public function getConnection(): PDO
+    public function getConnection(): \PDO
     {
         return Database::getPdoInstance($this->connection);
     }
