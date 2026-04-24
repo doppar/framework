@@ -167,8 +167,9 @@ trait InteractsWithTemporal
 
         $rewound = new static($snapshot);
 
-        // mark everything as dirty → full re-save
-        $rewound->setOriginalAttributes([]);
+        // Compare against the instance's current state so save() persists only
+        // the fields that actually change during the rewind/restore.
+        $rewound->setOriginalAttributes($this->getAttributes());
 
         return $rewound;
     }
