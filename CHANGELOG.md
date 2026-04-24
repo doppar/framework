@@ -1,5 +1,14 @@
 # Release Notes
 
+## v3.20.1 - 2026-04-24
+
+* fix: remove all deprecations and php notices and warnings from unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/247
+* Entity model namespace remove and \ added for some classes: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/248
+* Readme.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/249
+* Add comprehensive Temporal ORM test coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/250
+* remove User model dependencey from framework core code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/251
+* change config() method return type to mixed: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/252
+
 ## v3.20.0 - 2026-04-16
 
 * Adding some missing unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/242
