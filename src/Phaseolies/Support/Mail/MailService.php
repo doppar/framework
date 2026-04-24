@@ -8,7 +8,7 @@ use Phaseolies\Support\Mail\Driver\SmtpMailDriver;
 use Phaseolies\Support\Mail\Driver\SendmailMailDriver;
 use Phaseolies\Support\Mail\Driver\QmailMailDriver;
 use Phaseolies\Support\Mail\Driver\MailMailDriver;
-use App\Models\User;
+use Phaseolies\Database\Entity\Model;
 
 class MailService
 {
@@ -46,13 +46,13 @@ class MailService
     /**
      * Creates a new Mail instance and sets the primary recipient.
      *
-     * @param User|string $recipient
+     * @param Model|string $recipient
      * @param string|null $name
      * @return self
      */
-    public function to(User|string $recipient, ?string $name = null): self
+    public function to(Model|string $recipient, ?string $name = null): self
     {
-        if ($recipient instanceof User) {
+        if ($recipient instanceof Model) {
             $this->message->to = [
                 'address' => $recipient->email,
                 'name' => $recipient->name ?? null

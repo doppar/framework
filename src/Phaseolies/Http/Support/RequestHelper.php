@@ -3,7 +3,7 @@
 namespace Phaseolies\Http\Support;
 
 use InvalidArgumentException;
-use App\Models\User;
+use Phaseolies\Database\Entity\Model;
 
 trait RequestHelper
 {
@@ -153,9 +153,9 @@ trait RequestHelper
     /**
      * Get the authenticated user.
      *
-     * @return \App\Models\User|null
+     * @return Model|null
      */
-    public function auth(): ?User
+    public function auth(): ?Model
     {
         return app('auth')->user() ?? null;
     }
@@ -163,9 +163,9 @@ trait RequestHelper
     /**
      * Get the currently authenticated user.
      *
-     * @return \Phaseolies\Models\User|null
+     * @return Model|null
      */
-    public function user(): ?User
+    public function user(): ?Model
     {
         return app('auth')->user() ?? null;
     }
@@ -227,11 +227,8 @@ trait RequestHelper
      * @param bool $includeWhitespace
      * @return static
      */
-    public function nullifyBlanks(
-        bool $includeStrings = true,
-        bool $includeArrays = false,
-        bool $includeWhitespace = true
-    ): static {
+    public function nullifyBlanks(bool $includeStrings = true, bool $includeArrays = false, bool $includeWhitespace = true): static
+    {
         $data = $this->all();
 
         array_walk_recursive($data, function (&$value) use ($includeStrings, $includeArrays, $includeWhitespace) {
@@ -298,10 +295,7 @@ trait RequestHelper
     }
 
     /**
-     * Transform input values based on a map of keys and callbacks.
-     *
-     * Unlike `pipeInputs()`, this method returns a new array with transformed
-     * values and does not modify the original input data.
+     * Transform input values based on a map of keys and callbacks
      *
      * @param array $items
      * @return array
@@ -389,17 +383,7 @@ trait RequestHelper
     }
 
     /**
-     * Cleanse input data based on a set of transformation rules.
-     *
-     * This method applies formatting/transformation rules to specified keys in the input array.
-     * It supports dot notation for nested keys and handles multiple rules per key.
-     *
-     * Supported rules:
-     * - trim: Removes whitespace from the beginning and end of a string
-     * - strip_tags: Removes HTML and PHP tags from a string
-     * - int: Casts the value to an integer
-     * - lowercase: Converts a string to lowercase
-     * - uppercase: Converts a string to uppercase
+     * Cleanse input data based on a set of transformation rules
      *
      * @param array $rules
      * @return array
@@ -430,11 +414,7 @@ trait RequestHelper
     }
 
     /**
-     * Retrieve a value from a multidimensional array using dot notation.
-     *
-     * This method allows accessing nested values in an array using a dot-notated key.
-     * For example, given the key "user.address.street", it will return:
-     * $data['user']['address']['street'] if it exists, or null otherwise.
+     * Retrieve a value from a multidimensional array using dot notation
      *
      * @param array $data
      * @param string $key
@@ -460,11 +440,7 @@ trait RequestHelper
     }
 
     /**
-     * Set a value in a multidimensional array using dot notation.
-     *
-     * This method allows setting a nested value in an array using a dot-notated key.
-     * For example, given the key "user.address.street", it will set the value at:
-     * $data['user']['address']['street'] = $value
+     * Set a value in a multidimensional array using dot notation
      *
      * @param array $data
      * @param string $key
