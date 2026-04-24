@@ -119,5 +119,18 @@ namespace Tests\Unit\Auth {
 
             $this->assertNotSame($web, $admin);
         }
+
+        public function testActorDefaultsToConfiguredDefaultWhenNameIsNull()
+        {
+            $default = $this->manager->actor();
+
+            $this->assertInstanceOf(Authenticate::class, $default);
+            $this->assertSame('web', $default->name());
+        }
+
+        public function testMagicCallProxiesToDefaultActor()
+        {
+            $this->assertSame('web', $this->manager->name());
+        }
     }
 }

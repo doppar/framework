@@ -3,7 +3,7 @@
 namespace Phaseolies\Auth\Security {
     function config(string $key, mixed $default = null): mixed
     {
-        $map = [
+        $map = $GLOBALS['doppar_hashing_test_config'] ?? [
             'hashing.driver'        => 'bcrypt',
             'hashing.bcrypt.rounds' => 10,
         ];
@@ -23,7 +23,16 @@ namespace Tests\Unit\Auth {
 
         protected function setUp(): void
         {
+            $GLOBALS['doppar_hashing_test_config'] = [
+                'hashing.driver' => 'bcrypt',
+                'hashing.bcrypt.rounds' => 10,
+            ];
             $this->hashing = new PasswordHashing();
+        }
+
+        protected function tearDown(): void
+        {
+            unset($GLOBALS['doppar_hashing_test_config']);
         }
 
         public function testMakeReturnsBcryptHash()
@@ -97,6 +106,43 @@ namespace Tests\Unit\Auth {
             $hash = $this->hashing->make('password');
 
             $this->assertGreaterThan(50, strlen($hash));
+        }
+
+        public function testMakeThrowsForInvalidBcryptRounds()
+        {
+            $GLOBALS['doppar_hashing_test_config'] = [
+                'hashing.driver' => 'bcrypt',
+                'hashing.bcrypt.rounds' => 3,
+            ];
+
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Bcrypt rounds must be between 4 and 31.');
+
+            $this->hashing->make('password');
+        }
+
+        public function testMakeThrowsForUnsupportedDriver()
+        {
+            $GLOBALS['doppar_hashing_test_config'] = [
+                'hashing.driver' => 'sha1',
+            ];
+
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Unsupported hashing driver: sha1');
+
+            $this->hashing->make('password');
+        }
+
+        public function testNeedsRehashThrowsForUnsupportedDriver()
+        {
+            $GLOBALS['doppar_hashing_test_config'] = [
+                'hashing.driver' => 'sha1',
+            ];
+
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('Unsupported hashing driver: sha1');
+
+            $this->hashing->needsRehash(password_hash('password', PASSWORD_BCRYPT, ['cost' => 10]));
         }
     }
 }

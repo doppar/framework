@@ -2,9 +2,15 @@
 
 namespace Tests\Unit\Session;
 
+require_once __DIR__ . '/../Support/MockContainer.php';
+
+use Phaseolies\Config\Config;
+use Phaseolies\DI\Container;
 use Phaseolies\Session\Handlers\CookieSessionHandler;
 use PHPUnit\Framework\TestCase;
 use Exception;
+use RuntimeException;
+use Tests\Support\MockContainer;
 
 class CookieSessionHandlerTest extends TestCase
 {
@@ -20,6 +26,22 @@ class CookieSessionHandlerTest extends TestCase
     private function makeHandler(array $overrides = []): CookieSessionHandler
     {
         return new CookieSessionHandler(array_merge($this->config, $overrides));
+    }
+
+    protected function setUp(): void
+    {
+        Container::setInstance(new MockContainer());
+        $this->seedConfig([
+            'app' => ['key' => str_repeat('a', 32)],
+            'session' => ['cookie' => $this->config['cookie']],
+        ]);
+        session_name($this->config['cookie']);
+    }
+
+    protected function tearDown(): void
+    {
+        unset($_COOKIE[$this->config['cookie']]);
+        Container::forgetInstance();
     }
 
     public function testOpenReturnsTrue()
@@ -119,5 +141,63 @@ class CookieSessionHandlerTest extends TestCase
         $result = $handler->destroy('session_id_456');
 
         $this->assertIsBool($result);
+    }
+
+    public function testPrivateEncryptAndDecryptRoundTrip()
+    {
+        $handler = $this->makeHandler();
+        $encrypt = new \ReflectionMethod($handler, 'encrypt');
+        $decrypt = new \ReflectionMethod($handler, 'decrypt');
+
+        $encrypted = $encrypt->invoke($handler, 'session_payload');
+        $decrypted = $decrypt->invoke($handler, $encrypted);
+
+        $this->assertIsString($encrypted);
+        $this->assertNotSame('session_payload', $encrypted);
+        $this->assertSame('session_payload', $decrypted);
+    }
+
+    public function testValidatePreservesValidEncryptedCookie()
+    {
+        $handler = $this->makeHandler();
+        $encrypt = new \ReflectionMethod($handler, 'encrypt');
+
+        $_COOKIE[$this->config['cookie']] = $encrypt->invoke($handler, 'valid_payload');
+
+        $handler->validate();
+
+        $this->assertArrayHasKey($this->config['cookie'], $_COOKIE);
+    }
+
+    public function testDecryptThrowsWhenAppKeyIsMissing()
+    {
+        $this->seedConfig([
+            'app' => ['key' => null],
+            'session' => ['cookie' => $this->config['cookie']],
+        ]);
+        $handler = $this->makeHandler();
+        $decrypt = new \ReflectionMethod($handler, 'decrypt');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Encryption key not configured');
+
+        $decrypt->invoke($handler, base64_encode('anything'));
+    }
+
+    private function seedConfig(array $config): void
+    {
+        $this->setConfigStatic('cacheFile', sys_get_temp_dir() . '/doppar_test_config.php');
+        $this->setConfigStatic('config', $config);
+        $this->setConfigStatic('loadedFromCache', true);
+        $this->setConfigStatic('configModified', false);
+        $this->setConfigStatic('fileHashes', []);
+        $this->setConfigStatic('configFiles', []);
+    }
+
+    private function setConfigStatic(string $propertyName, mixed $value): void
+    {
+        $reflection = new \ReflectionClass(Config::class);
+        $property = $reflection->getProperty($propertyName);
+        $property->setValue(null, $value);
     }
 }

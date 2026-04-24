@@ -152,4 +152,47 @@ class LocalFileSystemTest extends TestCase
         $this->assertStringContainsString('line one', $result);
         $this->assertStringContainsString('line three', $result);
     }
+
+    public function testStoreReturnsFalseWhenSourceUploadPathDoesNotExist()
+    {
+        $file = new File([
+            'name' => 'ghost.txt',
+            'type' => 'text/plain',
+            'tmp_name' => $this->tmpDir . '/ghost.txt',
+            'error' => UPLOAD_ERR_OK,
+            'size' => 0,
+        ]);
+
+        $warning = null;
+        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
+            $warning = $message;
+            return true;
+        }, E_WARNING);
+
+        try {
+            $this->assertFalse($this->fs->store('uploads', $file));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertNotNull($warning);
+        $this->assertStringContainsString('Failed to open stream', $warning);
+    }
+
+    public function testDeleteReturnsTrueForEmptyArray()
+    {
+        $this->assertTrue($this->fs->delete([]));
+    }
+
+    public function testContentExceptionContainsResolvedFullPath()
+    {
+        $missing = 'nested/missing.txt';
+
+        try {
+            $this->fs->content($missing);
+            $this->fail('Expected FileNotFoundException was not thrown.');
+        } catch (FileNotFoundException $e) {
+            $this->assertStringContainsString($this->tmpDir . '/' . $missing, $e->getMessage());
+        }
+    }
 }

@@ -152,4 +152,68 @@ class FileSystemTest extends TestCase
 
         $this->assertEquals('original_name.txt', $result);
     }
+
+    public function testGetFileNameUsesConfiguredBaseNameAndDetectedExtension()
+    {
+        $pngPath = $this->tmpDir . '/avatar.png';
+        file_put_contents($pngPath, 'png data');
+
+        $file = new \Phaseolies\Support\File([
+            'name' => 'avatar.png',
+            'type' => 'image/png',
+            'tmp_name' => $pngPath,
+            'error' => UPLOAD_ERR_OK,
+            'size' => filesize($pngPath),
+        ]);
+
+        $customFs = new FileSystem($this->tmpDir, 'profile_image');
+
+        $this->assertSame('profile_image.png', $customFs->getFileName($file));
+    }
+
+    public function testPutReturnsFalseWhenSourceStreamCannotBeOpened()
+    {
+        $file = new \Phaseolies\Support\File([
+            'name' => 'missing.txt',
+            'type' => 'text/plain',
+            'tmp_name' => $this->tmpDir . '/does-not-exist.txt',
+            'error' => UPLOAD_ERR_OK,
+            'size' => 0,
+        ]);
+
+        $warning = null;
+        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
+            $warning = $message;
+            return true;
+        }, E_WARNING);
+
+        try {
+            $this->assertFalse($this->fs->put('uploads', $file));
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertNotNull($warning);
+        $this->assertStringContainsString('Failed to open stream', $warning);
+    }
+
+    public function testPutWritesUsingConfiguredCustomFileName()
+    {
+        $source = $this->tmpDir . '/photo-source.jpg';
+        file_put_contents($source, 'jpeg data');
+
+        $file = new \Phaseolies\Support\File([
+            'name' => 'photo.jpg',
+            'type' => 'image/jpeg',
+            'tmp_name' => $source,
+            'error' => UPLOAD_ERR_OK,
+            'size' => filesize($source),
+        ]);
+
+        $customFs = new FileSystem($this->tmpDir, 'avatar');
+        $customFs->makeDirectory($this->tmpDir . '/uploads', 0755, true);
+
+        $this->assertTrue($customFs->put('uploads', $file));
+        $this->assertFileExists($this->tmpDir . '/uploads/avatar.jpeg');
+    }
 }
