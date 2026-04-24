@@ -328,9 +328,9 @@ if (!function_exists('config')) {
      *
      * @param string $key
      * @param string $default
-     * @return string|array|null
+     * @return mixed
      */
-    function config(string|array $key, ?string $default = null): null|string|array
+    function config(string|array $key, ?string $default = null): mixed
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
