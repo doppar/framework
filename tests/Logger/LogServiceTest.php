@@ -14,7 +14,13 @@ class LogServiceTest extends TestCase
 
     protected function setUp(): void
     {
+        putenv('LOG_CHANNEL');
         $this->logService = new LogService();
+    }
+
+    protected function tearDown(): void
+    {
+        putenv('LOG_CHANNEL');
     }
 
     public function testGetLoggerReturnsMonologInstance()
@@ -85,5 +91,28 @@ class LogServiceTest extends TestCase
         $logger2 = $this->logService->getLogger('ch');
 
         $this->assertNotSame($logger1, $logger2);
+    }
+
+    public function testGetLoggerUsesEnvChannelWhenChannelNotProvided()
+    {
+        putenv('LOG_CHANNEL=stderr');
+
+        $logger = $this->logService->getLogger();
+
+        $this->assertSame('stderr', $logger->getName());
+    }
+
+    public function testHandlersCanBeAddedAgainAfterReset()
+    {
+        $handler = $this->createMock(LogHandlerInterface::class);
+        $handler->expects($this->once())
+            ->method('configureHandler')
+            ->with($this->isInstanceOf(Logger::class), 'reset-channel');
+
+        $this->logService->addHandler($handler);
+        $this->logService->reset();
+        $this->logService->addHandler($handler);
+
+        $this->logService->getLogger('reset-channel');
     }
 }
