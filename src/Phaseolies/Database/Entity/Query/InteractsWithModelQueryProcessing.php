@@ -31,7 +31,8 @@ trait InteractsWithModelQueryProcessing
             Database::getPdoInstance($connection),
             $model->getTable(),
             static::class,
-            $model->pageSize
+            $model->pageSize,
+            $connection
         );
     }
 
@@ -183,6 +184,8 @@ trait InteractsWithModelQueryProcessing
                 }
 
                 $dirtyAttributes = $this->getDirtyAttributes();
+                $this->pruneNonColumnDirtyAttributes($dirtyAttributes);
+                $dirtyAttributes = $this->getDirtyAttributes();
                 if (!empty($this->creatable)) {
                     $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
                 }
@@ -195,11 +198,12 @@ trait InteractsWithModelQueryProcessing
                     $dirtyAttributes['updated_at'] = $dateTime;
                 }
 
-                $response = $this->query()
+                $response = $this->newQuery()
                     ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                     ->update($dirtyAttributes);
 
                 if (self::$isHookShouldBeCalled && $response) {
+                    $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirtyAttributes);
                     $this->originalAttributes = $this->attributes;
@@ -212,6 +216,7 @@ trait InteractsWithModelQueryProcessing
                 return false;
             }
 
+            $this->pruneNonColumnAttributes();
             $attributes = $this->getCreatableAttributes();
 
             if ($this->timeStamps) {
@@ -219,7 +224,7 @@ trait InteractsWithModelQueryProcessing
                 $attributes['updated_at'] = $dateTime;
             }
 
-            $id = $this->query()->insert($attributes);
+            $id = $this->newQuery()->insert($attributes);
 
             if ($id && self::$isHookShouldBeCalled) {
                 $this->fireAfterHooks('created');
@@ -492,6 +497,8 @@ trait InteractsWithModelQueryProcessing
         }
 
         $dirty = $this->getDirtyAttributes();
+        $this->pruneNonColumnDirtyAttributes($dirty);
+        $dirty = $this->getDirtyAttributes();
 
         if (empty($dirty)) {
             return true;
@@ -521,11 +528,12 @@ trait InteractsWithModelQueryProcessing
         }
 
         try {
-            $result = static::query()
+            $result = $this->newQuery()
                 ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                 ->update($dirty);
 
             if ($result) {
+                $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
                 if (self::$isHookShouldBeCalled) {
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirty);

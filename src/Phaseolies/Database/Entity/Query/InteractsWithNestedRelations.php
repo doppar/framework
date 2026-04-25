@@ -117,7 +117,7 @@ trait InteractsWithNestedRelations
 
         // Apply callback conditions on the final table
         if ($callback && $previousTable) {
-            $subQueryBuilder = $currentModel->query();
+            $subQueryBuilder = $currentModel->query($this->connectionName);
             $callback($subQueryBuilder);
 
             foreach ($subQueryBuilder->conditions as $condition) {

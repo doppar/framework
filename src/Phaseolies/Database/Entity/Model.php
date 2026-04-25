@@ -144,6 +144,13 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     private static array $hookAttributeCache = [];
 
     /**
+     * Cache of actual table columns keyed by connection/table.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private static array $tableColumnCache = [];
+
+    /**
      * Model constructor.
      *
      * @param array $attributes Initial attributes to populate the model.
@@ -432,6 +439,114 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Get the connection name for the model.
+     *
+     * @return string|null
+     */
+    public function getConnectionName(): ?string
+    {
+        return $this->connection;
+    }
+
+    /**
+     * Remove dirty attributes that are not backed by actual table columns
+     *
+     * @param array<string, mixed> $dirty
+     * @return void
+     */
+    public function pruneNonColumnDirtyAttributes(array $dirty): void
+    {
+        if (empty($dirty)) {
+            return;
+        }
+
+        $columns = $this->getTableColumnsForPersistence();
+        if (empty($columns)) {
+            return;
+        }
+
+        foreach (array_keys($dirty) as $key) {
+            if (!in_array($key, $columns, true)) {
+                unset($this->attributes[$key], $this->originalAttributes[$key]);
+            }
+        }
+    }
+
+    /**
+     * Remove attributes that are not backed by actual table columns.
+     *
+     * @param array<string, mixed>|null $attributes
+     * @return void
+     */
+    public function pruneNonColumnAttributes(?array $attributes = null): void
+    {
+        $attributes ??= $this->attributes;
+
+        if (empty($attributes)) {
+            return;
+        }
+
+        $columns = $this->getTableColumnsForPersistence();
+        if (empty($columns)) {
+            return;
+        }
+
+        foreach (array_keys($attributes) as $key) {
+            if (!in_array($key, $columns, true)) {
+                unset($this->attributes[$key], $this->originalAttributes[$key]);
+            }
+        }
+    }
+
+    /**
+     * Get the persisted table columns for this model.
+     *
+     * @return array<int, string>
+     */
+    protected function getTableColumnsForPersistence(): array
+    {
+        $pdo = $this->getConnection();
+        $cacheKey = spl_object_id($pdo) . '|' . $this->getTable();
+
+        if (!array_key_exists($cacheKey, self::$tableColumnCache)) {
+            try {
+                self::$tableColumnCache[$cacheKey] = (new Database($this->connection))
+                    ->getTableColumns($this->getTable());
+            } catch (\Throwable) {
+                self::$tableColumnCache[$cacheKey] = [];
+            }
+        }
+
+        return self::$tableColumnCache[$cacheKey];
+    }
+
+    /**
+     * Reset cached table-column metadata.
+     *
+     * @param string|null $cacheKey
+     * @return void
+     */
+    public static function resetTableColumnCache(?string $cacheKey = null): void
+    {
+        if ($cacheKey !== null) {
+            unset(self::$tableColumnCache[$cacheKey]);
+        } else {
+            self::$tableColumnCache = [];
+        }
+    }
+
+    /**
+     * Set the connection name for the model.
+     *
+     * @param string|null $connection
+     * @return void
+     */
+    public function setConnectionName(?string $connection): void
+    {
+        $this->connection = $connection;
+    }
+
+    /**
      * Begin querying the model on a given connection.
      *
      * @param string|null $connection
@@ -457,7 +572,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             pdo: $this->getConnection(),
             table: $this->getTable(),
             modelClass: static::class,
-            rowPerPage: $this->pageSize
+            rowPerPage: $this->pageSize,
+            connectionName: $this->connection
         );
     }
 
@@ -659,7 +775,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                 return false;
             }
 
-            $result = static::query()
+            $result = $this->newQuery()
                 ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                 ->delete();
 
@@ -710,7 +826,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -730,7 +846,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -750,7 +866,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -771,7 +887,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->lastPivotTable = $pivotTable;
 
         $relatedModel = app($related);
-        $query = $relatedModel->query();
+        $query = $relatedModel->query($this->connection);
 
         $query->setRelationInfo([
             'type' => 'bindToMany',
@@ -909,7 +1025,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                                 return "{$pivotTable}.{$column} as pivot_{$column}";
                             }, $pivotColumns);
 
-                            $query = $relatedModel->query()
+                            $query = $relatedModel->query($this->connection)
                                 ->select(array_merge(
                                     ["{$relatedModel->getTable()}.*"],
                                     $pivotSelects
@@ -1058,7 +1174,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
-        $result = $this->query()
+        $result = $this->newQuery()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->increment($column, $amount, $extra);
 
@@ -1083,7 +1199,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {
-        $result = $this->query()
+        $result = $this->newQuery()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->decrement($column, $amount, $extra);
 
