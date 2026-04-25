@@ -826,7 +826,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -846,7 +846,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -866,7 +866,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -887,7 +887,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->lastPivotTable = $pivotTable;
 
         $relatedModel = app($related);
-        $query = $relatedModel->query($this->connection);
+        $query = $relatedModel->query();
 
         $query->setRelationInfo([
             'type' => 'bindToMany',
@@ -1025,7 +1025,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                                 return "{$pivotTable}.{$column} as pivot_{$column}";
                             }, $pivotColumns);
 
-                            $query = $relatedModel->query($this->connection)
+                            $query = $relatedModel->query()
                                 ->select(array_merge(
                                     ["{$relatedModel->getTable()}.*"],
                                     $pivotSelects
