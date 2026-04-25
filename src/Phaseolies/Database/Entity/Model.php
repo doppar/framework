@@ -144,6 +144,13 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     private static array $hookAttributeCache = [];
 
     /**
+     * Cache of actual table columns keyed by connection/table.
+     *
+     * @var array<string, array<int, string>>
+     */
+    private static array $tableColumnCache = [];
+
+    /**
      * Model constructor.
      *
      * @param array $attributes Initial attributes to populate the model.
@@ -439,6 +446,93 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function getConnectionName(): ?string
     {
         return $this->connection;
+    }
+
+    /**
+     * Remove dirty attributes that are not backed by actual table columns
+     *
+     * @param array<string, mixed> $dirty
+     * @return void
+     */
+    public function pruneNonColumnDirtyAttributes(array $dirty): void
+    {
+        if (empty($dirty)) {
+            return;
+        }
+
+        $columns = $this->getTableColumnsForPersistence();
+        if (empty($columns)) {
+            return;
+        }
+
+        foreach (array_keys($dirty) as $key) {
+            if (!in_array($key, $columns, true)) {
+                unset($this->attributes[$key], $this->originalAttributes[$key]);
+            }
+        }
+    }
+
+    /**
+     * Remove attributes that are not backed by actual table columns.
+     *
+     * @param array<string, mixed>|null $attributes
+     * @return void
+     */
+    public function pruneNonColumnAttributes(?array $attributes = null): void
+    {
+        $attributes ??= $this->attributes;
+
+        if (empty($attributes)) {
+            return;
+        }
+
+        $columns = $this->getTableColumnsForPersistence();
+        if (empty($columns)) {
+            return;
+        }
+
+        foreach (array_keys($attributes) as $key) {
+            if (!in_array($key, $columns, true)) {
+                unset($this->attributes[$key], $this->originalAttributes[$key]);
+            }
+        }
+    }
+
+    /**
+     * Get the persisted table columns for this model.
+     *
+     * @return array<int, string>
+     */
+    protected function getTableColumnsForPersistence(): array
+    {
+        $pdo = $this->getConnection();
+        $cacheKey = spl_object_id($pdo) . '|' . $this->getTable();
+
+        if (!array_key_exists($cacheKey, self::$tableColumnCache)) {
+            try {
+                self::$tableColumnCache[$cacheKey] = (new Database($this->connection))
+                    ->getTableColumns($this->getTable());
+            } catch (\Throwable) {
+                self::$tableColumnCache[$cacheKey] = [];
+            }
+        }
+
+        return self::$tableColumnCache[$cacheKey];
+    }
+
+    /**
+     * Reset cached table-column metadata.
+     *
+     * @param string|null $cacheKey
+     * @return void
+     */
+    public static function resetTableColumnCache(?string $cacheKey = null): void
+    {
+        if ($cacheKey !== null) {
+            unset(self::$tableColumnCache[$cacheKey]);
+        } else {
+            self::$tableColumnCache = [];
+        }
     }
 
     /**

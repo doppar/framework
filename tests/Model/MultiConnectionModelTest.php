@@ -172,6 +172,33 @@ class MultiConnectionModelTest extends TestCase
         );
     }
 
+    public function testSaveRemovesUnknownAttributesThatDoNotExistInTheTable(): void
+    {
+        $record = MockAnalyticsConnectionRecord::find(1);
+
+        $record->description = 'transient';
+        $this->assertTrue($record->save());
+
+        $this->assertArrayNotHasKey('description', $record->toArray());
+        $this->assertArrayNotHasKey('description', $record->getAttributes());
+        $this->assertSame('Analytics Seed', $this->findRow($this->analyticsPdo, 1)['name']);
+    }
+
+    public function testCreateDropsUnknownAttributesThatDoNotExistInTheTable(): void
+    {
+        $record = new MockAnalyticsConnectionRecord([
+            'name' => 'Unknown Field Test',
+            'status' => 'queued',
+            'amount' => 700,
+            'description' => 'should disappear',
+        ]);
+
+        $this->assertTrue($record->save());
+        $this->assertArrayNotHasKey('description', $record->toArray());
+        $this->assertSame('Unknown Field Test', $this->findRow($this->analyticsPdo, $record->id)['name']);
+        $this->assertSame(3, $this->countRows($this->analyticsPdo));
+    }
+
     private function makeConnection(): PDO
     {
         $pdo = new PDO('sqlite::memory:');

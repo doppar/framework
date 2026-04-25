@@ -184,6 +184,8 @@ trait InteractsWithModelQueryProcessing
                 }
 
                 $dirtyAttributes = $this->getDirtyAttributes();
+                $this->pruneNonColumnDirtyAttributes($dirtyAttributes);
+                $dirtyAttributes = $this->getDirtyAttributes();
                 if (!empty($this->creatable)) {
                     $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
                 }
@@ -201,6 +203,7 @@ trait InteractsWithModelQueryProcessing
                     ->update($dirtyAttributes);
 
                 if (self::$isHookShouldBeCalled && $response) {
+                    $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirtyAttributes);
                     $this->originalAttributes = $this->attributes;
@@ -213,6 +216,7 @@ trait InteractsWithModelQueryProcessing
                 return false;
             }
 
+            $this->pruneNonColumnAttributes();
             $attributes = $this->getCreatableAttributes();
 
             if ($this->timeStamps) {
@@ -493,6 +497,8 @@ trait InteractsWithModelQueryProcessing
         }
 
         $dirty = $this->getDirtyAttributes();
+        $this->pruneNonColumnDirtyAttributes($dirty);
+        $dirty = $this->getDirtyAttributes();
 
         if (empty($dirty)) {
             return true;
@@ -527,6 +533,7 @@ trait InteractsWithModelQueryProcessing
                 ->update($dirty);
 
             if ($result) {
+                $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
                 if (self::$isHookShouldBeCalled) {
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirty);
