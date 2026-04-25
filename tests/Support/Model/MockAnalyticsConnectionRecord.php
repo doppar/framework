@@ -11,4 +11,9 @@ class MockAnalyticsConnectionRecord extends Model
     protected $connection = 'analytics';
     protected $timeStamps = false;
     protected $creatable = ['name', 'status', 'amount'];
+
+    public function primaryRecord()
+    {
+        return $this->bindTo(MockPrimaryConnectionRecord::class, 'id', 'id');
+    }
 }
