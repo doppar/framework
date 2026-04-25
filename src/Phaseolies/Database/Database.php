@@ -609,7 +609,7 @@ class Database
     {
         $connection = $connection ?: config('database.default');
 
-        static::disconnect($connection);
+        $this->disconnect($connection);
 
         return static::getPdoInstance($connection);
     }
@@ -664,7 +664,7 @@ class Database
     public function cleanupAllConnections(): void
     {
         foreach (array_keys(static::$connections) as $connection) {
-            static::disconnect($connection);
+            $this->disconnect($connection);
         }
 
         // Clear all arrays
