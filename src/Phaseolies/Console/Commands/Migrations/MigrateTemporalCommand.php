@@ -35,19 +35,13 @@ class MigrateTemporalCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $connection = $this->option('connection') ?: config('database.default');
+            $connection = $this->option('connection') ?: null;
             $dryRun     = (bool) $this->option('show');
             $modelsPath = $this->option('path') ?: base_path('app/Models');
 
-            try {
-                $pdo    = Database::getPdoInstance($connection ?: null);
-                $driver = strtolower($pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
-            } catch (\Throwable $e) {
-                $this->displayError('Failed to connect to database: ' . $e->getMessage());
-                return Command::FAILURE;
-            }
+            $connectionLabel = $connection ?: 'per-model';
 
-            $this->line("<fg=yellow>🕐 Temporal Migration — connection: {$connection}</>");
+            $this->line("<fg=yellow>🕐 Temporal Migration — connection: {$connectionLabel}</>");
             $this->newLine();
 
             $classes = $this->discoverTemporalModels($modelsPath);
@@ -65,8 +59,20 @@ class MigrateTemporalCommand extends Command
                 $model        = new $class();
                 $baseTable    = $model->getTable();
                 $historyTable = TemporalManager::historyTable($baseTable, $class);
+                $modelConnection = $this->resolveConnectionForModel($model, $connection);
+
+                try {
+                    $pdo    = Database::getPdoInstance($modelConnection);
+                    $driver = strtolower($pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+                } catch (\Throwable $e) {
+                    $this->displayError(
+                        "Failed to connect to database [{$modelConnection}] for {$class}: " . $e->getMessage()
+                    );
+                    return Command::FAILURE;
+                }
 
                 $this->line("  <fg=cyan>Model</>        : <fg=white>{$class}</>");
+                $this->line("  <fg=cyan>Connection</>   : <fg=white>{$modelConnection}</>");
                 $this->line("  <fg=cyan>Base table</>   : <fg=white>{$baseTable}</>");
                 $this->line("  <fg=cyan>History table</> : <fg=white>{$historyTable}</>");
 
@@ -114,6 +120,21 @@ class MigrateTemporalCommand extends Command
 
             return Command::SUCCESS;
         });
+    }
+
+    /**
+     * Resolve the database connection for a temporal model, honoring a command
+     * override first and then the model's own configured connection.
+     *
+     * @param Model $model
+     * @param string|null $overrideConnection
+     * @return string
+     */
+    private function resolveConnectionForModel(Model $model, ?string $overrideConnection = null): string
+    {
+        return $overrideConnection
+            ?: $model->getConnectionName()
+            ?: config('database.default');
     }
 
     /**
