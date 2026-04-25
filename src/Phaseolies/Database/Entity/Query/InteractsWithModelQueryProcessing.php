@@ -31,7 +31,8 @@ trait InteractsWithModelQueryProcessing
             Database::getPdoInstance($connection),
             $model->getTable(),
             static::class,
-            $model->pageSize
+            $model->pageSize,
+            $connection
         );
     }
 
@@ -195,7 +196,7 @@ trait InteractsWithModelQueryProcessing
                     $dirtyAttributes['updated_at'] = $dateTime;
                 }
 
-                $response = $this->query()
+                $response = $this->newQuery()
                     ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                     ->update($dirtyAttributes);
 
@@ -219,7 +220,7 @@ trait InteractsWithModelQueryProcessing
                 $attributes['updated_at'] = $dateTime;
             }
 
-            $id = $this->query()->insert($attributes);
+            $id = $this->newQuery()->insert($attributes);
 
             if ($id && self::$isHookShouldBeCalled) {
                 $this->fireAfterHooks('created');
@@ -521,7 +522,7 @@ trait InteractsWithModelQueryProcessing
         }
 
         try {
-            $result = static::query()
+            $result = $this->newQuery()
                 ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                 ->update($dirty);
 

@@ -160,7 +160,7 @@ class Authenticate
         $authKeyValue = $credentials[$customAuthKey] ?? '';
         $password     = $credentials['password'] ?? '';
 
-        $user = $authModel::query()->where($customAuthKey, $authKeyValue)->first();
+        $user = $authModel::where($customAuthKey, $authKeyValue)->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             return false;

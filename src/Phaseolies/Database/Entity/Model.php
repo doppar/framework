@@ -432,6 +432,27 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Get the connection name for the model.
+     *
+     * @return string|null
+     */
+    public function getConnectionName(): ?string
+    {
+        return $this->connection;
+    }
+
+    /**
+     * Set the connection name for the model.
+     *
+     * @param string|null $connection
+     * @return void
+     */
+    public function setConnectionName(?string $connection): void
+    {
+        $this->connection = $connection;
+    }
+
+    /**
      * Begin querying the model on a given connection.
      *
      * @param string|null $connection
@@ -457,7 +478,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             pdo: $this->getConnection(),
             table: $this->getTable(),
             modelClass: static::class,
-            rowPerPage: $this->pageSize
+            rowPerPage: $this->pageSize,
+            connectionName: $this->connection
         );
     }
 
@@ -659,7 +681,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                 return false;
             }
 
-            $result = static::query()
+            $result = $this->newQuery()
                 ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                 ->delete();
 
@@ -710,7 +732,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -730,7 +752,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -750,7 +772,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        return $relatedInstance->query($this->connection)->where($foreignKey, '=', $this->$localKey);
     }
 
     /**
@@ -771,7 +793,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->lastPivotTable = $pivotTable;
 
         $relatedModel = app($related);
-        $query = $relatedModel->query();
+        $query = $relatedModel->query($this->connection);
 
         $query->setRelationInfo([
             'type' => 'bindToMany',
@@ -909,7 +931,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                                 return "{$pivotTable}.{$column} as pivot_{$column}";
                             }, $pivotColumns);
 
-                            $query = $relatedModel->query()
+                            $query = $relatedModel->query($this->connection)
                                 ->select(array_merge(
                                     ["{$relatedModel->getTable()}.*"],
                                     $pivotSelects
@@ -1058,7 +1080,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
-        $result = $this->query()
+        $result = $this->newQuery()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->increment($column, $amount, $extra);
 
@@ -1083,7 +1105,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {
-        $result = $this->query()
+        $result = $this->newQuery()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->decrement($column, $amount, $extra);
 

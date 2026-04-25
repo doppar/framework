@@ -138,17 +138,26 @@ class Builder
     protected bool $suppressEagerLoad = false;
 
     /**
+     * The resolved connection name for this builder.
+     *
+     * @var string|null
+     */
+    protected ?string $connectionName = null;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
      * @param int $rowPerPage
+     * @param string|null $connectionName
      */
-    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage)
+    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage, ?string $connectionName = null)
     {
         $this->pdo = $pdo;
         $this->table = $table;
         $this->modelClass = $modelClass;
         $this->rowPerPage = $rowPerPage;
+        $this->connectionName = $connectionName;
     }
 
     /**
@@ -161,6 +170,11 @@ class Builder
     {
         $modelClass = $this->modelClass;
         $model = new $modelClass();
+
+        if ($this->connectionName !== null) {
+            $model->setConnectionName($this->connectionName);
+        }
+
         $model->fill($attributes);
         $model->save();
 
@@ -275,7 +289,7 @@ class Builder
      */
     public function whereNested(callable $callback, string $boolean = 'AND'): self
     {
-        $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage);
+        $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->connectionName);
 
         $callback($nestedQuery);
 
@@ -607,7 +621,7 @@ class Builder
      */
     private function addCallbackConditions(string $subquery, mixed $relatedModel, callable $callback, string $relatedTable): string
     {
-        $subQueryBuilder = $relatedModel::query();
+        $subQueryBuilder = $relatedModel::query($this->connectionName);
         $callback($subQueryBuilder);
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
@@ -903,6 +917,10 @@ class Builder
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $model = app($this->modelClass, [$row]);
+
+                if ($this->connectionName !== null) {
+                    $model->setConnectionName($this->connectionName);
+                }
 
                 if ($needsEncryption && $this->takeWithoutEncryption) {
                     foreach ($encryptedAttributes as $attribute) {
@@ -1472,7 +1490,7 @@ class Builder
 
         // For linkOne/bindTo relations, the foreignKey is on the related table
         // For linkMany relations, the foreignKey is also on the related table
-        $query = $relatedModelInstance->query()->whereIn($foreignKey, $keys);
+        $query = $relatedModelInstance->query($this->connectionName)->whereIn($foreignKey, $keys);
 
         // Apply constraint (which may include column selection)
         if (is_callable($constraint)) {
@@ -1538,7 +1556,7 @@ class Builder
         $selectedColumns = null;
 
         if (is_callable($constraint)) {
-            $inspectQuery = $relatedModelInstance->query();
+            $inspectQuery = $relatedModelInstance->query($this->connectionName);
             $constraint($inspectQuery);
 
             if ($inspectQuery->fields !== ['*']) {
@@ -1552,7 +1570,7 @@ class Builder
             }
         }
 
-        $query = $relatedModelInstance->query();
+        $query = $relatedModelInstance->query($this->connectionName);
 
         if ($hasCustomSelect) {
             $query->select(array_merge($selectedColumns, $pivotSelects));
@@ -1673,7 +1691,7 @@ class Builder
 
         // Handle one-to-many or one-to-one count
         $relatedModelInstance = app($relatedModel);
-        $query = $relatedModelInstance->query()
+        $query = $relatedModelInstance->query($this->connectionName)
             ->select([$foreignKey, 'COUNT(*) as aggregate'])
             ->whereIn($foreignKey, $localKeys)
             ->groupBy($foreignKey);
@@ -1725,7 +1743,7 @@ class Builder
         $relatedModelInstance = new $relatedModel();
         $relatedTable = $relatedModelInstance->getTable();
 
-        $query = $relatedModelInstance->query()
+        $query = $relatedModelInstance->query($this->connectionName)
             ->select(["{$pivotTable}.{$foreignKey}", 'COUNT(*) as aggregate'])
             ->join(
                 $pivotTable,
@@ -1841,7 +1859,7 @@ class Builder
     protected function loadOneToOne(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
         $localKeys = array_map(fn($model) => $model->$localKey, $models);
-        $relatedModels = $relatedModel::query()
+        $relatedModels = $relatedModel::query($this->connectionName)
             ->whereIn($foreignKey, $localKeys)
             ->get()
             ->keyBy($foreignKey);
@@ -1867,7 +1885,7 @@ class Builder
     protected function loadOneToMany(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
         $localKeys = array_map(fn($model) => $model->$localKey, $models);
-        $relatedModels = $relatedModel::query()
+        $relatedModels = $relatedModel::query($this->connectionName)
             ->whereIn($foreignKey, $localKeys)
             ->get()
             ->getItemsGroupedBy($foreignKey);
@@ -1951,6 +1969,10 @@ class Builder
             }
 
             $model = new $this->modelClass($result);
+
+            if ($this->connectionName !== null) {
+                $model->setConnectionName($this->connectionName);
+            }
 
             if ($this->needsEncryption() && $this->takeWithoutEncryption) {
                 $encryptedAttributes = $this->getEncryptedAttributes();
@@ -2511,7 +2533,15 @@ class Builder
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Convert results to model instances
-            $models = array_map(fn($item) => new $this->modelClass($item), $results);
+            $models = array_map(function ($item) {
+                $model = new $this->modelClass($item);
+
+                if ($this->connectionName !== null) {
+                    $model->setConnectionName($this->connectionName);
+                }
+
+                return $model;
+            }, $results);
 
             $collection = new Collection($this->modelClass, $models);
 
