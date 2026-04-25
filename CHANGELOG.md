@@ -1,5 +1,13 @@
 # Release Notes
 
+## v3.20.2 - 2026-04-25
+
+* Improve thin-coverage test areas by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/253
+* Fix multi-connection ORM state handling and prevent non-column attribute leaks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/254
+* fix: relation loading forces related models onto the parent/builder connection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/255
+* Fix eager-loaded relations across multiple database connections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/256
+* Fix temporal migrations for models on non-default database connections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/257
+
 ## v3.20.1 - 2026-04-24
 
 * fix: remove all deprecations and php notices and warnings from unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/247
