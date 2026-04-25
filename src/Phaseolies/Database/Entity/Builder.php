@@ -1490,7 +1490,7 @@ class Builder
 
         // For linkOne/bindTo relations, the foreignKey is on the related table
         // For linkMany relations, the foreignKey is also on the related table
-        $query = $relatedModelInstance->query($this->connectionName)->whereIn($foreignKey, $keys);
+        $query = $relatedModelInstance->query()->whereIn($foreignKey, $keys);
 
         // Apply constraint (which may include column selection)
         if (is_callable($constraint)) {
@@ -1556,7 +1556,7 @@ class Builder
         $selectedColumns = null;
 
         if (is_callable($constraint)) {
-            $inspectQuery = $relatedModelInstance->query($this->connectionName);
+            $inspectQuery = $relatedModelInstance->query();
             $constraint($inspectQuery);
 
             if ($inspectQuery->fields !== ['*']) {
@@ -1570,7 +1570,7 @@ class Builder
             }
         }
 
-        $query = $relatedModelInstance->query($this->connectionName);
+        $query = $relatedModelInstance->query();
 
         if ($hasCustomSelect) {
             $query->select(array_merge($selectedColumns, $pivotSelects));
@@ -1691,7 +1691,7 @@ class Builder
 
         // Handle one-to-many or one-to-one count
         $relatedModelInstance = app($relatedModel);
-        $query = $relatedModelInstance->query($this->connectionName)
+        $query = $relatedModelInstance->query()
             ->select([$foreignKey, 'COUNT(*) as aggregate'])
             ->whereIn($foreignKey, $localKeys)
             ->groupBy($foreignKey);
@@ -1743,7 +1743,7 @@ class Builder
         $relatedModelInstance = new $relatedModel();
         $relatedTable = $relatedModelInstance->getTable();
 
-        $query = $relatedModelInstance->query($this->connectionName)
+        $query = $relatedModelInstance->query()
             ->select(["{$pivotTable}.{$foreignKey}", 'COUNT(*) as aggregate'])
             ->join(
                 $pivotTable,
@@ -1799,7 +1799,13 @@ class Builder
      */
     public function getModel(): Model
     {
-        return app($this->modelClass);
+        $model = app($this->modelClass);
+
+        if ($this->connectionName !== null) {
+            $model->setConnectionName($this->connectionName);
+        }
+
+        return $model;
     }
 
     /**
@@ -1859,7 +1865,7 @@ class Builder
     protected function loadOneToOne(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
         $localKeys = array_map(fn($model) => $model->$localKey, $models);
-        $relatedModels = $relatedModel::query($this->connectionName)
+        $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
             ->keyBy($foreignKey);
@@ -1885,7 +1891,7 @@ class Builder
     protected function loadOneToMany(array $models, string $relation, string $relatedModel, string $foreignKey, string $localKey): void
     {
         $localKeys = array_map(fn($model) => $model->$localKey, $models);
-        $relatedModels = $relatedModel::query($this->connectionName)
+        $relatedModels = $relatedModel::query()
             ->whereIn($foreignKey, $localKeys)
             ->get()
             ->getItemsGroupedBy($foreignKey);

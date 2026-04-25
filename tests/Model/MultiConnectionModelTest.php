@@ -172,6 +172,16 @@ class MultiConnectionModelTest extends TestCase
         );
     }
 
+    public function testEmbedLoadsRelatedModelFromItsOwnConnection(): void
+    {
+        $record = MockAnalyticsConnectionRecord::embed('primaryRecord')->find(1);
+
+        $this->assertSame('Analytics Seed', $record->name);
+        $this->assertNotNull($record->primaryRecord);
+        $this->assertSame('Primary Seed', $record->primaryRecord->name);
+        $this->assertSame('primary', $record->primaryRecord->getConnectionName());
+    }
+
     public function testSaveRemovesUnknownAttributesThatDoNotExistInTheTable(): void
     {
         $record = MockAnalyticsConnectionRecord::find(1);
