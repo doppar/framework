@@ -133,6 +133,17 @@ class FrontendUninstallCommand extends Command
             client_path('js/App.tsx'),
             client_path('js/App.vue'),
             client_path('js/App.svelte'),
+            base_path('client/css/app.css'),
+            base_path('client/js/app.js'),
+            base_path('client/js/app.ts'),
+            base_path('client/js/main.js'),
+            base_path('client/js/main.ts'),
+            base_path('client/js/main.jsx'),
+            base_path('client/js/main.tsx'),
+            base_path('client/js/App.jsx'),
+            base_path('client/js/App.tsx'),
+            base_path('client/js/App.vue'),
+            base_path('client/js/App.svelte'),
         ];
 
         foreach ($clientFiles as $path) {
@@ -299,7 +310,10 @@ class FrontendUninstallCommand extends Command
         return str_contains($contents, "name: 'doppar-vite-hot-file'")
             && str_contains($contents, "storage/framework/vite.hot")
             && str_contains($contents, "outDir: 'public/build'")
-            && str_contains($contents, "path.resolve(__dirname, 'client')");
+            && (
+                str_contains($contents, "path.resolve(__dirname, 'resources/client')")
+                || str_contains($contents, "path.resolve(__dirname, 'client')")
+            );
     }
 
     /**
@@ -318,9 +332,15 @@ class FrontendUninstallCommand extends Command
 
         return ($decoded['compilerOptions']['moduleResolution'] ?? null) === 'Bundler'
             && ($decoded['compilerOptions']['baseUrl'] ?? null) === '.'
-            && (($decoded['compilerOptions']['paths']['@/*'][0] ?? null) === 'client/js/*')
-            && in_array('client/**/*.ts', $decoded['include'] ?? [], true)
-            && in_array('client/**/*.tsx', $decoded['include'] ?? [], true);
+            && in_array(($decoded['compilerOptions']['paths']['@/*'][0] ?? null), ['resources/client/js/*', 'client/js/*'], true)
+            && (
+                in_array('resources/client/**/*.ts', $decoded['include'] ?? [], true)
+                || in_array('client/**/*.ts', $decoded['include'] ?? [], true)
+            )
+            && (
+                in_array('resources/client/**/*.tsx', $decoded['include'] ?? [], true)
+                || in_array('client/**/*.tsx', $decoded['include'] ?? [], true)
+            );
     }
 
     /**

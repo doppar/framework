@@ -16,7 +16,7 @@ class FrontendInstallCommandTest extends TestCase
         $pathMethod = new \ReflectionMethod($command, 'entryFilePath');
 
         $this->assertSame('main.tsx', $filenameMethod->invoke($command, 'react', true));
-        $this->assertSame('client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
+        $this->assertSame('resources/client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
     }
 
     public function testViteConfigTargetsMainReactEntrypoint(): void
@@ -28,7 +28,7 @@ class FrontendInstallCommandTest extends TestCase
         $config = $method->invoke($command, 'react', true);
         $entryFile = $entryMethod->invoke($command, 'react', 'none', true);
 
-        $this->assertStringContainsString("input: ['client/js/main.tsx']", $config);
+        $this->assertStringContainsString("input: ['resources/client/js/main.tsx']", $config);
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 
@@ -50,7 +50,7 @@ class FrontendInstallCommandTest extends TestCase
 <html>
 <head>
     <!-- DOPPAR_FRONTEND_VITE_START -->
-    #vite('client/js/main.tsx')
+    #vite('resources/client/js/main.tsx')
     <!-- DOPPAR_FRONTEND_VITE_END -->
 </head>
 <body>
@@ -62,7 +62,7 @@ ODO;
         $updated = $method->invoke($command, $contents);
 
         $this->assertStringNotContainsString('DOPPAR_FRONTEND_VITE_START', $updated);
-        $this->assertStringNotContainsString("#vite('client/js/main.tsx')", $updated);
+        $this->assertStringNotContainsString("#vite('resources/client/js/main.tsx')", $updated);
         $this->assertStringNotContainsString('<div id="app"></div>', $updated);
     }
 

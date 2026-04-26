@@ -204,6 +204,9 @@ trait InteractsWithFrontendScaffoldState
             client_path('js'),
             client_path('css'),
             client_path(),
+            base_path('client/js'),
+            base_path('client/css'),
+            base_path('client'),
             public_path('build'),
         ] as $directory) {
             if (is_dir($directory) && $this->isDirectoryEmpty($directory)) {

@@ -279,7 +279,7 @@ class FrontendInstallCommand extends Command
      */
     protected function entryFilePath(string $framework, bool $typescript): string
     {
-        return 'client/js/' . $this->entryFilename($framework, $typescript);
+        return 'resources/client/js/' . $this->entryFilename($framework, $typescript);
     }
 
     /**
@@ -439,8 +439,8 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, 'client/js'),
-            '~client': path.resolve(__dirname, 'client'),
+            '~client': path.resolve(__dirname, 'resources/client'),
+            '@': path.resolve(__dirname, 'resources/client/js'),
         },
     },
     server: {
@@ -614,7 +614,7 @@ export default function App() {
     return (
         <main style={{ padding: '3rem' }}>
             <h1>Doppar + React</h1>
-            <p>Your client app is running from the <code>client/</code> directory.</p>
+            <p>Your client app is running from the <code>resources/client/</code> directory.</p>
         </main>
     );
 }
@@ -623,7 +623,7 @@ export default function App() {
     return (
         <main style={{ padding: '3rem' }}>
             <h1>Doppar + React</h1>
-            <p>Your client app is running from the <code>client/</code> directory.</p>
+            <p>Your client app is running from the <code>resources/client/</code> directory.</p>
         </main>
     );
 }
@@ -634,7 +634,7 @@ JSX,
 <template>
     <main style="padding: 3rem">
         <h1>Doppar + Vue</h1>
-        <p>Your client app is running from the <code>client/</code> directory.</p>
+        <p>Your client app is running from the <code>resources/client/</code> directory.</p>
     </main>
 </template>
 VUE,
@@ -643,7 +643,7 @@ VUE,
                 client_path('js/App.svelte') => <<<SVELTE
 <main style="padding: 3rem">
     <h1>Doppar + Svelte</h1>
-    <p>Your client app is running from the <code>client/</code> directory.</p>
+    <p>Your client app is running from the <code>resources/client/</code> directory.</p>
 </main>
 SVELTE,
             ],
@@ -692,10 +692,10 @@ JS;
         {$jsx}
         "baseUrl": ".",
         "paths": {
-            "@/*": ["client/js/*"]
+            "@/*": ["resources/client/js/*"]
         }
     },
-    "include": ["client/**/*.ts", "client/**/*.tsx", "client/**/*.vue", "client/**/*.svelte"]
+    "include": ["resources/client/**/*.ts", "resources/client/**/*.tsx", "resources/client/**/*.vue", "resources/client/**/*.svelte"]
 }
 JSON;
     }

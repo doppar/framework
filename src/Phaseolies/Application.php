@@ -386,7 +386,7 @@ class Application extends Container
      */
     public function clientPath($path = ''): string
     {
-        return $this->clientPath = $this->getPath("client/{$path}");
+        return $this->clientPath = $this->getPath("resources/client/{$path}");
     }
 
     /**
