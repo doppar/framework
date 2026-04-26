@@ -383,17 +383,17 @@ class FrontendInstallCommand extends Command
         if ($framework === 'react') {
             $config['dependencies']['react'] = '^19.0.0';
             $config['dependencies']['react-dom'] = '^19.0.0';
-            $config['devDependencies']['@vitejs/plugin-react'] = '^4.3.0';
+            $config['devDependencies']['@vitejs/plugin-react'] = '^5.0.0';
         }
 
         if ($framework === 'vue') {
             $config['dependencies']['vue'] = '^3.5.0';
-            $config['devDependencies']['@vitejs/plugin-vue'] = '^5.2.0';
+            $config['devDependencies']['@vitejs/plugin-vue'] = '^6.0.0';
         }
 
         if ($framework === 'svelte') {
             $config['dependencies']['svelte'] = '^5.0.0';
-            $config['devDependencies']['@sveltejs/vite-plugin-svelte'] = '^5.0.0';
+            $config['devDependencies']['@sveltejs/vite-plugin-svelte'] = '^6.0.0';
         }
 
         if ($cssStack === 'bootstrap') {

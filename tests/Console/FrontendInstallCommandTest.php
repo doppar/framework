@@ -33,6 +33,17 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 
+    public function testVuePackageJsonUsesViteSevenCompatiblePluginVersion(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'packageJson');
+
+        $packageJson = $method->invoke($command, 'vue', 'tailwind', true);
+
+        $this->assertStringContainsString('"vite": "^7.0.0"', $packageJson);
+        $this->assertStringContainsString('"@vitejs/plugin-vue": "^6.0.0"', $packageJson);
+    }
+
     public function testTailwindCssIncludesExplicitSourceDirectives(): void
     {
         $command = new FrontendInstallCommand();
