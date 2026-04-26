@@ -79,7 +79,19 @@ class ViteManager
      */
     public function isHot(): bool
     {
-        return is_file($this->hotFile());
+        if (!is_file($this->hotFile())) {
+            return false;
+        }
+
+        $url = trim((string) file_get_contents($this->hotFile()));
+
+        if ($url === '' || !$this->hotServerIsReachable($url)) {
+            @unlink($this->hotFile());
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -106,6 +118,41 @@ class ViteManager
         }
 
         return rtrim($url, '/');
+    }
+
+    /**
+     * Determine whether the current Vite hot server is reachable.
+     *
+     * @param string $url
+     * @return bool
+     */
+    protected function hotServerIsReachable(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        if (!is_array($parts) || empty($parts['host'])) {
+            return false;
+        }
+
+        $scheme = strtolower($parts['scheme'] ?? 'http');
+        $host = $parts['host'];
+        $port = (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
+        $transport = $scheme === 'https' ? 'ssl' : 'tcp';
+
+        $connection = @stream_socket_client(
+            "{$transport}://{$host}:{$port}",
+            $errorCode,
+            $errorMessage,
+            0.2
+        );
+
+        if (!is_resource($connection)) {
+            return false;
+        }
+
+        fclose($connection);
+
+        return true;
     }
 
     /**
@@ -196,7 +243,7 @@ HTML;
         $manifestPath = $this->manifestPath($buildDirectory);
 
         if (!is_file($manifestPath)) {
-            throw new RuntimeException("Vite manifest not found at [{$manifestPath}].");
+            throw new RuntimeException($this->missingManifestMessage($manifestPath));
         }
 
         $manifest = json_decode((string) file_get_contents($manifestPath), true);
@@ -206,6 +253,18 @@ HTML;
         }
 
         return $manifest;
+    }
+
+    /**
+     * Build a helpful exception message when neither the dev server nor a production build is available.
+     *
+     * @param string $manifestPath
+     * @return string
+     */
+    protected function missingManifestMessage(string $manifestPath): string
+    {
+        return "Vite manifest not found at [{$manifestPath}]. "
+            . "Start the Vite dev server with `npm run dev` or generate a production build with `npm run build`.";
     }
 
     /**

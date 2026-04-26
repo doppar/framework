@@ -60,7 +60,13 @@ class ViteManagerTest extends TestCase
     {
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
-        $tags = (new ViteManager())->tags('resources/client/js/app.js');
+        $manager = $this->getMockBuilder(ViteManager::class)
+            ->onlyMethods(['hotServerIsReachable'])
+            ->getMock();
+
+        $manager->method('hotServerIsReachable')->willReturn(true);
+
+        $tags = $manager->tags('resources/client/js/app.js');
 
         $this->assertStringContainsString('http://127.0.0.1:5173/@vite/client', $tags);
         $this->assertStringContainsString('http://127.0.0.1:5173/resources/client/js/app.js', $tags);
@@ -70,7 +76,13 @@ class ViteManagerTest extends TestCase
     {
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
-        $tags = (new ViteManager())->tags('resources/client/js/main.tsx');
+        $manager = $this->getMockBuilder(ViteManager::class)
+            ->onlyMethods(['hotServerIsReachable'])
+            ->getMock();
+
+        $manager->method('hotServerIsReachable')->willReturn(true);
+
+        $tags = $manager->tags('resources/client/js/main.tsx');
 
         $this->assertStringContainsString('http://127.0.0.1:5173/@react-refresh', $tags);
         $this->assertStringContainsString('__vite_plugin_react_preamble_installed__ = true', $tags);
@@ -122,10 +134,40 @@ class ViteManagerTest extends TestCase
 
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
+        $hotManager = $this->getMockBuilder(ViteManager::class)
+            ->onlyMethods(['hotServerIsReachable'])
+            ->getMock();
+
+        $hotManager->method('hotServerIsReachable')->willReturn(true);
+
         $this->assertSame(
             'http://127.0.0.1:5173/resources/client/js/app.js',
-            $manager->asset('resources/client/js/app.js')
+            $hotManager->asset('resources/client/js/app.js')
         );
+    }
+
+    public function testStaleHotFileFallsBackToManifestAssets(): void
+    {
+        file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
+        file_put_contents(
+            Paths::$public . '/build/manifest.json',
+            json_encode([
+                'resources/client/js/app.js' => [
+                    'file' => 'assets/app-123.js',
+                ],
+            ], JSON_PRETTY_PRINT)
+        );
+
+        $manager = $this->getMockBuilder(ViteManager::class)
+            ->onlyMethods(['hotServerIsReachable'])
+            ->getMock();
+
+        $manager->method('hotServerIsReachable')->willReturn(false);
+
+        $tags = $manager->tags('resources/client/js/app.js');
+
+        $this->assertStringContainsString('https://example.test/build/assets/app-123.js', $tags);
+        $this->assertFileDoesNotExist(Paths::$storage . '/framework/vite.hot');
     }
 
     public function testTagsResolveManifestFromViteSevenDefaultDirectory(): void
