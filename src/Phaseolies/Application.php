@@ -360,11 +360,13 @@ class Application extends Container
      */
     protected function getPath(string $folder): string
     {
-        if (!isset($this->pathCache[$folder])) {
-            $this->pathCache[$folder] = base_path($folder);
+        $normalizedFolder = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $folder), DIRECTORY_SEPARATOR);
+
+        if (!isset($this->pathCache[$normalizedFolder])) {
+            $this->pathCache[$normalizedFolder] = base_path($normalizedFolder);
         }
 
-        return $this->pathCache[$folder];
+        return $this->pathCache[$normalizedFolder];
     }
 
     /**

@@ -175,6 +175,7 @@ final class ApplicationTest extends TestCase
     {
         $stringService = app(StringService::class);
         $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
+        $this->assertStringEndsWith('/resources/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
         $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
         $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
         $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));

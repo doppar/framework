@@ -404,7 +404,11 @@ if (!function_exists('base_path')) {
             return $basePath;
         }
 
-        return $basePath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $basePath
+            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 }
 
