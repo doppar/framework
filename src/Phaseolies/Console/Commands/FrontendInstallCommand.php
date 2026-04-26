@@ -38,6 +38,12 @@ class FrontendInstallCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
+            if (!$this->confirm('Shall we set up the frontend for you?', true)) {
+                $this->displayInfo('Frontend installation aborted.');
+
+                return Command::SUCCESS;
+            }
+
             $cssStack = strtolower($this->choice(
                 'Which CSS stack do you want to install?',
                 ['Tailwind', 'Bootstrap', 'None'],
