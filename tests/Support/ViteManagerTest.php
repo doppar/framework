@@ -188,7 +188,10 @@ class ViteManagerTest extends TestCase
 
         $resolved = $method->invoke($manager, 'build\\');
 
-        $this->assertSame(Paths::$public . '/build/manifest.json', $resolved);
+        $this->assertSame(
+            $this->normalizePath(Paths::$public . '/build/manifest.json'),
+            $this->normalizePath($resolved)
+        );
     }
 
     private function deleteDirectory(string $directory): void
@@ -228,6 +231,11 @@ class ViteManagerTest extends TestCase
                 return $this->reachable;
             }
         };
+    }
+
+    private function normalizePath(string $path): string
+    {
+        return str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
     }
 }
 }

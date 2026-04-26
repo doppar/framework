@@ -105,11 +105,11 @@ class FrontendInstallCommandTest extends TestCase
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'trackedFrontendDirectories');
 
-        $directories = $method->invoke($command);
+        $directories = array_map($this->normalizePath(...), $method->invoke($command));
 
-        $this->assertContains(getcwd() . '/resources/client', $directories);
-        $this->assertContains(getcwd() . '/resources/client/css', $directories);
-        $this->assertContains(getcwd() . '/resources/client/js', $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/resources/client'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/resources/client/css'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/resources/client/js'), $directories);
     }
 
     public function testFrontendUninstallCommandIsRegisteredWithExpectedSignature(): void
@@ -151,10 +151,10 @@ ODO;
         $command = new FrontendUninstallCommand();
         $method = new \ReflectionMethod($command, 'legacyFrontendDirectories');
 
-        $directories = $method->invoke($command);
+        $directories = array_map($this->normalizePath(...), $method->invoke($command));
 
-        $this->assertContains(getcwd() . '/resources/client', $directories);
-        $this->assertContains(getcwd() . '/client', $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/resources/client'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/client'), $directories);
     }
 
     public function testFrontendUninstallDetectsGeneratedPackageJsonTemplate(): void
@@ -202,5 +202,10 @@ JSON;
 
         $this->assertTrue($method->invoke($command, $generated));
         $this->assertFalse($method->invoke($command, $custom));
+    }
+
+    private function normalizePath(string $path): string
+    {
+        return str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
     }
 }
