@@ -162,6 +162,7 @@ class FrontendInstallCommand extends Command
             base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript),
             base_path('vite.config.js') => $this->viteConfig($framework, $typescript),
             client_path('css/app.css') => $this->clientCss($cssStack),
+            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
         ];
@@ -479,9 +480,7 @@ class FrontendInstallCommand extends Command
      */
     protected function entryFile(string $framework, string $cssStack, bool $typescript): string
     {
-        $bootstrapImport = $cssStack === 'bootstrap'
-            ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
-            : '';
+        $bootstrapImport = "import './bootstrap';\n";
 
         return $this->renderFrontendStub(
             'entries/' . $this->entryStubName($framework, $typescript),
@@ -511,6 +510,24 @@ class FrontendInstallCommand extends Command
             ],
             default => [],
         };
+    }
+
+    /**
+     * Generate the shared client bootstrap file.
+     *
+     * @param string $cssStack
+     * @param bool $typescript
+     * @return string
+     */
+    protected function bootstrapFile(string $cssStack, bool $typescript): string
+    {
+        $bootstrapVendorImport = $cssStack === 'bootstrap'
+            ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
+            : '';
+
+        return $this->renderFrontendStub('entries/bootstrap.stub', [
+            'bootstrapVendorImport' => $bootstrapVendorImport,
+        ]);
     }
 
     /**
@@ -598,6 +615,17 @@ class FrontendInstallCommand extends Command
         return $this->renderFrontendStub('views/layouts/app.stub', [
             'entry' => $this->entryFilePath($framework, $typescript),
         ]);
+    }
+
+    /**
+     * Resolve the shared bootstrap filename for the chosen stack.
+     *
+     * @param bool $typescript
+     * @return string
+     */
+    protected function bootstrapFilename(bool $typescript): string
+    {
+        return $typescript ? 'bootstrap.ts' : 'bootstrap.js';
     }
 
     /**

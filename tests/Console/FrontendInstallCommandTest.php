@@ -41,7 +41,9 @@ class FrontendInstallCommandTest extends TestCase
 
         $this->assertStringContainsString("#extends('layouts.app')", $welcome);
         $this->assertStringContainsString("#vite('resources/client/js/main.ts')", $layout);
+        $this->assertStringContainsString('<meta name="csrf-token" content="[[ csrf_token() ]]" />', $layout);
         $this->assertStringContainsString('window.__DOPPAR_FRONTEND__', $layout);
+        $this->assertStringContainsString('csrfToken: "[[ csrf_token() ]]"', $layout);
     }
 
     public function testViteConfigTargetsMainReactEntrypoint(): void
@@ -56,7 +58,22 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString("input: ['resources/client/js/main.tsx']", $config);
         $this->assertStringContainsString("publicDir: false", $config);
         $this->assertStringContainsString('fs.writeFileSync(hotFile, `${protocol}://${host}:${address.port}`);', $config);
+        $this->assertStringContainsString("import './bootstrap';", $entryFile);
         $this->assertStringContainsString("import App from './App';", $entryFile);
+    }
+
+    public function testClientBootstrapAutomaticallyAttachesCsrfHeadersToMutatingFetchRequests(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'bootstrapFile');
+
+        $bootstrap = $method->invoke($command, 'bootstrap', true);
+
+        $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
+        $this->assertStringContainsString("window.fetch = (input, init = {}) => {", $bootstrap);
+        $this->assertStringContainsString("headers.set('X-CSRF-TOKEN', csrfToken);", $bootstrap);
+        $this->assertStringContainsString("headers.set('X-Requested-With', 'XMLHttpRequest');", $bootstrap);
+        $this->assertStringContainsString("import 'bootstrap/dist/js/bootstrap.bundle.min.js';", $bootstrap);
     }
 
     public function testVuePackageJsonUsesViteSevenCompatiblePluginVersion(): void
