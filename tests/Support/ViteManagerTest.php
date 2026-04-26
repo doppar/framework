@@ -60,11 +60,7 @@ class ViteManagerTest extends TestCase
     {
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
-        $manager = $this->getMockBuilder(ViteManager::class)
-            ->onlyMethods(['hotServerIsReachable'])
-            ->getMock();
-
-        $manager->method('hotServerIsReachable')->willReturn(true);
+        $manager = $this->stubbedManager(true);
 
         $tags = $manager->tags('resources/client/js/app.js');
 
@@ -76,11 +72,7 @@ class ViteManagerTest extends TestCase
     {
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
-        $manager = $this->getMockBuilder(ViteManager::class)
-            ->onlyMethods(['hotServerIsReachable'])
-            ->getMock();
-
-        $manager->method('hotServerIsReachable')->willReturn(true);
+        $manager = $this->stubbedManager(true);
 
         $tags = $manager->tags('resources/client/js/main.tsx');
 
@@ -134,11 +126,7 @@ class ViteManagerTest extends TestCase
 
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
 
-        $hotManager = $this->getMockBuilder(ViteManager::class)
-            ->onlyMethods(['hotServerIsReachable'])
-            ->getMock();
-
-        $hotManager->method('hotServerIsReachable')->willReturn(true);
+        $hotManager = $this->stubbedManager(true);
 
         $this->assertSame(
             'http://127.0.0.1:5173/resources/client/js/app.js',
@@ -158,11 +146,7 @@ class ViteManagerTest extends TestCase
             ], JSON_PRETTY_PRINT)
         );
 
-        $manager = $this->getMockBuilder(ViteManager::class)
-            ->onlyMethods(['hotServerIsReachable'])
-            ->getMock();
-
-        $manager->method('hotServerIsReachable')->willReturn(false);
+        $manager = $this->stubbedManager(false);
 
         $tags = $manager->tags('resources/client/js/app.js');
 
@@ -229,6 +213,21 @@ class ViteManagerTest extends TestCase
         }
 
         rmdir($directory);
+    }
+
+    private function stubbedManager(bool $reachable): ViteManager
+    {
+        return new class($reachable) extends ViteManager
+        {
+            public function __construct(private readonly bool $reachable)
+            {
+            }
+
+            protected function hotServerIsReachable(string $url): bool
+            {
+                return $this->reachable;
+            }
+        };
     }
 }
 }
