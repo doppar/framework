@@ -146,6 +146,25 @@ class ViteManagerTest extends TestCase
         $this->assertStringContainsString('https://example.test/build/assets/app-123.js', $tags);
     }
 
+    public function testManifestPathAcceptsWindowsStyleBuildDirectory(): void
+    {
+        file_put_contents(
+            Paths::$public . '/build/manifest.json',
+            json_encode([
+                'client/js/app.js' => [
+                    'file' => 'assets/app-123.js',
+                ],
+            ], JSON_PRETTY_PRINT)
+        );
+
+        $manager = new ViteManager();
+        $method = new \ReflectionMethod($manager, 'manifestPath');
+
+        $resolved = $method->invoke($manager, 'build\\');
+
+        $this->assertSame(Paths::$public . '/build/manifest.json', $resolved);
+    }
+
     private function deleteDirectory(string $directory): void
     {
         if (!is_dir($directory)) {

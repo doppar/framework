@@ -219,16 +219,27 @@ HTML;
      */
     protected function manifestPath(string $buildDirectory): string
     {
-        $buildDirectory = trim($buildDirectory, '/');
-        $preferred = public_path($buildDirectory . '/manifest.json');
+        $buildDirectory = $this->normalizeFilesystemSegment($buildDirectory);
+        $preferred = public_path($buildDirectory . DIRECTORY_SEPARATOR . 'manifest.json');
 
         if (is_file($preferred)) {
             return $preferred;
         }
 
-        $viteDefault = public_path($buildDirectory . '/.vite/manifest.json');
+        $viteDefault = public_path($buildDirectory . DIRECTORY_SEPARATOR . '.vite' . DIRECTORY_SEPARATOR . 'manifest.json');
 
         return is_file($viteDefault) ? $viteDefault : $preferred;
+    }
+
+    /**
+     * Normalize a filesystem path fragment so it works across Unix and Windows.
+     *
+     * @param string $path
+     * @return string
+     */
+    protected function normalizeFilesystemSegment(string $path): string
+    {
+        return trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
     }
 
     /**
