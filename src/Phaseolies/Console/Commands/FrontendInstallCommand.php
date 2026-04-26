@@ -39,7 +39,10 @@ class FrontendInstallCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
+            $this->renderInstallationWelcome();
+
             if (!$this->confirm('Shall we set up the frontend for you?', true)) {
+                $this->newLine();
                 $this->displayInfo('Frontend installation aborted.');
 
                 return Command::SUCCESS;
@@ -126,6 +129,22 @@ class FrontendInstallCommand extends Command
     }
 
     /**
+     * Render the frontend installer welcome banner.
+     *
+     * @return void
+     */
+    protected function renderInstallationWelcome(): void
+    {
+        $this->newLine();
+
+        foreach ($this->installationWelcomeBannerLines() as $line) {
+            $this->line($line);
+        }
+
+        $this->newLine();
+    }
+
+    /**
      * Ensure the expected client and storage directories exist.
      *
      * @return void
@@ -186,6 +205,27 @@ class FrontendInstallCommand extends Command
         foreach ($files as $path => $contents) {
             $this->writeFile($path, $contents, $force, $state);
         }
+    }
+
+    /**
+     * Build the terminal welcome banner lines.
+     *
+     * @return array<int, string>
+     */
+    protected function installationWelcomeBannerLines(): array
+    {
+        return [
+            '<fg=white;bg=blue>  Welcome to the <options=bold>Doppar Frontend</> installation wizard.  </>',
+            '',
+            '<fg=#807DFC;options=bold>██████╗  ██████╗ ██████╗ ██████╗  █████╗ ██████╗</>',
+            '<fg=#807DFC;options=bold>██╔══██╗██╔═══██╗██╔══██╗██╔══██╗██╔══██╗██╔══██╗</>',
+            '<fg=#807DFC;options=bold>██║  ██║██║   ██║██████╔╝██████╔╝███████║██████╔╝</>',
+            '<fg=#807DFC;options=bold>██║  ██║██║   ██║██╔═══╝ ██╔═══╝ ██╔══██║██╔══██╗</>',
+            '<fg=#807DFC;options=bold>██████╔╝╚██████╔╝██║     ██║     ██║  ██║██║  ██║</>',
+            '<fg=#807DFC;options=bold>╚═════╝  ╚═════╝ ╚═╝     ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝</>',
+            '',
+            '<fg=yellow>We will now walk through your frontend stack setup step by step.</>',
+        ];
     }
 
     /**

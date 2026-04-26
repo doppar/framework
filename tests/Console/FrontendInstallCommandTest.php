@@ -30,6 +30,19 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringNotContainsString("#extends('layouts.app')", $welcome);
     }
 
+    public function testInstallerWelcomeBannerIncludesDopparBranding(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'installationWelcomeBannerLines');
+
+        $lines = $method->invoke($command);
+        $banner = implode("\n", $lines);
+
+        $this->assertStringContainsString('Welcome to the <options=bold>Doppar Frontend</> installation wizard.', $banner);
+        $this->assertStringContainsString('██████╗', $banner);
+        $this->assertStringContainsString('We will now walk through your frontend stack setup step by step.', $banner);
+    }
+
     public function testClientFrameworkWelcomeUsesGeneratedAppLayoutShell(): void
     {
         $command = new FrontendInstallCommand();
