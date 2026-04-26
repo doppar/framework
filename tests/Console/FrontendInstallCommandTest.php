@@ -33,6 +33,18 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 
+    public function testTailwindCssIncludesExplicitSourceDirectives(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'clientCss');
+
+        $css = $method->invoke($command, 'tailwind');
+
+        $this->assertStringContainsString('@import "tailwindcss";', $css);
+        $this->assertStringContainsString('@source "../js";', $css);
+        $this->assertStringContainsString('@source "../../views";', $css);
+    }
+
     public function testFrontendUninstallCommandIsRegisteredWithExpectedSignature(): void
     {
         $command = new FrontendUninstallCommand();

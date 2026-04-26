@@ -479,6 +479,8 @@ JS;
         return match ($cssStack) {
             'tailwind' => <<<CSS
 @import "tailwindcss";
+@source "../js";
+@source "../../views";
 
 :root {
     color-scheme: light;
