@@ -89,7 +89,7 @@ abstract class Command extends SymfonyCommand
                     !empty($m[2]) ? InputArgument::OPTIONAL : InputArgument::REQUIRED,
                     $description
                 );
-            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--(\w+)(?:=(.*))?$/', $definition, $m)) {
+            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--([\w-]+)(?:=(.*))?$/', $definition, $m)) {
                 $shortcut = $m[1] ?? null;
                 $name = $m[2];
                 $default = $m[3] ?? null;

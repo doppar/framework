@@ -1,0 +1,67 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { defineConfig } from 'vite';
+{{ pluginImport }}
+
+function dopparHotFile() {
+    const hotFile = path.resolve(__dirname, 'storage/framework/vite.hot');
+
+    const cleanup = () => {
+        if (fs.existsSync(hotFile)) {
+            fs.rmSync(hotFile, { force: true });
+        }
+    };
+
+    return {
+        name: 'doppar-vite-hot-file',
+        configureServer(server) {
+            const writeHotFile = () => {
+                const address = server.httpServer?.address();
+                if (!address || typeof address === 'string') {
+                    return;
+                }
+
+                const host = typeof server.config.server.host === 'string'
+                    && server.config.server.host !== '0.0.0.0'
+                    && server.config.server.host !== '::'
+                    ? server.config.server.host
+                    : '127.0.0.1';
+
+                const protocol = server.config.server.https ? 'https' : 'http';
+                fs.mkdirSync(path.dirname(hotFile), { recursive: true });
+                fs.writeFileSync(hotFile, `${protocol}://${host}:${address.port}`);
+            };
+
+            server.httpServer?.once('listening', writeHotFile);
+            server.httpServer?.once('close', cleanup);
+            process.once('exit', cleanup);
+        },
+    };
+}
+
+export default defineConfig({
+    plugins: [
+{{ pluginArray }}
+    ],
+    publicDir: false,
+    resolve: {
+        alias: {
+            '~client': path.resolve(__dirname, 'resources/client'),
+            '@': path.resolve(__dirname, 'resources/client/js'),
+        },
+    },
+    server: {
+        host: '127.0.0.1',
+        port: 5173,
+        strictPort: true,
+        origin: 'http://127.0.0.1:5173',
+    },
+    build: {
+        outDir: 'public/build',
+        emptyOutDir: true,
+        manifest: 'manifest.json',
+        rollupOptions: {
+            input: ['{{ entry }}'],
+        },
+    },
+});

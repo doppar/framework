@@ -1,0 +1,139 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+
+:root {
+    --primary: #10b981;
+    --background: #f9fafb;
+    --card-bg: #ffffff;
+    --text-color: #111827;
+    --border: #d1d5db;
+    color-scheme: light;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 40px 20px;
+    min-height: 100vh;
+    font-family: Poppins, "Segoe UI", sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(16, 185, 129, 0.12), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.12), transparent 35%),
+        var(--background);
+    color: var(--text-color);
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+code {
+    background: #e5e7eb;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "JetBrains Mono", monospace;
+}
+
+.doppar-welcome-shell {
+    max-width: 960px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.doppar-welcome-header {
+    margin-bottom: 20px;
+}
+
+.doppar-welcome-logo {
+    width: 48px;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.doppar-welcome-title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.doppar-cta-box {
+    margin: 0 auto 40px;
+    max-width: 600px;
+    width: 100%;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    padding: 20px;
+    background: #ecfdf5;
+}
+
+.doppar-cta-box h3 {
+    margin: 0 0 10px;
+    font-size: 1.2rem;
+}
+
+.doppar-cta-box p {
+    margin: 0;
+}
+
+.doppar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    max-width: 800px;
+    margin: 0 auto 40px;
+}
+
+.doppar-card {
+    background: var(--card-bg);
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: left;
+    transition: box-shadow .2s;
+}
+
+.doppar-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .05);
+}
+
+.doppar-card h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.doppar-card p {
+    margin: 0;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.doppar-btn-group {
+    margin-top: 20px;
+}
+
+.doppar-btn {
+    display: inline-block;
+    margin: 0 10px;
+    padding: 10px 18px;
+    background-color: #fff;
+    color: #111827;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-weight: 500;
+    transition: background .2s;
+}
+
+.doppar-btn:hover {
+    background-color: #c4c9c8;
+}
+
+.doppar-footer {
+    margin-top: 50px;
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+}
