@@ -181,13 +181,18 @@ trait InteractsWithFrontendScaffoldState
             }
         }
 
-        if ($removeNodeModules) {
-            $nodeModules = base_path('node_modules');
-            $nodeModulesEntry = $state['directories'][$nodeModules] ?? null;
+        foreach (array_reverse(array_keys($state['directories'] ?? [])) as $path) {
+            $entry = $state['directories'][$path];
 
-            if (($nodeModulesEntry['existed_before'] ?? true) === false && is_dir($nodeModules)) {
-                $this->deleteDirectoryRecursively($nodeModules);
+            if (($entry['existed_before'] ?? true) === true || !is_dir($path)) {
+                continue;
             }
+
+            if ($path === base_path('node_modules') && !$removeNodeModules) {
+                continue;
+            }
+
+            $this->deleteDirectoryRecursively($path);
         }
 
         $this->cleanupFrontendDirectories();

@@ -94,6 +94,7 @@ class FrontendInstallCommand extends Command
             ];
 
             $state = $this->newFrontendScaffoldState($options);
+            $this->trackFrontendDirectories($state);
             $this->ensureClientDirectories();
             $this->prepareDependencyArtifacts($state, $packageManager, $installDependencies);
             $this->writeFrontendFiles($options, $state);
@@ -274,6 +275,53 @@ class FrontendInstallCommand extends Command
         }
 
         $this->displayInfo('Frontend dependencies installed successfully.');
+    }
+
+    /**
+     * Track frontend directories so uninstall can restore the project to its previous state.
+     *
+     * @param array<string, mixed> $state
+     * @return void
+     */
+    protected function trackFrontendDirectories(array &$state): void
+    {
+        foreach ($this->trackedFrontendDirectories() as $directory) {
+            $this->rememberFrontendDirectoryLifecycle($state, $directory);
+        }
+    }
+
+    /**
+     * Get the frontend directories owned by the scaffold lifecycle.
+     *
+     * @return array<int, string>
+     */
+    protected function trackedFrontendDirectories(): array
+    {
+        return [
+            $this->projectPath('resources/client'),
+            $this->projectPath('resources/client/css'),
+            $this->projectPath('resources/client/js'),
+            $this->projectPath('public/build'),
+        ];
+    }
+
+    /**
+     * Resolve a project-relative filesystem path without requiring a booted Application instance.
+     *
+     * @param string $path
+     * @return string
+     */
+    protected function projectPath(string $path = ''): string
+    {
+        $basePath = defined('BASE_PATH')
+            ? rtrim(BASE_PATH, DIRECTORY_SEPARATOR)
+            : rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
+
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $basePath
+            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**

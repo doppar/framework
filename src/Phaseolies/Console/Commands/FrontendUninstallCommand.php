@@ -169,9 +169,50 @@ class FrontendUninstallCommand extends Command
             $removedArtifacts++;
         }
 
+        foreach ($this->legacyFrontendDirectories() as $directory) {
+            if (!is_dir($directory)) {
+                continue;
+            }
+
+            $this->deleteDirectoryRecursively($directory);
+            $removedArtifacts++;
+        }
+
         $this->cleanupFrontendDirectories();
 
         return $removedArtifacts;
+    }
+
+    /**
+     * Get frontend directories that may need recursive legacy cleanup.
+     *
+     * @return array<int, string>
+     */
+    protected function legacyFrontendDirectories(): array
+    {
+        return [
+            $this->projectPath('resources/client'),
+            $this->projectPath('client'),
+        ];
+    }
+
+    /**
+     * Resolve a project-relative filesystem path without requiring a booted Application instance.
+     *
+     * @param string $path
+     * @return string
+     */
+    protected function projectPath(string $path = ''): string
+    {
+        $basePath = defined('BASE_PATH')
+            ? rtrim(BASE_PATH, DIRECTORY_SEPARATOR)
+            : rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
+
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $basePath
+            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**

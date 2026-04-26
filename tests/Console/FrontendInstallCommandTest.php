@@ -45,6 +45,18 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString('@source "../../views";', $css);
     }
 
+    public function testFrontendInstallTracksResourcesClientDirectories(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'trackedFrontendDirectories');
+
+        $directories = $method->invoke($command);
+
+        $this->assertContains(getcwd() . '/resources/client', $directories);
+        $this->assertContains(getcwd() . '/resources/client/css', $directories);
+        $this->assertContains(getcwd() . '/resources/client/js', $directories);
+    }
+
     public function testFrontendUninstallCommandIsRegisteredWithExpectedSignature(): void
     {
         $command = new FrontendUninstallCommand();
@@ -77,6 +89,17 @@ ODO;
         $this->assertStringNotContainsString('DOPPAR_FRONTEND_VITE_START', $updated);
         $this->assertStringNotContainsString("#vite('resources/client/js/main.tsx')", $updated);
         $this->assertStringNotContainsString('<div id="app"></div>', $updated);
+    }
+
+    public function testFrontendUninstallLegacyDirectoriesIncludeResourcesClient(): void
+    {
+        $command = new FrontendUninstallCommand();
+        $method = new \ReflectionMethod($command, 'legacyFrontendDirectories');
+
+        $directories = $method->invoke($command);
+
+        $this->assertContains(getcwd() . '/resources/client', $directories);
+        $this->assertContains(getcwd() . '/client', $directories);
     }
 
     public function testFrontendUninstallDetectsGeneratedPackageJsonTemplate(): void
