@@ -443,6 +443,7 @@ export default defineConfig({
     plugins: [
 {$pluginArray}
     ],
+    publicDir: false,
     resolve: {
         alias: {
             '~client': path.resolve(__dirname, 'resources/client'),

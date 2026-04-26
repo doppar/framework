@@ -29,6 +29,7 @@ class FrontendInstallCommandTest extends TestCase
         $entryFile = $entryMethod->invoke($command, 'react', 'none', true);
 
         $this->assertStringContainsString("input: ['resources/client/js/main.tsx']", $config);
+        $this->assertStringContainsString("publicDir: false", $config);
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 
