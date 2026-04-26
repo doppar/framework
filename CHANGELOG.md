@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.21.0 - 2026-04-26
+
+* Add first-class Vite frontend scaffolding for React, Vue, Svelte, and Tailwind by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/258
+
 ## v3.20.2 - 2026-04-25
 
 * Improve thin-coverage test areas by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/253
