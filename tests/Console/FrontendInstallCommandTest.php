@@ -19,6 +19,31 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertSame('resources/client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
     }
 
+    public function testVanillaWelcomeUsesPlainOdoWelcomeStub(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'welcomeView');
+
+        $welcome = $method->invoke($command, 'vanilla', false);
+
+        $this->assertStringContainsString('<h2>Welcome to Doppar</h2>', $welcome);
+        $this->assertStringNotContainsString("#extends('layouts.app')", $welcome);
+    }
+
+    public function testClientFrameworkWelcomeUsesGeneratedAppLayoutShell(): void
+    {
+        $command = new FrontendInstallCommand();
+        $welcomeMethod = new \ReflectionMethod($command, 'welcomeView');
+        $layoutMethod = new \ReflectionMethod($command, 'appLayoutView');
+
+        $welcome = $welcomeMethod->invoke($command, 'vue', true);
+        $layout = $layoutMethod->invoke($command, 'vue', true);
+
+        $this->assertStringContainsString("#extends('layouts.app')", $welcome);
+        $this->assertStringContainsString("#vite('resources/client/js/main.ts')", $layout);
+        $this->assertStringContainsString('window.__DOPPAR_FRONTEND__', $layout);
+    }
+
     public function testViteConfigTargetsMainReactEntrypoint(): void
     {
         $command = new FrontendInstallCommand();
@@ -30,6 +55,7 @@ class FrontendInstallCommandTest extends TestCase
 
         $this->assertStringContainsString("input: ['resources/client/js/main.tsx']", $config);
         $this->assertStringContainsString("publicDir: false", $config);
+        $this->assertStringContainsString('fs.writeFileSync(hotFile, `${protocol}://${host}:${address.port}`);', $config);
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 

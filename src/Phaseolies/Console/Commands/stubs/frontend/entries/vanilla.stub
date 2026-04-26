@@ -1,0 +1,4 @@
+import '../css/app.css';
+{{ bootstrapImport }}
+document.documentElement.dataset.clientReady = 'true';
+console.info('Doppar client booted successfully.');

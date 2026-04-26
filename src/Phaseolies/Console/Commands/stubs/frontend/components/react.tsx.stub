@@ -1,0 +1,45 @@
+type DopparRuntime = {
+    version?: string;
+    phpVersion?: string;
+    logoUrl?: string;
+};
+
+const runtime = (window as Window & { __DOPPAR_FRONTEND__?: DopparRuntime }).__DOPPAR_FRONTEND__ ?? {};
+
+export default function App() {
+    return (
+        <main className="doppar-welcome-shell">
+            <header className="doppar-welcome-header">
+                <img className="doppar-welcome-logo" src={runtime.logoUrl ?? '/logo.png'} alt="Logo" />
+                <h2>Welcome to Doppar</h2>
+            </header>
+            <section className="doppar-cta-box">
+                <h3>{runtime.version ?? 'Doppar'}</h3>
+                <p>Craft Fast-Loading PHP Application</p>
+            </section>
+            <section className="doppar-grid">
+                <a href="https://doppar.com/versions/3.x/starter-kits" className="doppar-card">
+                    <h3>Starter kits</h3>
+                    <p>To give you a head start building your new Doppar application, we are happy to offer application starter kits.</p>
+                </a>
+                <a href="https://doppar.com/versions/3.x/architecture-concept" className="doppar-card">
+                    <h3>System Architecture</h3>
+                    <p>Doppar follows the Model-View-Controller (MVC) architectural pattern, a widely accepted standard in web application development.</p>
+                </a>
+                <a href="https://doppar.com/versions/3.x/routing" className="doppar-card">
+                    <h3>Routing</h3>
+                    <p>With support for route prefix grouping, named routes, throttle route, middleware assignment, and RESTful resource routing, Doppar gives developers full control over how requests are handled.</p>
+                </a>
+                <a href="https://doppar.com/versions/3.x/authentication" className="doppar-card">
+                    <h3>Authentication</h3>
+                    <p>Doppar simplifies this process by providing built-in tools and scaffolding to help you implement user authentication quickly and securely.</p>
+                </a>
+            </section>
+            <div className="doppar-btn-group">
+                <a href="https://github.com/doppar" className="doppar-btn">GitHub</a>
+                <a href="https://doppar.com" className="doppar-btn">Website</a>
+            </div>
+            <div className="doppar-footer">{runtime.phpVersion ?? ''}</div>
+        </main>
+    );
+}

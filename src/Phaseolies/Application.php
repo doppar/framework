@@ -187,7 +187,7 @@ class Application extends Container
      */
     public function langPath($path = ''): string
     {
-        return $this->getPath("lang/{$path}");
+        return $this->getPath($this->buildPathFragment('lang', $path));
     }
 
     /**
@@ -377,7 +377,7 @@ class Application extends Container
      */
     public function resourcesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath("resources/{$path}");
+        return $this->resourcesPath = $this->getPath($this->buildPathFragment('resources', $path));
     }
 
     /**
@@ -388,7 +388,7 @@ class Application extends Container
      */
     public function clientPath($path = ''): string
     {
-        return $this->clientPath = $this->getPath("resources/client/{$path}");
+        return $this->clientPath = $this->getPath($this->buildPathFragment('resources/client', $path));
     }
 
     /**
@@ -399,7 +399,7 @@ class Application extends Container
      */
     public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath("bootstrap/{$path}");
+        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('bootstrap', $path));
     }
 
     /**
@@ -410,7 +410,7 @@ class Application extends Container
      */
     public function databasePath($path = ''): string
     {
-        return $this->databasePath = $this->getPath("database/{$path}");
+        return $this->databasePath = $this->getPath($this->buildPathFragment('database', $path));
     }
 
     /**
@@ -421,7 +421,7 @@ class Application extends Container
      */
     public function publicPath($path = ''): string
     {
-        return $this->publicPath = $this->getPath("public/{$path}");
+        return $this->publicPath = $this->getPath($this->buildPathFragment('public', $path));
     }
 
     /**
@@ -432,7 +432,24 @@ class Application extends Container
      */
     public function storagePath($path = ''): string
     {
-        return $this->storagePath = $this->getPath("storage/{$path}");
+        return $this->storagePath = $this->getPath($this->buildPathFragment('storage', $path));
+    }
+
+    /**
+     * Build a relative path fragment from a prefix and optional child path.
+     *
+     * @param string $prefix
+     * @param string $path
+     * @return string
+     */
+    protected function buildPathFragment(string $prefix, string $path = ''): string
+    {
+        $normalizedPrefix = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $prefix), DIRECTORY_SEPARATOR);
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $normalizedPrefix
+            : $normalizedPrefix . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**
