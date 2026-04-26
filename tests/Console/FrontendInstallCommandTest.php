@@ -62,7 +62,7 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString("import App from './App';", $entryFile);
     }
 
-    public function testClientBootstrapAutomaticallyAttachesCsrfHeadersToMutatingFetchRequests(): void
+    public function testClientBootstrapExposesCsrfHeaderFromMetaToken(): void
     {
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'bootstrapFile');
@@ -70,9 +70,10 @@ class FrontendInstallCommandTest extends TestCase
         $bootstrap = $method->invoke($command, 'bootstrap', true);
 
         $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
-        $this->assertStringContainsString("window.fetch = (input, init = {}) => {", $bootstrap);
-        $this->assertStringContainsString("headers.set('X-CSRF-TOKEN', csrfToken);", $bootstrap);
-        $this->assertStringContainsString("headers.set('X-Requested-With', 'XMLHttpRequest');", $bootstrap);
+        $this->assertStringContainsString("headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}", $bootstrap);
+        $this->assertStringNotContainsString('window.fetch', $bootstrap);
+        $this->assertStringNotContainsString('XMLHttpRequest.prototype', $bootstrap);
+        $this->assertStringNotContainsString('X-Requested-With', $bootstrap);
         $this->assertStringContainsString("import 'bootstrap/dist/js/bootstrap.bundle.min.js';", $bootstrap);
     }
 

@@ -1,44 +1,18 @@
-{{ bootstrapVendorImport }}const SAFE_HTTP_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const csrfToken = document
+{{ bootstrapVendorImport }}const csrfToken = document
     .querySelector('meta[name="csrf-token"]')
     ?.getAttribute('content');
 
-if (csrfToken && typeof window.fetch === 'function') {
-    const originalFetch = window.fetch.bind(window);
+window.__DOPPAR_FRONTEND__ = {
+    ...(window.__DOPPAR_FRONTEND__ ?? {}),
+    csrfToken: csrfToken ?? null,
+    headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
+};
 
-    window.fetch = (input, init = {}) => {
-        const request = input instanceof Request ? input : null;
-        const method = (init.method ?? request?.method ?? 'GET').toUpperCase();
-
-        if (SAFE_HTTP_METHODS.has(method)) {
-            return originalFetch(input, init);
-        }
-
-        const requestUrl = request?.url
-            ?? (input instanceof URL ? input.toString() : String(input));
-
-        const resolvedUrl = new URL(requestUrl, window.location.href);
-
-        if (resolvedUrl.origin !== window.location.origin) {
-            return originalFetch(input, init);
-        }
-
-        const headers = new Headers(request?.headers);
-        new Headers(init.headers).forEach((value, key) => {
-            headers.set(key, value);
-        });
-
-        if (!headers.has('X-CSRF-TOKEN')) {
-            headers.set('X-CSRF-TOKEN', csrfToken);
-        }
-
-        if (!headers.has('X-Requested-With')) {
-            headers.set('X-Requested-With', 'XMLHttpRequest');
-        }
-
-        return originalFetch(input, {
-            ...init,
-            headers,
-        });
-    };
+declare global {
+    interface Window {
+        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
+            csrfToken?: string | null;
+            headers?: Record<string, string>;
+        };
+    }
 }
