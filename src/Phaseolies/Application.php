@@ -56,6 +56,13 @@ class Application extends Container
     protected $resourcesPath;
 
     /**
+     * The path to the client-side assets directory.
+     *
+     * @var string
+     */
+    protected $clientPath;
+
+    /**
      * The path to the application directory.
      *
      * @var string
@@ -342,6 +349,7 @@ class Application extends Container
         $this->publicPath = $this->publicPath();
         $this->storagePath = $this->storagePath();
         $this->resourcesPath = $this->resourcesPath();
+        $this->clientPath = $this->clientPath();
     }
 
     /**
@@ -368,6 +376,17 @@ class Application extends Container
     public function resourcesPath($path = ''): string
     {
         return $this->resourcesPath = $this->getPath("resources/{$path}");
+    }
+
+    /**
+     * Gets the client assets path.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function clientPath($path = ''): string
+    {
+        return $this->clientPath = $this->getPath("client/{$path}");
     }
 
     /**
@@ -602,6 +621,7 @@ class Application extends Container
         $this->singleton('path.public', fn() => $this->publicPath());
         $this->singleton('path.storage', fn() => $this->storagePath());
         $this->singleton('path.resources', fn() => $this->resourcesPath());
+        $this->singleton('path.client', fn() => $this->clientPath());
         $this->singleton('path.database', fn() => $this->databasePath());
     }
 

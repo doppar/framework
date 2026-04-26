@@ -92,6 +92,17 @@ trait OdoDirectives
     }
 
     /**
+     * Compile the #vite directive.
+     *
+     * @param string $expression
+     * @return string
+     */
+    public function compileVite($expression): string
+    {
+        return "<?php echo vite{$expression}; ?>";
+    }
+
+    /**
      * Compile the #enderror directive.
      *
      * @return string

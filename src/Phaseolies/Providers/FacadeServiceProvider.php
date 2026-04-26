@@ -4,6 +4,7 @@ namespace Phaseolies\Providers;
 
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Support\UrlGenerator;
+use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Support\Session;
@@ -77,6 +78,10 @@ class FacadeServiceProvider extends ServiceProvider
         // Bind the 'storage' service to a singleton instance of the Storage class.
         // This handles file uploads.
         $this->app->singleton('storage', StorageFileService::class);
+
+        // Bind the 'vite' service to a singleton instance of the Vite manager.
+        // This resolves dev-server and built frontend assets.
+        $this->app->singleton('vite', ViteManager::class);
 
         // Bind the 'log' service to a singleton instance of the Logger class.
         // This handles user define log.

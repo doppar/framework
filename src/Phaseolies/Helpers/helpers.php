@@ -714,6 +714,19 @@ if (!function_exists('resource_path')) {
     }
 }
 
+if (!function_exists('client_path')) {
+    /**
+     * Get the client assets path of the application.
+     *
+     * @param string $path
+     * @return string
+     */
+    function client_path(string $path = ''): string
+    {
+        return app()->clientPath($path);
+    }
+}
+
 if (!function_exists('config_path')) {
     /**
      * Get the config path of the application.
@@ -763,6 +776,34 @@ if (!function_exists('enqueue')) {
     function enqueue(string $path = '', $secure = null): string
     {
         return app('url')->enqueue($path, $secure);
+    }
+}
+
+if (!function_exists('vite')) {
+    /**
+     * Render Vite script/link tags for the provided entrypoints.
+     *
+     * @param string|array $entrypoints
+     * @param string $buildDirectory
+     * @return string
+     */
+    function vite(string|array $entrypoints, string $buildDirectory = 'build'): string
+    {
+        return app('vite')->tags($entrypoints, $buildDirectory);
+    }
+}
+
+if (!function_exists('vite_asset')) {
+    /**
+     * Resolve a single asset URL through the Vite manifest or dev server.
+     *
+     * @param string $asset
+     * @param string $buildDirectory
+     * @return string
+     */
+    function vite_asset(string $asset, string $buildDirectory = 'build'): string
+    {
+        return app('vite')->asset($asset, $buildDirectory);
     }
 }
 
