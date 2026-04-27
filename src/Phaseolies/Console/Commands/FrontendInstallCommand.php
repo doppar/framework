@@ -11,6 +11,8 @@ class FrontendInstallCommand extends Command
 {
     private const BOOTSTRAP_VENDOR_IMPORT = "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n";
 
+    private const HTMX_VENDOR_IMPORT = "import 'htmx.org';\n";
+
     private const TYPESCRIPT_DECLARATION = <<<'TYPESCRIPT'
 declare global {
     interface Window {
@@ -161,7 +163,7 @@ TYPESCRIPT;
             base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript),
             base_path('vite.config.js') => $this->viteConfig($framework, $typescript),
             client_path('css/app.css') => $this->clientCss($cssStack),
-            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript),
+            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $framework, $typescript),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
             base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
@@ -173,10 +175,6 @@ TYPESCRIPT;
 
         if ($typescript) {
             $files[base_path('tsconfig.json')] = $this->tsconfig($framework);
-        }
-
-        if ($framework === 'htmx') {
-            $files[base_path('app/Http/Controllers/HtmxTestController.php')] = $this->getFrontendStubContent('controller/htmx-test.stub');
         }
 
         foreach ($this->frameworkComponentFiles($framework, $typescript) as $path => $contents) {
@@ -498,10 +496,14 @@ TYPESCRIPT;
      * @param bool $typescript
      * @return string
      */
-    protected function bootstrapFile(string $cssStack, bool $typescript): string
+    protected function bootstrapFile(string $cssStack, string $framework, bool $typescript): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
             ? self::BOOTSTRAP_VENDOR_IMPORT
+            : '';
+
+        $htmxVendorImport = $framework === 'htmx'
+            ? self::HTMX_VENDOR_IMPORT
             : '';
 
         $typescriptDeclaration = $typescript
@@ -510,6 +512,7 @@ TYPESCRIPT;
 
         return $this->renderFrontendStub('entries/bootstrap.stub', [
             'bootstrapVendorImport' => $bootstrapVendorImport,
+            'htmxVendorImport' => $htmxVendorImport,
             'typescriptDeclaration' => $typescriptDeclaration,
         ]);
     }
@@ -580,10 +583,6 @@ TYPESCRIPT;
      */
     protected function welcomeView(string $framework, bool $typescript): string
     {
-        if ($framework === 'htmx') {
-            return $this->getFrontendStubContent('views/welcome/htmx.stub');
-        }
-
         if ($this->usesClientFramework($framework)) {
             return $this->getFrontendStubContent('views/welcome/client.stub');
         }
@@ -629,7 +628,6 @@ TYPESCRIPT;
             'react' => $typescript ? 'react.ts.stub' : 'react.js.stub',
             'vue' => 'vue.stub',
             'svelte' => $typescript ? 'svelte.ts.stub' : 'svelte.js.stub',
-            'htmx' => 'htmx.stub',
             default => 'vanilla.stub',
         };
     }

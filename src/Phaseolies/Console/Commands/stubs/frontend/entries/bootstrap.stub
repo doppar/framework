@@ -7,5 +7,5 @@ window.__DOPPAR_FRONTEND__ = {
     csrfToken: csrfToken ?? null,
     headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
 };
-
+{{ htmxVendorImport }}
 {{ typescriptDeclaration }}
