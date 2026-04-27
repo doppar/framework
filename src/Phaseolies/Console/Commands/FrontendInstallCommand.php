@@ -14,16 +14,6 @@ class FrontendInstallCommand extends Command
     /**
      * @var string
      */
-    protected const VITE_MARKER_START = '<!-- DOPPAR_FRONTEND_VITE_START -->';
-
-    /**
-     * @var string
-     */
-    protected const VITE_MARKER_END = '<!-- DOPPAR_FRONTEND_VITE_END -->';
-
-    /**
-     * @var string
-     */
     protected $name = 'frontend:install {--force : Overwrite existing frontend files} {--install : Install dependencies after scaffolding}';
 
     /**
@@ -65,23 +55,6 @@ class FrontendInstallCommand extends Command
                 in_array($framework, ['react', 'vue', 'svelte'], true)
             );
 
-            $patchLayout = false;
-            $layoutPath = null;
-
-            if (!$this->usesClientFramework($framework)) {
-                $patchLayout = $this->confirm(
-                    'Do you want Doppar to patch your main Odo layout with #vite(...) automatically?',
-                    true
-                );
-
-                $layoutPath = $patchLayout
-                    ? $this->ask(
-                        'Which layout file should be updated?',
-                        base_path('resources/views/layouts/app.odo.php')
-                    )
-                    : null;
-            }
-
             $installDependencies = (bool) ($this->option('install') ?: $this->confirm(
                 'Do you want to install frontend dependencies now?',
                 false
@@ -95,8 +68,6 @@ class FrontendInstallCommand extends Command
                 'cssStack' => $cssStack,
                 'framework' => $framework,
                 'typescript' => $typescript,
-                'patchLayout' => $patchLayout,
-                'layoutPath' => $layoutPath,
                 'installDependencies' => $installDependencies,
                 'packageManager' => $packageManager,
                 'force' => (bool) $this->option('force'),
@@ -107,10 +78,6 @@ class FrontendInstallCommand extends Command
             $this->ensureClientDirectories();
             $this->prepareDependencyArtifacts($state, $packageManager, $installDependencies);
             $this->writeFrontendFiles($options, $state);
-
-            if ($patchLayout && $layoutPath) {
-                $this->patchLayout($layoutPath, $this->entryFilePath($framework, $typescript), $framework, $state);
-            }
 
             if ($installDependencies) {
                 $this->rememberFrontendDirectoryLifecycle($state, base_path('node_modules'));
@@ -183,12 +150,9 @@ class FrontendInstallCommand extends Command
             client_path('css/app.css') => $this->clientCss($cssStack),
             client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
+            base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
         ];
-
-        if ($this->usesClientFramework($framework)) {
-            $files[base_path('resources/views/layouts/app.odo.php')] = $this->appLayoutView($framework, $typescript);
-        }
 
         if ($cssStack === 'tailwind') {
             $files[base_path('postcss.config.js')] = $this->postcssConfig();
@@ -252,52 +216,6 @@ class FrontendInstallCommand extends Command
 
         file_put_contents($path, $contents);
         $this->line("  <fg=green>Wrote</> <fg=white>{$path}</>");
-    }
-
-    /**
-     * Patch the selected layout to include #vite and a framework mount point.
-     *
-     * @param string $layoutPath
-     * @param string $entryPath
-     * @param string $framework
-     * @return void
-     */
-    protected function patchLayout(string $layoutPath, string $entryPath, string $framework, array &$state): void
-    {
-        if (!file_exists($layoutPath)) {
-            $this->displayWarning("Layout not found: {$layoutPath}. Skipping automatic patch.");
-            return;
-        }
-
-        $this->rememberFrontendFileMutation($state, $layoutPath);
-        $contents = (string) file_get_contents($layoutPath);
-        $viteDirective = self::VITE_MARKER_START . "\n    #vite('{$entryPath}')\n    " . self::VITE_MARKER_END;
-        $mountPoint = '<div id="app"></div>';
-
-        if (str_contains($contents, self::VITE_MARKER_START) && str_contains($contents, self::VITE_MARKER_END)) {
-            $contents = preg_replace(
-                '/' . preg_quote(self::VITE_MARKER_START, '/') . '.*?' . preg_quote(self::VITE_MARKER_END, '/') . '/s',
-                $viteDirective,
-                $contents
-            ) ?? $contents;
-        } else {
-            if (str_contains($contents, '</head>')) {
-                $contents = str_replace('</head>', "    {$viteDirective}\n</head>", $contents);
-            } else {
-                $contents .= "\n{$viteDirective}\n";
-            }
-        }
-
-        if ($framework !== 'vanilla' && !str_contains($contents, $mountPoint)) {
-            if (str_contains($contents, '</body>')) {
-                $contents = str_replace('</body>', "    {$mountPoint}\n</body>", $contents);
-            } else {
-                $contents .= "\n{$mountPoint}\n";
-            }
-        }
-
-        file_put_contents($layoutPath, $contents);
-        $this->line("  <fg=green>Patched</> <fg=white>{$layoutPath}</>");
     }
 
     /**
