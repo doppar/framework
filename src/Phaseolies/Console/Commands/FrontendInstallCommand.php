@@ -9,6 +9,19 @@ use Symfony\Component\Process\Process;
 
 class FrontendInstallCommand extends Command
 {
+    private const BOOTSTRAP_VENDOR_IMPORT = "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n";
+
+    private const TYPESCRIPT_DECLARATION = <<<'TYPESCRIPT'
+declare global {
+    interface Window {
+        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
+            csrfToken?: string | null;
+            headers?: Record<string, string>;
+        };
+    }
+}
+
+TYPESCRIPT;
     use InteractsWithFrontendScaffoldState;
 
     /**
@@ -46,7 +59,7 @@ class FrontendInstallCommand extends Command
 
             $framework = strtolower($this->choice(
                 'Which client framework do you want to use?',
-                ['Vanilla', 'React', 'Vue', 'Svelte'],
+                ['Vanilla', 'React', 'Vue', 'Svelte', 'htmx'],
                 0
             ));
 
@@ -160,6 +173,10 @@ class FrontendInstallCommand extends Command
 
         if ($typescript) {
             $files[base_path('tsconfig.json')] = $this->tsconfig($framework);
+        }
+
+        if ($framework === 'htmx') {
+            $files[base_path('app/Http/Controllers/HtmxTestController.php')] = $this->getFrontendStubContent('controller/htmx-test.stub');
         }
 
         foreach ($this->frameworkComponentFiles($framework, $typescript) as $path => $contents) {
@@ -320,7 +337,7 @@ class FrontendInstallCommand extends Command
             return $typescript ? 'main.tsx' : 'main.jsx';
         }
 
-        if (in_array($framework, ['vue', 'svelte'], true)) {
+        if (in_array($framework, ['vue', 'svelte', 'htmx'], true)) {
             return $typescript ? 'main.ts' : 'main.js';
         }
 
@@ -360,6 +377,10 @@ class FrontendInstallCommand extends Command
 
         if ($cssStack === 'bootstrap') {
             $dependencies['bootstrap'] = '^5.3.3';
+        }
+
+        if ($framework === 'htmx') {
+            $dependencies['htmx.org'] = '^2.0.10';
         }
 
         if ($cssStack === 'tailwind') {
@@ -480,11 +501,16 @@ class FrontendInstallCommand extends Command
     protected function bootstrapFile(string $cssStack, bool $typescript): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
-            ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
+            ? self::BOOTSTRAP_VENDOR_IMPORT
+            : '';
+
+        $typescriptDeclaration = $typescript
+            ? self::TYPESCRIPT_DECLARATION
             : '';
 
         return $this->renderFrontendStub('entries/bootstrap.stub', [
             'bootstrapVendorImport' => $bootstrapVendorImport,
+            'typescriptDeclaration' => $typescriptDeclaration,
         ]);
     }
 
@@ -554,6 +580,10 @@ class FrontendInstallCommand extends Command
      */
     protected function welcomeView(string $framework, bool $typescript): string
     {
+        if ($framework === 'htmx') {
+            return $this->getFrontendStubContent('views/welcome/htmx.stub');
+        }
+
         if ($this->usesClientFramework($framework)) {
             return $this->getFrontendStubContent('views/welcome/client.stub');
         }
@@ -599,6 +629,7 @@ class FrontendInstallCommand extends Command
             'react' => $typescript ? 'react.ts.stub' : 'react.js.stub',
             'vue' => 'vue.stub',
             'svelte' => $typescript ? 'svelte.ts.stub' : 'svelte.js.stub',
+            'htmx' => 'htmx.stub',
             default => 'vanilla.stub',
         };
     }

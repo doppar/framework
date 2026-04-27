@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Doppar - HTMX Demo</title>
+        <meta name="csrf-token" content="[[ csrf_token() ]]" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+        #vite('resources/client/js/main.js')
+        <style>
+            :root {
+                --primary: #10b981;
+                --background: #f9fafb;
+                --card-bg: #ffffff;
+                --text-color: #111827;
+                --border: #d1d5db;
+            }
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                padding: 40px 20px;
+                font-family: Poppins, sans-serif;
+                background: var(--background);
+                color: var(--text-color);
+                text-align: center;
+            }
+            header {
+                margin-bottom: 30px;
+            }
+            header img {
+                width: 48px;
+                height: auto;
+                margin-bottom: 10px;
+            }
+            h1 {
+                font-size: 2rem;
+                font-weight: 700;
+                margin-bottom: 10px;
+            }
+            .version {
+                font-size: 14px;
+                color: #6b7280;
+                margin-bottom: 30px;
+            }
+            .demo-box {
+                border: 2px solid var(--primary);
+                border-radius: 12px;
+                padding: 30px;
+                display: inline-block;
+                max-width: 500px;
+                width: 100%;
+                background: #ecfdf5;
+                margin-bottom: 40px;
+            }
+            .demo-box h2 {
+                font-size: 1.2rem;
+                margin-bottom: 20px;
+            }
+            .demo-box button {
+                background-color: #2563eb;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+                transition: background-color 0.2s;
+            }
+            .demo-box button:hover {
+                background-color: #1d4ed8;
+            }
+            .demo-box #output {
+                margin-top: 20px;
+                padding: 15px;
+                background: white;
+                border-radius: 8px;
+                color: #374151;
+                min-height: 50px;
+            }
+            .cta-box {
+                border: 2px solid var(--primary);
+                border-radius: 12px;
+                padding: 20px;
+                display: inline-block;
+                max-width: 600px;
+                width: 100%;
+                background: #ecfdf5;
+            }
+            .cta-box h2 {
+                font-size: 1.2rem;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                gap: 20px;
+                max-width: 800px;
+                margin: 0 auto 40px;
+            }
+            .card {
+                background: var(--card-bg);
+                padding: 20px;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                text-align: left;
+                transition: box-shadow 0.2s;
+            }
+            .card:hover {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            }
+            .card h3 {
+                font-size: 1rem;
+                margin-bottom: 8px;
+            }
+            .card p {
+                font-size: 14px;
+                color: #4b5563;
+            }
+            .footer {
+                font-size: 13px;
+                color: #9ca3af;
+                margin-top: 50px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <img src="[[ enqueue('logo.png') ]]" alt="Logo" />
+            <h1>Welcome to Doppar</h1>
+        </header>
+
+        <div class="demo-box">
+            <h2>HTMX Demo</h2>
+            <button
+                hx-get="/api/test"
+                hx-target="#output"
+                hx-swap="innerHTML"
+            >
+                Test HTMX
+            </button>
+            <div id="output">
+                Click the button to test HTMX...
+            </div>
+        </div>
+
+        <section class="cta-box">
+            <h3>[[ trans('messages.welcome', ['version' => 'v' . Application::VERSION]) ]]</h3>
+            <p>Craft Fast-Loading PHP Application</p>
+        </section>
+        <section class="grid">
+            <a href="https://doppar.com/versions/3.x/starter-kits" class="card">
+                <h3>Starter kits</h3>
+                <p>To give you a head start building your new Doppar application, we are happy to offer application starter kits.</p>
+            </a>
+            <a href="https://doppar.com/versions/3.x/architecture-concept" class="card">
+                <h3>System Architecture</h3>
+                <p>Doppar follows the Model-View-Controller (MVC) architectural pattern, a widely accepted standard in web application development.</p>
+            </a>
+            <a href="https://doppar.com/versions/3.x/routing" class="card">
+                <h3>Routing</h3>
+                <p>With support for route prefix grouping, named routes, throttle route, middleware assignment, and RESTful resource routing, Doppar gives developers full control over how requests are handled.</p>
+            </a>
+            <a href="https://doppar.com/versions/3.x/authentication" class="card">
+                <h3>Authentication</h3>
+                <p>Doppar simplifies this process by providing built-in tools and scaffolding to help you implement user authentication quickly and securely.</p>
+            </a>
+        </section>
+        <div class="footer">
+            PHP [[ phpversion() ]]
+        </div>
+    </body>
+</html>

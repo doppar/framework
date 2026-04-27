@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Phaseolies\Utilities\Attributes\Route;
+use Phaseolies\Http\Response;
+use App\Http\Controllers\Controller;
+
+class HtmxTestController extends Controller
+{
+
+    #[Route(uri: '/api/test', name: 'test')]
+    public function test(): Response
+    {
+        return response('hi : ' . time());
+    }
+}

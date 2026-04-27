@@ -40,6 +40,8 @@ class FrontendUninstallCommand extends Command
             $removeNodeModules = (bool) $this->option('clean-node-modules');
             $state = $this->loadFrontendScaffoldState();
 
+            $this->removeHtmxController();
+
             if ($state === null) {
                 $removedArtifacts = $this->performLegacyFrontendCleanup($removeNodeModules);
 
@@ -149,6 +151,19 @@ class FrontendUninstallCommand extends Command
             base_path('client/js/App.vue'),
             base_path('client/js/App.svelte'),
         ];
+
+        $controllerFiles = [
+            base_path('app/Http/Controllers/HtmxTestController.php'),
+        ];
+
+        foreach ($controllerFiles as $path) {
+            if (!is_file($path)) {
+                continue;
+            }
+
+            unlink($path);
+            $removedArtifacts++;
+        }
 
         foreach ($clientFiles as $path) {
             if (!is_file($path)) {
@@ -319,6 +334,7 @@ class FrontendUninstallCommand extends Command
             'react-dom',
             'vue',
             'svelte',
+            'htmx.org',
             'bootstrap',
             'postcss',
             'tailwindcss',
@@ -398,5 +414,18 @@ class FrontendUninstallCommand extends Command
     {
         return str_contains($contents, "export default")
             && str_contains($contents, "'@tailwindcss/postcss': {}");
+    }
+
+    /**
+     * Remove the htmx test controller if it exists.
+     *
+     * @return void
+     */
+    protected function removeHtmxController(): void
+    {
+        $htmxController = base_path('app/Http/Controllers/HtmxTestController.php');
+        if (file_exists($htmxController)) {
+            unlink($htmxController);
+        }
     }
 }

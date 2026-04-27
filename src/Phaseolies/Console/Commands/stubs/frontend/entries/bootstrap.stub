@@ -8,11 +8,4 @@ window.__DOPPAR_FRONTEND__ = {
     headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
 };
 
-declare global {
-    interface Window {
-        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
-            csrfToken?: string | null;
-            headers?: Record<string, string>;
-        };
-    }
-}
+{{ typescriptDeclaration }}
