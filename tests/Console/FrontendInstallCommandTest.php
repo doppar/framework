@@ -19,15 +19,17 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertSame('resources/client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
     }
 
-    public function testVanillaWelcomeUsesPlainOdoWelcomeStub(): void
+    public function testVanillaWelcomeUsesSharedAppLayout(): void
     {
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'welcomeView');
 
         $welcome = $method->invoke($command, 'vanilla', false);
 
-        $this->assertStringContainsString('<h2>Welcome to Doppar</h2>', $welcome);
-        $this->assertStringNotContainsString("#extends('layouts.app')", $welcome);
+        $this->assertStringContainsString("#extends('layouts.app')", $welcome);
+        $this->assertStringContainsString('#section(\'content\')', $welcome);
+        $this->assertStringContainsString('<h2 class="doppar-welcome-title">Welcome to Doppar</h2>', $welcome);
+        $this->assertStringNotContainsString('<!DOCTYPE html>', $welcome);
     }
 
     public function testInstallerWelcomeBannerIncludesDopparBranding(): void
@@ -43,7 +45,7 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString('We will now walk through your frontend stack setup step by step.', $banner);
     }
 
-    public function testClientFrameworkWelcomeUsesGeneratedAppLayoutShell(): void
+    public function testClientFrameworkWelcomeUsesSharedLayoutShell(): void
     {
         $command = new FrontendInstallCommand();
         $welcomeMethod = new \ReflectionMethod($command, 'welcomeView');
@@ -53,10 +55,25 @@ class FrontendInstallCommandTest extends TestCase
         $layout = $layoutMethod->invoke($command, 'vue', true);
 
         $this->assertStringContainsString("#extends('layouts.app')", $welcome);
+        $this->assertStringContainsString('#section(\'content\')', $welcome);
+        $this->assertStringContainsString('<div id="app"></div>', $welcome);
         $this->assertStringContainsString("#vite('resources/client/js/main.ts')", $layout);
         $this->assertStringContainsString('<meta name="csrf-token" content="[[ csrf_token() ]]" />', $layout);
         $this->assertStringContainsString('window.__DOPPAR_FRONTEND__', $layout);
         $this->assertStringContainsString('csrfToken: "[[ csrf_token() ]]"', $layout);
+        $this->assertStringContainsString("#yield('content')", $layout);
+        $this->assertStringNotContainsString('<div id="app"></div>', $layout);
+    }
+
+    public function testVanillaAppLayoutUsesAppEntrypoint(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'appLayoutView');
+
+        $layout = $method->invoke($command, 'vanilla', true);
+
+        $this->assertStringContainsString("#vite('resources/client/js/app.ts')", $layout);
+        $this->assertStringContainsString("#yield('content')", $layout);
     }
 
     public function testViteConfigTargetsMainReactEntrypoint(): void
