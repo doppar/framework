@@ -493,6 +493,7 @@ TYPESCRIPT;
      * Generate the shared client bootstrap file.
      *
      * @param string $cssStack
+     * @param string $framework
      * @param bool $typescript
      * @return string
      */
