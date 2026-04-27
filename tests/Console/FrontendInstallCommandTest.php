@@ -97,7 +97,7 @@ class FrontendInstallCommandTest extends TestCase
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'bootstrapFile');
 
-        $bootstrap = $method->invoke($command, 'bootstrap', true);
+        $bootstrap = $method->invoke($command, 'bootstrap', 'vanilla', true);
 
         $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
         $this->assertStringContainsString("headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}", $bootstrap);
