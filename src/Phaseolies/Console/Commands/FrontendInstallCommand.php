@@ -478,8 +478,8 @@ class FrontendInstallCommand extends Command
      * Generate the shared client bootstrap file.
      *
      * @param string $cssStack
-     * @param string $framework
      * @param bool $typescript
+     * @param string $framework
      * @return string
      */
     protected function bootstrapFile(string $cssStack, bool $typescript, string $framework = 'vanilla'): string
