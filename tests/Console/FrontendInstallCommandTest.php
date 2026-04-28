@@ -105,6 +105,20 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringNotContainsString('XMLHttpRequest.prototype', $bootstrap);
         $this->assertStringNotContainsString('X-Requested-With', $bootstrap);
         $this->assertStringContainsString("import 'bootstrap/dist/js/bootstrap.bundle.min.js';", $bootstrap);
+        $this->assertStringContainsString('declare global', $bootstrap);
+    }
+
+    public function testJavascriptBootstrapStubAvoidsTypescriptOnlySyntax(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'bootstrapFile');
+
+        $bootstrap = $method->invoke($command, 'bootstrap', false);
+
+        $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
+        $this->assertStringContainsString("headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}", $bootstrap);
+        $this->assertStringContainsString("import 'bootstrap/dist/js/bootstrap.bundle.min.js';", $bootstrap);
+        $this->assertStringNotContainsString('declare global', $bootstrap);
     }
 
     public function testVuePackageJsonUsesViteSevenCompatiblePluginVersion(): void

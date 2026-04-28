@@ -483,9 +483,12 @@ class FrontendInstallCommand extends Command
             ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
             : '';
 
-        return $this->renderFrontendStub('entries/bootstrap.stub', [
-            'bootstrapVendorImport' => $bootstrapVendorImport,
-        ]);
+        return $this->renderFrontendStub(
+            'entries/' . ($typescript ? 'bootstrap.ts.stub' : 'bootstrap.js.stub'),
+            [
+                'bootstrapVendorImport' => $bootstrapVendorImport,
+            ]
+        );
     }
 
     /**
