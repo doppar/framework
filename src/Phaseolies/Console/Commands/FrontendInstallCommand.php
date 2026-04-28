@@ -363,7 +363,7 @@ class FrontendInstallCommand extends Command
         }
 
         if ($framework === 'htmx') {
-            $dependencies['htmx.org'] = '^2.0.10';
+            $dependencies['htmx.org'] = '^2.0.9';
         }
 
         if ($cssStack === 'tailwind') {
