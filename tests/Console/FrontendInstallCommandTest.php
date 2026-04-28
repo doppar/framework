@@ -97,7 +97,7 @@ class FrontendInstallCommandTest extends TestCase
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'bootstrapFile');
 
-        $bootstrap = $method->invoke($command, 'bootstrap', true);
+        $bootstrap = $method->invoke($command, 'bootstrap', true, false);
 
         $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
         $this->assertStringContainsString("headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}", $bootstrap);
@@ -105,6 +105,7 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringNotContainsString('XMLHttpRequest.prototype', $bootstrap);
         $this->assertStringNotContainsString('X-Requested-With', $bootstrap);
         $this->assertStringContainsString("import 'bootstrap/dist/js/bootstrap.bundle.min.js';", $bootstrap);
+        $this->assertStringNotContainsString("import 'htmx.org';", $bootstrap);
         $this->assertStringContainsString('declare global', $bootstrap);
     }
 
@@ -113,7 +114,7 @@ class FrontendInstallCommandTest extends TestCase
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'bootstrapFile');
 
-        $bootstrap = $method->invoke($command, 'bootstrap', false);
+        $bootstrap = $method->invoke($command, 'bootstrap', false, false);
 
         $this->assertStringContainsString("meta[name=\"csrf-token\"]", $bootstrap);
         $this->assertStringContainsString("headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}", $bootstrap);
@@ -121,15 +122,35 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringNotContainsString('declare global', $bootstrap);
     }
 
+    public function testBootstrapStubCanImportHtmxSupport(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'bootstrapFile');
+
+        $bootstrap = $method->invoke($command, 'none', false, true);
+
+        $this->assertStringContainsString("import 'htmx.org';", $bootstrap);
+    }
+
     public function testVuePackageJsonUsesViteSevenCompatiblePluginVersion(): void
     {
         $command = new FrontendInstallCommand();
         $method = new \ReflectionMethod($command, 'packageJson');
 
-        $packageJson = $method->invoke($command, 'vue', 'tailwind', true);
+        $packageJson = $method->invoke($command, 'vue', 'tailwind', true, false);
 
         $this->assertStringContainsString('"vite": "^7.0.0"', $packageJson);
         $this->assertStringContainsString('"@vitejs/plugin-vue": "^6.0.0"', $packageJson);
+    }
+
+    public function testPackageJsonCanIncludeHtmxDependency(): void
+    {
+        $command = new FrontendInstallCommand();
+        $method = new \ReflectionMethod($command, 'packageJson');
+
+        $packageJson = $method->invoke($command, 'vanilla', 'none', false, true);
+
+        $this->assertStringContainsString('"htmx.org": "^2.0.4"', $packageJson);
     }
 
     public function testTailwindCssIncludesExplicitSourceDirectives(): void
@@ -246,6 +267,33 @@ JSON;
 
         $this->assertTrue($method->invoke($command, $generated));
         $this->assertFalse($method->invoke($command, $custom));
+    }
+
+    public function testFrontendUninstallDetectsGeneratedPackageJsonTemplateWithHtmx(): void
+    {
+        $command = new FrontendUninstallCommand();
+        $method = new \ReflectionMethod($command, 'isGeneratedPackageJson');
+
+        $generated = <<<'JSON'
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "bootstrap": "^5.3.3",
+        "htmx.org": "^2.0.4"
+    },
+    "devDependencies": {
+        "vite": "^7.0.0"
+    }
+}
+JSON;
+
+        $this->assertTrue($method->invoke($command, $generated));
     }
 
     private function normalizePath(string $path): string

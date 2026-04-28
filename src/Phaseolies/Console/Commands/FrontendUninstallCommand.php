@@ -320,6 +320,7 @@ class FrontendUninstallCommand extends Command
             'vue',
             'svelte',
             'bootstrap',
+            'htmx.org',
             'postcss',
             'tailwindcss',
             '@tailwindcss/postcss',

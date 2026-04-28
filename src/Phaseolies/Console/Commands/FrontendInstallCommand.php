@@ -55,6 +55,11 @@ class FrontendInstallCommand extends Command
                 in_array($framework, ['react', 'vue', 'svelte'], true)
             );
 
+            $htmx = $this->confirm(
+                'Do you want HTMX support?',
+                false
+            );
+
             $installDependencies = (bool) ($this->option('install') ?: $this->confirm(
                 'Do you want to install frontend dependencies now?',
                 false
@@ -68,6 +73,7 @@ class FrontendInstallCommand extends Command
                 'cssStack' => $cssStack,
                 'framework' => $framework,
                 'typescript' => $typescript,
+                'htmx' => $htmx,
                 'installDependencies' => $installDependencies,
                 'packageManager' => $packageManager,
                 'force' => (bool) $this->option('force'),
@@ -141,14 +147,15 @@ class FrontendInstallCommand extends Command
     {
         $framework = $options['framework'];
         $typescript = $options['typescript'];
+        $htmx = $options['htmx'];
         $cssStack = $options['cssStack'];
         $force = $options['force'];
 
         $files = [
-            base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript),
+            base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript, $htmx),
             base_path('vite.config.js') => $this->viteConfig($framework, $typescript),
             client_path('css/app.css') => $this->clientCss($cssStack),
-            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript),
+            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript, $htmx),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
             base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
@@ -335,7 +342,7 @@ class FrontendInstallCommand extends Command
      * @param bool $typescript
      * @return string
      */
-    protected function packageJson(string $framework, string $cssStack, bool $typescript): string
+    protected function packageJson(string $framework, string $cssStack, bool $typescript, bool $htmx): string
     {
         $dependencies = [];
         $devDependencies = [
@@ -360,6 +367,10 @@ class FrontendInstallCommand extends Command
 
         if ($cssStack === 'bootstrap') {
             $dependencies['bootstrap'] = '^5.3.3';
+        }
+
+        if ($htmx) {
+            $dependencies['htmx.org'] = '^2.0.9';
         }
 
         if ($cssStack === 'tailwind') {
@@ -477,16 +488,20 @@ class FrontendInstallCommand extends Command
      * @param bool $typescript
      * @return string
      */
-    protected function bootstrapFile(string $cssStack, bool $typescript): string
+    protected function bootstrapFile(string $cssStack, bool $typescript, bool $htmx): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
             ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
+            : '';
+        $htmxImport = $htmx
+            ? "import 'htmx.org';\n"
             : '';
 
         return $this->renderFrontendStub(
             'entries/' . ($typescript ? 'bootstrap.ts.stub' : 'bootstrap.js.stub'),
             [
                 'bootstrapVendorImport' => $bootstrapVendorImport,
+                'htmxImport' => $htmxImport,
             ]
         );
     }
