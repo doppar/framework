@@ -148,7 +148,7 @@ class FrontendInstallCommand extends Command
             base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript),
             base_path('vite.config.js') => $this->viteConfig($framework, $typescript),
             client_path('css/app.css') => $this->clientCss($cssStack),
-            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $framework, $typescript),
+            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript, $framework),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
             base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
@@ -482,7 +482,7 @@ class FrontendInstallCommand extends Command
      * @param bool $typescript
      * @return string
      */
-    protected function bootstrapFile(string $cssStack, string $framework, bool $typescript): string
+    protected function bootstrapFile(string $cssStack, bool $typescript, string $framework = 'vanilla'): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
             ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
