@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use ArrayIterator;
+use Phaseolies\DI\Container;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Phaseolies\Cache\Lock\AtomicLock;
 use Phaseolies\Cache\CacheStore;
@@ -17,12 +19,44 @@ class CacheStoreTest extends TestCase
     {
         $this->adapter = new ArrayAdapter();
         $this->cache = new CacheStore($this->adapter, 'test_');
+        $container = new Container();
+        $container->instance('cache', $this->cache);
+        Container::setInstance($container);
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     public function testGetReturnsDefaultForMissingKey()
     {
         $result = $this->cache->get('nonexistent_key', 'default_value');
         $this->assertEquals('default_value', $result);
+    }
+
+    public function testCacheHelperReturnsBoundStore()
+    {
+        $this->assertSame($this->cache, cache());
+    }
+
+    public function testCacheHelperGetsValues()
+    {
+        $this->cache->set('helper_key', 'helper_value');
+
+        $this->assertSame('helper_value', cache('helper_key'));
+        $this->assertSame('fallback', cache('missing_helper_key', 'fallback'));
+    }
+
+    public function testCacheHelperStoresMultipleValues()
+    {
+        $this->assertTrue(cache([
+            'helper_multi_1' => 'value1',
+            'helper_multi_2' => 'value2',
+        ], 60));
+
+        $this->assertSame('value1', $this->cache->get('helper_multi_1'));
+        $this->assertSame('value2', $this->cache->get('helper_multi_2'));
     }
 
     public function testSetAndGet()
@@ -60,6 +94,20 @@ class CacheStoreTest extends TestCase
         $this->assertFalse($this->cache->has('key2'));
     }
 
+    public function testClearOnlyRemovesItemsForCurrentPrefix()
+    {
+        $sharedAdapter = new ArrayAdapter();
+        $primary = new CacheStore($sharedAdapter, 'alpha_');
+        $secondary = new CacheStore($sharedAdapter, 'beta_');
+
+        $primary->set('shared', 'alpha');
+        $secondary->set('shared', 'beta');
+
+        $this->assertTrue($primary->clear());
+        $this->assertNull($primary->get('shared'));
+        $this->assertSame('beta', $secondary->get('shared'));
+    }
+
     public function testGetMultiple()
     {
         $this->cache->set('key1', 'value1');
@@ -70,6 +118,20 @@ class CacheStoreTest extends TestCase
             'key1' => 'value1',
             'key2' => 'value2',
             'key3' => 'default'
+        ], $result);
+    }
+
+    public function testGetMultipleAcceptsTraversableKeys()
+    {
+        $this->cache->set('key1', 'value1');
+        $this->cache->set('key2', 'value2');
+
+        $result = $this->cache->getMultiple(new ArrayIterator(['key1', 'key2', 'key3']), 'default');
+
+        $this->assertEquals([
+            'key1' => 'value1',
+            'key2' => 'value2',
+            'key3' => 'default',
         ], $result);
     }
 
@@ -85,6 +147,18 @@ class CacheStoreTest extends TestCase
         $this->assertEquals('value2', $this->cache->get('multi2'));
     }
 
+    public function testSetMultipleAcceptsTraversableValues()
+    {
+        $values = new ArrayIterator([
+            'multi1' => 'value1',
+            'multi2' => 'value2',
+        ]);
+
+        $this->assertTrue($this->cache->setMultiple($values));
+        $this->assertEquals('value1', $this->cache->get('multi1'));
+        $this->assertEquals('value2', $this->cache->get('multi2'));
+    }
+
     public function testDeleteMultiple()
     {
         $this->cache->set('key1', 'value1');
@@ -92,6 +166,18 @@ class CacheStoreTest extends TestCase
         $this->cache->set('key3', 'value3');
 
         $this->assertTrue($this->cache->deleteMultiple(['key1', 'key2']));
+        $this->assertFalse($this->cache->has('key1'));
+        $this->assertFalse($this->cache->has('key2'));
+        $this->assertTrue($this->cache->has('key3'));
+    }
+
+    public function testDeleteMultipleAcceptsTraversableKeys()
+    {
+        $this->cache->set('key1', 'value1');
+        $this->cache->set('key2', 'value2');
+        $this->cache->set('key3', 'value3');
+
+        $this->assertTrue($this->cache->deleteMultiple(new ArrayIterator(['key1', 'key2'])));
         $this->assertFalse($this->cache->has('key1'));
         $this->assertFalse($this->cache->has('key2'));
         $this->assertTrue($this->cache->has('key3'));
@@ -200,6 +286,48 @@ class CacheStoreTest extends TestCase
         $this->assertEquals('forever_value', $this->cache->get('forever_stash'));
     }
 
+    public function testStashDoesNotRecomputeCachedNullValues()
+    {
+        $calls = 0;
+
+        $first = $this->cache->stash('nullable', 60, function () use (&$calls) {
+            $calls++;
+
+            return null;
+        });
+
+        $second = $this->cache->stash('nullable', 60, function () use (&$calls) {
+            $calls++;
+
+            return 'recomputed';
+        });
+
+        $this->assertNull($first);
+        $this->assertNull($second);
+        $this->assertSame(1, $calls);
+    }
+
+    public function testStashForeverDoesNotRecomputeCachedNullValues()
+    {
+        $calls = 0;
+
+        $first = $this->cache->stashForever('nullable_forever', function () use (&$calls) {
+            $calls++;
+
+            return null;
+        });
+
+        $second = $this->cache->stashForever('nullable_forever', function () use (&$calls) {
+            $calls++;
+
+            return 'recomputed';
+        });
+
+        $this->assertNull($first);
+        $this->assertNull($second);
+        $this->assertSame(1, $calls);
+    }
+
     public function testStashWhen()
     {
         $callback = function () {
@@ -221,6 +349,18 @@ class CacheStoreTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->cache->get('invalid/key');
+    }
+
+    public function testEmptyKeyThrowsException()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->cache->get('');
+    }
+
+    public function testReservedColonKeyThrowsException()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->cache->get('invalid:key');
     }
 
     public function testPrefixIsApplied()
@@ -509,11 +649,12 @@ class CacheStoreTest extends TestCase
         // Release the first lock after a short delay in another thread simulation
         // Since we can’t sleep in test too long, we manually simulate expiry
         sleep(1);
-        $this->adapter->deleteItem('lock_test');
+        $this->adapter->deleteItem('test_lock_test');
 
         $this->assertTrue($lock2->block(2));
-        $this->assertFalse($this->adapter->hasItem('lock_test'));
+        $this->assertTrue($this->adapter->hasItem('test_lock_test'));
         $this->assertTrue($lock2->release());
+        $this->assertFalse($this->adapter->hasItem('test_lock_test'));
     }
 
     public function testLockOwnerGeneration()

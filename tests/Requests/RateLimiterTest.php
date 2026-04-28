@@ -2,22 +2,22 @@
 
 namespace Tests\Unit\Requests;
 
-use Phaseolies\Cache\RateLimiter;
+use Phaseolies\Cache\IncrementableCacheInterface;
 use Phaseolies\Cache\RateLimit;
-use Psr\SimpleCache\CacheInterface;
-use Psr\SimpleCache\InvalidArgumentException;
-use PHPUnit\Framework\TestCase;
+use Phaseolies\Cache\RateLimiter;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\TestCase;
+use Psr\SimpleCache\InvalidArgumentException;
 
 #[AllowMockObjectsWithoutExpectations]
 class RateLimiterTest extends TestCase
 {
-    protected $cache;
-    protected $limiter;
+    protected IncrementableCacheInterface $cache;
+    protected RateLimiter $limiter;
 
     protected function setUp(): void
     {
-        $this->cache = $this->createMock(CacheInterface::class);
+        $this->cache = $this->createMock(IncrementableCacheInterface::class);
         $this->limiter = new RateLimiter($this->cache);
     }
 
@@ -33,36 +33,31 @@ class RateLimiterTest extends TestCase
         $decaySeconds = 60;
         $now = time();
 
-        // Mock has() to return false for both key checks
-        $this->cache->expects($this->exactly(1))
-            ->method('has')
-            ->willReturnCallback(function ($arg) use ($key) {
-                TestCase::assertTrue(in_array($arg, [$key, $key . '_timer']));
-            })
-            ->willReturn(false);
-
-        // Mock set() calls
         $this->cache->expects($this->exactly(2))
-            ->method('set')
+            ->method('add')
             ->willReturnCallback(function ($keyArg, $valueArg, $ttlArg) use ($key, $decaySeconds, $now) {
                 static $call = 0;
                 $call++;
 
                 if ($call === 1) {
-                    // First expected call: [$key, 1, $decaySeconds]
-                    TestCase::assertEquals($key, $keyArg);
-                    TestCase::assertEquals(1, $valueArg);
-                    TestCase::assertEquals($decaySeconds, $ttlArg);
-                } elseif ($call === 2) {
-                    // Second expected call: [$key . '_timer', $now + $decaySeconds, $decaySeconds]
-                    TestCase::assertEquals($key . '_timer', $keyArg);
-                    TestCase::assertEquals($now + $decaySeconds, $valueArg);
-                    TestCase::assertEquals($decaySeconds, $ttlArg);
+                    TestCase::assertSame($key, $keyArg);
+                    TestCase::assertSame(1, $valueArg);
+                    TestCase::assertSame($decaySeconds, $ttlArg);
+
+                    return true;
                 }
 
+                TestCase::assertSame($key . '_timer', $keyArg);
+                TestCase::assertSame($now + $decaySeconds, $valueArg);
+                TestCase::assertSame($decaySeconds, $ttlArg);
+
                 return true;
-            })
-            ->willReturn(true);
+            });
+
+        $this->cache->expects($this->once())
+            ->method('get')
+            ->with($key . '_timer')
+            ->willReturn($now + $decaySeconds);
 
         $result = $this->limiter->attempt($key, $maxAttempts, $decaySeconds);
 
@@ -70,6 +65,84 @@ class RateLimiterTest extends TestCase
         $this->assertEquals($maxAttempts, $result->limit);
         $this->assertEquals($maxAttempts - 1, $result->remaining);
         $this->assertEquals($now + $decaySeconds, $result->resetAt);
+    }
+
+    public function testAttemptWithExistingKeyUsesIncrementPath()
+    {
+        $key = 'test_key';
+        $maxAttempts = 5;
+        $decaySeconds = 60;
+        $now = time();
+
+        $this->cache->expects($this->once())
+            ->method('add')
+            ->with($key, 1, $decaySeconds)
+            ->willReturn(false);
+
+        $this->cache->expects($this->once())
+            ->method('increment')
+            ->with($key)
+            ->willReturn(3);
+
+        $this->cache->expects($this->once())
+            ->method('set')
+            ->with($key . '_timer', $now + $decaySeconds, $decaySeconds)
+            ->willReturn(true);
+
+        $this->cache->expects($this->once())
+            ->method('get')
+            ->with($key . '_timer')
+            ->willReturn($now + $decaySeconds);
+
+        $result = $this->limiter->attempt($key, $maxAttempts, $decaySeconds);
+
+        $this->assertSame(2, $result->remaining);
+    }
+
+    public function testAttemptRecoversWhenIncrementReturnsFalse()
+    {
+        $key = 'test_key';
+        $maxAttempts = 5;
+        $decaySeconds = 60;
+        $now = time();
+
+        $this->cache->expects($this->once())
+            ->method('add')
+            ->with($key, 1, $decaySeconds)
+            ->willReturn(false);
+
+        $this->cache->expects($this->once())
+            ->method('increment')
+            ->with($key)
+            ->willReturn(false);
+
+        $this->cache->expects($this->exactly(2))
+            ->method('set')
+            ->willReturnCallback(function ($keyArg, $valueArg, $ttlArg) use ($key, $decaySeconds, $now) {
+                static $call = 0;
+                $call++;
+
+                if ($call === 1) {
+                    TestCase::assertSame($key, $keyArg);
+                    TestCase::assertSame(1, $valueArg);
+                } else {
+                    TestCase::assertSame($key . '_timer', $keyArg);
+                    TestCase::assertSame($now + $decaySeconds, $valueArg);
+                }
+
+                TestCase::assertSame($decaySeconds, $ttlArg);
+
+                return true;
+            });
+
+        $this->cache->expects($this->once())
+            ->method('get')
+            ->with($key . '_timer')
+            ->willReturn($now + $decaySeconds);
+
+        $result = $this->limiter->attempt($key, $maxAttempts, $decaySeconds);
+
+        $this->assertSame($maxAttempts - 1, $result->remaining);
     }
 
     public function testTooManyAttempts()
@@ -125,30 +198,53 @@ class RateLimiterTest extends TestCase
         $decaySeconds = 60;
         $now = time();
 
-        $this->cache->method('has')
-            ->with($key)
-            ->willReturn(false);
-
         $this->cache->expects($this->exactly(2))
-            ->method('set')
+            ->method('add')
             ->willReturnCallback(function ($keyArg, $valueArg, $ttlArg) use ($key, $decaySeconds, $now) {
                 static $call = 0;
                 $call++;
 
                 if ($call === 1) {
-                    TestCase::assertEquals($key, $keyArg);
-                    TestCase::assertEquals(1, $valueArg);
-                    TestCase::assertEquals($decaySeconds, $ttlArg);
-                } elseif ($call === 2) {
-                    TestCase::assertEquals($key . '_timer', $keyArg);
-                    TestCase::assertEquals($now + $decaySeconds, $valueArg);
-                    TestCase::assertEquals($decaySeconds, $ttlArg);
+                    TestCase::assertSame($key, $keyArg);
+                    TestCase::assertSame(1, $valueArg);
+                    TestCase::assertSame($decaySeconds, $ttlArg);
+
+                    return true;
                 }
-            })
-            ->willReturn(true);
+
+                TestCase::assertSame($key . '_timer', $keyArg);
+                TestCase::assertSame($now + $decaySeconds, $valueArg);
+                TestCase::assertSame($decaySeconds, $ttlArg);
+
+                return true;
+            });
 
         $result = $this->limiter->hit($key, $decaySeconds);
         $this->assertEquals(1, $result);
+    }
+
+    public function testHitWithExistingKeyUsesIncrement()
+    {
+        $key = 'test_key';
+        $decaySeconds = 60;
+        $now = time();
+
+        $this->cache->expects($this->once())
+            ->method('add')
+            ->with($key, 1, $decaySeconds)
+            ->willReturn(false);
+
+        $this->cache->expects($this->once())
+            ->method('increment')
+            ->with($key)
+            ->willReturn(4);
+
+        $this->cache->expects($this->once())
+            ->method('set')
+            ->with($key . '_timer', $now + $decaySeconds, $decaySeconds)
+            ->willReturn(true);
+
+        $this->assertSame(4, $this->limiter->hit($key, $decaySeconds));
     }
 
     public function testClear()
@@ -166,8 +262,9 @@ class RateLimiterTest extends TestCase
                 } elseif ($call === 2) {
                     TestCase::assertEquals($key . '_timer', $keyArg);
                 }
-            })
-            ->willReturn(true);
+
+                return true;
+            });
 
         $this->limiter->clear($key);
     }
@@ -214,8 +311,8 @@ class RateLimiterTest extends TestCase
         $key = 'test_key';
         $exception = new class extends \Exception implements InvalidArgumentException {};
 
-        $this->cache->method('has')
-            ->with($key)
+        $this->cache->method('add')
+            ->with($key, 1, 60)
             ->willThrowException($exception);
 
         $this->expectException(InvalidArgumentException::class);
