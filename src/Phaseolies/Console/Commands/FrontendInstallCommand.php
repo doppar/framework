@@ -124,13 +124,15 @@ class FrontendInstallCommand extends Command
      */
     protected function ensureClientDirectories(): void
     {
-        foreach ([
-            client_path(),
-            client_path('css'),
-            client_path('js'),
-            resource_path('views/layouts'),
-            storage_path('framework'),
-        ] as $directory) {
+        foreach (
+            [
+                client_path(),
+                client_path('css'),
+                client_path('js'),
+                resource_path('views/layouts'),
+                storage_path('framework'),
+            ] as $directory
+        ) {
             if (!is_dir($directory)) {
                 mkdir($directory, 0777, true);
             }
@@ -469,7 +471,7 @@ class FrontendInstallCommand extends Command
         return match ($framework) {
             'react' => [
                 client_path('js/' . ($typescript ? 'App.tsx' : 'App.jsx')) =>
-                    $this->getFrontendStubContent('components/' . ($typescript ? 'react.tsx.stub' : 'react.jsx.stub')),
+                $this->getFrontendStubContent('components/' . ($typescript ? 'react.tsx.stub' : 'react.jsx.stub')),
             ],
             'vue' => [
                 client_path('js/App.vue') => $this->getFrontendStubContent('components/vue.stub'),

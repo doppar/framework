@@ -150,7 +150,7 @@ class FrontendInstallCommandTest extends TestCase
 
         $packageJson = $method->invoke($command, 'vanilla', 'none', false, true);
 
-        $this->assertStringContainsString('"htmx.org": "^2.0.4"', $packageJson);
+        $this->assertStringContainsString('"htmx.org": "^2.0.9"', $packageJson);
     }
 
     public function testTailwindCssIncludesExplicitSourceDirectives(): void
@@ -285,7 +285,7 @@ JSON;
     },
     "dependencies": {
         "bootstrap": "^5.3.3",
-        "htmx.org": "^2.0.4"
+        "htmx.org": "^2.0.9"
     },
     "devDependencies": {
         "vite": "^7.0.0"
