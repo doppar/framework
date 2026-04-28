@@ -1,5 +1,13 @@
 # Release Notes
 
+## v3.21.2 - 2026-04-28
+
+* split the bootstrap scaffold into language-specific stubs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/261
+
+## v3.21.1 - 2026-04-27
+
+* Always scaffold frontend welcome pages through layouts/app.odo.php by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/259
+
 ## v3.21.0 - 2026-04-26
 
 * Add first-class Vite frontend scaffolding for React, Vue, Svelte, and Tailwind by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/258
