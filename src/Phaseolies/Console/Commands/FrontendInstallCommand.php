@@ -9,21 +9,6 @@ use Symfony\Component\Process\Process;
 
 class FrontendInstallCommand extends Command
 {
-    private const BOOTSTRAP_VENDOR_IMPORT = "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n";
-
-    private const HTMX_VENDOR_IMPORT = "import 'htmx.org';\n";
-
-    private const TYPESCRIPT_DECLARATION = <<<'TYPESCRIPT'
-declare global {
-    interface Window {
-        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
-            csrfToken?: string | null;
-            headers?: Record<string, string>;
-        };
-    }
-}
-
-TYPESCRIPT;
     use InteractsWithFrontendScaffoldState;
 
     /**
@@ -500,22 +485,19 @@ TYPESCRIPT;
     protected function bootstrapFile(string $cssStack, string $framework, bool $typescript): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
-            ? self::BOOTSTRAP_VENDOR_IMPORT
+            ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
             : '';
-
         $htmxVendorImport = $framework === 'htmx'
-            ? self::HTMX_VENDOR_IMPORT
+            ? "import 'htmx.org';\n"
             : '';
 
-        $typescriptDeclaration = $typescript
-            ? self::TYPESCRIPT_DECLARATION
-            : '';
-
-        return $this->renderFrontendStub('entries/bootstrap.stub', [
-            'bootstrapVendorImport' => $bootstrapVendorImport,
-            'htmxVendorImport' => $htmxVendorImport,
-            'typescriptDeclaration' => $typescriptDeclaration,
-        ]);
+        return $this->renderFrontendStub(
+            'entries/' . ($typescript ? 'bootstrap.ts.stub' : 'bootstrap.js.stub'),
+            [
+                'bootstrapVendorImport' => $bootstrapVendorImport,
+                'htmxVendorImport' => $htmxVendorImport,
+            ]
+        );
     }
 
     /**

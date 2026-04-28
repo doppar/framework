@@ -1,0 +1,19 @@
+{{ bootstrapVendorImport }}const csrfToken = document
+    .querySelector('meta[name="csrf-token"]')
+    ?.getAttribute('content');
+
+window.__DOPPAR_FRONTEND__ = {
+    ...(window.__DOPPAR_FRONTEND__ ?? {}),
+    csrfToken: csrfToken ?? null,
+    headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
+};
+
+declare global {
+    interface Window {
+        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
+            csrfToken?: string | null;
+            headers?: Record<string, string>;
+        };
+    }
+}
+{{ htmxVendorImport }}
