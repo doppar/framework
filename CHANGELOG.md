@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.22.0 - 2026-04-28
+
+* adding htmx support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/262
+* Improve CacheStore correctness, add cache() helper by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/263
+
 ## v3.21.2 - 2026-04-28
 
 * split the bootstrap scaffold into language-specific stubs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/261
