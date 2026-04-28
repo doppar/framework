@@ -9,21 +9,6 @@ use Symfony\Component\Process\Process;
 
 class FrontendInstallCommand extends Command
 {
-    private const BOOTSTRAP_VENDOR_IMPORT = "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n";
-
-    private const HTMX_VENDOR_IMPORT = "import 'htmx.org';\n";
-
-    private const TYPESCRIPT_DECLARATION = <<<'TYPESCRIPT'
-declare global {
-    interface Window {
-        __DOPPAR_FRONTEND__?: Record<string, unknown> & {
-            csrfToken?: string | null;
-            headers?: Record<string, string>;
-        };
-    }
-}
-
-TYPESCRIPT;
     use InteractsWithFrontendScaffoldState;
 
     /**
@@ -61,13 +46,18 @@ TYPESCRIPT;
 
             $framework = strtolower($this->choice(
                 'Which client framework do you want to use?',
-                ['Vanilla', 'React', 'Vue', 'Svelte', 'htmx'],
+                ['Vanilla', 'React', 'Vue', 'Svelte'],
                 0
             ));
 
             $typescript = $this->confirm(
                 'Do you want TypeScript support?',
                 in_array($framework, ['react', 'vue', 'svelte'], true)
+            );
+
+            $htmx = $this->confirm(
+                'Do you want HTMX support?',
+                false
             );
 
             $installDependencies = (bool) ($this->option('install') ?: $this->confirm(
@@ -83,6 +73,7 @@ TYPESCRIPT;
                 'cssStack' => $cssStack,
                 'framework' => $framework,
                 'typescript' => $typescript,
+                'htmx' => $htmx,
                 'installDependencies' => $installDependencies,
                 'packageManager' => $packageManager,
                 'force' => (bool) $this->option('force'),
@@ -133,13 +124,15 @@ TYPESCRIPT;
      */
     protected function ensureClientDirectories(): void
     {
-        foreach ([
-            client_path(),
-            client_path('css'),
-            client_path('js'),
-            resource_path('views/layouts'),
-            storage_path('framework'),
-        ] as $directory) {
+        foreach (
+            [
+                client_path(),
+                client_path('css'),
+                client_path('js'),
+                resource_path('views/layouts'),
+                storage_path('framework'),
+            ] as $directory
+        ) {
             if (!is_dir($directory)) {
                 mkdir($directory, 0777, true);
             }
@@ -156,14 +149,15 @@ TYPESCRIPT;
     {
         $framework = $options['framework'];
         $typescript = $options['typescript'];
+        $htmx = $options['htmx'];
         $cssStack = $options['cssStack'];
         $force = $options['force'];
 
         $files = [
-            base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript),
+            base_path('package.json') => $this->packageJson($framework, $cssStack, $typescript, $htmx),
             base_path('vite.config.js') => $this->viteConfig($framework, $typescript),
             client_path('css/app.css') => $this->clientCss($cssStack),
-            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $framework, $typescript),
+            client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript, $htmx),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
             base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
             base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
@@ -335,7 +329,7 @@ TYPESCRIPT;
             return $typescript ? 'main.tsx' : 'main.jsx';
         }
 
-        if (in_array($framework, ['vue', 'svelte', 'htmx'], true)) {
+        if (in_array($framework, ['vue', 'svelte'], true)) {
             return $typescript ? 'main.ts' : 'main.js';
         }
 
@@ -350,7 +344,7 @@ TYPESCRIPT;
      * @param bool $typescript
      * @return string
      */
-    protected function packageJson(string $framework, string $cssStack, bool $typescript): string
+    protected function packageJson(string $framework, string $cssStack, bool $typescript, bool $htmx): string
     {
         $dependencies = [];
         $devDependencies = [
@@ -377,8 +371,8 @@ TYPESCRIPT;
             $dependencies['bootstrap'] = '^5.3.3';
         }
 
-        if ($framework === 'htmx') {
-            $dependencies['htmx.org'] = '^2.0.10';
+        if ($htmx) {
+            $dependencies['htmx.org'] = '^2.0.9';
         }
 
         if ($cssStack === 'tailwind') {
@@ -477,7 +471,7 @@ TYPESCRIPT;
         return match ($framework) {
             'react' => [
                 client_path('js/' . ($typescript ? 'App.tsx' : 'App.jsx')) =>
-                    $this->getFrontendStubContent('components/' . ($typescript ? 'react.tsx.stub' : 'react.jsx.stub')),
+                $this->getFrontendStubContent('components/' . ($typescript ? 'react.tsx.stub' : 'react.jsx.stub')),
             ],
             'vue' => [
                 client_path('js/App.vue') => $this->getFrontendStubContent('components/vue.stub'),
@@ -493,29 +487,25 @@ TYPESCRIPT;
      * Generate the shared client bootstrap file.
      *
      * @param string $cssStack
-     * @param string $framework
      * @param bool $typescript
      * @return string
      */
-    protected function bootstrapFile(string $cssStack, string $framework, bool $typescript): string
+    protected function bootstrapFile(string $cssStack, bool $typescript, bool $htmx): string
     {
         $bootstrapVendorImport = $cssStack === 'bootstrap'
-            ? self::BOOTSTRAP_VENDOR_IMPORT
+            ? "import 'bootstrap/dist/js/bootstrap.bundle.min.js';\n"
+            : '';
+        $htmxImport = $htmx
+            ? "import 'htmx.org';\n"
             : '';
 
-        $htmxVendorImport = $framework === 'htmx'
-            ? self::HTMX_VENDOR_IMPORT
-            : '';
-
-        $typescriptDeclaration = $typescript
-            ? self::TYPESCRIPT_DECLARATION
-            : '';
-
-        return $this->renderFrontendStub('entries/bootstrap.stub', [
-            'bootstrapVendorImport' => $bootstrapVendorImport,
-            'htmxVendorImport' => $htmxVendorImport,
-            'typescriptDeclaration' => $typescriptDeclaration,
-        ]);
+        return $this->renderFrontendStub(
+            'entries/' . ($typescript ? 'bootstrap.ts.stub' : 'bootstrap.js.stub'),
+            [
+                'bootstrapVendorImport' => $bootstrapVendorImport,
+                'htmxImport' => $htmxImport,
+            ]
+        );
     }
 
     /**

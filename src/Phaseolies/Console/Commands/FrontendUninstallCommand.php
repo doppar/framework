@@ -87,9 +87,9 @@ class FrontendUninstallCommand extends Command
             && $this->isGeneratedPackageJson((string) file_get_contents($packageJsonPath));
 
         $generatedRootFiles = [
-            base_path('vite.config.js') => fn (string $contents): bool => $this->isGeneratedViteConfig($contents),
-            base_path('tsconfig.json') => fn (string $contents): bool => $this->isGeneratedTsConfig($contents),
-            base_path('postcss.config.js') => fn (string $contents): bool => $this->isGeneratedPostcssConfig($contents),
+            base_path('vite.config.js') => fn(string $contents): bool => $this->isGeneratedViteConfig($contents),
+            base_path('tsconfig.json') => fn(string $contents): bool => $this->isGeneratedTsConfig($contents),
+            base_path('postcss.config.js') => fn(string $contents): bool => $this->isGeneratedPostcssConfig($contents),
         ];
 
         foreach ($generatedRootFiles as $path => $detector) {
@@ -319,8 +319,8 @@ class FrontendUninstallCommand extends Command
             'react-dom',
             'vue',
             'svelte',
-            'htmx.org',
             'bootstrap',
+            'htmx.org',
             'postcss',
             'tailwindcss',
             '@tailwindcss/postcss',
@@ -400,5 +400,4 @@ class FrontendUninstallCommand extends Command
         return str_contains($contents, "export default")
             && str_contains($contents, "'@tailwindcss/postcss': {}");
     }
-
 }

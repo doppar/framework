@@ -1,4 +1,4 @@
-{{ bootstrapVendorImport }}const csrfToken = document
+{{ bootstrapVendorImport }}{{ htmxImport }}const csrfToken = document
     .querySelector('meta[name="csrf-token"]')
     ?.getAttribute('content');
 
@@ -7,5 +7,3 @@ window.__DOPPAR_FRONTEND__ = {
     csrfToken: csrfToken ?? null,
     headers: csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {},
 };
-{{ htmxVendorImport }}
-{{ typescriptDeclaration }}
