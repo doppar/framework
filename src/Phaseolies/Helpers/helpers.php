@@ -343,6 +343,30 @@ if (!function_exists('config')) {
     }
 }
 
+if (!function_exists('cache')) {
+    /**
+     * Get the cache store instance, retrieve an item, or store multiple items
+     *
+     * @param string|array|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function cache(string|array|null $key = null, mixed $default = null): mixed
+    {
+        $store = app('cache');
+
+        if (is_null($key)) {
+            return $store;
+        }
+
+        if (is_array($key)) {
+            return $store->setMultiple($key, $default);
+        }
+
+        return $store->get($key, $default);
+    }
+}
+
 if (!function_exists('is_auth')) {
     /**
      * Check if the user is authenticated.

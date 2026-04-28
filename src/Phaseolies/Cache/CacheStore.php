@@ -2,18 +2,19 @@
 
 namespace Phaseolies\Cache;
 
+use DateTime;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
-use Psr\SimpleCache\CacheInterface;
 use Phaseolies\Cache\Lock\AtomicLock;
+use Symfony\Contracts\Cache\CacheInterface as ContractsCacheInterface;
 
-class CacheStore implements CacheInterface
+class CacheStore implements IncrementableCacheInterface
 {
     /**
      * The cache adapter instance.
      *
      * @var AdapterInterface
      */
-    protected $adapter;
+    protected AdapterInterface $adapter;
 
     /**
      * The cache prefix
@@ -32,7 +33,7 @@ class CacheStore implements CacheInterface
     public function __construct(AdapterInterface $adapter, ?string $prefix = null)
     {
         $this->adapter = $adapter;
-        $this->prefix = $prefix ?? config('caching.prefix');
+        $this->prefix = (string) ($prefix ?? config('caching.prefix'));
     }
 
     /**
@@ -47,6 +48,19 @@ class CacheStore implements CacheInterface
     }
 
     /**
+     * Validate a cache key and return the prefixed adapter key.
+     *
+     * @param mixed $key
+     * @return string
+     */
+    protected function prefixedValidatedKey($key): string
+    {
+        $key = $this->normalizeKey($key);
+
+        return $this->prefixedKey($key);
+    }
+
+    /**
      * Get the cache data by key
      *
      * @param mixed $key
@@ -56,8 +70,7 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function get($key, $default = null): mixed
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
         $item = $this->adapter->getItem($key);
 
         return $item->isHit() ? $item->get() : $default;
@@ -74,8 +87,7 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function set($key, $value, $ttl = null): bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
 
         $item = $this->adapter->getItem($key);
         $item->set($value);
@@ -96,9 +108,7 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function delete($key): bool
     {
-        $key = $this->prefixedKey($key);
-
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
 
         return $this->adapter->deleteItem($key);
     }
@@ -111,7 +121,7 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function clear(): bool
     {
-        return $this->adapter->clear();
+        return $this->adapter->clear($this->prefix);
     }
 
     /**
@@ -124,19 +134,23 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function getMultiple($keys, $default = null): iterable
     {
-        if (!is_iterable($keys)) {
-            throw new \InvalidArgumentException('Keys must be an array or traversable');
+        $keys = $this->normalizeKeyList($keys);
+        $prefixedKeys = [];
+
+        foreach ($keys as $key) {
+            $prefixedKeys[] = $this->prefixedValidatedKey($key);
         }
 
-        $prefixedKeys = array_map(fn($key) => $this->prefixedKey($key), (array)$keys);
-        $validatedKeys = $this->validateKeys($prefixedKeys);
-
-        $items = $this->adapter->getItems($validatedKeys);
+        $items = $this->adapter->getItems($prefixedKeys);
         $results = [];
 
         foreach ($items as $key => $item) {
             $originalKey = substr($key, strlen($this->prefix));
             $results[$originalKey] = $item->isHit() ? $item->get() : $default;
+        }
+
+        foreach ($keys as $key) {
+            $results[$key] ??= $default;
         }
 
         return $results;
@@ -152,16 +166,13 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function setMultiple($values, $ttl = null): bool
     {
-        if (!is_iterable($values)) {
-            throw new \InvalidArgumentException('Values must be an array or traversable');
-        }
+        $values = $this->normalizeValueMap($values);
 
         $success = true;
         $ttl = $this->convertTtlToSeconds($ttl);
 
         foreach ($values as $key => $value) {
-            $prefixedKey = $this->prefixedKey($key);
-            $this->validateKey($prefixedKey);
+            $prefixedKey = $this->prefixedValidatedKey($key);
             $item = $this->adapter->getItem($prefixedKey);
             $item->set($value);
 
@@ -184,14 +195,14 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function deleteMultiple($keys): bool
     {
-        if (!is_iterable($keys)) {
-            throw new \InvalidArgumentException('Keys must be an array or traversable');
+        $keys = $this->normalizeKeyList($keys);
+        $prefixedKeys = [];
+
+        foreach ($keys as $key) {
+            $prefixedKeys[] = $this->prefixedValidatedKey($key);
         }
 
-        $prefixedKeys = array_map(fn($key) => $this->prefixedKey($key), (array)$keys);
-        $validatedKeys = $this->validateKeys($prefixedKeys);
-
-        return $this->adapter->deleteItems($validatedKeys);
+        return $this->adapter->deleteItems($prefixedKeys);
     }
 
     /**
@@ -203,9 +214,7 @@ class CacheStore implements CacheInterface
     #[\Override]
     public function has($key): bool
     {
-        $key = $this->prefixedKey($key);
-
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
 
         return $this->adapter->hasItem($key);
     }
@@ -219,25 +228,25 @@ class CacheStore implements CacheInterface
      */
     public function increment($key, $value = 1): int|bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
-        $item = $this->adapter->getItem($key);
+        $key = $this->prefixedValidatedKey($key);
 
-        if (!$item->isHit()) {
-            return false;
-        }
+        return $this->withKeyLock($key, function () use ($key, $value) {
+            $item = $this->adapter->getItem($key);
 
-        $current = (int)$item->get();
-        $new = $current + $value;
-        $item->set($new);
+            if (!$item->isHit()) {
+                return false;
+            }
 
-        // Preserve existing expiration
-        if ($item->getMetadata()['expiry'] ?? null) {
-            $item->expiresAt(\DateTime::createFromFormat('U', $item->getMetadata()['expiry']));
-        }
+            $current = (int) $item->get();
+            $new = $current + $value;
+            $item->set($new);
 
-        $this->adapter->save($item);
-        return $new;
+            if ($item->getMetadata()['expiry'] ?? null) {
+                $item->expiresAt(DateTime::createFromFormat('U', (string) $item->getMetadata()['expiry']));
+            }
+
+            return $this->adapter->save($item) ? $new : false;
+        });
     }
 
     /**
@@ -249,25 +258,25 @@ class CacheStore implements CacheInterface
      */
     public function decrement($key, $value = 1): int|bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
-        $item = $this->adapter->getItem($key);
+        $key = $this->prefixedValidatedKey($key);
 
-        if (!$item->isHit()) {
-            return false;
-        }
+        return $this->withKeyLock($key, function () use ($key, $value) {
+            $item = $this->adapter->getItem($key);
 
-        $current = (int)$item->get();
-        $new = $current - $value;
-        $item->set($new);
+            if (!$item->isHit()) {
+                return false;
+            }
 
-        // Preserve existing expiration
-        if ($item->getMetadata()['expiry'] ?? null) {
-            $item->expiresAt(\DateTime::createFromFormat('U', $item->getMetadata()['expiry']));
-        }
+            $current = (int) $item->get();
+            $new = $current - $value;
+            $item->set($new);
 
-        $this->adapter->save($item);
-        return $new;
+            if ($item->getMetadata()['expiry'] ?? null) {
+                $item->expiresAt(DateTime::createFromFormat('U', (string) $item->getMetadata()['expiry']));
+            }
+
+            return $this->adapter->save($item) ? $new : false;
+        });
     }
 
     /**
@@ -280,21 +289,39 @@ class CacheStore implements CacheInterface
      */
     public function add($key, $value, $ttl = null): bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
+        $seconds = $this->convertTtlToSeconds($ttl);
 
-        if ($this->adapter->hasItem($key)) {
-            return false;
+        if ($this->adapter instanceof ContractsCacheInterface) {
+            $created = false;
+
+            $this->adapter->get($key, function ($item) use (&$created, $value, $seconds) {
+                $created = true;
+
+                if ($seconds !== null) {
+                    $item->expiresAfter($seconds);
+                }
+
+                return $value;
+            });
+
+            return $created;
         }
 
-        $item = $this->adapter->getItem($key);
-        $item->set($value);
+        return $this->withKeyLock($key, function () use ($key, $value, $seconds) {
+            if ($this->adapter->hasItem($key)) {
+                return false;
+            }
 
-        if ($ttl !== null) {
-            $item->expiresAfter($this->convertTtlToSeconds($ttl));
-        }
+            $item = $this->adapter->getItem($key);
+            $item->set($value);
 
-        return $this->adapter->save($item);
+            if ($seconds !== null) {
+                $item->expiresAfter($seconds);
+            }
+
+            return $this->adapter->save($item);
+        });
     }
 
     /**
@@ -306,8 +333,7 @@ class CacheStore implements CacheInterface
      */
     public function forever($key, $value): bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
 
         $item = $this->adapter->getItem($key);
         $item->set($value);
@@ -324,8 +350,7 @@ class CacheStore implements CacheInterface
      */
     public function forget($key): bool
     {
-        $key = $this->prefixedKey($key);
-        $this->validateKey($key);
+        $key = $this->prefixedValidatedKey($key);
 
         if (!$this->adapter->hasItem($key)) {
             return false;
@@ -350,7 +375,11 @@ class CacheStore implements CacheInterface
             ));
         }
 
-        if (preg_match('/[{}()\/\\\\@]/', $key)) {
+        if ($key === '') {
+            throw new \InvalidArgumentException('Cache key must not be empty');
+        }
+
+        if (preg_match('/[{}()\/\\\\@\:]/', $key)) {
             throw new \InvalidArgumentException(sprintf(
                 'Invalid key: "%s". The key contains one or more characters reserved for future extension',
                 $key
@@ -395,6 +424,119 @@ class CacheStore implements CacheInterface
     }
 
     /**
+     * Normalize an individual cache key.
+     *
+     * @param mixed $key
+     * @return string
+     */
+    protected function normalizeKey($key): string
+    {
+        $this->validateKey($key);
+
+        return $key;
+    }
+
+    /**
+     * Normalize an iterable of cache keys into a sequential array of strings.
+     *
+     * @param mixed $keys
+     * @return array<int, string>
+     */
+    protected function normalizeKeyList($keys): array
+    {
+        if ($keys instanceof \Traversable) {
+            $keys = iterator_to_array($keys, false);
+        } elseif (!is_array($keys)) {
+            throw new \InvalidArgumentException('Keys must be an array or traversable');
+        }
+
+        $normalized = [];
+
+        foreach ($keys as $key) {
+            $normalized[] = $this->normalizeKey($key);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Normalize an iterable of key/value pairs into an array.
+     *
+     * @param mixed $values
+     * @return array<string, mixed>
+     */
+    protected function normalizeValueMap($values): array
+    {
+        if ($values instanceof \Traversable) {
+            $values = iterator_to_array($values, true);
+        } elseif (!is_array($values)) {
+            throw new \InvalidArgumentException('Values must be an array or traversable');
+        }
+
+        $normalized = [];
+
+        foreach ($values as $key => $value) {
+            $normalized[$this->normalizeKey($key)] = $value;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Execute a callback while holding a process-local lock for the key.
+     *
+     * @template T
+     * @param string $key
+     * @param \Closure(): T $callback
+     * @return T
+     */
+    protected function withKeyLock(string $key, \Closure $callback): mixed
+    {
+        $directory = $this->lockDirectory();
+
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+
+        $path = $directory . DIRECTORY_SEPARATOR . sha1($key) . '.lock';
+        $handle = fopen($path, 'c+');
+
+        if ($handle === false) {
+            throw new \RuntimeException(sprintf('Unable to open cache lock file: %s', $path));
+        }
+
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                throw new \RuntimeException(sprintf('Unable to acquire cache lock: %s', $path));
+            }
+
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Resolve the directory used for process-local cache locks.
+     *
+     * @return string
+     */
+    protected function lockDirectory(): string
+    {
+        if (function_exists('storage_path')) {
+            try {
+                return storage_path('framework/cache/locks');
+            } catch (\Throwable) {
+                // Fall back to the system temp directory when the application container
+                // is not fully bootstrapped, e.g. in isolated unit tests.
+            }
+        }
+
+        return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'doppar-cache-locks';
+    }
+
+    /**
      * Get the current adapter
      *
      * @return AdapterInterface
@@ -414,10 +556,8 @@ class CacheStore implements CacheInterface
      */
     public function stash(string $key, $ttl, \Closure $callback): mixed
     {
-        $value = $this->get($key);
-
-        if (!is_null($value)) {
-            return $value;
+        if ($this->has($key)) {
+            return $this->get($key);
         }
 
         $value = $callback();
@@ -436,10 +576,8 @@ class CacheStore implements CacheInterface
      */
     public function stashForever(string $key, \Closure $callback): mixed
     {
-        $value = $this->get($key);
-
-        if (!is_null($value)) {
-            return $value;
+        if ($this->has($key)) {
+            return $this->get($key);
         }
 
         $value = $callback();

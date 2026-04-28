@@ -2,8 +2,8 @@
 
 namespace Phaseolies\Providers;
 
-use Psr\SimpleCache\CacheInterface;
 use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Cache\IncrementableCacheInterface;
 use Phaseolies\Cache\RateLimiter;
 
 class RateLimiterServiceProvider extends ServiceProvider
@@ -16,7 +16,7 @@ class RateLimiterServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(RateLimiter::class, function ($app) {
-            return new RateLimiter($app->make(CacheInterface::class));
+            return new RateLimiter($app->make(IncrementableCacheInterface::class));
         });
     }
 
