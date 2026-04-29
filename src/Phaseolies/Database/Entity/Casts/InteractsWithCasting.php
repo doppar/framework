@@ -7,6 +7,23 @@ use Phaseolies\Database\Entity\Casts\Attributes\Transform;
 trait InteractsWithCasting
 {
     /**
+     * Internal model state properties that must never be used as cast targets.
+     *
+     * @var array<int, string>
+     */
+    private const RESERVED_CAST_PROPERTIES = [
+        'attributes',
+        'originalAttributes',
+        'relations',
+        'lastRelationType',
+        'lastRelatedModel',
+        'lastForeignKey',
+        'lastLocalKey',
+        'lastRelatedKey',
+        'lastPivotTable',
+    ];
+
+    /**
      * Per-class cache of #[Cast] attribute metadata scanned via reflection.
      *
      * @var array<string, array<string, string>>
@@ -43,6 +60,14 @@ trait InteractsWithCasting
 
             if (empty($castAttributes)) {
                 continue;
+            }
+
+            if (in_array($property->getName(), self::RESERVED_CAST_PROPERTIES, true)) {
+                throw new \LogicException(sprintf(
+                    'Invalid cast declaration on %s::$%s. This is a reserved internal model property and cannot be used with cast attributes. Use a real model field name or the $casts array for your column instead.',
+                    $class,
+                    $property->getName()
+                ));
             }
 
             $cast                        = $castAttributes[0]->newInstance();
