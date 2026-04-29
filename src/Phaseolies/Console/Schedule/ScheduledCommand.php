@@ -1369,7 +1369,7 @@ class ScheduledCommand
     {
         $this->releaseLock();
 
-        $throttleFile = $this->lastRunFile . '_throttle.log';
+        $throttleFile = storage_path('schedule/cron_throttle_' . md5($this->command) . '.log');
 
         if (file_exists($throttleFile)) {
             unlink($throttleFile);
