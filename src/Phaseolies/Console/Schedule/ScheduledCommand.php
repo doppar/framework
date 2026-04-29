@@ -1227,7 +1227,7 @@ class ScheduledCommand
      * @return bool
      * @throws \InvalidArgumentException
      */
-    public function isDue(): bool
+    public function isDue(bool $checkSecondSchedule = true): bool
     {
         try {
             $timezone = $this->timezone ?: config('app.timezone', 'UTC');
@@ -1273,7 +1273,7 @@ class ScheduledCommand
             }
 
             // For second-based schedules, perform additional checks
-            if ($this->isSecondSchedule) {
+            if ($checkSecondSchedule && $this->isSecondSchedule) {
                 if (!$this->isSecondScheduleDue()) {
                     return false;
                 }
@@ -1369,7 +1369,7 @@ class ScheduledCommand
     {
         $this->releaseLock();
 
-        $throttleFile = $this->lastRunFile . '_throttle.log';
+        $throttleFile = storage_path('schedule/cron_throttle_' . md5($this->command) . '.log');
 
         if (file_exists($throttleFile)) {
             unlink($throttleFile);

@@ -209,15 +209,17 @@ class CronRunCommand extends Command
 
         // Check if it's time to run based on the interval
         if (!isset($this->lastExecution[$commandKey])) {
-            // First run
-            $this->displayInfo('[' . date('H:i:s') . '] Executing: ' . $command->getCommand() . ' (first run)');
-            $this->executeCommand($command, true);
-            $this->lastExecution[$commandKey] = $currentTimestamp;
+            if ($command->isDue(false)) {
+                // First run
+                $this->displayInfo('[' . date('H:i:s') . '] Executing: ' . $command->getCommand() . ' (first run)');
+                $this->executeCommand($command, true);
+                $this->lastExecution[$commandKey] = $currentTimestamp;
+            }
         } else {
             // Check if enough time has passed
             $timeSinceLastExecution = $currentTimestamp - $this->lastExecution[$commandKey];
 
-            if ($timeSinceLastExecution >= $interval) {
+            if ($timeSinceLastExecution >= $interval && $command->isDue(false)) {
                 $this->displayInfo('[' . date('H:i:s') . '] Executing: ' . $command->getCommand() . ' (interval: ' . $interval . 's)');
                 $this->executeCommand($command, true);
                 $this->lastExecution[$commandKey] = $currentTimestamp;
