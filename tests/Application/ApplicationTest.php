@@ -6,7 +6,10 @@ use ReflectionClass;
 use Tests\Support\Kernel;
 use Phaseolies\Application;
 use Phaseolies\DI\Container;
+use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Config\Config;
 use Phaseolies\Support\Router;
 use Phaseolies\Console\Console;
@@ -289,5 +292,156 @@ final class ApplicationTest extends TestCase
         $result = $this->app->withConfiguration();
 
         $this->assertSame($this->app, $result);
+    }
+
+    public function testHandleReturnsResolvedResponse(): void
+    {
+        $request = new Request();
+        $response = new Response('handled');
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $handled = $this->app->handle($request);
+
+        $this->assertSame($response, $handled);
+    }
+
+    public function testDispatchReturnsTerminableResult(): void
+    {
+        $request = new Request();
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($request)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $captured = [];
+
+        $this->app->terminating(
+            function (
+                Request $requestArg,
+                ?Response $responseArg,
+                ?\Throwable $exception
+            ) use (&$captured): void {
+                $captured = [$requestArg, $responseArg, $exception];
+            }
+        );
+
+        $result = $this->app->dispatch($request);
+
+        $this->assertInstanceOf(DispatchResult::class, $result);
+
+        $result->terminate();
+
+        $this->assertSame($response, $result->response());
+        $this->assertNull($result->exception());
+        $this->assertSame($request, $captured[0]);
+        $this->assertSame($response, $captured[1]);
+        $this->assertNull($captured[2]);
+    }
+
+    public function testDispatchStillTerminatesWhenResultIsIgnored(): void
+    {
+        $request = new Request();
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($request)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $captured = [];
+
+        $this->app->terminating(function (
+            Request $requestArg,
+            ?Response $responseArg,
+            ?\Throwable $exception
+        ) use (&$captured): void {
+            $captured = [$requestArg, $responseArg, $exception];
+        });
+
+        $this->app->dispatch($request);
+
+        $this->assertSame($request, $captured[0]);
+        $this->assertSame($response, $captured[1]);
+        $this->assertNull($captured[2]);
+    }
+
+    public function testDispatchResultDoesNotTerminateTwiceAfterExplicitTermination(): void
+    {
+        $request = new Request();
+        $response = new Response('ok');
+        $calls = 0;
+
+        $this->app->terminating(function () use (&$calls): void {
+            $calls++;
+        });
+
+        $result = new DispatchResult($this->app, $request, $response);
+
+        $result->terminate();
+        unset($result);
+
+        $this->assertSame(1, $calls);
+    }
+
+    public function testTerminateProvidesLifecycleContextToNamedParameters(): void
+    {
+        $request = new Request();
+        $response = new Response('ok');
+        $exception = new HttpException(500, 'Lifecycle failed');
+
+        $captured = [];
+
+        $this->app->terminating(function ($request, $response, $exception) use (&$captured): void {
+            $captured = compact('request', 'response', 'exception');
+        });
+
+        $this->app->terminate($request, $response, $exception);
+
+        $this->assertSame($request, $captured['request']);
+        $this->assertSame($response, $captured['response']);
+        $this->assertSame($exception, $captured['exception']);
     }
 }
