@@ -1,5 +1,12 @@
 # Release Notes
 
+## v3.23.0 - 2026-04-29
+
+* remove cache user version from authenticate class: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/264
+* adding proper error message if user use reserved keywords of model: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/265
+* Improve cron:list output with schedule timing and runtime constraints by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/266
+* Add throttle enforcement for second-based cron schedules by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/267
+
 ## v3.22.0 - 2026-04-28
 
 * adding htmx support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/262
