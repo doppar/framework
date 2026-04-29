@@ -837,6 +837,26 @@ class ScheduledCommand
     }
 
     /**
+     * Get the raw cron expression for the command.
+     *
+     * @return string
+     */
+    public function getExpression(): string
+    {
+        return $this->expression;
+    }
+
+    /**
+     * Get the maximum overlap lock time in minutes.
+     *
+     * @return int
+     */
+    public function getMaxLockTime(): int
+    {
+        return $this->maxLockTime;
+    }
+
+    /**
      * Prevent overlapping executions of the command.
      *
      * @param int $minutes The maximum lock time in minutes. Default: 1440 (24 hours)
@@ -907,6 +927,46 @@ class ScheduledCommand
         $this->rateLimit = $limit;
 
         return $this;
+    }
+
+    /**
+     * Get excluded dates for the command.
+     *
+     * @return array
+     */
+    public function getExcludedDates(): array
+    {
+        return $this->excludedDates;
+    }
+
+    /**
+     * Get the configured throttle expression.
+     *
+     * @return string|null
+     */
+    public function getRateLimit(): ?string
+    {
+        return $this->rateLimit;
+    }
+
+    /**
+     * Determine if the command has additional time-based conditions.
+     *
+     * @return bool
+     */
+    public function hasAdditionalConditions(): bool
+    {
+        return !empty($this->additionalConditions);
+    }
+
+    /**
+     * Determine if the command has a custom when() condition.
+     *
+     * @return bool
+     */
+    public function hasCustomCondition(): bool
+    {
+        return $this->condition !== null;
     }
 
     /**
@@ -1139,6 +1199,26 @@ class ScheduledCommand
         $this->retryDelay = $delaySeconds;
 
         return $this;
+    }
+
+    /**
+     * Get the maximum number of retry attempts.
+     *
+     * @return int
+     */
+    public function getMaxRetries(): int
+    {
+        return $this->maxRetries;
+    }
+
+    /**
+     * Get the retry delay in seconds.
+     *
+     * @return int
+     */
+    public function getRetryDelay(): int
+    {
+        return $this->retryDelay;
     }
 
     /**
