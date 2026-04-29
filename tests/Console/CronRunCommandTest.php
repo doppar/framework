@@ -31,6 +31,20 @@ class CronRunCommandTest extends TestCase
         $this->assertCount(2, $runner->executedCommands);
         $this->assertSame([['reports:sync', true], ['reports:sync', true]], $runner->executedCommands);
         $this->assertStringContainsString('interval: 5s', $runner->infoMessages[1]);
+        $this->assertSame([false, false], $command->isDueChecks);
+    }
+
+    public function testProcessSecondBasedCommandRespectsDueChecksForIntervalSchedules(): void
+    {
+        $runner = new SpyCronRunCommand();
+        $command = new FakeSecondBasedCommand('doppar:test', 5, [true, true, false]);
+
+        $runner->processAt($command, 100);
+        $runner->processAt($command, 105);
+        $runner->processAt($command, 110);
+
+        $this->assertSame([['doppar:test', true], ['doppar:test', true]], $runner->executedCommands);
+        $this->assertSame([false, false, false], $command->isDueChecks);
     }
 
     public function testProcessSecondBasedCommandFallsBackToIsDueWhenIntervalIsUnavailable(): void
@@ -83,10 +97,12 @@ final class SpyCronRunCommand extends CronRunCommand
 
 final class FakeSecondBasedCommand
 {
+    public array $isDueChecks = [];
+
     public function __construct(
         private string $command,
         private ?int $interval,
-        private bool $due = true
+        private bool|array $due = true
     ) {
     }
 
@@ -100,8 +116,14 @@ final class FakeSecondBasedCommand
         return $this->interval;
     }
 
-    public function isDue(): bool
+    public function isDue(bool $checkSecondSchedule = true): bool
     {
+        $this->isDueChecks[] = $checkSecondSchedule;
+
+        if (is_array($this->due)) {
+            return array_shift($this->due) ?? false;
+        }
+
         return $this->due;
     }
 }
