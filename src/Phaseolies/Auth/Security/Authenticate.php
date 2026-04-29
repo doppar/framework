@@ -37,13 +37,6 @@ class Authenticate
     private $statelessUser = null;
 
     /**
-     * Cache for user version checks during the current request.
-     *
-     * @var array
-     */
-    private static $versionCheckCache = [];
-
-    /**
      * Per-instance resolved user cache
      *
      * @var Model|null
@@ -102,16 +95,6 @@ class Authenticate
     protected function getSessionKey(): string
     {
         return $this->config['session_key'];
-    }
-
-    /**
-     * The session key used to cache the full user object for this actor.
-     *
-     * @return string
-     */
-    protected function getCacheKey(): string
-    {
-        return 'cache_auth_' . $this->actorName;
     }
 
     /**
@@ -182,10 +165,11 @@ class Authenticate
     public function login($user, bool $remember = false): bool
     {
         $authModel = $this->getModel();
+        $modelClass = $authModel::class;
 
-        if (!$user instanceof $authModel) {
+        if (!$user instanceof $modelClass) {
             throw new \InvalidArgumentException(
-                "Argument #1 ($user) must be an instance of $authModel " . gettype($user) . ' given'
+                "Argument #1 ($user) must be an instance of $modelClass " . gettype($user) . ' given'
             );
         }
 
@@ -262,7 +246,6 @@ class Authenticate
         }
 
         $authModel  = $this->getModel();
-        $cacheKey   = $this->getCacheKey();
         $sessionKey = $this->getSessionKey();
 
         if ($this->isApiRequest()) {
@@ -281,18 +264,10 @@ class Authenticate
             }
         }
 
-        if (session()->has($cacheKey)) {
-            $cache = session($cacheKey);
-            if ($this->isUserCacheValid($cache)) {
-                return $this->resolvedUser = $cache['user'];
-            }
-        }
-
         if (session()->has($sessionKey)) {
             $user = $authModel::find(session($sessionKey));
 
             if ($user) {
-                $this->cacheUser($user);
                 return $this->resolvedUser = $user;
             }
         }
@@ -378,7 +353,6 @@ class Authenticate
         $this->statelessUser = null;
 
         session()->forget($this->getSessionKey());
-        session()->forget($this->getCacheKey());
         session()->forget($this->getViaRememberKey());
 
         // Only fully invalidate the session on the default actor so that other
@@ -402,52 +376,7 @@ class Authenticate
     {
         session()->put($this->getSessionKey(), $user->id);
 
-        $this->cacheUser($user);
-
         $this->resolvedUser = $user;
-    }
-
-    /**
-     * Cache the user data
-     *
-     * @param Model $user
-     * @return void
-     */
-    private function cacheUser(Model $user): void
-    {
-        session()->put($this->getCacheKey(), [
-            'user'       => $user,
-            'version'    => $user?->updated_at,
-            'expires_at' => now()->addMinutes(30)->timestamp,
-        ]);
-    }
-
-    /**
-     * Check cache expiry
-     *
-     * @param array $cache
-     * @return bool
-     */
-    private function isUserCacheValid(array $cache): bool
-    {
-        if ($cache['expires_at'] < time()) {
-            return false;
-        }
-
-        $userId = $cache['user']->id;
-
-        if (isset(self::$versionCheckCache[$this->actorName][$userId])) {
-            return $cache['version'] === self::$versionCheckCache[$this->actorName][$userId];
-        }
-
-        $currentVersion = $cache['user']->newQuery()
-            ->select('updated_at')
-            ->where('id', $userId)
-            ->first();
-
-        self::$versionCheckCache[$this->actorName][$userId] = $currentVersion?->updated_at;
-
-        return $cache['version'] === $currentVersion?->updated_at;
     }
 
     /**
