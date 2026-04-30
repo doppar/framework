@@ -4,6 +4,7 @@ namespace Phaseolies;
 
 use Phaseolies\Support\Router;
 use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\HttpException;
@@ -157,6 +158,13 @@ class Application extends Container
      * @var array<string>
      */
     protected $relaxablePaths = [];
+
+    /**
+     * Callbacks that should run after the request lifecycle has finished.
+     *
+     * @var array<int, array{callback: callable, parameters: array<int, \ReflectionParameter>}>
+     */
+    protected array $terminatingCallbacks = [];
 
     /**
      * Application constructor.
@@ -836,22 +844,183 @@ class Application extends Container
     }
 
     /**
+     * Register a callback to run after the response has been sent.
+     *
+     * Supported callback parameter names are: $request, $response, $exception.
+     *
+     * @param callable $callback
+     * @return self
+     */
+    public function terminating(callable $callback): self
+    {
+        $this->terminatingCallbacks[] = [
+            'callback' => $callback,
+            'parameters' => $this->reflectCallable($callback)->getParameters(),
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Run all registered terminating callbacks for the completed request.
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    public function terminate(Request $request, ?Response $response = null, ?\Throwable $exception = null): void
+    {
+        if (empty($this->terminatingCallbacks)) {
+            return;
+        }
+
+        foreach ($this->terminatingCallbacks as $callback) {
+            $this->callTerminatingCallback($callback, $request, $response, $exception);
+        }
+    }
+
+    /**
+     * Invoke a terminating callback with the current lifecycle context.
+     *
+     * @param array{callback: callable, parameters: array<int, \ReflectionParameter>} $callback
+     * @param Request $request
+     * @param Response|null $response
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    protected function callTerminatingCallback(array $callback, Request $request, ?Response $response = null, ?\Throwable $exception = null): void
+    {
+        $namedContext = [
+            'request' => $request,
+            'response' => $response,
+            'exception' => $exception,
+        ];
+
+        $arguments = [];
+
+        foreach ($callback['parameters'] as $parameter) {
+            $resolved = false;
+            $type = $parameter->getType();
+
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $typeName = $type->getName();
+
+                if ($request instanceof $typeName) {
+                    $arguments[] = $request;
+                    $resolved = true;
+                } elseif ($response instanceof $typeName) {
+                    $arguments[] = $response;
+                    $resolved = true;
+                } elseif ($exception instanceof $typeName) {
+                    $arguments[] = $exception;
+                    $resolved = true;
+                } elseif ($this->typeAllowsNull($type)) {
+                    $arguments[] = null;
+                    $resolved = true;
+                }
+            } elseif ($type instanceof \ReflectionUnionType && $this->typeAllowsNull($type)) {
+                $arguments[] = null;
+                $resolved = true;
+            }
+
+            if (!$resolved && array_key_exists($parameter->getName(), $namedContext)) {
+                $arguments[] = $namedContext[$parameter->getName()];
+                $resolved = true;
+            }
+
+            if (!$resolved && $parameter->isDefaultValueAvailable()) {
+                $arguments[] = $parameter->getDefaultValue();
+                $resolved = true;
+            }
+
+            if (!$resolved) {
+                throw new \RuntimeException(
+                    "Unresolvable terminating callback parameter '\${$parameter->getName()}'."
+                );
+            }
+        }
+
+        call_user_func_array($callback['callback'], $arguments);
+    }
+
+    /**
+     * Create a reflection instance for a generic PHP callable.
+     *
+     * @param callable $callback
+     * @return \ReflectionFunctionAbstract
+     */
+    protected function reflectCallable(callable $callback): \ReflectionFunctionAbstract
+    {
+        if (is_array($callback)) {
+            return new \ReflectionMethod($callback[0], $callback[1]);
+        }
+
+        if (is_object($callback) && method_exists($callback, '__invoke')) {
+            return new \ReflectionMethod($callback, '__invoke');
+        }
+
+        return new \ReflectionFunction($callback);
+    }
+
+    /**
+     * Determine whether a reflected parameter type explicitly allows null.
+     *
+     * @param \ReflectionType $type
+     * @return bool
+     */
+    protected function typeAllowsNull(\ReflectionType $type): bool
+    {
+        if ($type instanceof \ReflectionNamedType) {
+            return $type->allowsNull();
+        }
+
+        if ($type instanceof \ReflectionUnionType) {
+            foreach ($type->getTypes() as $innerType) {
+                if ($innerType instanceof \ReflectionNamedType && $innerType->getName() === 'null') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the incoming request into a response instance.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function handle(Request $request): Response
+    {
+        $response = $this->router->resolve($this, $request);
+
+        if (!$response instanceof Response) {
+            $response = $response->setBody((string) $response);
+        }
+
+        return $response;
+    }
+
+    /**
      * Dispatches the application request.
      *
      * @param Request $request
-     * @return void
+     * @return DispatchResult
      */
-    public function dispatch($request): void
+    public function dispatch($request): DispatchResult
     {
         try {
-            $response = $this->router->resolve($this, $request);
-            if (!$response instanceof Response) {
-                $response = $response->setBody((string) $response);
-            }
+            $response = $this->handle($request);
 
             $response->prepare($request)->send();
+
+            return new DispatchResult($this, $request, $response);
         } catch (HttpException $e) {
             Response::dispatchHttpException($e);
+
+            return new DispatchResult($this, $request, null, $e);
         }
     }
 }
