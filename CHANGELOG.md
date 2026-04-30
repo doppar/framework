@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.24.0 - 2026-04-30
+
+* Add explicit request termination lifecycle and terminable dispatch result by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/268
+* Fix logger context output for helper and facade logging by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/269
+
 ## v3.23.0 - 2026-04-29
 
 * remove cache user version from authenticate class: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/264
