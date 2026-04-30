@@ -3,14 +3,14 @@
 namespace Phaseolies\Support\Facades;
 
 /**
- * @method static \Phaseolies\Support\LoggerService debug(mixed $message)
- * @method static \Phaseolies\Support\LoggerService info(mixed $message)
- * @method static \Phaseolies\Support\LoggerService notice(mixed $message)
- * @method static \Phaseolies\Support\LoggerService warning(mixed $message)
- * @method static \Phaseolies\Support\LoggerService error(mixed $message)
- * @method static \Phaseolies\Support\LoggerService critical(string $message)
- * @method static \Phaseolies\Support\LoggerService alert(string $message)
- * @method static \Phaseolies\Support\LoggerService emergency(string $message)
+ * @method static \Phaseolies\Support\LoggerService debug(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService info(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService notice(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService warning(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService error(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService critical(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService alert(mixed $message, array $context = [])
+ * @method static \Phaseolies\Support\LoggerService emergency(mixed $message, array $context = [])
  * @see \Phaseolies\Support\LoggerService
  */
 
