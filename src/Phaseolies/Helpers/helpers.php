@@ -896,11 +896,12 @@ if (!function_exists('info')) {
      * Generate log info message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function info(mixed $payload): void
+    function info(mixed $message, array $context = []): void
     {
-        Log::info($payload);
+        Log::info($message, $context);
     }
 }
 
@@ -909,11 +910,12 @@ if (!function_exists('warning')) {
      * Generate log warning message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function warning(mixed $payload): void
+    function warning(mixed $message, array $context = []): void
     {
-        Log::warning($payload);
+        Log::warning($message, $context);
     }
 }
 
@@ -922,11 +924,12 @@ if (!function_exists('error')) {
      * Generate log error message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function error(mixed $payload): void
+    function error(mixed $message, array $context = []): void
     {
-        Log::error($payload);
+        Log::error($message, $context);
     }
 }
 
@@ -935,11 +938,12 @@ if (!function_exists('alert')) {
      * Generate log alert message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function alert(mixed $payload): void
+    function alert(mixed $message, array $context = []): void
     {
-        Log::alert($payload);
+        Log::alert($message, $context);
     }
 }
 
@@ -948,11 +952,12 @@ if (!function_exists('notice')) {
      * Generate log notice message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function notice(mixed $payload): void
+    function notice(mixed $message, array $context = []): void
     {
-        Log::notice($payload);
+        Log::notice($message, $context);
     }
 }
 
@@ -961,11 +966,12 @@ if (!function_exists('emergency')) {
      * Generate log emergency message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function emergency(mixed $payload): void
+    function emergency(mixed $message, array $context = []): void
     {
-        Log::emergency($payload);
+        Log::emergency($message, $context);
     }
 }
 
@@ -974,11 +980,12 @@ if (!function_exists('critical')) {
      * Generate log critical message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function critical(mixed $payload): void
+    function critical(mixed $message, array $context = []): void
     {
-        Log::critical($payload);
+        Log::critical($message, $context);
     }
 }
 
@@ -987,11 +994,12 @@ if (!function_exists('debug')) {
      * Generate log debug message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function debug(mixed $payload): void
+    function debug(mixed $message, array $context = []): void
     {
-        Log::debug($payload);
+        Log::debug($message, $context);
     }
 }
 

@@ -37,7 +37,7 @@ class SlackLogHandler extends AbstractHandler implements LogHandlerInterface
         );
 
         $formatter = new LineFormatter(
-            "[%datetime%] %channel%.%level_name%: %message%\n",
+            "[%datetime%] %channel%.%level_name%: %message% %context%\n",
             null,
             true,
             true
