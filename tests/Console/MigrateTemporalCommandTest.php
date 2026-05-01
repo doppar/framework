@@ -1,9 +1,11 @@
 <?php
 
 namespace Phaseolies\Console\Commands\Migrations {
-    function config($key = null, $default = null)
-    {
-        return $key === 'database.default' ? 'default_connection' : $default;
+    if (!function_exists(__NAMESPACE__ . '\config')) {
+        function config($key = null, $default = null)
+        {
+            return $key === 'database.default' ? 'default_connection' : $default;
+        }
     }
 }
 
@@ -17,6 +19,15 @@ use Tests\Support\Model\MockTemporalRecord;
 
 class MigrateTemporalCommandTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (class_exists(\Tests\Unit\Console\Support\CommandTestEnvironment::class)) {
+            \Tests\Unit\Console\Support\CommandTestEnvironment::$config['database.default'] = 'default_connection';
+        }
+    }
+
     public function testResolveConnectionForModelPrefersModelConnectionWhenNoOverride(): void
     {
         $command = new MigrateTemporalCommand();
