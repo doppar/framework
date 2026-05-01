@@ -348,6 +348,29 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertContains('Symbolic link removed successfully', $command->capturedSuccesses);
     }
 
+    public function testStorageUnlinkCommandFallsBackToRemovingDirectoryLink(): void
+    {
+        $command = new class extends StorageUnlinkCommand
+        {
+            use InteractsWithFakeCommandIO;
+
+            protected function linkExists(string $linkPath): bool
+            {
+                return true;
+            }
+
+            protected function removeLink(string $linkPath): bool
+            {
+                return true;
+            }
+        };
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertContains('Symbolic link removed successfully', $command->capturedSuccesses);
+    }
+
     public function testSetCreatablePropertyCommandFiltersFrameworkColumns(): void
     {
         $command = new class extends SetCreatablePropertyCommand
