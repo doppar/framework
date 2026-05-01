@@ -1,5 +1,10 @@
 # Release Notes
 
+## v3.25.0 - 2026-05-01
+
+* fix: resolve background command argument parsing, config cache race condition, pid capture, and add per-job log control by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/270
+* Add broad console command test coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/271
+
 ## v3.24.0 - 2026-04-30
 
 * Add explicit request termination lifecycle and terminable dispatch result by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/268
