@@ -368,11 +368,15 @@ class CronRunCommand extends Command
             $command->lock();
         }
 
-        $logDir = storage_path('schedule');
-        if (!file_exists($logDir)) {
-            mkdir($logDir, 0755, true);
+        if ($command->getOutputTo() !== null) {
+            $logFile = $command->getOutputTo();
+        } else {
+            $logDir = storage_path('schedule');
+            if (!file_exists($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . '/cron_' . md5($command->getCommand()) . '.log';
         }
-        $logFile = $logDir . '/cron_' . md5($command->getCommand()) . '.log';
 
         $lockFile = $command->getLockFile() . '.pid';
         $lockDir = dirname($lockFile);
@@ -380,11 +384,13 @@ class CronRunCommand extends Command
             mkdir($lockDir, 0755, true);
         }
 
+        $commandParts = implode(' ', array_map('escapeshellarg', preg_split('/\s+/', trim($command->getCommand()))));
+
         $commandString = sprintf(
             '(%s %s %s >> %s 2>&1 ; %s %s cron:finish %s %d $? >> %s 2>&1) & echo $!',
             escapeshellarg($phpBinary),
             escapeshellarg($poolScript),
-            escapeshellarg($command->getCommand()),
+            $commandParts,
             escapeshellarg($logFile),
             escapeshellarg($phpBinary),
             escapeshellarg($poolScript),
@@ -455,7 +461,7 @@ class CronRunCommand extends Command
             $command->lock();
         }
 
-        $process = new Process(['php', 'pool', $command->getCommand()], base_path(), $env);
+        $process = new Process(array_merge(['php', 'pool'], preg_split('/\s+/', trim($command->getCommand()))), base_path(), $env);
         $process->setTimeout(null);
         $process->run();
 

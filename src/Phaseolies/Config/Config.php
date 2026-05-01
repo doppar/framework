@@ -178,7 +178,7 @@ final class Config
             'data' => self::$config,
         ];
 
-        $tempFile = self::$cacheFile . '.tmp';
+        $tempFile = self::$cacheFile . '.tmp.' . getmypid();
         file_put_contents($tempFile, '<?php return ' . var_export($cacheContent, true) . ';', LOCK_EX);
         rename($tempFile, self::$cacheFile);
 

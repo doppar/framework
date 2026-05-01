@@ -39,6 +39,13 @@ class ScheduledCommand
     private $runInBackground = false;
 
     /**
+     * Custom output destination for background process stdout/stderr
+     *
+     * @var string|null
+     */
+    private $outputTo = null;
+
+    /**
      * Path to a file used to store the timestamp of the last run.
      *
      * @var string
@@ -891,6 +898,39 @@ class ScheduledCommand
     public function shouldRunInBackground(): bool
     {
         return $this->runInBackground;
+    }
+
+    /**
+     * Redirect background process output to the given file path.
+     *
+     * @param string $location
+     * @return self
+     */
+    public function sendOutputTo(string $location): self
+    {
+        $this->outputTo = $location;
+
+        return $this;
+    }
+
+    /**
+     * Discard all background process output instead of writing a per-job log file.
+     *
+     * @return self
+     */
+    public function withoutLog(): self
+    {
+        return $this->sendOutputTo('/dev/null');
+    }
+
+    /**
+     * Get the configured output destination, or null to use the default per-job log file.
+     *
+     * @return string|null
+     */
+    public function getOutputTo(): ?string
+    {
+        return $this->outputTo;
     }
 
     /**
