@@ -368,11 +368,15 @@ class CronRunCommand extends Command
             $command->lock();
         }
 
-        $logDir = storage_path('schedule');
-        if (!file_exists($logDir)) {
-            mkdir($logDir, 0755, true);
+        if ($command->getOutputTo() !== null) {
+            $logFile = $command->getOutputTo();
+        } else {
+            $logDir = storage_path('schedule');
+            if (!file_exists($logDir)) {
+                mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . '/cron_' . md5($command->getCommand()) . '.log';
         }
-        $logFile = $logDir . '/cron_' . md5($command->getCommand()) . '.log';
 
         $lockFile = $command->getLockFile() . '.pid';
         $lockDir = dirname($lockFile);
