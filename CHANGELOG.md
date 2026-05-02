@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.25.1 - 2026-05-02
+
+* Fix: storage:link cross-platform support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/272
+
 ## v3.25.0 - 2026-05-01
 
 * fix: resolve background command argument parsing, config cache race condition, pid capture, and add per-job log control by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/270
