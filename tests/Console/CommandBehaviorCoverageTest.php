@@ -28,6 +28,7 @@ use Phaseolies\Console\Commands\PaginationPublishCommand;
 use Phaseolies\Console\Commands\Server\ServerStartCommand;
 use Phaseolies\Console\Commands\Server\ServerStopCommand;
 use Phaseolies\Console\Commands\SetCreatablePropertyCommand;
+use Phaseolies\Console\Commands\StorageLinkCommand;
 use Phaseolies\Console\Commands\StorageUnlinkCommand;
 use Phaseolies\Console\Commands\Tests\UnitTestCommand;
 use Phaseolies\Console\Commands\VendorPublishCommand;
@@ -346,6 +347,55 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(0, $result);
         $this->assertFalse(is_link($link));
         $this->assertContains('Symbolic link removed successfully', $command->capturedSuccesses);
+    }
+
+    public function testStorageLinkCommandCreatesConfiguredPublicLink(): void
+    {
+        if (!function_exists('symlink')) {
+            $this->markTestSkipped('symlink is not available in this environment.');
+        }
+
+        $command = new class extends StorageLinkCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        $target = Env::path('storage/app/public');
+        $link = Env::path('public/storage');
+        $marker = $target . '/avatar.txt';
+
+        Env::$config['filesystem.links'] = [$link => $target];
+
+        mkdir($target, 0755, true);
+        mkdir(dirname($link), 0755, true);
+        file_put_contents($marker, 'ok');
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertTrue(is_link($link) || is_dir($link));
+        $this->assertFileExists($link . '/avatar.txt');
+    }
+
+    public function testStorageLinkCommandBuildsWindowsJunctionCommandForDirectories(): void
+    {
+        $command = new class extends StorageLinkCommand
+        {
+            public function exposeBuildWindowsLinkCommand(string $target, string $link): array
+            {
+                return $this->buildWindowsLinkCommand($target, $link);
+            }
+        };
+
+        $target = Env::path('storage/app/public');
+        $link = Env::path('public/storage');
+
+        mkdir($target, 0755, true);
+
+        $this->assertSame(
+            ['cmd', '/c', 'mklink', '/J', $link, $target],
+            $command->exposeBuildWindowsLinkCommand($target, $link)
+        );
     }
 
     public function testStorageUnlinkCommandFallsBackToRemovingDirectoryLink(): void

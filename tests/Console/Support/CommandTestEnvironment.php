@@ -43,6 +43,11 @@ final class CommandTestEnvironment
         );
 
         foreach ($iterator as $item) {
+            if ($item->isLink()) {
+                unlink($item->getPathname());
+                continue;
+            }
+
             if ($item->isDir()) {
                 rmdir($item->getPathname());
                 continue;
