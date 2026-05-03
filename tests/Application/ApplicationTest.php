@@ -408,6 +408,49 @@ final class ApplicationTest extends TestCase
         $this->assertNull($captured[2]);
     }
 
+    public function testDispatchForwardsHttpExceptionsToInsightRecorderWhenAvailable(): void
+    {
+        $request = new Request();
+        $exception = new HttpException(404, 'Route missing');
+        $sink = new \stdClass();
+        $sink->captured = [];
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willThrowException($exception);
+
+        $this->app->router = $router;
+
+        $this->app->instance('Doppar\\Insight\\Support\\ErrorHistoryRecorder', new class($sink) {
+            public object $sink;
+
+            public function __construct(object $sink)
+            {
+                $this->sink = $sink;
+            }
+
+            public function record($exception, $request): void
+            {
+                $this->sink->captured = [$exception, $request];
+            }
+        });
+
+        ob_start();
+        try {
+            $result = $this->app->dispatch($request);
+        } finally {
+            ob_end_clean();
+        }
+
+        $this->assertInstanceOf(DispatchResult::class, $result);
+        $this->assertSame($exception, $result->exception());
+        $this->assertNull($result->response());
+        $this->assertSame($exception, $sink->captured[0]);
+        $this->assertSame($request, $sink->captured[1]);
+    }
+
     public function testDispatchResultDoesNotTerminateTwiceAfterExplicitTermination(): void
     {
         $request = new Request();
