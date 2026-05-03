@@ -7,6 +7,8 @@ use Phaseolies\Http\Exceptions\HttpException;
 
 class RequestAbortion
 {
+    use InteractsWithInsightErrorTracking;
+
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
@@ -18,7 +20,11 @@ class RequestAbortion
      */
     public function abort(int $code, string $message = '', array $headers = []): void
     {
-        $shouldJsonResponse = request()->isAjax() || request()->isApiRequest();
+        $request = request();
+        $shouldJsonResponse = $request->isAjax() || $request->isApiRequest();
+        $httpException = HttpException::fromStatusCode($code, $message, null, $headers);
+
+        $this->recordInsightException($request, $httpException);
 
         $customPath =
             base_path(
@@ -58,7 +64,7 @@ class RequestAbortion
             throw new HttpResponseException($message, $code, null);
         }
 
-        throw HttpException::fromStatusCode($code, $message, null, $headers);
+        throw $httpException;
     }
 
     /**
