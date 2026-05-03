@@ -18,10 +18,6 @@ trait InteractsWithInsightErrorTracking
     {
         $recorderClass = 'Doppar\\Insight\\Support\\ErrorHistoryRecorder';
 
-        if (! class_exists($recorderClass)) {
-            return;
-        }
-
         try {
             $recorder = app($recorderClass);
 
