@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.25.2 - 2026-05-04
+
+* Track Insight 404/HttpException errors from abort flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/273
+
 ## v3.25.1 - 2026-05-02
 
 * Fix: storage:link cross-platform support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/272
