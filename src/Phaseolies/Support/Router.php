@@ -1002,10 +1002,8 @@ class Router extends Kernel
 
         $handler = function ($request) use ($callback, $app, $routeParams) {
             $result = $this->resolveAction($callback, $app, $routeParams);
-            $response = $app->make('response');
-            $response->setOriginal($result);
             if (!($result instanceof Response)) {
-                return $this->getResolutionResponse($request, $result, $response);
+                return $this->getResolutionResponse($request, $result);
             }
             return $result;
         };
@@ -1137,11 +1135,13 @@ class Router extends Kernel
      *
      * @param $request
      * @param $result
-     * @param mixed $response
      * @return Response
      */
-    private function getResolutionResponse($request, $result, $response): Response
+    private function getResolutionResponse($request, $result): Response
     {
+        $response = response()->make();
+        $response->setOriginal($result);
+
         if ($this->shouldBeJson($result)) {
             $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
