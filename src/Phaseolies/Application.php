@@ -2,6 +2,7 @@
 
 namespace Phaseolies;
 
+use Phaseolies\Auth\ActorManager;
 use Phaseolies\Support\Router;
 use Phaseolies\Providers\ServiceProvider;
 use Phaseolies\Http\DispatchResult;
@@ -871,12 +872,32 @@ class Application extends Container
      */
     public function terminate(Request $request, ?Response $response = null, ?\Throwable $exception = null): void
     {
-        if (empty($this->terminatingCallbacks)) {
-            return;
+        try {
+            foreach ($this->terminatingCallbacks as $callback) {
+                $this->callTerminatingCallback($callback, $request, $response, $exception);
+            }
+        } finally {
+            $this->cleanupRequestScopedServices();
+        }
+    }
+
+    /**
+     * Drop resolved request-scoped services while preserving their bindings.
+     *
+     * @return void
+     */
+    protected function cleanupRequestScopedServices(): void
+    {
+        if ($this->has('auth')) {
+            $auth = $this->make('auth');
+
+            if ($auth instanceof ActorManager) {
+                $auth->forgetActors();
+            }
         }
 
-        foreach ($this->terminatingCallbacks as $callback) {
-            $this->callTerminatingCallback($callback, $request, $response, $exception);
+        foreach (['session', 'request', 'response', 'redirect'] as $abstract) {
+            $this->forgetResolved($abstract);
         }
     }
 
@@ -1012,6 +1033,8 @@ class Application extends Container
     public function dispatch($request): DispatchResult
     {
         try {
+            $this->instance('request', $request);
+
             $response = $this->handle($request);
 
             $response->prepare($request)->send();

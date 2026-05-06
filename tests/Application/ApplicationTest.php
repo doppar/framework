@@ -5,13 +5,16 @@ namespace Tests\Unit\Application;
 use ReflectionClass;
 use Tests\Support\Kernel;
 use Phaseolies\Application;
+use Phaseolies\Auth\ActorManager;
 use Phaseolies\DI\Container;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Config\Config;
+use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Support\Router;
+use Phaseolies\Support\Session;
 use Phaseolies\Console\Console;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
@@ -408,6 +411,45 @@ final class ApplicationTest extends TestCase
         $this->assertNull($captured[2]);
     }
 
+    public function testDispatchRebindsCurrentRequestBeforeResolvingRoutes(): void
+    {
+        $oldRequest = new Request();
+        $newRequest = new Request();
+
+        $this->app->instance('request', $oldRequest);
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($newRequest)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $newRequest)
+            ->willReturnCallback(function () use ($oldRequest, $newRequest, $response) {
+                $this->assertSame($newRequest, app('request'));
+                $this->assertSame($newRequest, app(Request::class));
+                $this->assertNotSame($oldRequest, app('request'));
+
+                return $response;
+            });
+
+        $this->app->router = $router;
+
+        $this->app->dispatch($newRequest);
+    }
+
     public function testDispatchResultDoesNotTerminateTwiceAfterExplicitTermination(): void
     {
         $request = new Request();
@@ -443,5 +485,76 @@ final class ApplicationTest extends TestCase
         $this->assertSame($request, $captured['request']);
         $this->assertSame($response, $captured['response']);
         $this->assertSame($exception, $captured['exception']);
+    }
+
+    public function testTerminateCleansRequestScopedServicesAfterCallbacks(): void
+    {
+        $_SESSION = [];
+
+        $request = new Request();
+        $response = new Response('ok');
+        $session = new Session();
+        $redirect = new RedirectResponse();
+
+        $auth = $this->getMockBuilder(ActorManager::class)
+            ->onlyMethods(['forgetActors'])
+            ->getMock();
+
+        $auth->expects($this->once())
+            ->method('forgetActors');
+
+        $this->app->instance('request', $request);
+        $this->app->instance('response', $response);
+        $this->app->instance('session', $session);
+        $this->app->instance('redirect', $redirect);
+        $this->app->instance('auth', $auth);
+
+        $seenInsideCallback = [];
+
+        $this->app->terminating(function () use (&$seenInsideCallback): void {
+            $seenInsideCallback = [
+                'request' => $this->app->hasInstance('request'),
+                'response' => $this->app->hasInstance('response'),
+                'session' => $this->app->hasInstance('session'),
+                'redirect' => $this->app->hasInstance('redirect'),
+                'auth' => $this->app->hasInstance('auth'),
+            ];
+        });
+
+        $this->app->terminate($request, $response);
+
+        $this->assertSame([
+            'request' => true,
+            'response' => true,
+            'session' => true,
+            'redirect' => true,
+            'auth' => true,
+        ], $seenInsideCallback);
+
+        $this->assertFalse($this->app->hasInstance('request'));
+        $this->assertFalse($this->app->hasInstance('response'));
+        $this->assertFalse($this->app->hasInstance('session'));
+        $this->assertFalse($this->app->hasInstance('redirect'));
+        $this->assertTrue($this->app->hasInstance('auth'));
+    }
+
+    public function testTerminateStillCleansRequestScopedServicesWithoutCallbacks(): void
+    {
+        $_SESSION = [];
+
+        $request = new Request();
+        $response = new Response('ok');
+
+        $this->app->instance('request', $request);
+        $this->app->instance('response', $response);
+        $this->app->instance('session', new Session());
+        $this->app->instance('redirect', new RedirectResponse());
+
+        $this->app->terminate($request, $response);
+
+        $this->assertFalse($this->app->hasInstance('request'));
+        $this->assertFalse($this->app->hasInstance('response'));
+        $this->assertFalse($this->app->hasInstance('session'));
+        $this->assertFalse($this->app->hasInstance('redirect'));
     }
 }

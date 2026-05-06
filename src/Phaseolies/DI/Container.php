@@ -399,6 +399,17 @@ class Container implements ArrayAccess
     }
 
     /**
+     * Forget a resolved instance while keeping its binding intact.
+     *
+     * @param string $abstract
+     * @return void
+     */
+    public function forgetResolved(string $abstract): void
+    {
+        unset(self::$instances[$abstract]);
+    }
+
+    /**
      * Flush the container of all instances and bindings.
      *
      * @return void
