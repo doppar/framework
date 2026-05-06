@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Response\JsonResponse;
+use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Http\Response\ResponseHeaderBag;
 use Phaseolies\Http\Exceptions\HttpException;
 use PHPUnit\Framework\TestCase;
@@ -128,7 +130,45 @@ class ResponseTest extends TestCase
     public function testJson()
     {
         $jsonResponse = $this->response->json(['test' => 'value'], 201);
-        $this->assertInstanceOf(Response\JsonResponse::class, $jsonResponse);
+        $this->assertInstanceOf(JsonResponse::class, $jsonResponse);
+    }
+
+    public function testJsonResponseUsesBufferedBodyAsSingleSourceOfTruth()
+    {
+        $jsonResponse = $this->response->json(['test' => 'value'], 201);
+
+        ob_start();
+        $jsonResponse->sendContent();
+        $output = ob_get_clean();
+
+        $this->assertSame('{"test":"value"}', $jsonResponse->getBody());
+        $this->assertSame($jsonResponse->getBody(), $output);
+        $this->assertSame('application/json', $jsonResponse->headers->get('Content-Type'));
+    }
+
+    public function testStreamedJsonResponseDoesNotCachePretendBody()
+    {
+        $response = new StreamedJsonResponse([['test' => 'value']]);
+
+        ob_start();
+        $response->sendContent();
+        $output = ob_get_clean();
+
+        $this->assertNull($response->body);
+        $this->assertSame('[{"test":"value"}]', $output);
+    }
+
+    public function testPrepareBodySerializesGenericObjectWithoutToArray()
+    {
+        $payload = new class {
+            public string $name = 'Doppar';
+        };
+
+        $body = $this->response->prepareBody($payload);
+
+        $this->assertSame('{"name":"Doppar"}', $body);
+        $this->assertSame($payload, $this->response->getOriginal());
+        $this->assertSame('{"name":"Doppar"}', $this->response->getBody());
     }
 
     public function testText()
