@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Http\Validation;
 
+use Phaseolies\Error\JsonErrorRenderer;
 use Phaseolies\Session\MessageBag;
 use Phaseolies\Http\Support\ValidationRules;
 use Phaseolies\Http\Response;
@@ -50,18 +51,31 @@ trait Rule
 
         if (!empty($errors)) {
             if (request()->isAjax() || request()->isApiRequest()) {
-                throw new HttpResponseException(
+                $exception = new HttpResponseException(
                     $errors,
                     Response::HTTP_UNPROCESSABLE_ENTITY
                 );
+
+                $exception->setResponse(
+                    (new JsonErrorRenderer())->render(
+                        $exception,
+                        Response::HTTP_UNPROCESSABLE_ENTITY,
+                        $errors
+                    )
+                );
+
+                throw $exception;
             }
 
             $this->setErrors($errors);
             foreach ($errors as $key => $error) {
                 session()->putPeek($key, implode(' ', (array)$error));
             }
-            redirect()->back()->withInput()->withErrors($errors)->send();
-            exit;
+
+            $response = redirect()->back()->withInput()->withErrors($errors);
+
+            throw (new HttpResponseException($errors, $response->getStatusCode()))
+                ->setResponse($response);
         }
 
         $this->setPassedData($input);

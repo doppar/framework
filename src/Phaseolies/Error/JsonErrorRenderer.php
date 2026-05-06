@@ -3,6 +3,7 @@
 namespace Phaseolies\Error;
 
 use Phaseolies\Http\Response;
+use Phaseolies\Http\Response\JsonResponse;
 use Throwable;
 
 class JsonErrorRenderer
@@ -13,9 +14,9 @@ class JsonErrorRenderer
      * @param Throwable $exception
      * @param int $statusCode
      * @param mixed|null $errorDetails
-     * @return void
+     * @return \Phaseolies\Http\Response\JsonResponse
      */
-    public function render(Throwable $exception, int $statusCode, mixed $errorDetails = null): void
+    public function render(Throwable $exception, int $statusCode, mixed $errorDetails = null): JsonResponse
     {
         $messages = [
             Response::HTTP_TOO_MANY_REQUESTS    => trans('validation.rate_limit.message'),
@@ -40,11 +41,6 @@ class JsonErrorRenderer
                 ],
             ];
 
-        header('Content-Type: application/json');
-        http_response_code($statusCode);
-
-        echo json_encode($response, JSON_UNESCAPED_SLASHES);
-
-        exit;
+        return response()->json($response, $statusCode);
     }
 }

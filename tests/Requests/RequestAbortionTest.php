@@ -9,6 +9,8 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\DI\Container;
+use Phaseolies\Translation\FileLoader;
+use Phaseolies\Translation\Translator;
 use stdClass;
 use PHPUnit\Framework\TestCase;
 use Mockery;
@@ -18,19 +20,51 @@ class RequestAbortionTest extends TestCase
 {
     protected RequestAbortion $requestAbortion;
     protected Container $container;
+    protected string $translationPath;
 
     protected function setUp(): void
     {
         parent::setUp();
         Container::setInstance(new MockContainer());
         $this->container = Container::getInstance();
+        $this->translationPath = sys_get_temp_dir() . '/phaseolies_request_abortion_lang_' . uniqid();
+        mkdir($this->translationPath . '/en', 0777, true);
+        file_put_contents($this->translationPath . '/en/validation.php', <<<'PHP'
+<?php
+
+return [
+    'default' => 'Validation failed.',
+    'rate_limit' => ['message' => 'Too many requests.'],
+    'unauthorized' => ['message' => 'Unauthorized.'],
+];
+PHP);
+        $this->container->bind('translator', fn() => new Translator(new FileLoader($this->translationPath), 'en'));
         $this->requestAbortion = new RequestAbortion();
     }
 
     protected function tearDown(): void
     {
         Mockery::close();
+        $this->deleteDir($this->translationPath);
         parent::tearDown();
+    }
+
+    protected function deleteDir(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($files as $file) {
+            $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
+        }
+
+        @rmdir($dir);
     }
 
     // public function testAbortThrowsHttpResponseExceptionForAjaxRequests()
@@ -81,6 +115,9 @@ class RequestAbortionTest extends TestCase
         } catch (HttpResponseException $e) {
             $this->assertEquals(403, $e->getStatusCode());
             $this->assertSame('Forbidden', $e->getValidationErrors());
+            $this->assertTrue($e->hasResponse());
+            $this->assertSame(403, $e->getResponse()?->getStatusCode());
+            $this->assertStringContainsString('Forbidden', $e->getResponse()?->getBody() ?? '');
             throw $e;
         }
     }
@@ -98,6 +135,7 @@ class RequestAbortionTest extends TestCase
         } catch (HttpResponseException $e) {
             $this->assertEquals(403, $e->getStatusCode());
             $this->assertSame('Forbidden', $e->getValidationErrors());
+            $this->assertSame('Value', $e->getResponse()?->headers->get('X-Custom-Header'));
         }
     }
 
@@ -241,6 +279,8 @@ class RequestAbortionTest extends TestCase
             $this->assertSame(404, $sink->captured[0]->getStatusCode());
             $this->assertSame($mockRequest, $sink->captured[1]);
             $this->assertSame(404, $exception->getStatusCode());
+            $this->assertTrue($exception->hasResponse());
+            $this->assertSame(404, $exception->getResponse()?->getStatusCode());
         }
     }
 }

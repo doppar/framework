@@ -7,6 +7,8 @@ use Phaseolies\Error\Traces\Frame;
 use Phaseolies\Error\Utils\ExceptionMarkdownReport;
 use Phaseolies\Error\Utils\Highlighter;
 use Phaseolies\Http\Controllers\Controller;
+use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Response;
 use Throwable;
 
 class WebErrorRenderer
@@ -15,9 +17,9 @@ class WebErrorRenderer
      * Render a detailed debug error page.
      *
      * @param Throwable $exception
-     * @return void
+     * @return \Phaseolies\Http\Response
      */
-    public function renderDebug(Throwable $exception): string
+    public function renderDebug(Throwable $exception): Response
     {
         $errorFile = $exception->getFile();
         $errorLine = $exception->getLine();
@@ -55,7 +57,7 @@ class WebErrorRenderer
         // to start a fresh view
         $this->clearOutputBufferIfActive();
 
-        return $controller->render('template', [
+        $content = $controller->render('template', [
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
             'headers'         => ($this->getHeaders()),
             'error_message'   => ucfirst($exception->getMessage()),
@@ -83,6 +85,10 @@ class WebErrorRenderer
             'current_route_action' => \Phaseolies\Support\Facades\Route::currentRouteAction(),
             'current_route_params' => request()->getRouteParams()
         ]);
+
+        return response($content, $this->resolveStatusCode($exception))
+            ->setOriginal($content)
+            ->setStatusCode($this->resolveStatusCode($exception));
     }
 
     /**
@@ -169,10 +175,78 @@ class WebErrorRenderer
      * Render a simple production-safe error response.
      *
      * @param Throwable $exception
-     * @return void
+     * @return \Phaseolies\Http\Response
      */
-    public function renderProduction(Throwable $exception): void
+    public function renderProduction(Throwable $exception): Response
     {
-        abort(500, "Something went wrong");
+        $statusCode = $this->resolveStatusCode($exception);
+        $message = $statusCode >= 500 ? 'Something went wrong' : ($exception->getMessage() ?: 'An error occurred.');
+        $viewPath = $this->resolveErrorViewPath($statusCode);
+
+        if ($viewPath !== null) {
+            $this->clearOutputBufferIfActive();
+            ob_start();
+            include $viewPath;
+            $content = ob_get_clean() ?: '';
+
+            return response($content, $statusCode)
+                ->setOriginal($content)
+                ->setStatusCode($statusCode);
+        }
+
+        return response($message, $statusCode)
+            ->setOriginal($message)
+            ->setStatusCode($statusCode);
+    }
+
+    /**
+     * Resolve the current HTTP status code for the exception.
+     *
+     * @param Throwable $exception
+     * @return int
+     */
+    protected function resolveStatusCode(Throwable $exception): int
+    {
+        if ($exception instanceof HttpException) {
+            return $exception->getStatusCode();
+        }
+
+        $statusCode = (int) $exception->getCode();
+
+        return ($statusCode >= 400 && $statusCode < 600) ? $statusCode : 500;
+    }
+
+    /**
+     * Resolve a matching error view path for the given status.
+     *
+     * @param int $statusCode
+     * @return string|null
+     */
+    protected function resolveErrorViewPath(int $statusCode): ?string
+    {
+        $customPath = base_path(
+            'resources'
+            . DIRECTORY_SEPARATOR . 'views'
+            . DIRECTORY_SEPARATOR . 'errors'
+            . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"
+        );
+
+        if (file_exists($customPath)) {
+            return $customPath;
+        }
+
+        $packagePath = base_path(
+            'vendor'
+            . DIRECTORY_SEPARATOR . 'doppar'
+            . DIRECTORY_SEPARATOR . 'framework'
+            . DIRECTORY_SEPARATOR . 'src'
+            . DIRECTORY_SEPARATOR . 'Phaseolies'
+            . DIRECTORY_SEPARATOR . 'Support'
+            . DIRECTORY_SEPARATOR . 'View'
+            . DIRECTORY_SEPARATOR . 'errors'
+            . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"
+        );
+
+        return file_exists($packagePath) ? $packagePath : null;
     }
 }
