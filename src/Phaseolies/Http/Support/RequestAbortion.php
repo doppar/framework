@@ -2,8 +2,10 @@
 
 namespace Phaseolies\Http\Support;
 
+use Phaseolies\Error\JsonErrorRenderer;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Response;
 
 class RequestAbortion
 {
@@ -51,17 +53,18 @@ class RequestAbortion
             $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
 
             if ($viewPath) {
-                if (ob_get_level() > 0) {
-                    ob_get_clean();
-                }
-                http_response_code($code);
-                include $viewPath;
-                exit;
+                throw (new HttpResponseException($message, $code, $httpException))
+                    ->setResponse($this->buildErrorViewResponse($viewPath, $code, $headers));
             }
         }
 
         if ($shouldJsonResponse) {
-            throw new HttpResponseException($message, $code, null);
+            $response = (new JsonErrorRenderer())
+                ->render($httpException, $code, $message)
+                ->withHeaders($headers);
+
+            throw (new HttpResponseException($message, $code, $httpException))
+                ->setResponse($response);
         }
 
         throw $httpException;
@@ -82,5 +85,28 @@ class RequestAbortion
         if ($condition) {
             $this->abort($code, $message, $headers);
         }
+    }
+
+    /**
+     * Build an HTML response for a resolved error view.
+     *
+     * @param string $viewPath
+     * @param int $statusCode
+     * @param array<string, string> $headers
+     * @return \Phaseolies\Http\Response
+     */
+    protected function buildErrorViewResponse(string $viewPath, int $statusCode, array $headers = []): Response
+    {
+        if (ob_get_level() > 0) {
+            ob_get_clean();
+        }
+
+        ob_start();
+        include $viewPath;
+        $content = ob_get_clean() ?: '';
+
+        return response($content, $statusCode, $headers)
+            ->setOriginal($content)
+            ->setStatusCode($statusCode);
     }
 }

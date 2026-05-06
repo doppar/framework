@@ -5,6 +5,7 @@ namespace Phaseolies\Error\Handlers;
 use Throwable;
 use Phaseolies\Error\WebErrorRenderer;
 use Phaseolies\Error\Contracts\ErrorHandlerInterface;
+use Phaseolies\Http\Exceptions\HttpResponseException;
 
 class WebErrorHandler implements ErrorHandlerInterface
 {
@@ -16,6 +17,12 @@ class WebErrorHandler implements ErrorHandlerInterface
      */
     public function handle(Throwable $exception): void
     {
+        if ($exception instanceof HttpResponseException && $exception->hasResponse()) {
+            $exception->getResponse()?->prepare(request())->send();
+
+            return;
+        }
+
         $renderer = new WebErrorRenderer();
 
         if (env('APP_DEBUG') === "true") {
