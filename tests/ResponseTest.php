@@ -101,6 +101,30 @@ class ResponseTest extends TestCase
         $this->assertStringContainsString('text/html', $this->response->headers->get('Content-Type'));
     }
 
+    public function testPrepareNullsBodyForHeadRequests()
+    {
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+        $request->server->set('REQUEST_METHOD', 'HEAD');
+
+        $this->response->setBody('Test');
+        $this->response->prepare($request);
+
+        $this->assertNull($this->response->getBody());
+    }
+
+    public function testPrepareNullsBodyForEmptyResponses()
+    {
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+
+        $this->response->setBody('Test');
+        $this->response->setStatusCode(204);
+        $this->response->prepare($request);
+
+        $this->assertNull($this->response->getBody());
+    }
+
     public function testSendContent()
     {
         $this->response->setBody('Test content');

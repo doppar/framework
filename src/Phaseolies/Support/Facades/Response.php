@@ -4,7 +4,7 @@ namespace Phaseolies\Support\Facades;
 
 /**
  * @method static setBody(?string $body): static
- * @method static getBody(): string
+ * @method static getBody(): ?string
  * @method static setOriginal($original): static
  * @method static getOriginal()
  * @method static setCharset(string $charset): static
