@@ -78,6 +78,7 @@ PHP);
 
         $payload = json_decode($response->getBody(), true);
 
+        $this->assertSame($payload, $response->getOriginal());
         $this->assertSame('Boom', $payload['message']);
         $this->assertIsArray($payload['errors']);
         $this->assertArrayHasKey('trace', $payload['errors']);
@@ -96,6 +97,7 @@ PHP);
 
         $payload = json_decode($response->getBody(), true);
 
+        $this->assertSame($payload, $response->getOriginal());
         $this->assertSame($errors, $payload['errors']);
         $this->assertIsString($payload['message']);
         $this->assertNotSame('', $payload['message']);

@@ -237,7 +237,7 @@ class RouterTest extends TestCase
 
         $request = new Request();
         $container = Container::getInstance();
-        $container->bind('request', fn() => $request);
+        $container->instance('request', $request);
 
         $result = $this->router->any('/test', $callback);
 
@@ -458,7 +458,10 @@ class RouterTest extends TestCase
 
         $this->assertNotSame($sharedResponse, $response);
         $this->assertSame('<h1>Doppar</h1>', $response->getBody());
-        $this->assertSame('<h1>Doppar</h1>', $response->getOriginal());
+        $this->assertSame([
+            'view' => 'demo',
+            'data' => ['name' => 'Doppar'],
+        ], $response->getOriginal());
         $this->assertSame('ok', $response->headers->get('X-Test'));
         $this->assertNull($response->headers->get('X-Leaked'));
         $this->assertSame(200, $response->getStatusCode());

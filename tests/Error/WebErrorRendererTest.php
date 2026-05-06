@@ -24,12 +24,14 @@ class WebErrorRendererTest extends TestCase
     public function testRenderProductionReturnsResponseForGenericException(): void
     {
         $renderer = new WebErrorRenderer();
+        $exception = new RuntimeException('Boom');
 
-        $response = $renderer->renderProduction(new RuntimeException('Boom'));
+        $response = $renderer->renderProduction($exception);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(500, $response->getStatusCode());
         $this->assertSame('Something went wrong', $response->getBody());
+        $this->assertSame($exception, $response->getOriginal());
     }
 
     public function testRenderProductionPreservesHttpExceptionStatus(): void
@@ -41,5 +43,6 @@ class WebErrorRendererTest extends TestCase
 
         $this->assertSame(404, $response->getStatusCode());
         $this->assertSame('Not Found', $response->getBody());
+        $this->assertSame($exception, $response->getOriginal());
     }
 }

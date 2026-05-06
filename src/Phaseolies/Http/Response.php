@@ -192,7 +192,7 @@ class Response implements HttpStatus
      * Set the HTTP status code for the response.
      *
      * @param int $statusCode The HTTP status code.
-     * @return int The updated status code.
+     * @return static
      */
     public function setStatusCode(int $statusCode, ?string $text = null): static
     {
