@@ -16,6 +16,19 @@ use PHPUnit\Framework\TestCase;
 use Mockery;
 use Tests\Support\MockContainer;
 
+class TestableRequestAbortion extends RequestAbortion
+{
+    public function publicBuildErrorViewResponse(
+        string $viewPath,
+        int $statusCode,
+        string $message = '',
+        array $headers = [],
+        mixed $original = null
+    ) {
+        return $this->buildErrorViewResponse($viewPath, $statusCode, $message, $headers, $original);
+    }
+}
+
 class RequestAbortionTest extends TestCase
 {
     protected RequestAbortion $requestAbortion;
@@ -39,7 +52,7 @@ return [
 ];
 PHP);
         $this->container->bind('translator', fn() => new Translator(new FileLoader($this->translationPath), 'en'));
-        $this->requestAbortion = new RequestAbortion();
+        $this->requestAbortion = new TestableRequestAbortion();
     }
 
     protected function tearDown(): void
@@ -120,6 +133,30 @@ PHP);
             $this->assertStringContainsString('Forbidden', $e->getResponse()?->getBody() ?? '');
             throw $e;
         }
+    }
+
+    public function testBuildErrorViewResponseMakesMessageAvailableToView(): void
+    {
+        $viewPath = sys_get_temp_dir() . '/phaseolies_request_abort_error_' . uniqid() . '.php';
+        file_put_contents($viewPath, <<<'PHP'
+<?php echo $message === 'Route [/home] not found' ? 'Not Found' : $message; ?>
+PHP);
+
+        $exception = HttpException::fromStatusCode(404, 'Route [/home] not found');
+        ob_start();
+        $response = $this->requestAbortion->publicBuildErrorViewResponse(
+            $viewPath,
+            404,
+            'Route [/home] not found',
+            [],
+            $exception
+        );
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame('Not Found', trim($response->getBody() ?? ''));
+        $this->assertSame($exception, $response->getOriginal());
+
+        @unlink($viewPath);
     }
 
     public function testAbortThrowsHttpExceptionWithHeaders()
@@ -222,65 +259,6 @@ PHP);
             $this->assertEquals(404, $e->getStatusCode());
             $this->assertSame('', $e->getValidationErrors());
             throw $e;
-        }
-    }
-
-    public function testRecordInsightExceptionDelegatesToInsightRecorder(): void
-    {
-        $sink = new stdClass();
-        $sink->captured = [];
-
-        $mockRequest = Mockery::mock(Request::class);
-        $this->container->instance('Doppar\\Insight\\Support\\ErrorHistoryRecorder', new class($sink) {
-            public function __construct(private readonly object $sink)
-            {
-            }
-
-            public function record($exception, $request): void
-            {
-                $this->sink->captured = [$exception, $request];
-            }
-        });
-
-        $exception = HttpException::fromStatusCode(404, 'Route missing');
-        $method = new \ReflectionMethod($this->requestAbortion, 'recordInsightException');
-        $method->invoke($this->requestAbortion, $mockRequest, $exception);
-
-        $this->assertSame($exception, $sink->captured[0]);
-        $this->assertSame($mockRequest, $sink->captured[1]);
-        $this->assertSame(404, $exception->getStatusCode());
-    }
-
-    public function testAbortRecordsInsightForAjaxAbort(): void
-    {
-        $sink = new stdClass();
-        $sink->captured = [];
-
-        $mockRequest = Mockery::mock(Request::class);
-        $mockRequest->shouldReceive('isAjax')->andReturn(true);
-        $mockRequest->shouldReceive('isApiRequest')->andReturn(false);
-        $this->container->instance('request', $mockRequest);
-        $this->container->instance('Doppar\\Insight\\Support\\ErrorHistoryRecorder', new class($sink) {
-            public function __construct(private readonly object $sink)
-            {
-            }
-
-            public function record($exception, $request): void
-            {
-                $this->sink->captured = [$exception, $request];
-            }
-        });
-
-        try {
-            $this->requestAbortion->abort(404, 'Ajax missing');
-            $this->fail('Expected HttpResponseException was not thrown.');
-        } catch (HttpResponseException $exception) {
-            $this->assertInstanceOf(HttpException::class, $sink->captured[0]);
-            $this->assertSame(404, $sink->captured[0]->getStatusCode());
-            $this->assertSame($mockRequest, $sink->captured[1]);
-            $this->assertSame(404, $exception->getStatusCode());
-            $this->assertTrue($exception->hasResponse());
-            $this->assertSame(404, $exception->getResponse()?->getStatusCode());
         }
     }
 }

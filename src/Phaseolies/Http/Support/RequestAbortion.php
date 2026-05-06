@@ -9,8 +9,6 @@ use Phaseolies\Http\Response;
 
 class RequestAbortion
 {
-    use InteractsWithInsightErrorTracking;
-
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
@@ -25,8 +23,6 @@ class RequestAbortion
         $request = request();
         $shouldJsonResponse = $request->isAjax() || $request->isApiRequest();
         $httpException = HttpException::fromStatusCode($code, $message, null, $headers);
-
-        $this->recordInsightException($request, $httpException);
 
         $customPath =
             base_path(
@@ -54,7 +50,7 @@ class RequestAbortion
 
             if ($viewPath) {
                 throw (new HttpResponseException($message, $code, $httpException))
-                    ->setResponse($this->buildErrorViewResponse($viewPath, $code, $headers));
+                    ->setResponse($this->buildErrorViewResponse($viewPath, $code, $message, $headers, $httpException));
             }
         }
 
@@ -92,10 +88,18 @@ class RequestAbortion
      *
      * @param string $viewPath
      * @param int $statusCode
+     * @param string $message
      * @param array<string, string> $headers
+     * @param mixed $original
      * @return \Phaseolies\Http\Response
      */
-    protected function buildErrorViewResponse(string $viewPath, int $statusCode, array $headers = []): Response
+    protected function buildErrorViewResponse(
+        string $viewPath,
+        int $statusCode,
+        string $message = '',
+        array $headers = [],
+        mixed $original = null
+    ): Response
     {
         if (ob_get_level() > 0) {
             ob_get_clean();
@@ -106,7 +110,6 @@ class RequestAbortion
         $content = ob_get_clean() ?: '';
 
         return response($content, $statusCode, $headers)
-            ->setOriginal($content)
-            ->setStatusCode($statusCode);
+            ->setOriginal($original ?? $content);
     }
 }
