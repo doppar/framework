@@ -189,7 +189,10 @@ if (!function_exists('view')) {
         $instance = app(Controller::class);
         $content = $instance->render($view, $data, true);
 
-        return response($content, 200, $headers)->setOriginal($content);
+        return response($content, 200, $headers)->setOriginal([
+            'view' => $view,
+            'data' => $data,
+        ]);
     }
 }
 
@@ -205,11 +208,13 @@ if (!function_exists('redirect')) {
      */
     function redirect($to = null, $status = 302, $headers = [], $secure = null)
     {
+        $redirect = app(RedirectResponse::class);
+
         if (is_null($to)) {
-            return app('redirect');
+            return $redirect;
         }
 
-        return app('redirect')->to($to, $status, $headers, $secure);
+        return $redirect->to($to, $status, $headers, $secure);
     }
 }
 
@@ -224,7 +229,7 @@ if (!function_exists('back')) {
      */
     function back($status = 302, $headers = [], $fallback = false)
     {
-        return app('redirect')->back($status, $headers, $fallback);
+        return redirect()->back($status, $headers, $fallback);
     }
 }
 

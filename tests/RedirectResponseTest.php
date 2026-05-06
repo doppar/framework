@@ -67,6 +67,11 @@ class MockRequest
             }
         };
     }
+
+    public function except(...$keys): array
+    {
+        return [];
+    }
 }
 
 class MockMessageBag
@@ -125,6 +130,8 @@ class RedirectResponseTest extends TestCase
         MockRouter::$namedRoutes = [];
 
         $this->setupGlobalMocks();
+        $container->instance('session', $this->session);
+        $container->instance('request', $this->request);
 
         $this->replaceMessageBag();
     }
@@ -198,6 +205,7 @@ class RedirectResponseTest extends TestCase
         $result = $this->redirect->setTargetUrl($url);
 
         $this->assertSame($this->redirect, $result);
+        $this->assertSame($url, $this->redirect->getOriginal());
         $this->assertEquals($url, $this->redirect->headers->get('Location'));
         $this->assertEquals('text/html; charset=utf-8', $this->redirect->headers->get('Content-Type'));
         $this->assertStringContainsString('Redirecting to', $this->redirect->getBody());
@@ -222,6 +230,7 @@ class RedirectResponseTest extends TestCase
 
         $this->assertSame($this->redirect, $result);
         $this->assertEquals($statusCode, $this->redirect->getStatusCode());
+        $this->assertSame($url, $this->redirect->getOriginal());
         $this->assertEquals($url, $this->redirect->headers->get('Location'));
         $this->assertEquals('value', $this->redirect->headers->get('X-Custom'));
     }
@@ -259,6 +268,8 @@ class RedirectResponseTest extends TestCase
 
         $this->assertSame($this->redirect, $result);
         $this->assertEquals(301, $this->redirect->getStatusCode());
+        $this->assertSame($referer, $this->redirect->getOriginal());
+        $this->assertEquals($referer, $this->redirect->headers->get('Location'));
         $this->assertEquals('value', $this->redirect->headers->get('X-Test'));
     }
 
@@ -268,6 +279,7 @@ class RedirectResponseTest extends TestCase
 
         $result = $this->redirect->back();
 
+        $this->assertSame('/', $this->redirect->getOriginal());
         $this->assertEquals('/', $this->redirect->headers->get('Location'));
     }
 
@@ -278,7 +290,9 @@ class RedirectResponseTest extends TestCase
 
         $result = $this->redirect->intended('/default');
 
-        $this->assertEquals($intendedUrl, $this->session->get('url.intended'));
+        $this->assertSame($intendedUrl, $this->redirect->getOriginal());
+        $this->assertEquals($intendedUrl, $this->redirect->headers->get('Location'));
+        $this->assertNull($this->session->get('url.intended'));
     }
 
     public function testIntendedMethodWithoutStoredUrl()
@@ -286,6 +300,7 @@ class RedirectResponseTest extends TestCase
         $defaultUrl = '/dashboard';
         $result = $this->redirect->intended($defaultUrl, 301);
 
+        $this->assertSame($defaultUrl, $this->redirect->getOriginal());
         $this->assertEquals($defaultUrl, $this->redirect->headers->get('Location'));
         $this->assertEquals(301, $this->redirect->getStatusCode());
     }
@@ -297,6 +312,7 @@ class RedirectResponseTest extends TestCase
         $result = $this->redirect->away($externalUrl, 301);
 
         $this->assertSame($this->redirect, $result);
+        $this->assertSame($externalUrl, $this->redirect->getOriginal());
         $this->assertEquals($externalUrl, $this->redirect->headers->get('Location'));
         $this->assertEquals(301, $this->redirect->getStatusCode());
     }

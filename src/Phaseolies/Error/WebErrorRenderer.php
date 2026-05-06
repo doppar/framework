@@ -190,13 +190,11 @@ class WebErrorRenderer
             $content = ob_get_clean() ?: '';
 
             return response($content, $statusCode)
-                ->setOriginal($content)
-                ->setStatusCode($statusCode);
+                ->setOriginal($exception);
         }
 
         return response($message, $statusCode)
-            ->setOriginal($message)
-            ->setStatusCode($statusCode);
+            ->setOriginal($exception);
     }
 
     /**
