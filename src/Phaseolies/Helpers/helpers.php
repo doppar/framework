@@ -208,7 +208,7 @@ if (!function_exists('redirect')) {
      */
     function redirect($to = null, $status = 302, $headers = [], $secure = null)
     {
-        $redirect = app(RedirectResponse::class);
+        $redirect = new RedirectResponse();
 
         if (is_null($to)) {
             return $redirect;
