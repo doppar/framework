@@ -16,6 +16,19 @@ use PHPUnit\Framework\TestCase;
 use Mockery;
 use Tests\Support\MockContainer;
 
+class TestableRequestAbortion extends RequestAbortion
+{
+    public function publicBuildErrorViewResponse(
+        string $viewPath,
+        int $statusCode,
+        string $message = '',
+        array $headers = [],
+        mixed $original = null
+    ) {
+        return $this->buildErrorViewResponse($viewPath, $statusCode, $message, $headers, $original);
+    }
+}
+
 class RequestAbortionTest extends TestCase
 {
     protected RequestAbortion $requestAbortion;
@@ -39,7 +52,7 @@ return [
 ];
 PHP);
         $this->container->bind('translator', fn() => new Translator(new FileLoader($this->translationPath), 'en'));
-        $this->requestAbortion = new RequestAbortion();
+        $this->requestAbortion = new TestableRequestAbortion();
     }
 
     protected function tearDown(): void
@@ -120,6 +133,30 @@ PHP);
             $this->assertStringContainsString('Forbidden', $e->getResponse()?->getBody() ?? '');
             throw $e;
         }
+    }
+
+    public function testBuildErrorViewResponseMakesMessageAvailableToView(): void
+    {
+        $viewPath = sys_get_temp_dir() . '/phaseolies_request_abort_error_' . uniqid() . '.php';
+        file_put_contents($viewPath, <<<'PHP'
+<?php echo $message === 'Route [/home] not found' ? 'Not Found' : $message; ?>
+PHP);
+
+        $exception = HttpException::fromStatusCode(404, 'Route [/home] not found');
+        ob_start();
+        $response = $this->requestAbortion->publicBuildErrorViewResponse(
+            $viewPath,
+            404,
+            'Route [/home] not found',
+            [],
+            $exception
+        );
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame('Not Found', trim($response->getBody() ?? ''));
+        $this->assertSame($exception, $response->getOriginal());
+
+        @unlink($viewPath);
     }
 
     public function testAbortThrowsHttpExceptionWithHeaders()
