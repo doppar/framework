@@ -7,6 +7,8 @@ use Tests\Support\Kernel;
 use Phaseolies\Utilities\Attributes\Middleware;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\DI\Container;
 use Phaseolies\Application;
 use PHPUnit\Framework\TestCase;
@@ -55,6 +57,14 @@ class TestRequestStub extends Request
         $this->testRouteParams = $params;
 
         return $this;
+    }
+}
+
+class TestableRouter extends Router
+{
+    public function handle(Request $request, \Closure $handler): Response
+    {
+        return $handler($request);
     }
 }
 
@@ -412,6 +422,46 @@ class RouterTest extends TestCase
         $result = $this->router->getCallback($request);
 
         $this->assertFalse($result);
+    }
+
+    public function testResolveUsesFreshResponseForScalarRouteResults(): void
+    {
+        $freshRouter = new TestableRouter($this->app);
+        $sharedResponse = new Response('stale body', 202, ['X-Leaked' => 'yes']);
+
+        Container::getInstance()->instance('response', $sharedResponse);
+
+        $freshRouter->get('/fresh', fn() => 'fresh body');
+
+        $request = new TestRequestStub('GET', '/fresh', 'localhost');
+        $response = $freshRouter->resolve($this->app, $request);
+
+        $this->assertNotSame($sharedResponse, $response);
+        $this->assertSame('fresh body', $response->getBody());
+        $this->assertNull($response->headers->get('X-Leaked'));
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    public function testViewHelperReturnsFreshResponseInstance(): void
+    {
+        $sharedResponse = new Response('stale body', 202, ['X-Leaked' => 'yes']);
+        $controller = $this->createMock(Controller::class);
+        $controller->expects($this->once())
+            ->method('render')
+            ->with('demo', ['name' => 'Doppar'], true)
+            ->willReturn('<h1>Doppar</h1>');
+
+        Container::getInstance()->instance('response', $sharedResponse);
+        Container::getInstance()->instance(Controller::class, $controller);
+
+        $response = view('demo', ['name' => 'Doppar'], ['X-Test' => 'ok']);
+
+        $this->assertNotSame($sharedResponse, $response);
+        $this->assertSame('<h1>Doppar</h1>', $response->getBody());
+        $this->assertSame('<h1>Doppar</h1>', $response->getOriginal());
+        $this->assertSame('ok', $response->headers->get('X-Test'));
+        $this->assertNull($response->headers->get('X-Leaked'));
+        $this->assertSame(200, $response->getStatusCode());
     }
 
     // =========================================================================

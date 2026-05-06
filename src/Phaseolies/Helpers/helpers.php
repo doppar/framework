@@ -188,14 +188,8 @@ if (!function_exists('view')) {
     {
         $instance = app(Controller::class);
         $content = $instance->render($view, $data, true);
-        $response = app('response');
-        $response->setBody($content);
 
-        foreach ($headers as $name => $value) {
-            $response->headers->set($name, $value);
-        }
-
-        return $response;
+        return response($content, 200, $headers)->setOriginal($content);
     }
 }
 
