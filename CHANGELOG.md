@@ -1,5 +1,15 @@
 # Release Notes
 
+## v3.25.3 - 2026-05-06
+
+* Fix: per-request singleton state leakage in worker mode by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/275
+* Fix: Normalize the error paths onto real Response objects by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/276
+* Fix: Stop using the shared singleton response object as the mutable envelope for route results by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/277
+* Fix: Make JsonResponse use a single response body source by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/278
+* Fix: Make Response body contract explicitly nullable by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/279
+* Harden response lifecycle consistency and add lifecycle regression coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/280
+* Deleted InteractsWithInsightErrorTracking after changing error lifecyle by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/281
+
 ## v3.25.2 - 2026-05-04
 
 * Track Insight 404/HttpException errors from abort flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/273
