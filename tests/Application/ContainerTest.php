@@ -884,6 +884,36 @@ class ContainerTest extends TestCase
         $this->assertFalse($this->container->hasInstance('service2'));
     }
 
+    public function testForgetResolvedClearsResolvedSingletonInstanceButKeepsBinding()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->container->forgetResolved('service');
+
+        $this->assertTrue($this->container->has('service'));
+        $this->assertFalse($this->container->hasInstance('service'));
+        $this->assertFalse($this->container->resolved('service'));
+    }
+
+    public function testForgetResolvedAllowsSingletonToBeResolvedFresh()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+
+        $first = $this->container->get('service');
+        $this->container->forgetResolved('service');
+        $second = $this->container->get('service');
+
+        $this->assertNotSame($first, $second);
+    }
+
+    public function testForgetResolvedForUnknownBindingDoesNotThrow()
+    {
+        $this->container->forgetResolved('missing-service');
+
+        $this->assertFalse($this->container->hasInstance('missing-service'));
+    }
+
     public function testFlushAllowsRebinding()
     {
         $this->container->bind('service', fn() => 'value1');
