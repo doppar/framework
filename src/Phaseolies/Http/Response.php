@@ -1570,20 +1570,45 @@ class Response implements HttpStatus
 
         if (
             is_array($content) ||
-            $content instanceof \JsonSerializable ||
-            $content instanceof \Phaseolies\Database\Entity\Model ||
-            $content instanceof \Phaseolies\Database\Entity\Builder ||
-            $content instanceof \stdClass ||
-            $content instanceof \ArrayObject
+            is_object($content)
         ) {
-            $content = json_encode($content);
-        } elseif ($content instanceof \Phaseolies\Support\Collection || is_object($content)) {
-            $content = json_encode($content->toArray());
+            $content = $this->encodeJsonContent($content);
         }
 
         $this->setBody($content);
 
         return $content;
+    }
+
+    /**
+     * Encode a value for JSON responses without assuming every object has toArray().
+     *
+     * @param mixed $content
+     * @param int $options
+     * @return string
+     */
+    protected function encodeJsonContent(mixed $content, int $options = 0): string
+    {
+        if ($content instanceof \Phaseolies\Support\Collection) {
+            return json_encode($content->toArray(), $options);
+        }
+
+        if (
+            $content instanceof \Phaseolies\Database\Entity\Model ||
+            $content instanceof \Phaseolies\Database\Entity\Builder ||
+            $content instanceof \JsonSerializable ||
+            $content instanceof \stdClass ||
+            $content instanceof \ArrayObject ||
+            is_array($content)
+        ) {
+            return json_encode($content, $options);
+        }
+
+        if (is_object($content) && method_exists($content, 'toArray')) {
+            return json_encode($content->toArray(), $options);
+        }
+
+        return json_encode($content, $options);
     }
 
     /**
