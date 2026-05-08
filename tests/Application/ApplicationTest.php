@@ -16,6 +16,7 @@ use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Support\Router;
 use Phaseolies\Support\Session;
 use Phaseolies\Console\Console;
+use Tests\Application\Mock\Providers\GhostableTestProvider;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
@@ -96,6 +97,7 @@ final class ApplicationTest extends TestCase
 
     protected function tearDown(): void
     {
+        GhostableTestProvider::resetState();
         $this->deleteDirectory($this->tempBasePath);
     }
 
@@ -214,6 +216,56 @@ final class ApplicationTest extends TestCase
         $this->assertIsArray($providers);
         $this->assertContains(\Phaseolies\Providers\RouteServiceProvider::class, $providers);
         $this->assertContains(\Phaseolies\Providers\LanguageServiceProvider::class, $providers);
+    }
+
+    public function testGhostableProvidersAreQueuedOutsideConsole(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertTrue($this->app->has('ghost.service'));
+        $this->assertSame([], $this->app->getProviders());
+        $this->assertSame(0, GhostableTestProvider::$registerCount);
+    }
+
+    public function testGhostServiceResolutionLoadsQueuedProviderAndBootsIt(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+        $this->setProtectedProperty($this->app, 'providersBooted', true);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame('ghost-value', $this->app->make('ghost.service'));
+        $this->assertSame('booted', $this->app->make('ghost.booted'));
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
+        $this->assertSame(1, GhostableTestProvider::$bootCount);
+        $this->assertInstanceOf(
+            GhostableTestProvider::class,
+            $this->app->getProvider(GhostableTestProvider::class)
+        );
+    }
+
+    public function testGhostableProvidersRemainEagerInConsole(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', true);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
+        $this->assertCount(1, $this->app->getProviders());
     }
 
     public function testSingletonBindings(): void
