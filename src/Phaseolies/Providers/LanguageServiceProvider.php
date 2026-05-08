@@ -6,8 +6,9 @@ use Phaseolies\Support\Facades\Lang;
 use Phaseolies\Translation\FileLoader;
 use Phaseolies\Translation\Translator;
 use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Providers\GhostableProvider;
 
-class LanguageServiceProvider extends ServiceProvider
+class LanguageServiceProvider extends ServiceProvider implements GhostableProvider
 {
     /**
      * Register the service provider.
@@ -54,5 +55,18 @@ class LanguageServiceProvider extends ServiceProvider
     public function boot()
     {
         Lang::setFacadeApplication($this->app);
+    }
+
+    /**
+     * Get the services that should ghost-load this provider.
+     *
+     * @return array<int, string>
+     */
+    public function ghosts(): array
+    {
+        return [
+            'translation.loader',
+            'translator',
+        ];
     }
 }

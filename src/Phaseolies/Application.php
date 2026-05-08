@@ -4,6 +4,7 @@ namespace Phaseolies;
 
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\Support\Router;
+use Phaseolies\Providers\GhostableProvider;
 use Phaseolies\Providers\ServiceProvider;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
@@ -128,11 +129,53 @@ class Application extends Container
     protected $serviceProviders = [];
 
     /**
+     * The queued ghost providers keyed by class name.
+     *
+     * @var array<class-string<ServiceProvider>, ServiceProvider>
+     */
+    protected array $ghostProviders = [];
+
+    /**
+     * Map of service identifiers to ghost provider classes.
+     *
+     * @var array<string, class-string<ServiceProvider>>
+     */
+    protected array $ghostServices = [];
+
+    /**
+     * Tracks ghost providers that have already been loaded.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $loadedGhostProviders = [];
+
+    /**
+     * Tracks ghost providers currently being loaded.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $loadingGhostProviders = [];
+
+    /**
      * Indicates if the providers has been booted
      *
      * @var bool
      */
     protected $providersBooted = false;
+
+    /**
+     * Indicates if the application is currently booting eager providers.
+     *
+     * @var bool
+     */
+    protected bool $bootingProviders = false;
+
+    /**
+     * Tracks providers whose boot method has already run.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $bootedProviderClasses = [];
 
     /**
      * @var Router
@@ -304,10 +347,61 @@ class Application extends Container
     {
         foreach ($providers as $provider) {
             $providerInstance = new $provider($this);
+
             if ($providerInstance instanceof ServiceProvider) {
-                $providerInstance->register();
-                $this->serviceProviders[] = $providerInstance;
+                if ($this->shouldQueueGhostProvider($providerInstance)) {
+                    $this->queueGhostProvider($providerInstance);
+                    continue;
+                }
+
+                $this->registerProviderInstance($providerInstance);
             }
+        }
+    }
+
+    /**
+     * Determine if the provider should be queued as a ghost provider
+     *
+     * @param ServiceProvider $providerInstance
+     * @return bool
+     */
+    protected function shouldQueueGhostProvider(ServiceProvider $providerInstance): bool
+    {
+        return !$this->runningInConsole() && $providerInstance instanceof GhostableProvider;
+    }
+
+    /**
+     * Register and track an eager provider instance.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function registerProviderInstance(ServiceProvider $providerInstance): void
+    {
+        $providerInstance->register();
+
+        $this->serviceProviders[] = $providerInstance;
+    }
+
+    /**
+     * Queue a ghost provider until one of its services is requested.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function queueGhostProvider(ServiceProvider $providerInstance): void
+    {
+        /** @var GhostableProvider $providerInstance */
+        $providerClass = $providerInstance::class;
+
+        $this->ghostProviders[$providerClass] = $providerInstance;
+
+        foreach ($providerInstance->ghosts() as $ghost) {
+            if (!is_string($ghost) || $ghost === '') {
+                continue;
+            }
+
+            $this->ghostServices[$ghost] = $providerClass;
         }
     }
 
@@ -334,8 +428,14 @@ class Application extends Container
      */
     protected function bootProviders(): void
     {
-        foreach ($this->serviceProviders as $providerInstance) {
-            $providerInstance->boot();
+        $this->bootingProviders = true;
+
+        try {
+            foreach ($this->serviceProviders as $providerInstance) {
+                $this->bootProviderInstance($providerInstance);
+            }
+        } finally {
+            $this->bootingProviders = false;
         }
 
         $this->bootstrap();
@@ -728,6 +828,81 @@ class Application extends Container
         }
 
         return null;
+    }
+
+    /**
+     * Determine if the application has a binding or queued ghost for the given service.
+     *
+     * @param string $key
+     * @return bool
+     */
+    public function has(string $key): bool
+    {
+        return parent::has($key) || isset($this->ghostServices[$key]);
+    }
+
+    /**
+     * Load a queued ghost provider when one of its services is requested.
+     *
+     * @param string $abstract
+     * @return bool
+     */
+    public function loadGhostProvider(string $abstract): bool
+    {
+        $providerClass = $this->ghostServices[$abstract] ?? null;
+
+        if ($providerClass === null) {
+            return false;
+        }
+
+        if (isset($this->loadedGhostProviders[$providerClass]) || isset($this->loadingGhostProviders[$providerClass])) {
+            return true;
+        }
+
+        $providerInstance = $this->ghostProviders[$providerClass] ?? null;
+
+        if (!$providerInstance instanceof ServiceProvider) {
+            return false;
+        }
+
+        $this->loadingGhostProviders[$providerClass] = true;
+
+        foreach (($providerInstance instanceof GhostableProvider ? $providerInstance->ghosts() : []) as $ghost) {
+            unset($this->ghostServices[$ghost]);
+        }
+
+        try {
+            $this->registerProviderInstance($providerInstance);
+
+            if ($this->providersBooted || $this->bootingProviders) {
+                $this->bootProviderInstance($providerInstance);
+            }
+
+            $this->loadedGhostProviders[$providerClass] = true;
+
+            return true;
+        } finally {
+            unset($this->loadingGhostProviders[$providerClass], $this->ghostProviders[$providerClass]);
+        }
+    }
+
+    /**
+     * Boot a provider instance once.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function bootProviderInstance(ServiceProvider $providerInstance): void
+    {
+        $providerClass = $providerInstance::class;
+
+        if (isset($this->bootedProviderClasses[$providerClass])) {
+            return;
+        }
+
+        $providerInstance->boot();
+
+        $this->bootedProviderClasses[$providerClass] = true;
     }
 
     /**

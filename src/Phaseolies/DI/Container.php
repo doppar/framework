@@ -163,6 +163,14 @@ class Container implements ArrayAccess
             throw new \RuntimeException("Circular dependency detected while resolving [{$abstract}]");
         }
 
+        if (
+            !isset(self::$bindings[$abstract]) &&
+            !array_key_exists($abstract, self::$instances) &&
+            method_exists($this, 'loadGhostProvider')
+        ) {
+            $this->loadGhostProvider($abstract);
+        }
+
         $this->resolving[$abstract] = true;
 
         try {
