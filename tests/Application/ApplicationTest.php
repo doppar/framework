@@ -63,6 +63,7 @@ final class ApplicationTest extends TestCase
     protected function setUp(): void
     {
         $container = new Container();
+        $container->flush();
         $container->bind('config', fn() => Config::class);
 
         // Create a temporary directory structure
@@ -98,6 +99,8 @@ final class ApplicationTest extends TestCase
     protected function tearDown(): void
     {
         GhostableTestProvider::resetState();
+        $this->app->flush();
+        Container::forgetInstance();
         $this->deleteDirectory($this->tempBasePath);
     }
 
@@ -252,6 +255,21 @@ final class ApplicationTest extends TestCase
             GhostableTestProvider::class,
             $this->app->getProvider(GhostableTestProvider::class)
         );
+    }
+
+    public function testGhostServiceCanBeResolvedDuringProviderRegistration(): void
+    {
+        GhostableTestProvider::resetState();
+        GhostableTestProvider::$resolveDuringRegister = true;
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame('ghost-value', $this->app->make('ghost.service'));
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
     }
 
     public function testGhostableProvidersRemainEagerInConsole(): void

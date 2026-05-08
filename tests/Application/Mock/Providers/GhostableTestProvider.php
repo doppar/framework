@@ -9,11 +9,13 @@ class GhostableTestProvider extends ServiceProvider implements GhostableProvider
 {
     public static int $registerCount = 0;
     public static int $bootCount = 0;
+    public static bool $resolveDuringRegister = false;
 
     public static function resetState(): void
     {
         self::$registerCount = 0;
         self::$bootCount = 0;
+        self::$resolveDuringRegister = false;
     }
 
     public function register(): void
@@ -21,6 +23,10 @@ class GhostableTestProvider extends ServiceProvider implements GhostableProvider
         self::$registerCount++;
 
         $this->app->singleton('ghost.service', fn() => 'ghost-value');
+
+        if (self::$resolveDuringRegister) {
+            $this->app->make('ghost.service');
+        }
     }
 
     public function boot(): void
