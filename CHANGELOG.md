@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.26.0 - 2026-05-08
+
+* Add ghostable providers for lazy-loading framework services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/282
+
 ## v3.25.3 - 2026-05-06
 
 * Fix: per-request singleton state leakage in worker mode by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/275
