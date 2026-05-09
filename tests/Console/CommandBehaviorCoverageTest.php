@@ -125,6 +125,79 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertStringContainsString('path app/Http/Controllers/Admin/UserController.php', $content);
     }
 
+    public function testCommandHelpersNormalizeGeneratedNamesAndRelativePaths(): void
+    {
+        $command = new class extends MakeProviderCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        [$normalized, $parts, $className] = $this->invokeMethod($command, 'splitGeneratedName', [
+            '\\Admin//Hello\\TestProvider/',
+        ]);
+
+        $this->assertSame('Admin/Hello/TestProvider', $normalized);
+        $this->assertSame(['Admin', 'Hello'], $parts);
+        $this->assertSame('TestProvider', $className);
+        $this->assertSame(
+            'app/Providers/Hello/TestProvider.php',
+            $this->invokeMethod($command, 'relativePath', [Env::path('app/Providers/Hello/TestProvider.php')])
+        );
+    }
+
+    public function testMakeProviderCommandAcceptsBackslashesAndOutputsRelativePathWithoutLeadingSlash(): void
+    {
+        $command = new class extends MakeProviderCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        $command->fakeArguments['name'] = 'Hello\\TestProvider';
+
+        $result = $command->handle();
+        $file = Env::path('app/Providers/Hello/TestProvider.php');
+        $contents = (string) file_get_contents($file);
+        $lines = array_map(static fn(array $line): string => $line[0], $command->capturedLines);
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists($file);
+        $this->assertStringContainsString('namespace App\\Providers\\Hello;', $contents);
+        $this->assertStringContainsString('class TestProvider extends ServiceProvider', $contents);
+        $this->assertContains(
+            '<fg=yellow>📦 File:</> <fg=white>app/Providers/Hello/TestProvider.php</>',
+            $lines
+        );
+    }
+
+    public function testMakeControllerCommandNormalizesBackslashesForResolvedPathsAndLayouts(): void
+    {
+        $command = new class extends MakeControllerCommand
+        {
+            use InteractsWithFakeCommandIO;
+
+            protected function getLayoutStub(string $stubName): string
+            {
+                return '<section>layout</section>';
+            }
+        };
+
+        [$namespace, $filePath, $className] = $this->invokeMethod($command, 'resolveNamespacesAndPaths', [
+            'Admin\\UserController',
+            false,
+        ]);
+
+        $this->invokeMethod($command, 'generateLayout', [
+            $namespace,
+            $className,
+            'admin\\users',
+        ]);
+
+        $this->assertSame('App\\Http\\Controllers\\Admin', $namespace);
+        $this->assertSame(Env::path('app/Http/Controllers/Admin/UserController.php'), $filePath);
+        $this->assertSame('UserController', $className);
+        $this->assertFileExists(Env::path('resources/views/admin/users/default.odo.php'));
+    }
+
     public function testMakeAuthorizerCommandGeneratesModelAwarePolicyMethods(): void
     {
         $command = new MakeAuthorizerCommand();

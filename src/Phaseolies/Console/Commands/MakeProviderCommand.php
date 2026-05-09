@@ -27,15 +27,15 @@ class MakeProviderCommand extends Command
      */
     public function handle(): int
     {
-        return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
-            $namespace = 'App\\Providers';
-            $filePath = base_path('app/Providers/' . $name . '.php');
+        return $this->executeWithTiming(function () {
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
+            $namespace = 'App\\Providers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
+            $filePath = $this->generatedFilePath('app/Providers', $name);
 
             // Check if provider already exists
             if (file_exists($filePath)) {
                 $this->displayError('Provider already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -46,13 +46,13 @@ class MakeProviderCommand extends Command
             }
 
             // Generate and save provider class
-            $content = $this->generateProviderContent($namespace, $name);
+            $content = $this->generateProviderContent($namespace, $className);
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Provider created successfully');
-            $this->line('<fg=yellow>📦 File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📦 File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
-            $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $name . '</>');
+            $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
 
             return Command::SUCCESS;
         });
@@ -69,6 +69,7 @@ class MakeProviderCommand extends Command
 namespace {$namespace};
 
 use Phaseolies\Providers\ServiceProvider;
+// use Phaseolies\Providers\GhostableProvider;
 
 class {$className} extends ServiceProvider
 {

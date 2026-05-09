@@ -28,18 +28,15 @@ class MakeAuthorizerCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $model = $this->option('model') ?? $this->option('m');
 
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
-
             $namespace = 'App\\Authorizers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Authorizers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Authorizers', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Authorizer already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -52,7 +49,7 @@ class MakeAuthorizerCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Authorizer created successfully');
-            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
+            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
 
             return Command::SUCCESS;

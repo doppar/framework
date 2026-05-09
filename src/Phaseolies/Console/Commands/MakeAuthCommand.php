@@ -216,7 +216,7 @@ class MakeAuthCommand extends Command
             $this->line("<fg=yellow>{$category}:</>");
             foreach ($paths as $path) {
                 if (file_exists($path)) {
-                    $this->line('- ' . str_replace(base_path(), '', $path));
+                    $this->line('- ' . $this->relativePath($path));
                 }
             }
             $this->newLine();

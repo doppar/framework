@@ -28,15 +28,13 @@ class MakeWatcherCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $name      = $this->argument('name');
-            $parts     = explode('/', $name);
-            $className = array_pop($parts);
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Watchers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath  = base_path('app/Watchers/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath  = $this->generatedFilePath('app/Watchers', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Watcher already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -48,7 +46,7 @@ class MakeWatcherCommand extends Command
             file_put_contents($filePath, $this->generateWatcherContent($namespace, $className));
 
             $this->displaySuccess('Watcher created successfully');
-            $this->line('<fg=yellow>👁️  File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
+            $this->line('<fg=yellow>👁️  File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
 

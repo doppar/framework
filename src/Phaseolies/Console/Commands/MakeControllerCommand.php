@@ -42,7 +42,7 @@ class MakeControllerCommand extends Command
 
             if (file_exists($filePath)) {
                 $this->displayError('Controller already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -176,7 +176,10 @@ class MakeControllerCommand extends Command
      */
     protected function parseFlags(): array
     {
-        $name = str()->suffixAppend($this->argument('name'), 'Controller');
+        $name = str()->suffixAppend(
+            $this->normalizeGeneratedName((string) $this->argument('name')),
+            'Controller'
+        );
         $routeName = strtolower(str()->removeSuffix($name, 'Controller'));
         $isInvokable = $this->option('invokable');
         $isResource = $this->option('bundle');
@@ -193,14 +196,14 @@ class MakeControllerCommand extends Command
      */
     protected function resolveNamespacesAndPaths(string $name, bool $isApi): array
     {
-        $parts = explode('/', $name);
-        $className = array_pop($parts);
+        [$name, $parts, $className] = $this->splitGeneratedName($name);
         $baseNamespace = 'App\\Http\\Controllers' . ($isApi ? '\\API' : '');
         $namespace = $baseNamespace . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
 
-        $filePath = base_path('app/Http/Controllers/' .
-            ($isApi ? 'API/' : '') .
-            str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+        $filePath = $this->generatedFilePath(
+            'app/Http/Controllers' . ($isApi ? '/API' : ''),
+            $name
+        );
 
         return [$namespace, $filePath, $className];
     }
@@ -230,7 +233,11 @@ class MakeControllerCommand extends Command
     {
         $layoutStub = $this->getLayoutStub('complete.stub');
         $layoutContent = $this->replacePlaceholders($layoutStub, $namespace, $className, $routeName);
-        $layoutDir = base_path('resources/views/' . $routeName);
+        $layoutDir = base_path(str_replace(
+            ['/', '\\'],
+            DIRECTORY_SEPARATOR,
+            'resources/views/' . $this->normalizeGeneratedName($routeName)
+        ));
         $this->createDirIfMissing($layoutDir);
         $layoutPath = $layoutDir . '/default.odo.php';
         $this->writeFile($layoutPath, $layoutContent);
@@ -242,7 +249,7 @@ class MakeControllerCommand extends Command
      */
     protected function outputFilePath(string $label, string $path): void
     {
-        $this->line('<fg=yellow>' . $label . ':</> <fg=white>' . str_replace(base_path('/'), '', $path) . '</>');
+        $this->line('<fg=yellow>' . $label . ':</> <fg=white>' . $this->relativePath($path) . '</>');
     }
 
     /**

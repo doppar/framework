@@ -358,6 +358,18 @@ namespace Phaseolies\Console\Commands\Migrations {
     }
 }
 
+namespace Phaseolies\Console\Schedule {
+
+    use Tests\Unit\Console\Support\CommandTestEnvironment;
+
+    if (!function_exists(__NAMESPACE__ . '\base_path')) {
+        function base_path(string $path = ''): string
+        {
+            return CommandTestEnvironment::path($path);
+        }
+    }
+}
+
 namespace Phaseolies\Console\Commands\Cron {
 
     use Tests\Unit\Console\Support\CommandTestEnvironment;
