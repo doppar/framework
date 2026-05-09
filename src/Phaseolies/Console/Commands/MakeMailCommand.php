@@ -28,9 +28,7 @@ class MakeMailCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
 
             // Ensure class name ends with Mail
             if (!str_ends_with($className, 'Mail')) {
@@ -38,12 +36,12 @@ class MakeMailCommand extends Command
             }
 
             $namespace = 'App\\Mail' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Mail/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Mail', $name);
 
             // Check if Mailable already exists
             if (file_exists($filePath)) {
                 $this->displayError('Mailable already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -58,7 +56,7 @@ class MakeMailCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Mailable created successfully');
-            $this->line('<fg=yellow>📧 File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📧 File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>✉️  Class:</> <fg=white>' . $className . '</>');
 

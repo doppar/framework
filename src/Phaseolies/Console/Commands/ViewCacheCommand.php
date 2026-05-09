@@ -77,7 +77,7 @@ class ViewCacheCommand extends Command
         $results = ['success' => [], 'failed' => []];
 
         foreach ($viewFiles as $file) {
-            $relativePath = str_replace(base_path('resources/views') . '/', '', $file);
+            $relativePath = $this->relativePath($file, base_path('resources/views'));
             $viewName = str_replace(['/', '.odo.php'], ['.', ''], $relativePath);
 
             try {

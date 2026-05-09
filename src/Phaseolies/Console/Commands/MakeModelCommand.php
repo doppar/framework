@@ -48,17 +48,15 @@ class MakeModelCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $withMigration = $this->option('m');
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
             $namespace = 'App\\Models' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Models/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Models', $name);
 
             // Check if model already exists
             if (file_exists($filePath)) {
                 $this->displayError('Model already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -73,7 +71,7 @@ class MakeModelCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Model created successfully');
-            $this->line('<fg=yellow>📦 File:</> <fg=white>' . str_replace(base_path('/'), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📦 File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Class:</> <fg=white>' . $className . '</>');
 
@@ -86,7 +84,7 @@ class MakeModelCommand extends Command
                 $this->newLine();
                 $this->line('<bg=blue;options=bold> MIGRATION </> Created migration:');
                 $this->newLine();
-                $this->line('<fg=white>' . str_replace(base_path('/'), '', $migrationFile) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($migrationFile) . '</>');
             }
 
             return Command::SUCCESS;
