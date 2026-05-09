@@ -193,7 +193,10 @@ class CommandBehaviorCoverageTest extends TestCase
         ]);
 
         $this->assertSame('App\\Http\\Controllers\\Admin', $namespace);
-        $this->assertSame(Env::path('app/Http/Controllers/Admin/UserController.php'), $filePath);
+        $this->assertSame(
+            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, Env::path('app/Http/Controllers/Admin/UserController.php')),
+            $filePath
+        );
         $this->assertSame('UserController', $className);
         $this->assertFileExists(Env::path('resources/views/admin/users/default.odo.php'));
     }
