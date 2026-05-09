@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.26.1 - 2026-05-09
+
+* Fix: Normalize console generator paths across cross platform by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/283
+
 ## v3.26.0 - 2026-05-08
 
 * Add ghostable providers for lazy-loading framework services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/282
