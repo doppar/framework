@@ -23,8 +23,8 @@ class CommandSignatureCoverageTest extends TestCase
         parent::setUp();
 
         Env::reset();
-        Env::$appInstance = $this->createMock(Application::class);
-        Env::bind('migrator', $this->createMock(Migrator::class));
+        Env::$appInstance = $this->createStub(Application::class);
+        Env::bind('migrator', $this->createStub(Migrator::class));
         Env::bind('config', new class
         {
             public int $clearCount = 0;
@@ -136,7 +136,7 @@ class CommandSignatureCoverageTest extends TestCase
     private function instantiateCommand(string $className): object
     {
         if ($className === VendorPublishCommand::class) {
-            Env::$appInstance = $this->createMock(Application::class);
+            Env::$appInstance = $this->createStub(Application::class);
         }
 
         $reflection = new \ReflectionClass($className);
@@ -156,7 +156,7 @@ class CommandSignatureCoverageTest extends TestCase
             $typeName = $parameter->getType()?->getName();
 
             $dependencies[] = match ($typeName) {
-                MigrationCreator::class => $this->createMock(MigrationCreator::class),
+                MigrationCreator::class => $this->createStub(MigrationCreator::class),
                 default => throw new \RuntimeException('Unhandled constructor dependency for ' . $className . ': ' . $typeName),
             };
         }

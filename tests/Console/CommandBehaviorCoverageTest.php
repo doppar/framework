@@ -51,7 +51,7 @@ class CommandBehaviorCoverageTest extends TestCase
         parent::setUp();
 
         Env::reset();
-        Env::$appInstance = $this->createMock(Application::class);
+        Env::$appInstance = $this->createStub(Application::class);
         Env::bind('session', new FakeSessionStore());
         Env::bind('db', new FakeDatabaseInspector());
     }

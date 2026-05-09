@@ -511,7 +511,7 @@ class StreamCollectionTest extends TestCase
         $this->assertEquals(1, $executionCount);
 
         $all = $collection->all();
-        echo "All items: " . json_encode($all) . "\n";
+        $this->assertSame([1, 2, 3], $all);
         $this->assertEquals(4, $executionCount);
     }
 

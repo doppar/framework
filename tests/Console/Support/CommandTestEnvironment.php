@@ -16,7 +16,10 @@ final class CommandTestEnvironment
 
     public static function reset(): void
     {
-        self::$root = sys_get_temp_dir() . '/doppar-command-tests-' . bin2hex(random_bytes(5));
+        self::$root = rtrim(sys_get_temp_dir(), '/\\')
+            . DIRECTORY_SEPARATOR
+            . 'doppar-command-tests-'
+            . bin2hex(random_bytes(5));
         self::$config = [
             'app.name' => 'Doppar Demo',
             'app.timezone' => 'UTC',
@@ -61,13 +64,13 @@ final class CommandTestEnvironment
 
     public static function path(string $path = ''): string
     {
-        $base = rtrim(self::$root, '/');
+        $base = rtrim(self::$root, '/\\');
 
         if ($path === '') {
             return $base;
         }
 
-        return $base . '/' . ltrim($path, '/');
+        return $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
     }
 
     public static function config(?string $key = null, mixed $default = null): mixed
