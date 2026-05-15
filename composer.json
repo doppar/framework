@@ -53,6 +53,13 @@
       "Tests\\": "tests/"
     }
   },
+  "scripts": {
+    "test": "vendor/bin/phpunit --exclude-group database-external",
+    "test:sqlite": "@test",
+    "test:mysql": "vendor/bin/phpunit --group mysql",
+    "test:pgsql": "vendor/bin/phpunit --group pgsql",
+    "test:all": "vendor/bin/phpunit"
+  },
   "extra": {
     "branch-alias": {
       "dev-master": "3.x-dev"

@@ -2,214 +2,20 @@
 
 namespace Tests\Unit\Builder;
 
-use Tests\Support\Model\MockUser;
 use Tests\Support\Model\MockPost;
 use Tests\Support\Model\MockComment;
 use Tests\Support\Model\MockCategory;
-use Tests\Support\MockContainer;
 use Phaseolies\Database\Entity\Builder;
-use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use PHPUnit\Framework\TestCase;
-use PDO;
+use Tests\Support\Database\BuilderRelationshipDriverTestCase;
+use Tests\Support\Model\MockUser;
 
 use function PHPUnit\Framework\assertEquals;
 
-class RelationshipSpecificColumnSelectionTest extends TestCase
+abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationshipDriverTestCase
 {
-    private $pdo;
-
-    protected function setUp(): void
+    protected function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
     {
-        Container::setInstance(new MockContainer());
-
-        $this->pdo = new PDO('sqlite::memory:');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $this->createTestTables();
-        $this->setupDatabaseConnections();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->pdo = null;
-        $this->tearDownDatabaseConnections();
-    }
-
-    private function createTestTables(): void
-    {
-        // Create users table
-        $this->pdo->exec("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE
-            )
-        ");
-
-        // Create posts table
-        $this->pdo->exec("
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                title TEXT NOT NULL,
-                content TEXT,
-                status BOOLEAN DEFAULT 1
-            )
-        ");
-
-        // Create comments table
-        $this->pdo->exec("
-            CREATE TABLE comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER,
-                user_id INTEGER,
-                body TEXT NOT NULL,
-                approved BOOLEAN DEFAULT 0
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE post_tag (
-                post_id INTEGER,
-                tag_id INTEGER,
-                created_at TEXT
-            )
-        ");
-
-        // Insert test data
-        $this->pdo->exec("
-            INSERT INTO users (name, email) VALUES
-            ('John Doe', 'john@example.com'),
-            ('Jane Smith', 'jane@example.com')
-        ");
-
-        $this->pdo->exec("
-           INSERT INTO posts (user_id, title, content, status) VALUES 
-            (1, 'First Post', 'Content 1', 1),
-            (1, 'Second Post', 'Content 2', 0),
-            (1, 'Jane Post', 'Content 3', 1)
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO comments (post_id, user_id, body, approved) VALUES 
-            (1, 1, 'Great post!', 1),
-            (1, 2, 'Nice work', 0),
-            (2, 1, 'Interesting', 1),
-            (3, 2, 'Amazing', 1)
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO tags (name) VALUES 
-            ('PHP'),
-            ('Doppar'),
-            ('Testing')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO post_tag (post_id, tag_id) VALUES 
-            (1, 1),
-            (1, 2),
-            (2, 1),
-            (3, 3)
-        ");
-    }
-
-    /**
-     * Setup database connections for testing
-     */
-    private function setupDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-
-        $this->setStaticProperty(Database::class, 'connections', [
-            'default' => $this->pdo,
-            'sqlite' => $this->pdo
-        ]);
-    }
-
-    /**
-     * Clean up database connections
-     */
-    private function tearDownDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-    }
-
-    /**
-     * Helper method to set static properties
-     */
-    private function setStaticProperty(string $className, string $propertyName, $value): void
-    {
-        try {
-            $reflection = new \ReflectionClass($className);
-            $property = $reflection->getProperty($propertyName);
-            $property->setValue(null, $value);
-        } catch (\ReflectionException $e) {
-            $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Helper to create a new builder
-     */
-    private function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
-    {
-        return new Builder($this->pdo, $table, $model, 15);
-    }
-
-    /**
-     * Helper to get builder conditions for assertion
-     */
-    private function getBuilderConditions(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('conditions');
-        $conditions = $property->getValue($builder);
-        return $conditions;
-    }
-
-    /**
-     * Helper to get builder eager load for assertion
-     */
-    private function getBuilderEagerLoad(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('eagerLoad');
-        $eagerLoad = $property->getValue($builder);
-        return $eagerLoad;
-    }
-
-
-    /**
-     * Helper to get builder limit for assertion
-     */
-    private function getBuilderLimit(Builder $builder): ?int
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('limit');
-        $limit = $property->getValue($builder);
-        return $limit;
-    }
-
-    /**
-     * Helper to get builder fields for assertion
-     */
-    private function getBuilderFields(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('fields');
-        $fields = $property->getValue($builder);
-        return $fields;
+        return parent::createBuilder($table, $model);
     }
 
     public function testEmbedWithNestedRelationColumnSelection()
@@ -343,7 +149,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
         // Test column selection combined with additional constraints
         $builder->embed('comments:id,body,created_at', function ($query) {
-            $query->where('approved', 1)->oldest('created_at');
+            $query->where('approved', true)->oldest('created_at');
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -362,7 +168,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         $this->assertCount(1, $conditions);
         $this->assertEquals('approved', $conditions[0][1]);
         $this->assertEquals('=', $conditions[0][2]);
-        $this->assertEquals(1, $conditions[0][3]);
+        $this->assertTrue((bool) $conditions[0][3]);
     }
 
     public function testEmbedWithArrayColumnSelection()
@@ -372,7 +178,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
         // Test multiple relations with column selection in array format
         $builder->embed([
             'comments:id,body,created_at' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             },
             'user:id,name',
             'category:id,name'
@@ -425,7 +231,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
         // Test embedCount with callback and column selection
         $builder->embedCount('comments:id,body', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -449,7 +255,7 @@ class RelationshipSpecificColumnSelectionTest extends TestCase
 
         // Test that limit works in embed callbacks
         $builder->embed('comments:id,body', function ($query) {
-            $query->where('approved', 1)
+            $query->where('approved', true)
                 ->limit(2)
                 ->oldest('created_at');
         });

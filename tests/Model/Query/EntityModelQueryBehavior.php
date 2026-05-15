@@ -2,16 +2,9 @@
 
 namespace Tests\Unit\Model\Query;
 
-use App\Models\Product;
-use PDO;
-use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use Phaseolies\Http\Request;
 use Phaseolies\Support\Collection;
 use Phaseolies\Support\Facades\DB;
-use Phaseolies\Support\UrlGenerator;
-use PHPUnit\Framework\TestCase;
-use Tests\Support\MockContainer;
+use Tests\Support\Database\ModelQueryDriverTestCase;
 use Tests\Support\Model\MockAnotherUser;
 use Tests\Support\Model\MockComment;
 use Tests\Support\Model\MockPost;
@@ -19,181 +12,120 @@ use Tests\Support\Model\MockProduct;
 use Tests\Support\Model\MockTag;
 use Tests\Support\Model\MockUser;
 
-class EntityModelQueryTest extends TestCase
+abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
 {
-    private $pdo;
-
-    protected function setUp(): void
+    protected function yearMonthSelectExpression(): string
     {
-        Container::setInstance(new MockContainer());
-        $container = new Container();
-        $container->bind('request', fn() => new Request());
-        $container->bind('url', fn() => UrlGenerator::class);
-        $container->bind('db', fn() => new Database('default'));
-
-        $this->pdo = new PDO('sqlite::memory:');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $this->createTestTables();
-        $this->setupDatabaseConnections();
+        return match (static::driverName()) {
+            'sqlite' => "COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month",
+            'mysql' => "COUNT(*) as total, DATE_FORMAT(created_at, '%Y') as year, DATE_FORMAT(created_at, '%m') as month",
+            'pgsql' => "COUNT(*) as total, TO_CHAR(created_at, 'YYYY') as year, TO_CHAR(created_at, 'MM') as month",
+            default => throw new \RuntimeException('Unsupported driver [' . static::driverName() . '].'),
+        };
     }
 
-    protected function tearDown(): void
+    protected function yearMonthGroupExpression(): string
     {
-        $this->pdo = null;
-        $this->tearDownDatabaseConnections();
+        return match (static::driverName()) {
+            'sqlite' => "strftime('%Y', created_at), strftime('%m', created_at)",
+            'mysql' => "DATE_FORMAT(created_at, '%Y'), DATE_FORMAT(created_at, '%m')",
+            'pgsql' => "TO_CHAR(created_at, 'YYYY'), TO_CHAR(created_at, 'MM')",
+            default => throw new \RuntimeException('Unsupported driver [' . static::driverName() . '].'),
+        };
     }
 
-    private function createTestTables(): void
+    protected function tableDefinitions(): array
     {
-        // Create users table
-        $this->pdo->exec("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE,
-                age INTEGER,
-                status TEXT DEFAULT 'active',
-                created_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE userss (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE,
-                age INTEGER,
-                status TEXT DEFAULT 'active',
-                created_at TEXT,
-                updated_at TEXT
-            )
-        ");
-
-        // Create posts table
-        $this->pdo->exec("
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                title TEXT NOT NULL,
-                content TEXT,
-                status BOOLEAN DEFAULT 1,
-                views INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-        ");
-
-        // Create comments table
-        $this->pdo->exec("
-            CREATE TABLE comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER,
-                user_id INTEGER,
-                body TEXT NOT NULL,
-                approved BOOLEAN DEFAULT 0,
-                created_at TEXT
-            )
-        ");
-
-        // Create tags table
-        $this->pdo->exec("
-            CREATE TABLE tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-            )
-        ");
-
-        // Create post_tag pivot table
-        $this->pdo->exec("
-            CREATE TABLE post_tag (
-                post_id INTEGER,
-                tag_id INTEGER,
-                created_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE product (
-                price INTEGER
-            )
-        ");
-
-        // Insert test data
-        $this->pdo->exec("
-            INSERT INTO product (price) VALUES
-            (875),
-            (435),
-            (999)
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO users (name, email, age, status, created_at) VALUES
-            ('John Doe', 'john@example.com', 30, 'active', '2024-01-01 10:00:00'),
-            ('Jane Smith', 'jane@example.com', 25, 'active', '2024-01-02 10:00:00'),
-            ('Bob Wilson', 'bob@example.com', 35, 'inactive', '2024-01-03 10:00:00')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO posts (user_id, title, content, status, views, created_at) VALUES 
-            (1, 'First Post', 'Content 1', 1, 100, '2024-01-01 11:00:00'),
-            (1, 'Second Post', 'Content 2', 0, 50, '2024-01-02 11:00:00'),
-            (2, 'Jane Post', 'Content 3', 1, 200, '2024-01-03 11:00:00'),
-            (1, 'Third Post', 'Content 4', 1, 150, '2024-01-04 11:00:00')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO comments (post_id, user_id, body, approved, created_at) VALUES 
-            (1, 1, 'Great post!', 1, '2024-01-01 12:00:00'),
-            (1, 2, 'Nice work', 0, '2024-01-01 13:00:00'),
-            (2, 1, 'Interesting', 1, '2024-01-02 12:00:00'),
-            (3, 2, 'Amazing', 1, '2024-01-03 12:00:00'),
-            (1, 3, 'Awesome', 1, '2024-01-01 14:00:00')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO tags (name) VALUES 
-            ('PHP'),
-            ('Doppar'),
-            ('Testing'),
-            ('Database')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO post_tag (post_id, tag_id, created_at) VALUES 
-            (1, 1, '2024-01-01 11:00:00'),
-            (1, 2, '2024-01-01 11:00:00'),
-            (2, 1, '2024-01-02 11:00:00'),
-            (3, 3, '2024-01-03 11:00:00'),
-            (4, 4, '2024-01-04 11:00:00')
-        ");
+        return [
+            'users' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+                ['name' => 'email', 'type' => 'string', 'nullable' => true, 'unique' => true],
+                ['name' => 'age', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'status', 'type' => 'string', 'nullable' => true, 'default' => 'active'],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'userss' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+                ['name' => 'email', 'type' => 'string', 'nullable' => true, 'unique' => true],
+                ['name' => 'age', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'status', 'type' => 'string', 'nullable' => true, 'default' => 'active'],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+                ['name' => 'updated_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'posts' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'user_id', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'title', 'type' => 'string'],
+                ['name' => 'content', 'type' => 'text', 'nullable' => true],
+                ['name' => 'status', 'type' => 'boolean', 'nullable' => true, 'default' => 1],
+                ['name' => 'views', 'type' => 'integer', 'nullable' => true, 'default' => 0],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'comments' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'post_id', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'user_id', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'body', 'type' => 'text'],
+                ['name' => 'approved', 'type' => 'boolean', 'nullable' => true, 'default' => 0],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'tags' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+            ],
+            'post_tag' => [
+                ['name' => 'post_id', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'tag_id', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'product' => [
+                ['name' => 'price', 'type' => 'integer', 'nullable' => true],
+            ],
+        ];
     }
 
-    private function setupDatabaseConnections(): void
+    protected function seedData(): array
     {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-
-        $this->setStaticProperty(Database::class, 'connections', [
-            'default' => $this->pdo,
-            'sqlite' => $this->pdo
-        ]);
-    }
-
-    private function tearDownDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-    }
-
-    private function setStaticProperty(string $className, string $propertyName, $value): void
-    {
-        try {
-            $reflection = new \ReflectionClass($className);
-            $property = $reflection->getProperty($propertyName);
-            $property->setValue(null, $value);
-        } catch (\ReflectionException $e) {
-            $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
-        }
+        return [
+            'product' => [
+                ['price' => 875],
+                ['price' => 435],
+                ['price' => 999],
+            ],
+            'users' => [
+                ['name' => 'John Doe', 'email' => 'john@example.com', 'age' => 30, 'status' => 'active', 'created_at' => '2024-01-01 10:00:00'],
+                ['name' => 'Jane Smith', 'email' => 'jane@example.com', 'age' => 25, 'status' => 'active', 'created_at' => '2024-01-02 10:00:00'],
+                ['name' => 'Bob Wilson', 'email' => 'bob@example.com', 'age' => 35, 'status' => 'inactive', 'created_at' => '2024-01-03 10:00:00'],
+            ],
+            'posts' => [
+                ['user_id' => 1, 'title' => 'First Post', 'content' => 'Content 1', 'status' => 1, 'views' => 100, 'created_at' => '2024-01-01 11:00:00'],
+                ['user_id' => 1, 'title' => 'Second Post', 'content' => 'Content 2', 'status' => 0, 'views' => 50, 'created_at' => '2024-01-02 11:00:00'],
+                ['user_id' => 2, 'title' => 'Jane Post', 'content' => 'Content 3', 'status' => 1, 'views' => 200, 'created_at' => '2024-01-03 11:00:00'],
+                ['user_id' => 1, 'title' => 'Third Post', 'content' => 'Content 4', 'status' => 1, 'views' => 150, 'created_at' => '2024-01-04 11:00:00'],
+            ],
+            'comments' => [
+                ['post_id' => 1, 'user_id' => 1, 'body' => 'Great post!', 'approved' => 1, 'created_at' => '2024-01-01 12:00:00'],
+                ['post_id' => 1, 'user_id' => 2, 'body' => 'Nice work', 'approved' => 0, 'created_at' => '2024-01-01 13:00:00'],
+                ['post_id' => 2, 'user_id' => 1, 'body' => 'Interesting', 'approved' => 1, 'created_at' => '2024-01-02 12:00:00'],
+                ['post_id' => 3, 'user_id' => 2, 'body' => 'Amazing', 'approved' => 1, 'created_at' => '2024-01-03 12:00:00'],
+                ['post_id' => 1, 'user_id' => 3, 'body' => 'Awesome', 'approved' => 1, 'created_at' => '2024-01-01 14:00:00'],
+            ],
+            'tags' => [
+                ['name' => 'PHP'],
+                ['name' => 'Doppar'],
+                ['name' => 'Testing'],
+                ['name' => 'Database'],
+            ],
+            'post_tag' => [
+                ['post_id' => 1, 'tag_id' => 1, 'created_at' => '2024-01-01 11:00:00'],
+                ['post_id' => 1, 'tag_id' => 2, 'created_at' => '2024-01-01 11:00:00'],
+                ['post_id' => 2, 'tag_id' => 1, 'created_at' => '2024-01-02 11:00:00'],
+                ['post_id' => 3, 'tag_id' => 3, 'created_at' => '2024-01-03 11:00:00'],
+                ['post_id' => 4, 'tag_id' => 4, 'created_at' => '2024-01-04 11:00:00'],
+            ],
+        ];
     }
 
     public function testAll()
@@ -681,8 +613,8 @@ class EntityModelQueryTest extends TestCase
     public function testGroupByRawComplex(): void
     {
         $user = MockUser::query()
-            ->selectRaw("COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month")
-            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->selectRaw($this->yearMonthSelectExpression())
+            ->groupByRaw($this->yearMonthGroupExpression())
             ->orderByRaw('year DESC, month DESC')
             ->get();
 
@@ -729,7 +661,7 @@ class EntityModelQueryTest extends TestCase
     public function testWhereBetween()
     {
         $users = MockUser::query()
-            ->whereBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->whereBetween('created_at', ['2025-02-28', '2025-04-29'])
             ->get();
 
         $this->assertCount(0, $users);
@@ -748,7 +680,7 @@ class EntityModelQueryTest extends TestCase
     public function testWhereNotBetween(): void
     {
         $users = MockUser::query()
-            ->whereNotBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->whereNotBetween('created_at', ['2025-02-28', '2025-04-29'])
             ->get();
 
         $this->assertCount(3, $users);
@@ -1020,7 +952,7 @@ class EntityModelQueryTest extends TestCase
             'user_id' => [1, 2, 3],
             function ($query) {
                 $query->where('views', '>', 100)
-                    ->where('status', 1);
+                    ->where('status', true);
             }
         ])
             ->orderBy('created_at', 'desc')
@@ -1350,15 +1282,21 @@ class EntityModelQueryTest extends TestCase
         $this->assertEquals(125, $avg);
         $this->assertEquals(200.0, $max);
         $this->assertEquals(50.0, $min);
-        $this->assertEquals(55.9, number_format($stdDev, 1));
-        $this->assertEquals(3125.0, $variance);
+        if (static::driverName() === 'pgsql') {
+            $this->assertEqualsWithDelta(64.5, (float) $stdDev, 0.1);
+            $this->assertEqualsWithDelta(4166.6667, (float) $variance, 0.0001);
+        } else {
+            $this->assertEqualsWithDelta(55.9, (float) $stdDev, 0.1);
+            $this->assertEqualsWithDelta(3125.0, (float) $variance, 0.0001);
+        }
     }
 
     public function testDistinct(): void
     {
-        $posts = MockPost::query()->distinct('user_id');
+        $posts = MockPost::query()->distinct('user_id')->toArray();
+        sort($posts);
 
-        $this->assertEquals([1, 2], $posts->toArray());
+        $this->assertEquals([1, 2], $posts);
     }
 
     public function testConditionalGroupBy(): void
@@ -1366,6 +1304,7 @@ class EntityModelQueryTest extends TestCase
         $posts = MockPost::query()
             ->select(['user_id', 'SUM(views * views) as total_views'])
             ->groupBy('user_id')
+            ->orderBy('user_id')
             ->get();
 
         $this->assertEquals([
@@ -1448,17 +1387,17 @@ class EntityModelQueryTest extends TestCase
             ->map(function ($item) {
                 return [
                     'title' => $item->title,
-                    'status' => $item->status
+                    'status' => (bool) $item->status
                 ];
             })
             ->filter(function ($item) {
-                return $item['status'] === 1;
+                return $item['status'] === true;
             });
 
         $this->assertEquals([
-            ['title' => 'First Post', 'status' => 1],
-            ['title' => 'Jane Post',  'status' => 1],
-            ['title' => 'Third Post', 'status' => 1],
+            ['title' => 'First Post', 'status' => true],
+            ['title' => 'Jane Post',  'status' => true],
+            ['title' => 'Third Post', 'status' => true],
         ], $posts->toArray());
     }
 
@@ -2807,9 +2746,12 @@ class EntityModelQueryTest extends TestCase
         // distinct() must work with whereIn, not just simple = conditions
         $userIds = MockPost::query()
             ->whereIn('user_id', [1, 2])
-            ->distinct('user_id');
+            ->distinct('user_id')
+            ->toArray();
 
-        $this->assertEquals([1, 2], $userIds->toArray());
+        sort($userIds);
+
+        $this->assertEquals([1, 2], $userIds);
     }
 
     public function testIncrementWithWhereIn(): void
@@ -2847,7 +2789,7 @@ class EntityModelQueryTest extends TestCase
     {
         $affected = MockPost::query()
             ->where(function ($q) {
-                $q->where('status', 1)
+                $q->where('status', true)
                     ->whereIn('user_id', [1, 2]);
             })
             ->increment('views', 100);

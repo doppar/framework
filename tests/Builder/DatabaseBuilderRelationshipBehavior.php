@@ -2,155 +2,16 @@
 
 namespace Tests\Unit\Builder;
 
-use Tests\Support\Model\MockUser;
 use Tests\Support\Model\MockPost;
-use Tests\Support\MockContainer;
 use Phaseolies\Database\Entity\Builder;
-use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use PHPUnit\Framework\TestCase;
-use PDO;
+use Tests\Support\Database\BuilderRelationshipDriverTestCase;
+use Tests\Support\Model\MockUser;
 
-class DatabaseBuilderRelationshipTest extends TestCase
+abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriverTestCase
 {
-    private $pdo;
-
-    protected function setUp(): void
+    protected function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
     {
-        Container::setInstance(new MockContainer());
-
-        $this->pdo = new PDO('sqlite::memory:');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-
-        $this->createTestTables();
-        $this->setupDatabaseConnections();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->pdo = null;
-        $this->tearDownDatabaseConnections();
-    }
-
-    private function createTestTables(): void
-    {
-        // Create users table
-        $this->pdo->exec("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE
-            )
-        ");
-
-        // Create posts table
-        $this->pdo->exec("
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                title TEXT NOT NULL,
-                content TEXT
-            )
-        ");
-
-        // Create comments table
-        $this->pdo->exec("
-            CREATE TABLE comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER,
-                body TEXT NOT NULL,
-                approved BOOLEAN DEFAULT 0
-            )
-        ");
-
-        // Insert test data
-        $this->pdo->exec("
-            INSERT INTO users (name, email) VALUES
-            ('John Doe', 'john@example.com'),
-            ('Jane Smith', 'jane@example.com')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO posts (user_id, title, content) VALUES 
-            (1, 'First Post', 'Content 1'),
-            (1, 'Second Post', 'Content 2'),
-            (2, 'Jane Post', 'Content 3')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO comments (post_id, body, approved) VALUES 
-            (1, 'Great post!', 1),
-            (1, 'Nice work', 0),
-            (2, 'Interesting', 1)
-        ");
-    }
-
-    /**
-     * Setup database connections for testing
-     */
-    private function setupDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-
-        $this->setStaticProperty(Database::class, 'connections', [
-            'default' => $this->pdo,
-            'sqlite' => $this->pdo
-        ]);
-    }
-
-    /**
-     * Clean up database connections
-     */
-    private function tearDownDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-    }
-
-    /**
-     * Helper method to set static properties
-     */
-    private function setStaticProperty(string $className, string $propertyName, $value): void
-    {
-        try {
-            $reflection = new \ReflectionClass($className);
-            $property = $reflection->getProperty($propertyName);
-            $property->setValue(null, $value);
-        } catch (\ReflectionException $e) {
-            $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Helper to create a new builder
-     */
-    private function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
-    {
-        return new Builder($this->pdo, $table, $model, 15);
-    }
-
-    /**
-     * Helper to get builder conditions for assertion
-     */
-    private function getBuilderConditions(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('conditions');
-        $conditions = $property->getValue($builder);
-        return $conditions;
-    }
-
-    /**
-     * Helper to get builder eager load for assertion
-     */
-    private function getBuilderEagerLoad(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('eagerLoad');
-        $eagerLoad = $property->getValue($builder);
-        return $eagerLoad;
+        return parent::createBuilder($table, $model);
     }
 
     public function testEmbedWithSingleRelation()
@@ -179,7 +40,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder();
         $callback = function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         };
 
         $builder->embed('comments', $callback);
@@ -217,7 +78,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->present('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -241,7 +102,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     public function testWhereLinkedWithSimpleRelation()
     {
         $builder = $this->createBuilder('posts', MockPost::class);
-        $builder->whereLinked('comments', 'approved', 1);
+        $builder->whereLinked('comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -288,7 +149,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
         $this->assertInstanceOf(Builder::class, $builder->embed('comments'));
         $this->assertInstanceOf(Builder::class, $builder->embedCount('likes'));
         $this->assertInstanceOf(Builder::class, $builder->present('comments'));
-        $this->assertInstanceOf(Builder::class, $builder->whereLinked('comments', 'approved', 1));
+        $this->assertInstanceOf(Builder::class, $builder->whereLinked('comments', 'approved', true));
         $this->assertInstanceOf(Builder::class, $builder->search(['title'], 'test'));
     }
 
@@ -355,7 +216,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->embed('comments', function ($query) {
-            $query->where('approved', 1)->orderBy('id', 'DESC');
+            $query->where('approved', true)->orderBy('id', 'DESC');
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -368,7 +229,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->whereLinked('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -417,7 +278,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
                 $query->where('title', 'LIKE', '%Test%');
             },
             'comments' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             }
         ]);
 
@@ -433,7 +294,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('users', MockUser::class);
         $callback = function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         };
 
         $builder->embedCount('comments', $callback);
@@ -452,7 +313,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
                 $query->where('status', 'published');
             },
             'comments' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             }
         ]);
 
@@ -480,7 +341,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->orPresent('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -505,7 +366,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     public function testWhereLinkedWithDifferentOperators()
     {
         $builder = $this->createBuilder('posts', MockPost::class);
-        $builder->whereLinked('comments', 'approved', '!=', 1);
+        $builder->whereLinked('comments', 'approved', '!=', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -542,7 +403,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('users', MockUser::class);
 
-        $builder->whereLinked('posts.comments', 'approved', 1);
+        $builder->whereLinked('posts.comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -696,7 +557,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
     {
         $builder = $this->createBuilder('users', MockUser::class)
             ->whereLinked('posts', 'status', 'published')
-            ->whereLinked('comments', 'approved', 1);
+            ->whereLinked('comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -757,7 +618,7 @@ class DatabaseBuilderRelationshipTest extends TestCase
         $this->assertEquals($originalLimit, $newLimit);
     }
 
-    private function getBuilderOrderBy(Builder $builder): array
+    protected function getBuilderOrderBy(Builder $builder): array
     {
         $reflection = new \ReflectionClass($builder);
         $property = $reflection->getProperty('orderBy');
@@ -765,11 +626,8 @@ class DatabaseBuilderRelationshipTest extends TestCase
         return $orderBy;
     }
 
-    private function getBuilderLimit(Builder $builder): ?int
+    protected function getBuilderLimit(Builder $builder): ?int
     {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('limit');
-        $limit = $property->getValue($builder);
-        return $limit;
+        return parent::getBuilderLimit($builder);
     }
 }
