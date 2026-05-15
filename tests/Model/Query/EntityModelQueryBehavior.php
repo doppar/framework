@@ -2746,9 +2746,12 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         // distinct() must work with whereIn, not just simple = conditions
         $userIds = MockPost::query()
             ->whereIn('user_id', [1, 2])
-            ->distinct('user_id');
+            ->distinct('user_id')
+            ->toArray();
 
-        $this->assertEquals([1, 2], $userIds->toArray());
+        sort($userIds);
+
+        $this->assertEquals([1, 2], $userIds);
     }
 
     public function testIncrementWithWhereIn(): void
