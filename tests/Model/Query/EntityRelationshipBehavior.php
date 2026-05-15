@@ -751,6 +751,37 @@ abstract class EntityRelationshipTest extends ModelQueryDriverTestCase
         $this->assertEquals('John Doe', $users->first()->name);
     }
 
+    /**
+     * Regression: nested whereLinked() must keep the root alias intact and
+     * compare boolean columns correctly on external drivers.
+     */
+    public function testWhereLinkedNestedApprovedCommentsWithRootFilter(): void
+    {
+        $users = MockUser::query()
+            ->where('status', 'active')
+            ->whereLinked('posts.comments', 'approved', true)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $this->assertCount(2, $users);
+        $this->assertEquals([1, 2], $users->map->id->toArray());
+    }
+
+    /**
+     * Regression: nested whereLinked() with a false boolean constraint should
+     * still work across SQLite, MySQL, and PostgreSQL.
+     */
+    public function testWhereLinkedNestedUnapprovedComments(): void
+    {
+        $users = MockUser::query()
+            ->whereLinked('posts.comments', 'approved', false)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $this->assertCount(1, $users);
+        $this->assertEquals('John Doe', $users->first()->name);
+    }
+
     // =========================================================================
     // 13. link (attach) — many-to-many
     // =========================================================================

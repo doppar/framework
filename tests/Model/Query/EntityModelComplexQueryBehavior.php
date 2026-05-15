@@ -893,6 +893,57 @@ abstract class EntityModelComplexQueryTest extends ModelQueryDriverTestCase
     }
 
     /**
+     * Complex scenario: published posts with approved comments only, plus a
+     * constrained embedCount for the same relation.
+     */
+    public function testPublishedPostsWithApprovedCommentCounts(): void
+    {
+        $posts = MockPost::query()
+            ->where('status', 'published')
+            ->present('comments', function ($q) {
+                $q->where('approved', 1);
+            })
+            ->embedCount([
+                'comments' => function ($q) {
+                    $q->where('approved', 1);
+                },
+            ])
+            ->orderBy('user_id')
+            ->get();
+
+        $this->assertEquals([1, 6, 10], $posts->map->user_id->map(fn($id) => (int) $id)->toArray());
+        $this->assertEquals([2, 1, 1], $posts->map->comments_count->map(fn($count) => (int) $count)->toArray());
+    }
+
+    /**
+     * Complex scenario: relation filter + aggregate grouping + stable ordering.
+     */
+    public function testAggregatePublishedPostsWithApprovedCommentsByUser(): void
+    {
+        $rows = MockPost::query()
+            ->where('status', 'published')
+            ->present('comments', function ($q) {
+                $q->where('approved', 1);
+            })
+            ->select(['user_id', 'COUNT(*) as total_posts', 'SUM(views) as total_views'])
+            ->groupBy('user_id')
+            ->orderBy('user_id')
+            ->get();
+
+        $this->assertEquals([
+            ['user_id' => 1, 'total_posts' => 1, 'total_views' => 1000],
+            ['user_id' => 6, 'total_posts' => 1, 'total_views' => 1500],
+            ['user_id' => 10, 'total_posts' => 1, 'total_views' => 2000],
+        ], $rows->map(function ($row) {
+            return [
+                'user_id' => (int) $row->user_id,
+                'total_posts' => (int) $row->total_posts,
+                'total_views' => (int) $row->total_views,
+            ];
+        })->toArray());
+    }
+
+    /**
      * Many-to-many: all pivot data serialized correctly through toArray()
      */
     public function testManyToManyPivotDataSerialization(): void
