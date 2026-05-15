@@ -2,197 +2,127 @@
 
 namespace Tests\Unit\Model\Query;
 
-use PDO;
-use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use Phaseolies\Http\Request;
 use Phaseolies\Support\Collection;
 use Phaseolies\Support\Facades\DB;
-use Phaseolies\Support\UrlGenerator;
-use PHPUnit\Framework\TestCase;
-use Tests\Support\MockContainer;
+use Tests\Support\Database\ModelQueryDriverTestCase;
 use Tests\Support\Model\MockAnotherUser;
 use Tests\Support\Model\MockComment;
 use Tests\Support\Model\MockPost;
 use Tests\Support\Model\MockTag;
 use Tests\Support\Model\MockUser;
 
-class EntityModelComplexQueryTest extends TestCase
+abstract class EntityModelComplexQueryTest extends ModelQueryDriverTestCase
 {
-    private $pdo;
-
-    protected function setUp(): void
+    protected function tableDefinitions(): array
     {
-        Container::setInstance(new MockContainer());
-        $container = new Container();
-        $container->bind('request', fn() => new Request());
-        $container->bind('url', fn() => UrlGenerator::class);
-        $container->bind('db', fn() => new Database('default'));
-
-        $this->pdo = new PDO('sqlite::memory:');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $this->createTestTables();
-        $this->seedData();
-        $this->setupDatabaseConnections();
+        return [
+            'users' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+                ['name' => 'email', 'type' => 'string', 'nullable' => true],
+                ['name' => 'age', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'status', 'type' => 'string', 'nullable' => true, 'default' => 'active'],
+                ['name' => 'score', 'type' => 'real', 'nullable' => true, 'default' => 0],
+                ['name' => 'bio', 'type' => 'text', 'nullable' => true],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+                ['name' => 'updated_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'userss' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+                ['name' => 'email', 'type' => 'string', 'nullable' => true, 'unique' => true],
+                ['name' => 'age', 'type' => 'integer', 'nullable' => true],
+                ['name' => 'status', 'type' => 'string', 'nullable' => true, 'default' => 'active'],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+                ['name' => 'updated_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'posts' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'user_id', 'type' => 'integer'],
+                ['name' => 'title', 'type' => 'string'],
+                ['name' => 'content', 'type' => 'text', 'nullable' => true],
+                ['name' => 'status', 'type' => 'string', 'nullable' => true, 'default' => 'published'],
+                ['name' => 'views', 'type' => 'integer', 'nullable' => true, 'default' => 0],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+                ['name' => 'updated_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'comments' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'post_id', 'type' => 'integer'],
+                ['name' => 'user_id', 'type' => 'integer'],
+                ['name' => 'body', 'type' => 'text'],
+                ['name' => 'approved', 'type' => 'integer', 'nullable' => true, 'default' => 0],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'tags' => [
+                ['name' => 'id', 'type' => 'id'],
+                ['name' => 'name', 'type' => 'string'],
+            ],
+            'post_tag' => [
+                ['name' => 'post_id', 'type' => 'integer'],
+                ['name' => 'tag_id', 'type' => 'integer'],
+                ['name' => 'created_at', 'type' => 'datetime', 'nullable' => true],
+            ],
+            'product' => [
+                ['name' => 'price', 'type' => 'integer', 'nullable' => true],
+            ],
+        ];
     }
 
-    protected function tearDown(): void
+    protected function seedData(): array
     {
-        $this->pdo = null;
-        $this->tearDownDatabaseConnections();
-    }
-
-    private function createTestTables(): void
-    {
-        $this->pdo->exec("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT,
-                age INTEGER,
-                status TEXT DEFAULT 'active',
-                score REAL DEFAULT 0,
-                bio TEXT,
-                created_at TEXT,
-                updated_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE userss (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE,
-                age INTEGER,
-                status TEXT DEFAULT 'active',
-                created_at TEXT,
-                updated_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                content TEXT,
-                status TEXT DEFAULT 'published',
-                views INTEGER DEFAULT 0,
-                created_at TEXT,
-                updated_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
-                body TEXT NOT NULL,
-                approved INTEGER DEFAULT 0,
-                created_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE post_tag (
-                post_id INTEGER NOT NULL,
-                tag_id INTEGER NOT NULL,
-                created_at TEXT
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE product (
-                price INTEGER
-            )
-        ");
-    }
-
-    private function seedData(): void
-    {
-        // 10 users: 7 active, 3 inactive; Dave (id=4) has null email; Carol/Grace have null bio
-        $this->pdo->exec("
-            INSERT INTO users (name, email, age, status, score, bio, created_at, updated_at) VALUES
-            ('Alice Smith',  'alice@example.com',  30, 'active',   95.5, 'Developer', '2024-01-01 10:00:00', '2024-01-01 10:00:00'),
-            ('Bob Jones',    'bob@example.com',    25, 'active',   72.0, 'Designer',  '2024-01-02 10:00:00', '2024-01-02 10:00:00'),
-            ('Carol White',  'carol@example.com',  35, 'inactive', 55.0, NULL,        '2024-01-03 10:00:00', '2024-01-03 10:00:00'),
-            ('Dave Brown',   NULL,                 40, 'active',   88.0, 'Manager',   '2024-01-04 10:00:00', '2024-01-04 10:00:00'),
-            ('Eve Davis',    'eve@example.com',    22, 'inactive', 40.0, 'Intern',    '2024-01-05 10:00:00', '2024-01-05 10:00:00'),
-            ('Frank Miller', 'frank@example.com',  45, 'active',   91.0, 'Architect', '2024-01-06 10:00:00', '2024-01-06 10:00:00'),
-            ('Grace Lee',    'grace@example.com',  28, 'active',   63.0, NULL,        '2024-01-07 10:00:00', '2024-01-07 10:00:00'),
-            ('Henry Wilson', 'henry@example.com',  33, 'inactive', 77.0, 'DevOps',    '2024-01-08 10:00:00', '2024-01-08 10:00:00'),
-            ('Irene Clark',  'irene@example.com',  29, 'active',   82.0, 'QA',        '2024-01-09 10:00:00', '2024-01-09 10:00:00'),
-            ('James Scott',  'james@example.com',  50, 'active',   99.0, 'CTO',       '2024-01-10 10:00:00', '2024-01-10 10:00:00')
-        ");
-
-        // 10 posts across users 1,2,3,4,6,9,10
-        $this->pdo->exec("
-            INSERT INTO posts (user_id, title, content, status, views, created_at, updated_at) VALUES
-            (1,  'Alice Post One',  'Content 1',  'published', 1000, '2024-02-01 10:00:00', '2024-02-01 10:00:00'),
-            (1,  'Alice Post Two',  'Content 2',  'draft',      500, '2024-02-02 10:00:00', '2024-02-02 10:00:00'),
-            (2,  'Bob Post One',    'Content 3',  'published',  200, '2024-02-03 10:00:00', '2024-02-03 10:00:00'),
-            (3,  'Carol Post One',  'Content 4',  'published',  750, '2024-02-04 10:00:00', '2024-02-04 10:00:00'),
-            (4,  'Dave Post One',   'Content 5',  'draft',      300, '2024-02-05 10:00:00', '2024-02-05 10:00:00'),
-            (6,  'Frank Post One',  'Content 6',  'published', 1500, '2024-02-06 10:00:00', '2024-02-06 10:00:00'),
-            (6,  'Frank Post Two',  'Content 7',  'published',  100, '2024-02-07 10:00:00', '2024-02-07 10:00:00'),
-            (9,  'Irene Post One',  'Content 8',  'draft',      600, '2024-02-08 10:00:00', '2024-02-08 10:00:00'),
-            (10, 'James Post One',  'Content 9',  'published', 2000, '2024-02-09 10:00:00', '2024-02-09 10:00:00'),
-            (10, 'James Post Two',  'Content 10', 'published',  900, '2024-02-10 10:00:00', '2024-02-10 10:00:00')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO comments (post_id, user_id, body, approved, created_at) VALUES
-            (1, 2, 'Great post!',     1, '2024-03-01 10:00:00'),
-            (1, 3, 'Very helpful.',   1, '2024-03-02 10:00:00'),
-            (1, 4, 'Thanks Alice!',   0, '2024-03-03 10:00:00'),
-            (6, 1, 'Love it',         1, '2024-03-04 10:00:00'),
-            (9, 6, 'Nice draft',      0, '2024-03-05 10:00:00'),
-            (9, 7, 'Looking forward', 1, '2024-03-06 10:00:00')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO tags (name) VALUES ('php'), ('orm'), ('database'), ('performance'), ('testing')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO post_tag (post_id, tag_id, created_at) VALUES
-            (1, 1, '2024-02-01'), (1, 2, '2024-02-01'), (1, 3, '2024-02-01'),
-            (6, 1, '2024-02-06'), (6, 4, '2024-02-06'),
-            (9, 5, '2024-02-08'),
-            (10,1, '2024-02-09'), (10,2, '2024-02-09'), (10,4, '2024-02-09')
-        ");
-    }
-
-    private function setupDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-        $this->setStaticProperty(Database::class, 'connections', [
-            'default' => $this->pdo,
-            'sqlite'  => $this->pdo,
-        ]);
-    }
-
-    private function tearDownDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-    }
-
-    private function setStaticProperty(string $class, string $property, mixed $value): void
-    {
-        $ref  = new \ReflectionClass($class);
-        $prop = $ref->getProperty($property);
-        $prop->setValue(null, $value);
+        return [
+            'users' => [
+                ['name' => 'Alice Smith', 'email' => 'alice@example.com', 'age' => 30, 'status' => 'active', 'score' => 95.5, 'bio' => 'Developer', 'created_at' => '2024-01-01 10:00:00', 'updated_at' => '2024-01-01 10:00:00'],
+                ['name' => 'Bob Jones', 'email' => 'bob@example.com', 'age' => 25, 'status' => 'active', 'score' => 72.0, 'bio' => 'Designer', 'created_at' => '2024-01-02 10:00:00', 'updated_at' => '2024-01-02 10:00:00'],
+                ['name' => 'Carol White', 'email' => 'carol@example.com', 'age' => 35, 'status' => 'inactive', 'score' => 55.0, 'bio' => null, 'created_at' => '2024-01-03 10:00:00', 'updated_at' => '2024-01-03 10:00:00'],
+                ['name' => 'Dave Brown', 'email' => null, 'age' => 40, 'status' => 'active', 'score' => 88.0, 'bio' => 'Manager', 'created_at' => '2024-01-04 10:00:00', 'updated_at' => '2024-01-04 10:00:00'],
+                ['name' => 'Eve Davis', 'email' => 'eve@example.com', 'age' => 22, 'status' => 'inactive', 'score' => 40.0, 'bio' => 'Intern', 'created_at' => '2024-01-05 10:00:00', 'updated_at' => '2024-01-05 10:00:00'],
+                ['name' => 'Frank Miller', 'email' => 'frank@example.com', 'age' => 45, 'status' => 'active', 'score' => 91.0, 'bio' => 'Architect', 'created_at' => '2024-01-06 10:00:00', 'updated_at' => '2024-01-06 10:00:00'],
+                ['name' => 'Grace Lee', 'email' => 'grace@example.com', 'age' => 28, 'status' => 'active', 'score' => 63.0, 'bio' => null, 'created_at' => '2024-01-07 10:00:00', 'updated_at' => '2024-01-07 10:00:00'],
+                ['name' => 'Henry Wilson', 'email' => 'henry@example.com', 'age' => 33, 'status' => 'inactive', 'score' => 77.0, 'bio' => 'DevOps', 'created_at' => '2024-01-08 10:00:00', 'updated_at' => '2024-01-08 10:00:00'],
+                ['name' => 'Irene Clark', 'email' => 'irene@example.com', 'age' => 29, 'status' => 'active', 'score' => 82.0, 'bio' => 'QA', 'created_at' => '2024-01-09 10:00:00', 'updated_at' => '2024-01-09 10:00:00'],
+                ['name' => 'James Scott', 'email' => 'james@example.com', 'age' => 50, 'status' => 'active', 'score' => 99.0, 'bio' => 'CTO', 'created_at' => '2024-01-10 10:00:00', 'updated_at' => '2024-01-10 10:00:00'],
+            ],
+            'posts' => [
+                ['user_id' => 1, 'title' => 'Alice Post One', 'content' => 'Content 1', 'status' => 'published', 'views' => 1000, 'created_at' => '2024-02-01 10:00:00', 'updated_at' => '2024-02-01 10:00:00'],
+                ['user_id' => 1, 'title' => 'Alice Post Two', 'content' => 'Content 2', 'status' => 'draft', 'views' => 500, 'created_at' => '2024-02-02 10:00:00', 'updated_at' => '2024-02-02 10:00:00'],
+                ['user_id' => 2, 'title' => 'Bob Post One', 'content' => 'Content 3', 'status' => 'published', 'views' => 200, 'created_at' => '2024-02-03 10:00:00', 'updated_at' => '2024-02-03 10:00:00'],
+                ['user_id' => 3, 'title' => 'Carol Post One', 'content' => 'Content 4', 'status' => 'published', 'views' => 750, 'created_at' => '2024-02-04 10:00:00', 'updated_at' => '2024-02-04 10:00:00'],
+                ['user_id' => 4, 'title' => 'Dave Post One', 'content' => 'Content 5', 'status' => 'draft', 'views' => 300, 'created_at' => '2024-02-05 10:00:00', 'updated_at' => '2024-02-05 10:00:00'],
+                ['user_id' => 6, 'title' => 'Frank Post One', 'content' => 'Content 6', 'status' => 'published', 'views' => 1500, 'created_at' => '2024-02-06 10:00:00', 'updated_at' => '2024-02-06 10:00:00'],
+                ['user_id' => 6, 'title' => 'Frank Post Two', 'content' => 'Content 7', 'status' => 'published', 'views' => 100, 'created_at' => '2024-02-07 10:00:00', 'updated_at' => '2024-02-07 10:00:00'],
+                ['user_id' => 9, 'title' => 'Irene Post One', 'content' => 'Content 8', 'status' => 'draft', 'views' => 600, 'created_at' => '2024-02-08 10:00:00', 'updated_at' => '2024-02-08 10:00:00'],
+                ['user_id' => 10, 'title' => 'James Post One', 'content' => 'Content 9', 'status' => 'published', 'views' => 2000, 'created_at' => '2024-02-09 10:00:00', 'updated_at' => '2024-02-09 10:00:00'],
+                ['user_id' => 10, 'title' => 'James Post Two', 'content' => 'Content 10', 'status' => 'published', 'views' => 900, 'created_at' => '2024-02-10 10:00:00', 'updated_at' => '2024-02-10 10:00:00'],
+            ],
+            'comments' => [
+                ['post_id' => 1, 'user_id' => 2, 'body' => 'Great post!', 'approved' => 1, 'created_at' => '2024-03-01 10:00:00'],
+                ['post_id' => 1, 'user_id' => 3, 'body' => 'Very helpful.', 'approved' => 1, 'created_at' => '2024-03-02 10:00:00'],
+                ['post_id' => 1, 'user_id' => 4, 'body' => 'Thanks Alice!', 'approved' => 0, 'created_at' => '2024-03-03 10:00:00'],
+                ['post_id' => 6, 'user_id' => 1, 'body' => 'Love it', 'approved' => 1, 'created_at' => '2024-03-04 10:00:00'],
+                ['post_id' => 9, 'user_id' => 6, 'body' => 'Nice draft', 'approved' => 0, 'created_at' => '2024-03-05 10:00:00'],
+                ['post_id' => 9, 'user_id' => 7, 'body' => 'Looking forward', 'approved' => 1, 'created_at' => '2024-03-06 10:00:00'],
+            ],
+            'tags' => [
+                ['name' => 'php'],
+                ['name' => 'orm'],
+                ['name' => 'database'],
+                ['name' => 'performance'],
+                ['name' => 'testing'],
+            ],
+            'post_tag' => [
+                ['post_id' => 1, 'tag_id' => 1, 'created_at' => '2024-02-01'],
+                ['post_id' => 1, 'tag_id' => 2, 'created_at' => '2024-02-01'],
+                ['post_id' => 1, 'tag_id' => 3, 'created_at' => '2024-02-01'],
+                ['post_id' => 6, 'tag_id' => 1, 'created_at' => '2024-02-06'],
+                ['post_id' => 6, 'tag_id' => 4, 'created_at' => '2024-02-06'],
+                ['post_id' => 9, 'tag_id' => 5, 'created_at' => '2024-02-08'],
+                ['post_id' => 10, 'tag_id' => 1, 'created_at' => '2024-02-09'],
+                ['post_id' => 10, 'tag_id' => 2, 'created_at' => '2024-02-09'],
+                ['post_id' => 10, 'tag_id' => 4, 'created_at' => '2024-02-09'],
+            ],
+        ];
     }
 
     public function testOrWhereNullOnLargeDataset(): void

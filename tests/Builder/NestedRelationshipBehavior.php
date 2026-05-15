@@ -2,178 +2,18 @@
 
 namespace Tests\Unit\Builder;
 
-use Tests\Support\Model\MockUser;
 use Tests\Support\Model\MockPost;
-use Tests\Support\MockContainer;
 use Phaseolies\Database\Entity\Builder;
-use Phaseolies\Database\Database;
-use Phaseolies\DI\Container;
-use PHPUnit\Framework\TestCase;
-use PDO;
+use Tests\Support\Database\BuilderRelationshipDriverTestCase;
+use Tests\Support\Model\MockUser;
 
 use function PHPUnit\Framework\assertEquals;
 
-class NestedRelationshipTest extends TestCase
+abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
 {
-    private $pdo;
-
-    protected function setUp(): void
+    protected function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
     {
-        Container::setInstance(new MockContainer());
-
-        $this->pdo = new PDO('sqlite::memory:');
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        $this->createTestTables();
-        $this->setupDatabaseConnections();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->pdo = null;
-        $this->tearDownDatabaseConnections();
-    }
-
-    private function createTestTables(): void
-    {
-        // Create users table
-        $this->pdo->exec("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE
-            )
-        ");
-
-        // Create posts table
-        $this->pdo->exec("
-            CREATE TABLE posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                title TEXT NOT NULL,
-                content TEXT,
-                status BOOLEAN DEFAULT 1
-            )
-        ");
-
-        // Create comments table
-        $this->pdo->exec("
-            CREATE TABLE comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                post_id INTEGER,
-                user_id INTEGER,
-                body TEXT NOT NULL,
-                approved BOOLEAN DEFAULT 0
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-            )
-        ");
-
-        $this->pdo->exec("
-            CREATE TABLE post_tag (
-                post_id INTEGER,
-                tag_id INTEGER,
-                created_at TEXT
-            )
-        ");
-
-        // Insert test data
-        $this->pdo->exec("
-            INSERT INTO users (name, email) VALUES
-            ('John Doe', 'john@example.com'),
-            ('Jane Smith', 'jane@example.com')
-        ");
-
-        $this->pdo->exec("
-           INSERT INTO posts (user_id, title, content, status) VALUES 
-            (1, 'First Post', 'Content 1', 1),
-            (1, 'Second Post', 'Content 2', 0),
-            (1, 'Jane Post', 'Content 3', 1)
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO comments (post_id, user_id, body, approved) VALUES 
-            (1, 1, 'Great post!', 1),
-            (1, 2, 'Nice work', 0),
-            (2, 1, 'Interesting', 1),
-            (3, 2, 'Amazing', 1)
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO tags (name) VALUES 
-            ('PHP'),
-            ('Doppar'),
-            ('Testing')
-        ");
-
-        $this->pdo->exec("
-            INSERT INTO post_tag (post_id, tag_id) VALUES 
-            (1, 1),
-            (1, 2),
-            (2, 1),
-            (3, 3)
-        ");
-    }
-
-    /**
-     * Setup database connections for testing
-     */
-    private function setupDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-
-        $this->setStaticProperty(Database::class, 'connections', [
-            'default' => $this->pdo,
-            'sqlite' => $this->pdo
-        ]);
-    }
-
-    /**
-     * Clean up database connections
-     */
-    private function tearDownDatabaseConnections(): void
-    {
-        $this->setStaticProperty(Database::class, 'connections', []);
-        $this->setStaticProperty(Database::class, 'transactions', []);
-    }
-
-    /**
-     * Helper method to set static properties
-     */
-    private function setStaticProperty(string $className, string $propertyName, $value): void
-    {
-        try {
-            $reflection = new \ReflectionClass($className);
-            $property = $reflection->getProperty($propertyName);
-            $property->setValue(null, $value);
-        } catch (\ReflectionException $e) {
-            $this->fail("Failed to set static property {$propertyName}: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Helper to create a new builder
-     */
-    private function createBuilder(string $table = 'users', string $model = MockUser::class): Builder
-    {
-        return new Builder($this->pdo, $table, $model, 15);
-    }
-
-    /**
-     * Helper to get builder eager load for assertion
-     */
-    private function getBuilderEagerLoad(Builder $builder): array
-    {
-        $reflection = new \ReflectionClass($builder);
-        $property = $reflection->getProperty('eagerLoad');
-        $eagerLoad = $property->getValue($builder);
-        return $eagerLoad;
+        return parent::createBuilder($table, $model);
     }
 
     // TEST 1: whereLinked with nested relations
