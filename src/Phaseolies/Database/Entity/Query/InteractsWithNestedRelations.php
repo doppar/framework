@@ -187,7 +187,8 @@ trait InteractsWithNestedRelations
         $escapeValue = fn($val) => $this->escapeValue($val);
 
         $currentModel = $model;
-        $currentTable = $this->table;
+        $rootAlias = $this->table . '_sub';
+        $currentTable = $rootAlias;
         $joins = [];
         $lastForeignKey = null;
         $lastLocalKey = null;
@@ -243,7 +244,7 @@ trait InteractsWithNestedRelations
         }
 
         // Build the final subquery
-        $subquery = "SELECT 1 FROM {$quote($this->table)} AS {$quote($this->table . '_sub')}";
+        $subquery = "SELECT 1 FROM {$quote($this->table)} AS {$quote($rootAlias)}";
 
         // Add all the joins
         $subquery .= ' ' . implode(' ', $joins);
@@ -254,7 +255,7 @@ trait InteractsWithNestedRelations
             $model->$firstRelation();
             $firstLocalKey = $model->getLastLocalKey();
 
-            $subquery .= " WHERE {$quote($this->table . '_sub')}.{$quote($firstLocalKey)} = {$quote($this->table)}.{$quote($firstLocalKey)}";
+            $subquery .= " WHERE {$quote($rootAlias)}.{$quote($firstLocalKey)} = {$quote($this->table)}.{$quote($firstLocalKey)}";
         }
 
         // Add the condition on the final table

@@ -23,7 +23,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
 
         // Test nested relation: users who have posts with approved comments
         // Only user ID 1 should come
-        $data = $builder->whereLinked('posts.comments', 'approved', 1)->get();
+        $data = $builder->whereLinked('posts.comments', 'approved', true)->get();
 
         assertEquals(1, $data[0]->id);
         assertEquals('John Doe', $data[0]->name);
@@ -55,7 +55,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
 
         $builder->embed([
             'posts:id,title' => function ($q) {
-                $q->where('status', 1);
+                $q->where('status', true);
             },
             'posts.comments:id,body',
             'comments:id,body,approved'
@@ -75,7 +75,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
 
         $data = $builder->where('name', 'John')
             ->orPresent('posts', function ($q) {
-                $q->where('status', 1);
+                $q->where('status', true);
             })->get();
 
         assertEquals(1, $data[0]->id);
@@ -150,7 +150,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
         $builder = $this->createBuilder('users', MockUser::class);
 
         $builder->embedCount('posts', function ($q) {
-            $q->where('status', 1);
+            $q->where('status', true);
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -208,7 +208,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
         $builder = $this->createBuilder('users', MockUser::class);
 
         $data = $builder->ifExists('posts', function ($q) {
-            $q->where('status', 1);
+            $q->where('status', true);
         })->get();
 
         assertEquals(1, $data[0]->id);
@@ -280,7 +280,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
         $builder = $this->createBuilder('users', MockUser::class);
 
         $builder->load('posts', function ($q) {
-            $q->where('status', 1);
+            $q->where('status', true);
         });
 
         $this->assertTrue(method_exists($builder, 'load'));
@@ -317,7 +317,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
         // All Posts have commnets
         // Should retun 0
         $users = $builder->present('posts', function ($q) {
-            $q->where('status', 1);
+            $q->where('status', true);
         })
             ->absent('comments')
             ->get();
@@ -332,7 +332,7 @@ abstract class NestedRelationshipTest extends BuilderRelationshipDriverTestCase
 
         $builder->embed([
             'comments:id,body,created_at' => function ($q) {
-                $q->where('approved', 1)->limit(5);
+                $q->where('approved', true)->limit(5);
             },
             'user:id,name,email',
             'tags*'

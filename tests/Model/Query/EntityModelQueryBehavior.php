@@ -14,6 +14,26 @@ use Tests\Support\Model\MockUser;
 
 abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
 {
+    protected function yearMonthSelectExpression(): string
+    {
+        return match (static::driverName()) {
+            'sqlite' => "COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month",
+            'mysql' => "COUNT(*) as total, DATE_FORMAT(created_at, '%Y') as year, DATE_FORMAT(created_at, '%m') as month",
+            'pgsql' => "COUNT(*) as total, TO_CHAR(created_at, 'YYYY') as year, TO_CHAR(created_at, 'MM') as month",
+            default => throw new \RuntimeException('Unsupported driver [' . static::driverName() . '].'),
+        };
+    }
+
+    protected function yearMonthGroupExpression(): string
+    {
+        return match (static::driverName()) {
+            'sqlite' => "strftime('%Y', created_at), strftime('%m', created_at)",
+            'mysql' => "DATE_FORMAT(created_at, '%Y'), DATE_FORMAT(created_at, '%m')",
+            'pgsql' => "TO_CHAR(created_at, 'YYYY'), TO_CHAR(created_at, 'MM')",
+            default => throw new \RuntimeException('Unsupported driver [' . static::driverName() . '].'),
+        };
+    }
+
     protected function tableDefinitions(): array
     {
         return [
@@ -593,8 +613,8 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
     public function testGroupByRawComplex(): void
     {
         $user = MockUser::query()
-            ->selectRaw("COUNT(*) as total, strftime('%Y', created_at) as year, strftime('%m', created_at) as month")
-            ->groupByRaw("strftime('%Y', created_at), strftime('%m', created_at)")
+            ->selectRaw($this->yearMonthSelectExpression())
+            ->groupByRaw($this->yearMonthGroupExpression())
             ->orderByRaw('year DESC, month DESC')
             ->get();
 
@@ -641,7 +661,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
     public function testWhereBetween()
     {
         $users = MockUser::query()
-            ->whereBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->whereBetween('created_at', ['2025-02-28', '2025-04-29'])
             ->get();
 
         $this->assertCount(0, $users);
@@ -660,7 +680,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
     public function testWhereNotBetween(): void
     {
         $users = MockUser::query()
-            ->whereNotBetween('created_at', ['2025-02-29', '2025-04-29'])
+            ->whereNotBetween('created_at', ['2025-02-28', '2025-04-29'])
             ->get();
 
         $this->assertCount(3, $users);
@@ -932,7 +952,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
             'user_id' => [1, 2, 3],
             function ($query) {
                 $query->where('views', '>', 100)
-                    ->where('status', 1);
+                    ->where('status', true);
             }
         ])
             ->orderBy('created_at', 'desc')
@@ -1262,15 +1282,21 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $this->assertEquals(125, $avg);
         $this->assertEquals(200.0, $max);
         $this->assertEquals(50.0, $min);
-        $this->assertEquals(55.9, number_format($stdDev, 1));
-        $this->assertEquals(3125.0, $variance);
+        if (static::driverName() === 'pgsql') {
+            $this->assertEqualsWithDelta(64.5, (float) $stdDev, 0.1);
+            $this->assertEqualsWithDelta(4166.6667, (float) $variance, 0.0001);
+        } else {
+            $this->assertEqualsWithDelta(55.9, (float) $stdDev, 0.1);
+            $this->assertEqualsWithDelta(3125.0, (float) $variance, 0.0001);
+        }
     }
 
     public function testDistinct(): void
     {
-        $posts = MockPost::query()->distinct('user_id');
+        $posts = MockPost::query()->distinct('user_id')->toArray();
+        sort($posts);
 
-        $this->assertEquals([1, 2], $posts->toArray());
+        $this->assertEquals([1, 2], $posts);
     }
 
     public function testConditionalGroupBy(): void
@@ -1278,6 +1304,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $posts = MockPost::query()
             ->select(['user_id', 'SUM(views * views) as total_views'])
             ->groupBy('user_id')
+            ->orderBy('user_id')
             ->get();
 
         $this->assertEquals([
@@ -1360,17 +1387,17 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
             ->map(function ($item) {
                 return [
                     'title' => $item->title,
-                    'status' => $item->status
+                    'status' => (bool) $item->status
                 ];
             })
             ->filter(function ($item) {
-                return $item['status'] === 1;
+                return $item['status'] === true;
             });
 
         $this->assertEquals([
-            ['title' => 'First Post', 'status' => 1],
-            ['title' => 'Jane Post',  'status' => 1],
-            ['title' => 'Third Post', 'status' => 1],
+            ['title' => 'First Post', 'status' => true],
+            ['title' => 'Jane Post',  'status' => true],
+            ['title' => 'Third Post', 'status' => true],
         ], $posts->toArray());
     }
 
@@ -2759,7 +2786,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
     {
         $affected = MockPost::query()
             ->where(function ($q) {
-                $q->where('status', 1)
+                $q->where('status', true)
                     ->whereIn('user_id', [1, 2]);
             })
             ->increment('views', 100);

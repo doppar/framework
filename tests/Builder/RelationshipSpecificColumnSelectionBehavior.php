@@ -149,7 +149,7 @@ abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationsh
 
         // Test column selection combined with additional constraints
         $builder->embed('comments:id,body,created_at', function ($query) {
-            $query->where('approved', 1)->oldest('created_at');
+            $query->where('approved', true)->oldest('created_at');
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -168,7 +168,7 @@ abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationsh
         $this->assertCount(1, $conditions);
         $this->assertEquals('approved', $conditions[0][1]);
         $this->assertEquals('=', $conditions[0][2]);
-        $this->assertEquals(1, $conditions[0][3]);
+        $this->assertTrue((bool) $conditions[0][3]);
     }
 
     public function testEmbedWithArrayColumnSelection()
@@ -178,7 +178,7 @@ abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationsh
         // Test multiple relations with column selection in array format
         $builder->embed([
             'comments:id,body,created_at' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             },
             'user:id,name',
             'category:id,name'
@@ -231,7 +231,7 @@ abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationsh
 
         // Test embedCount with callback and column selection
         $builder->embedCount('comments:id,body', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -255,7 +255,7 @@ abstract class RelationshipSpecificColumnSelectionTest extends BuilderRelationsh
 
         // Test that limit works in embed callbacks
         $builder->embed('comments:id,body', function ($query) {
-            $query->where('approved', 1)
+            $query->where('approved', true)
                 ->limit(2)
                 ->oldest('created_at');
         });

@@ -40,7 +40,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder();
         $callback = function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         };
 
         $builder->embed('comments', $callback);
@@ -78,7 +78,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->present('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -102,7 +102,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     public function testWhereLinkedWithSimpleRelation()
     {
         $builder = $this->createBuilder('posts', MockPost::class);
-        $builder->whereLinked('comments', 'approved', 1);
+        $builder->whereLinked('comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -149,7 +149,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
         $this->assertInstanceOf(Builder::class, $builder->embed('comments'));
         $this->assertInstanceOf(Builder::class, $builder->embedCount('likes'));
         $this->assertInstanceOf(Builder::class, $builder->present('comments'));
-        $this->assertInstanceOf(Builder::class, $builder->whereLinked('comments', 'approved', 1));
+        $this->assertInstanceOf(Builder::class, $builder->whereLinked('comments', 'approved', true));
         $this->assertInstanceOf(Builder::class, $builder->search(['title'], 'test'));
     }
 
@@ -216,7 +216,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->embed('comments', function ($query) {
-            $query->where('approved', 1)->orderBy('id', 'DESC');
+            $query->where('approved', true)->orderBy('id', 'DESC');
         });
 
         $eagerLoad = $this->getBuilderEagerLoad($builder);
@@ -229,7 +229,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->whereLinked('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -278,7 +278,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
                 $query->where('title', 'LIKE', '%Test%');
             },
             'comments' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             }
         ]);
 
@@ -294,7 +294,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('users', MockUser::class);
         $callback = function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         };
 
         $builder->embedCount('comments', $callback);
@@ -313,7 +313,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
                 $query->where('status', 'published');
             },
             'comments' => function ($query) {
-                $query->where('approved', 1);
+                $query->where('approved', true);
             }
         ]);
 
@@ -341,7 +341,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('posts', MockPost::class);
         $builder->orPresent('comments', function ($query) {
-            $query->where('approved', 1);
+            $query->where('approved', true);
         });
 
         $conditions = $this->getBuilderConditions($builder);
@@ -366,7 +366,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     public function testWhereLinkedWithDifferentOperators()
     {
         $builder = $this->createBuilder('posts', MockPost::class);
-        $builder->whereLinked('comments', 'approved', '!=', 1);
+        $builder->whereLinked('comments', 'approved', '!=', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -403,7 +403,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('users', MockUser::class);
 
-        $builder->whereLinked('posts.comments', 'approved', 1);
+        $builder->whereLinked('posts.comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
@@ -557,7 +557,7 @@ abstract class DatabaseBuilderRelationshipTest extends BuilderRelationshipDriver
     {
         $builder = $this->createBuilder('users', MockUser::class)
             ->whereLinked('posts', 'status', 'published')
-            ->whereLinked('comments', 'approved', 1);
+            ->whereLinked('comments', 'approved', true);
 
         $conditions = $this->getBuilderConditions($builder);
 
