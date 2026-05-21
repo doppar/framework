@@ -229,6 +229,24 @@ abstract class EntityRelationshipTest extends ModelQueryDriverTestCase
     }
 
     /**
+     * Re-reading a lazy bindToMany relation should return the cached collection,
+     * not the internal grouped array keyed by the pivot foreign key.
+     */
+    public function testBindToManyLazyLoadCachesCollectionForRepeatedAccess(): void
+    {
+        $post = MockPost::find(1);
+
+        $firstRead = $post->tags;
+        $secondRead = $post->tags;
+
+        $this->assertInstanceOf(Collection::class, $firstRead);
+        $this->assertInstanceOf(Collection::class, $secondRead);
+        $this->assertCount(2, $secondRead);
+        $this->assertEquals('PHP', $secondRead[0]->name);
+        $this->assertEquals(1, $secondRead[0]->pivot->post_id);
+    }
+
+    /**
      * Inverse: Tag 1 (PHP) belongs to many Posts.
      */
     public function testBindToManyInverseLazyLoad(): void
