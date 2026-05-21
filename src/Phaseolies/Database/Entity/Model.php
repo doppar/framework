@@ -1019,6 +1019,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
                         case 'bindToMany':
                             $relatedModel = app($this->getLastRelatedModel());
+                            $relatedModelClass = get_class($relatedModel);
                             $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
                             $pivotTable = $this->getLastPivotTable();
                             $pivotSelects = array_map(function ($column) use ($pivotTable) {
@@ -1050,7 +1051,11 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                                 $result->pivot = $pivotObj;
                                 $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
                             }
-                            $this->setRelation($name, $grouped);
+
+                            $this->setRelation(
+                                $name,
+                                new Collection($relatedModelClass, $grouped[$this->getKey()] ?? [])
+                            );
 
                             return $results;
                     }

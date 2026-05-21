@@ -2563,12 +2563,15 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $post = MockPost::find(1);
         $post->tags()->relate([1, 2, 3]);
         $this->assertEquals([1, 2, 3], $post->tags->pluck('id')->sort()->values()->toArray());
-        $this->assertCount(1, $post->tags);
+        $this->assertCount(3, $post->tags);
 
         $changes = $post->tags()->relate([1, 2, 4]);
         $this->assertEquals([4], array_keys($changes['attached']));
-        $this->assertEquals([2], array_keys($changes['detached']));
+        $this->assertEquals([3], array_values($changes['detached']));
         $this->assertEquals([], $changes['updated']);
+
+        $post = MockPost::find(1);
+        $this->assertEquals([1, 2, 4], $post->tags->pluck('id')->sort()->values()->toArray());
     }
 
     public function testRepairMethodFetchingRecords()
