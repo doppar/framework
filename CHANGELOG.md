@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.26.3 - 2026-05-21
+
+* Fix lazy bindToMany relation caching to match eager-loaded collections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/285
+
 ## v3.26.2 - 2026-05-16
 
 * Add real MySQL and PostgreSQL coverage for ORM query and relationship test suites by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/284
