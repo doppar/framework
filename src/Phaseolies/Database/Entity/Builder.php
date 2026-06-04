@@ -1678,7 +1678,9 @@ class Builder
         $relationType = $firstModel->getLastRelationType();
         $relatedModel = $firstModel->getLastRelatedModel();
         $foreignKey = $firstModel->getLastForeignKey();
-        $localKey = $firstModel->getLastLocalKey();
+        $localKey = $relationType === "bindToMany"
+            ? $firstModel->getKeyName()
+            : $firstModel->getLastLocalKey();
 
         // Collect all local keys
         $localKeys = array_map(fn($model) => $model->{$localKey}, $models);
@@ -1710,7 +1712,7 @@ class Builder
         // Set the count on each model
         $countAttribute = $relation . '_count';
         foreach ($models as $model) {
-            $key = $model->{$localKey};
+            $key = $model->getKey();
             $model->{$countAttribute} = $counts[$key] ?? 0;
         }
     }
@@ -1738,7 +1740,6 @@ class Builder
         $foreignKey = $firstModel->getLastForeignKey();
         $relatedKey = $firstModel->getLastRelatedKey();
         $pivotTable = $firstModel->getLastPivotTable();
-        $localKey = $firstModel->getLastLocalKey();
 
         $relatedModelInstance = new $relatedModel();
         $relatedTable = $relatedModelInstance->getTable();
@@ -1768,7 +1769,7 @@ class Builder
         // Set the count on each model
         $countAttribute = $relation . '_count';
         foreach ($models as $model) {
-            $key = $model->{$localKey};
+            $key = $model->getKey();
             $model->{$countAttribute} = $counts[$key] ?? 0;
         }
     }
