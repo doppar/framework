@@ -68,6 +68,17 @@ class CollectionTest extends TestCase
         $this->assertFalse(isset($collection->baz));
     }
 
+    public function testNullValuesAreStillConsideredPresent()
+    {
+        $collection = new Collection(Model::class, ["foo" => null]);
+
+        $this->assertArrayHasKey("foo", $collection->all());
+        $this->assertTrue(isset($collection["foo"]));
+        $this->assertTrue(isset($collection->foo));
+        $this->assertNull($collection["foo"]);
+        $this->assertNull($collection->foo);
+    }
+
     public function testGetIterator()
     {
         $items = [1, 2, 3];
@@ -96,6 +107,9 @@ class CollectionTest extends TestCase
     {
         $collection = new Collection(Model::class, [1, 2, 3]);
         $this->assertEquals(1, $collection->first());
+
+        $associativeCollection = new Collection(Model::class, ['a' => 10, 'b' => 20]);
+        $this->assertEquals(10, $associativeCollection->first());
 
         $emptyCollection = new Collection(Model::class, []);
         $this->assertNull($emptyCollection->first());

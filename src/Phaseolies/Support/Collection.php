@@ -99,7 +99,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function __isset($name)
     {
-        return isset($this->data[$name]);
+        return array_key_exists($name, $this->data);
     }
 
     /**
@@ -110,7 +110,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function offsetExists($offset): bool
     {
-        return isset($this->data[$offset]);
+        return array_key_exists($offset, $this->data);
     }
 
     /**
@@ -194,7 +194,11 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function first(): mixed
     {
-        return $this->data[0] ?? null;
+        foreach ($this->data as $item) {
+            return $item;
+        }
+
+        return null;
     }
 
     /**
