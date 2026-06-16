@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.26.5 - 2026-06-16
+
+* fix collection first() and null-key existence handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/287
+
 ## v3.26.4 - 2026-06-04
 
 * Fix many-to-many embedCount() when multiple relations are eager loaded by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/286
