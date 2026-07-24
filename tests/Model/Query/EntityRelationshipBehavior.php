@@ -926,6 +926,22 @@ abstract class EntityRelationshipTest extends ModelQueryDriverTestCase
         $this->assertEquals([], $changes['detached']);
     }
 
+    /**
+     * Refreshing a loaded relation exposes pivot changes on the same model.
+     */
+    public function testRefreshRelationClearsStaleRelationCache(): void
+    {
+        $post = MockPost::find(1);
+
+        $this->assertEquals([1, 2], $post->tags->pluck('id')->sort()->values()->toArray());
+
+        $post->tags()->relate([1, 4]);
+
+        $this->assertEquals([1, 2], $post->tags->pluck('id')->sort()->values()->toArray());
+        $this->assertEquals([1, 4], $post->reload('tags')->pluck('id')->sort()->values()->toArray());
+        $this->assertEquals([1, 4], $post->tags->pluck('id')->sort()->values()->toArray());
+    }
+
     // =========================================================================
     // 16. MIXED omit + embed
     // =========================================================================

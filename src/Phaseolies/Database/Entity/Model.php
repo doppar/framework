@@ -975,6 +975,32 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Forget a loaded relationship so it will be queried again on next access.
+     *
+     * @param string $relation
+     * @return $this
+     */
+    public function forget(string $relation): self
+    {
+        unset($this->relations[$relation]);
+
+        return $this;
+    }
+
+    /**
+     * Reload a relationship from the database.
+     *
+     * @param string $relation
+     * @return mixed
+     */
+    public function reload(string $relation)
+    {
+        $this->forget($relation);
+
+        return $this->{$relation};
+    }
+
+    /**
      * Magic getter for accessing model attributes and relationships
      *
      * @param string $name
