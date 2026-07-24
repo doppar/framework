@@ -1,5 +1,9 @@
 # Release Notes
 
+## v3.26.6 - 2026-07-24
+
+* Add model helpers for clearing and reloading cached relationships by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/288
+
 ## v3.26.5 - 2026-06-16
 
 * fix collection first() and null-key existence handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/287
