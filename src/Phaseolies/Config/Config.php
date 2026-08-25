@@ -68,7 +68,7 @@ final class Config
      */
     protected static function getConfigFiles(): array
     {
-        return self::$configFiles ??= glob(base_path('config/*.php')) ?: [];
+        return self::$configFiles ??= glob(base_path('runtime/config/*.php')) ?: [];
     }
 
     /**

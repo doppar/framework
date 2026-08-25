@@ -36,7 +36,7 @@ class MakeMailCommand extends Command
             }
 
             $namespace = 'App\\Mail' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Mail', $name);
+            $filePath = $this->generatedFilePath('src/Mail', $name);
 
             // Check if Mailable already exists
             if (file_exists($filePath)) {

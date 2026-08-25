@@ -52,7 +52,7 @@ class Command extends Console
             return 'Phaseolies\\Console\\Commands' . $relativePath;
         }, $commandFiles);
 
-        $userDefineCommandsDir = base_path('app/Schedule/Commands');
+        $userDefineCommandsDir = base_path('src/Schedule/Commands');
         if (is_dir($userDefineCommandsDir)) {
             $files = [];
             $dirIterator = new RecursiveDirectoryIterator($userDefineCommandsDir);

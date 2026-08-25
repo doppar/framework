@@ -326,10 +326,10 @@ if (!function_exists('config')) {
      * Retrieve a configuration value by key.
      *
      * @param string $key
-     * @param string $default
+     * @param mixed $default
      * @return mixed
      */
-    function config(string|array $key, ?string $default = null): mixed
+    function config(string|array $key, mixed $default = null): mixed
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
@@ -415,7 +415,7 @@ if (!function_exists('base_path')) {
 
         if ($basePath === null) {
             if (app()->runningInConsole()) {
-                $basePath = rtrim(getcwd(), DIRECTORY_SEPARATOR);
+            $basePath = rtrim(getcwd(), DIRECTORY_SEPARATOR);
             } elseif (defined('BASE_PATH')) {
                 $basePath = rtrim(BASE_PATH, DIRECTORY_SEPARATOR);
             } else {

@@ -263,7 +263,7 @@ namespace Phaseolies\Console\Commands {
     if (!function_exists(__NAMESPACE__ . '\resource_path')) {
         function resource_path(string $path = ''): string
         {
-            return CommandTestEnvironment::path('resources/' . ltrim($path, '/'));
+            return CommandTestEnvironment::path('templates/' . ltrim($path, '/'));
         }
     }
 

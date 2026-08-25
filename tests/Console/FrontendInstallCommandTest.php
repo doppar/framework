@@ -16,7 +16,7 @@ class FrontendInstallCommandTest extends TestCase
         $pathMethod = new \ReflectionMethod($command, 'entryFilePath');
 
         $this->assertSame('main.tsx', $filenameMethod->invoke($command, 'react', true));
-        $this->assertSame('resources/client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
+        $this->assertSame('templates/client/js/main.tsx', $pathMethod->invoke($command, 'react', true));
     }
 
     public function testVanillaWelcomeUsesSharedAppLayout(): void
@@ -57,7 +57,7 @@ class FrontendInstallCommandTest extends TestCase
         $this->assertStringContainsString("#extends('layouts.app')", $welcome);
         $this->assertStringContainsString('#section(\'content\')', $welcome);
         $this->assertStringContainsString('<div id="app"></div>', $welcome);
-        $this->assertStringContainsString("#vite('resources/client/js/main.ts')", $layout);
+        $this->assertStringContainsString("#vite('templates/client/js/main.ts')", $layout);
         $this->assertStringContainsString('<meta name="csrf-token" content="[[ csrf_token() ]]" />', $layout);
         $this->assertStringContainsString('window.__DOPPAR_FRONTEND__', $layout);
         $this->assertStringContainsString('csrfToken: "[[ csrf_token() ]]"', $layout);
@@ -72,7 +72,7 @@ class FrontendInstallCommandTest extends TestCase
 
         $layout = $method->invoke($command, 'vanilla', true);
 
-        $this->assertStringContainsString("#vite('resources/client/js/app.ts')", $layout);
+        $this->assertStringContainsString("#vite('templates/client/js/app.ts')", $layout);
         $this->assertStringContainsString("#yield('content')", $layout);
     }
 
@@ -85,7 +85,7 @@ class FrontendInstallCommandTest extends TestCase
         $config = $method->invoke($command, 'react', true);
         $entryFile = $entryMethod->invoke($command, 'react', 'none', true);
 
-        $this->assertStringContainsString("input: ['resources/client/js/main.tsx']", $config);
+        $this->assertStringContainsString("input: ['templates/client/js/main.tsx']", $config);
         $this->assertStringContainsString("publicDir: false", $config);
         $this->assertStringContainsString('fs.writeFileSync(hotFile, `${protocol}://${host}:${address.port}`);', $config);
         $this->assertStringContainsString("import './bootstrap';", $entryFile);
@@ -172,9 +172,9 @@ class FrontendInstallCommandTest extends TestCase
 
         $directories = array_map($this->normalizePath(...), $method->invoke($command));
 
-        $this->assertContains($this->normalizePath(getcwd() . '/resources/client'), $directories);
-        $this->assertContains($this->normalizePath(getcwd() . '/resources/client/css'), $directories);
-        $this->assertContains($this->normalizePath(getcwd() . '/resources/client/js'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/templates/client'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/templates/client/css'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/templates/client/js'), $directories);
     }
 
     public function testFrontendUninstallCommandIsRegisteredWithExpectedSignature(): void
@@ -195,7 +195,7 @@ class FrontendInstallCommandTest extends TestCase
 <html>
 <head>
     <!-- DOPPAR_FRONTEND_VITE_START -->
-    #vite('resources/client/js/main.tsx')
+    #vite('templates/client/js/main.tsx')
     <!-- DOPPAR_FRONTEND_VITE_END -->
 </head>
 <body>
@@ -207,7 +207,7 @@ ODO;
         $updated = $method->invoke($command, $contents);
 
         $this->assertStringNotContainsString('DOPPAR_FRONTEND_VITE_START', $updated);
-        $this->assertStringNotContainsString("#vite('resources/client/js/main.tsx')", $updated);
+        $this->assertStringNotContainsString("#vite('templates/client/js/main.tsx')", $updated);
         $this->assertStringNotContainsString('<div id="app"></div>', $updated);
     }
 
@@ -218,7 +218,7 @@ ODO;
 
         $directories = array_map($this->normalizePath(...), $method->invoke($command));
 
-        $this->assertContains($this->normalizePath(getcwd() . '/resources/client'), $directories);
+        $this->assertContains($this->normalizePath(getcwd() . '/templates/client'), $directories);
         $this->assertContains($this->normalizePath(getcwd() . '/client'), $directories);
     }
 

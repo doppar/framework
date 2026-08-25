@@ -18,7 +18,7 @@ class PaginationPublishCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Publish pagination views to resources/views/vendor/pagination';
+    protected $description = 'Publish pagination views to templates/views/vendor/pagination';
 
     /**
      * Execute the console command.

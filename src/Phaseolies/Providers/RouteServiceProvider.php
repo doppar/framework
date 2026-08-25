@@ -39,7 +39,7 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->app->router->loadAttributeBasedRoutes();
 
-        Route::group(['prefix' => 'api'], fn() => require base_path('routes/api.php'));
+        Route::group(['prefix' => 'api'], fn() => require base_path('runtime/routes/api.php'));
 
         if ($this->app->router->shouldCacheRoutes()) {
             $this->app->router->cacheRoutes();

@@ -129,7 +129,7 @@ class Controller extends View
     {
         parent::__construct();
         $this->setFileExtension('.odo.php');
-        $this->setViewFolder('resources/views' . DIRECTORY_SEPARATOR);
+        $this->setViewFolder('templates/views' . DIRECTORY_SEPARATOR);
         $this->setCacheFolder('storage/framework/views' . DIRECTORY_SEPARATOR);
         $this->createCacheFolder();
         $this->setSymlinkPathFolder('storage/app/public' . DIRECTORY_SEPARATOR);
@@ -320,9 +320,9 @@ class Controller extends View
 
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
 
-        // First check published views in resources/views/vendor/{namespace}
+        // First check published views in templates/views/vendor/{namespace}
         // Prioritize published views over package views
-        $publishedPath = base_path('resources/views/vendor/' . $namespace);
+        $publishedPath = base_path('templates/views/vendor/' . $namespace);
         if (is_dir($publishedPath)) {
             $possiblePaths = [
                 $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,

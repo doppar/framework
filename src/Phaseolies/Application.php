@@ -239,7 +239,7 @@ class Application extends Container
      */
     public function langPath($path = ''): string
     {
-        return $this->getPath($this->buildPathFragment('lang', $path));
+        return $this->getPath($this->buildPathFragment('templates/lang', $path));
     }
 
     /**
@@ -486,7 +486,7 @@ class Application extends Container
      */
     public function resourcesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath($this->buildPathFragment('resources', $path));
+        return $this->resourcesPath = $this->getPath($this->buildPathFragment('templates', $path));
     }
 
     /**
@@ -497,7 +497,7 @@ class Application extends Container
      */
     public function clientPath($path = ''): string
     {
-        return $this->clientPath = $this->getPath($this->buildPathFragment('resources/client', $path));
+        return $this->clientPath = $this->getPath($this->buildPathFragment('templates/client', $path));
     }
 
     /**
@@ -508,7 +508,7 @@ class Application extends Container
      */
     public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('bootstrap', $path));
+        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('runtime', $path));
     }
 
     /**
@@ -519,7 +519,7 @@ class Application extends Container
      */
     public function databasePath($path = ''): string
     {
-        return $this->databasePath = $this->getPath($this->buildPathFragment('database', $path));
+        return $this->databasePath = $this->getPath($this->buildPathFragment('schema', $path));
     }
 
     /**
@@ -568,7 +568,7 @@ class Application extends Container
      */
     public function appPath(): string
     {
-        return $this->appPath = $this->basePath();
+        return $this->appPath = $this->getPath('src');
     }
 
     /**
@@ -588,7 +588,7 @@ class Application extends Container
      */
     public function configPath($path = ''): string
     {
-        return $this->configPath = $this->getPath("config/{$path}");
+        return $this->configPath = $this->getPath("runtime/config/{$path}");
     }
 
     /**
