@@ -317,7 +317,7 @@ abstract class ModelQueryDriverTestCase extends TestCase
             $this->markTestSkipped('The pdo_sqlite extension is required for SQLite model query tests.');
         }
 
-        return new PDO('sqlite:' . $this->sqliteDatabasePath());
+        return new PDO('sqlite:' . $this->sqliteschemaPath());
     }
 
     protected function createMysqlPdo(): PDO
@@ -431,7 +431,7 @@ abstract class ModelQueryDriverTestCase extends TestCase
         ];
     }
 
-    protected function sqliteDatabasePath(): string
+    protected function sqliteschemaPath(): string
     {
         $className = str_replace('\\', '-', static::class);
 

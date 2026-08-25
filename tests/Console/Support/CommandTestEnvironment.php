@@ -2,241 +2,239 @@
 
 namespace Tests\Unit\Console\Support {
 
-final class CommandTestEnvironment
-{
-    public static string $root;
-
-    public static array $config = [];
-
-    public static array $appBindings = [];
-
-    public static ?object $appInstance = null;
-
-    public static array $errors = [];
-
-    public static function reset(): void
+    final class CommandTestEnvironment
     {
-        self::$root = rtrim(sys_get_temp_dir(), '/\\')
-            . DIRECTORY_SEPARATOR
-            . 'doppar-command-tests-'
-            . bin2hex(random_bytes(5));
-        self::$config = [
-            'app.name' => 'Doppar Demo',
-            'app.timezone' => 'UTC',
-            'database.default' => 'testing',
-        ];
-        self::$appBindings = [];
-        self::$appInstance = null;
-        self::$errors = [];
+        public static string $root;
 
-        if (!is_dir(self::$root)) {
-            mkdir(self::$root, 0755, true);
-        }
-    }
+        public static array $config = [];
 
-    public static function cleanup(): void
-    {
-        if (!isset(self::$root) || !is_dir(self::$root)) {
-            return;
+        public static array $appBindings = [];
+
+        public static ?object $appInstance = null;
+
+        public static array $errors = [];
+
+        public static function reset(): void
+        {
+            self::$root = rtrim(sys_get_temp_dir(), '/\\')
+                . DIRECTORY_SEPARATOR
+                . 'doppar-command-tests-'
+                . bin2hex(random_bytes(5));
+            self::$config = [
+                'app.name' => 'Doppar Demo',
+                'app.timezone' => 'UTC',
+                'database.default' => 'testing',
+            ];
+            self::$appBindings = [];
+            self::$appInstance = null;
+            self::$errors = [];
+
+            if (!is_dir(self::$root)) {
+                mkdir(self::$root, 0755, true);
+            }
         }
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator(self::$root, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
-        );
+        public static function cleanup(): void
+        {
+            if (!isset(self::$root) || !is_dir(self::$root)) {
+                return;
+            }
 
-        foreach ($iterator as $item) {
-            if ($item->isLink()) {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(self::$root, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                if ($item->isLink()) {
+                    unlink($item->getPathname());
+                    continue;
+                }
+
+                if ($item->isDir()) {
+                    rmdir($item->getPathname());
+                    continue;
+                }
+
                 unlink($item->getPathname());
-                continue;
             }
 
-            if ($item->isDir()) {
-                rmdir($item->getPathname());
-                continue;
+            rmdir(self::$root);
+        }
+
+        public static function path(string $path = ''): string
+        {
+            $base = rtrim(self::$root, '/\\');
+
+            if ($path === '') {
+                return $base;
             }
 
-            unlink($item->getPathname());
+            return $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
         }
 
-        rmdir(self::$root);
-    }
+        public static function config(?string $key = null, mixed $default = null): mixed
+        {
+            if ($key === null) {
+                return self::$config;
+            }
 
-    public static function path(string $path = ''): string
-    {
-        $base = rtrim(self::$root, '/\\');
-
-        if ($path === '') {
-            return $base;
+            return self::$config[$key] ?? $default;
         }
 
-        return $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
-    }
+        public static function app(?string $key = null): mixed
+        {
+            if ($key === null) {
+                return self::$appInstance;
+            }
 
-    public static function config(?string $key = null, mixed $default = null): mixed
-    {
-        if ($key === null) {
-            return self::$config;
+            return self::$appBindings[$key] ?? null;
         }
 
-        return self::$config[$key] ?? $default;
-    }
-
-    public static function app(?string $key = null): mixed
-    {
-        if ($key === null) {
-            return self::$appInstance;
+        public static function bind(string $key, mixed $value): void
+        {
+            self::$appBindings[$key] = $value;
         }
 
-        return self::$appBindings[$key] ?? null;
+        public static function recordError(string $message): void
+        {
+            self::$errors[] = $message;
+        }
     }
 
-    public static function bind(string $key, mixed $value): void
+    final class FakeStringHelper
     {
-        self::$appBindings[$key] = $value;
-    }
-
-    public static function recordError(string $message): void
-    {
-        self::$errors[] = $message;
-    }
-}
-
-final class FakeStringHelper
-{
-    public function suffixAppend(string $value, string $suffix): string
-    {
-        return str_ends_with($value, $suffix) ? $value : $value . $suffix;
-    }
-
-    public function removeSuffix(string $value, string $suffix): string
-    {
-        if (!str_ends_with($value, $suffix)) {
-            return $value;
+        public function suffixAppend(string $value, string $suffix): string
+        {
+            return str_ends_with($value, $suffix) ? $value : $value . $suffix;
         }
 
-        return substr($value, 0, -strlen($suffix));
-    }
+        public function removeSuffix(string $value, string $suffix): string
+        {
+            if (!str_ends_with($value, $suffix)) {
+                return $value;
+            }
 
-    public function snake(string $value): string
-    {
-        $value = preg_replace('/(?<!^)[A-Z]/', '_$0', $value) ?? $value;
-
-        return strtolower($value);
-    }
-}
-
-final class FakeSessionStore
-{
-    public int $flushCount = 0;
-
-    public function flush(): void
-    {
-        $this->flushCount++;
-    }
-}
-
-final class FakeDatabaseInspector
-{
-    public array $columns = [];
-
-    public function getTableColumns(string $table): array
-    {
-        return $this->columns[$table] ?? [];
-    }
-}
-
-trait InteractsWithFakeCommandIO
-{
-    public array $fakeArguments = [];
-
-    public array $fakeOptions = [];
-
-    public array $capturedLines = [];
-
-    public array $capturedInfos = [];
-
-    public array $capturedErrors = [];
-
-    public array $capturedWarnings = [];
-
-    public array $capturedSuccesses = [];
-
-    protected function argument($key = null)
-    {
-        if ($key === null) {
-            return $this->fakeArguments;
+            return substr($value, 0, -strlen($suffix));
         }
 
-        return $this->fakeArguments[$key] ?? null;
+        public function snake(string $value): string
+        {
+            $value = preg_replace('/(?<!^)[A-Z]/', '_$0', $value) ?? $value;
+
+            return strtolower($value);
+        }
     }
 
-    protected function option($key = null)
+    final class FakeSessionStore
     {
-        if ($key === null) {
-            return $this->fakeOptions;
+        public int $flushCount = 0;
+
+        public function flush(): void
+        {
+            $this->flushCount++;
+        }
+    }
+
+    final class FakeDatabaseInspector
+    {
+        public array $columns = [];
+
+        public function getTableColumns(string $table): array
+        {
+            return $this->columns[$table] ?? [];
+        }
+    }
+
+    trait InteractsWithFakeCommandIO
+    {
+        public array $fakeArguments = [];
+
+        public array $fakeOptions = [];
+
+        public array $capturedLines = [];
+
+        public array $capturedInfos = [];
+
+        public array $capturedErrors = [];
+
+        public array $capturedWarnings = [];
+
+        public array $capturedSuccesses = [];
+
+        protected function argument($key = null)
+        {
+            if ($key === null) {
+                return $this->fakeArguments;
+            }
+
+            return $this->fakeArguments[$key] ?? null;
         }
 
-        return $this->fakeOptions[$key] ?? null;
-    }
+        protected function option($key = null)
+        {
+            if ($key === null) {
+                return $this->fakeOptions;
+            }
 
-    protected function info($string): void
-    {
-        $this->capturedInfos[] = (string) $string;
-    }
-
-    protected function error($string): void
-    {
-        $this->capturedErrors[] = (string) $string;
-    }
-
-    protected function line(string $string, ?string $style = null): void
-    {
-        $this->capturedLines[] = [$string, $style];
-    }
-
-    protected function newLine($count = 1): void
-    {
-    }
-
-    protected function displaySuccess(string $message): void
-    {
-        $this->capturedSuccesses[] = $message;
-    }
-
-    protected function displayError(string $message): void
-    {
-        $this->capturedErrors[] = $message;
-    }
-
-    protected function displayWarning(string $message): void
-    {
-        $this->capturedWarnings[] = $message;
-    }
-
-    protected function displayInfo(string $message): void
-    {
-        $this->capturedInfos[] = $message;
-    }
-
-    protected function executeWithTiming(callable $callback): int
-    {
-        $result = $callback();
-
-        return is_int($result) ? $result : 0;
-    }
-
-    protected function withTiming(callable $operation, ?string $successMessage = null): int
-    {
-        $result = $operation();
-
-        if ($successMessage !== null) {
-            $this->displaySuccess($successMessage);
+            return $this->fakeOptions[$key] ?? null;
         }
 
-        return is_int($result) ? $result : 0;
+        protected function info($string): void
+        {
+            $this->capturedInfos[] = (string) $string;
+        }
+
+        protected function error($string): void
+        {
+            $this->capturedErrors[] = (string) $string;
+        }
+
+        protected function line(string $string, ?string $style = null): void
+        {
+            $this->capturedLines[] = [$string, $style];
+        }
+
+        protected function newLine($count = 1): void {}
+
+        protected function displaySuccess(string $message): void
+        {
+            $this->capturedSuccesses[] = $message;
+        }
+
+        protected function displayError(string $message): void
+        {
+            $this->capturedErrors[] = $message;
+        }
+
+        protected function displayWarning(string $message): void
+        {
+            $this->capturedWarnings[] = $message;
+        }
+
+        protected function displayInfo(string $message): void
+        {
+            $this->capturedInfos[] = $message;
+        }
+
+        protected function executeWithTiming(callable $callback): int
+        {
+            $result = $callback();
+
+            return is_int($result) ? $result : 0;
+        }
+
+        protected function withTiming(callable $operation, ?string $successMessage = null): int
+        {
+            $result = $operation();
+
+            if ($successMessage !== null) {
+                $this->displaySuccess($successMessage);
+            }
+
+            return is_int($result) ? $result : 0;
+        }
     }
-}
 }
 
 namespace Phaseolies\Console\Commands {
@@ -260,8 +258,8 @@ namespace Phaseolies\Console\Commands {
         }
     }
 
-    if (!function_exists(__NAMESPACE__ . '\resource_path')) {
-        function resource_path(string $path = ''): string
+    if (!function_exists(__NAMESPACE__ . '\template_path')) {
+        function template_path(string $path = ''): string
         {
             return CommandTestEnvironment::path('templates/' . ltrim($path, '/'));
         }

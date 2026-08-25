@@ -185,10 +185,10 @@ final class ApplicationTest extends TestCase
     public function testPathMethodsReturnCorrectPaths(): void
     {
         $stringService = app(StringService::class);
-        $this->assertStringEndsWith('/templates/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
+        $this->assertStringEndsWith('/templates/views', $stringService->urlHarmonize($this->app->templatesPath('views')));
         $this->assertStringEndsWith('/templates/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
         $this->assertStringEndsWith('/runtime/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
-        $this->assertStringEndsWith('/schema/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
+        $this->assertStringEndsWith('/schema/migrations', $stringService->urlHarmonize($this->app->schemaPath('migrations')));
         $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
         $this->assertStringEndsWith('/storage/logs', $stringService->urlHarmonize($this->app->storagePath('logs')));
         $this->assertStringEndsWith('/runtime/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));

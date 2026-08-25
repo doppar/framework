@@ -5,9 +5,9 @@ namespace Phaseolies\Support\Facades;
 /**
  * @method static \Phaseolies\Application langPath($path = ''): string
  * @method static \Phaseolies\Application setBasePath(string $basePath): self
- * @method static \Phaseolies\Application resourcesPath($path = ''): string
+ * @method static \Phaseolies\Application templatesPath($path = ''): string
  * @method static \Phaseolies\Application bootstrapPath($path = ''): string
- * @method static \Phaseolies\Application databasePath($path = ''): string
+ * @method static \Phaseolies\Application schemaPath($path = ''): string
  * @method static \Phaseolies\Application publicPath($path = ''): string
  * @method static \Phaseolies\Application storagePath($path = ''): string
  * @method static \Phaseolies\Application appPath(): string

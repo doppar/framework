@@ -88,7 +88,7 @@ class Migrator
         $migrations = array_diff($fileNames, $ran);
 
         foreach ($vendorMigrations as $basename => $vendorPath) {
-            if (!file_exists(database_path('migration/' . $basename))) {
+            if (!file_exists(schema_path('migration/' . $basename))) {
                 $migrations[] = $vendorPath;
             }
 

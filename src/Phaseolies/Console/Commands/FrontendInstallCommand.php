@@ -129,7 +129,7 @@ class FrontendInstallCommand extends Command
                 client_path(),
                 client_path('css'),
                 client_path('js'),
-                resource_path('views/layouts'),
+                template_path('views/layouts'),
                 storage_path('framework'),
             ] as $directory
         ) {
