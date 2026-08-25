@@ -26,7 +26,7 @@ class RequestAbortion
 
         $customPath =
             base_path(
-                'resources'
+                'templates'
                     . DIRECTORY_SEPARATOR . 'views'
                     . DIRECTORY_SEPARATOR . 'errors'
                     . DIRECTORY_SEPARATOR . "{$code}.odo.php"
@@ -99,8 +99,7 @@ class RequestAbortion
         string $message = '',
         array $headers = [],
         mixed $original = null
-    ): Response
-    {
+    ): Response {
         if (ob_get_level() > 0) {
             ob_get_clean();
         }

@@ -62,10 +62,10 @@ class ViteManagerTest extends TestCase
 
         $manager = $this->stubbedManager(true);
 
-        $tags = $manager->tags('resources/client/js/app.js');
+        $tags = $manager->tags('templates/client/js/app.js');
 
         $this->assertStringContainsString('http://127.0.0.1:5173/@vite/client', $tags);
-        $this->assertStringContainsString('http://127.0.0.1:5173/resources/client/js/app.js', $tags);
+        $this->assertStringContainsString('http://127.0.0.1:5173/templates/client/js/app.js', $tags);
     }
 
     public function testHotReactEntriesAutomaticallyIncludeRefreshPreamble(): void
@@ -74,12 +74,12 @@ class ViteManagerTest extends TestCase
 
         $manager = $this->stubbedManager(true);
 
-        $tags = $manager->tags('resources/client/js/main.tsx');
+        $tags = $manager->tags('templates/client/js/main.tsx');
 
         $this->assertStringContainsString('http://127.0.0.1:5173/@react-refresh', $tags);
         $this->assertStringContainsString('__vite_plugin_react_preamble_installed__ = true', $tags);
         $this->assertStringContainsString('http://127.0.0.1:5173/@vite/client', $tags);
-        $this->assertStringContainsString('http://127.0.0.1:5173/resources/client/js/main.tsx', $tags);
+        $this->assertStringContainsString('http://127.0.0.1:5173/templates/client/js/main.tsx', $tags);
     }
 
     public function testTagsResolveManifestImportsStylesAndScripts(): void
@@ -87,19 +87,19 @@ class ViteManagerTest extends TestCase
         file_put_contents(
             Paths::$public . '/build/manifest.json',
             json_encode([
-                'resources/client/js/app.js' => [
+                'templates/client/js/app.js' => [
                     'file' => 'assets/app-123.js',
                     'css' => ['assets/app-123.css'],
-                    'imports' => ['resources/client/js/vendor.js'],
+                    'imports' => ['templates/client/js/vendor.js'],
                 ],
-                'resources/client/js/vendor.js' => [
+                'templates/client/js/vendor.js' => [
                     'file' => 'assets/vendor-456.js',
                     'css' => ['assets/vendor-456.css'],
                 ],
             ], JSON_PRETTY_PRINT)
         );
 
-        $tags = (new ViteManager())->tags('resources/client/js/app.js');
+        $tags = (new ViteManager())->tags('templates/client/js/app.js');
 
         $this->assertStringContainsString('modulepreload', $tags);
         $this->assertStringContainsString('https://example.test/build/assets/vendor-456.js', $tags);
@@ -113,7 +113,7 @@ class ViteManagerTest extends TestCase
         file_put_contents(
             Paths::$public . '/build/manifest.json',
             json_encode([
-                'resources/client/js/app.js' => ['file' => 'assets/app-123.js'],
+                'templates/client/js/app.js' => ['file' => 'assets/app-123.js'],
             ], JSON_PRETTY_PRINT)
         );
 
@@ -121,7 +121,7 @@ class ViteManagerTest extends TestCase
 
         $this->assertSame(
             'https://example.test/build/assets/app-123.js',
-            $manager->asset('resources/client/js/app.js')
+            $manager->asset('templates/client/js/app.js')
         );
 
         file_put_contents(Paths::$storage . '/framework/vite.hot', 'http://127.0.0.1:5173');
@@ -129,8 +129,8 @@ class ViteManagerTest extends TestCase
         $hotManager = $this->stubbedManager(true);
 
         $this->assertSame(
-            'http://127.0.0.1:5173/resources/client/js/app.js',
-            $hotManager->asset('resources/client/js/app.js')
+            'http://127.0.0.1:5173/templates/client/js/app.js',
+            $hotManager->asset('templates/client/js/app.js')
         );
     }
 
@@ -140,7 +140,7 @@ class ViteManagerTest extends TestCase
         file_put_contents(
             Paths::$public . '/build/manifest.json',
             json_encode([
-                'resources/client/js/app.js' => [
+                'templates/client/js/app.js' => [
                     'file' => 'assets/app-123.js',
                 ],
             ], JSON_PRETTY_PRINT)
@@ -148,7 +148,7 @@ class ViteManagerTest extends TestCase
 
         $manager = $this->stubbedManager(false);
 
-        $tags = $manager->tags('resources/client/js/app.js');
+        $tags = $manager->tags('templates/client/js/app.js');
 
         $this->assertStringContainsString('https://example.test/build/assets/app-123.js', $tags);
         $this->assertFileDoesNotExist(Paths::$storage . '/framework/vite.hot');
@@ -161,13 +161,13 @@ class ViteManagerTest extends TestCase
         file_put_contents(
             Paths::$public . '/build/.vite/manifest.json',
             json_encode([
-                'resources/client/js/app.js' => [
+                'templates/client/js/app.js' => [
                     'file' => 'assets/app-123.js',
                 ],
             ], JSON_PRETTY_PRINT)
         );
 
-        $tags = (new ViteManager())->tags('resources/client/js/app.js');
+        $tags = (new ViteManager())->tags('templates/client/js/app.js');
 
         $this->assertStringContainsString('https://example.test/build/assets/app-123.js', $tags);
     }
@@ -177,7 +177,7 @@ class ViteManagerTest extends TestCase
         file_put_contents(
             Paths::$public . '/build/manifest.json',
             json_encode([
-                'resources/client/js/app.js' => [
+                'templates/client/js/app.js' => [
                     'file' => 'assets/app-123.js',
                 ],
             ], JSON_PRETTY_PRINT)

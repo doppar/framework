@@ -479,7 +479,7 @@ class Application extends Container
     }
 
     /**
-     * Gets the resources path.
+     * Gets the templates path.
      *
      * @param string $path
      * @return string
@@ -748,7 +748,7 @@ class Application extends Container
         $this->singleton('path.config', fn() => $this->configPath());
         $this->singleton('path.public', fn() => $this->publicPath());
         $this->singleton('path.storage', fn() => $this->storagePath());
-        $this->singleton('path.resources', fn() => $this->templatesPath());
+        $this->singleton('path.templates', fn() => $this->templatesPath());
         $this->singleton('path.client', fn() => $this->clientPath());
         $this->singleton('path.database', fn() => $this->schemaPath());
     }
