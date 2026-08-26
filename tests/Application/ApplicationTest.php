@@ -118,7 +118,11 @@ final class ApplicationTest extends TestCase
         ];
 
         foreach ($dirs as $dir) {
-            mkdir($this->tempBasePath . $dir, 0777, true);
+            $path = $this->tempBasePath . $dir;
+
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
         }
 
         // Create minimal config file
