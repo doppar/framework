@@ -6,6 +6,7 @@ use Phaseolies\Application;
 use Phaseolies\Providers\ServiceProvider;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Migration\Migration;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 // Mock ServiceProvider for testing
 class TestServiceProvider extends ServiceProvider
@@ -35,6 +36,7 @@ class TestMigration extends Migration
     }
 }
 
+#[AllowMockObjectsWithoutExpectations]
 class ServiceProviderTest extends TestCase
 {
     private $app;
@@ -53,7 +55,6 @@ class ServiceProviderTest extends TestCase
         // Test that app is properly set via reflection
         $reflection = new \ReflectionClass($this->provider);
         $appProperty = $reflection->getProperty('app');
-        $appProperty->setAccessible(true);
 
         $this->assertSame($this->app, $appProperty->getValue($this->provider));
     }
@@ -102,7 +103,6 @@ class ServiceProviderTest extends TestCase
 
         $reflection = new \ReflectionClass($provider);
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishGroupsProperty->setAccessible(true);
 
         $provider->testPublishesViews($paths, 'custom-views');
 
@@ -132,8 +132,6 @@ class ServiceProviderTest extends TestCase
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishesProperty->setAccessible(true);
-        $publishGroupsProperty->setAccessible(true);
 
         $this->provider->publishes($paths, 'test-group');
 
@@ -148,7 +146,6 @@ class ServiceProviderTest extends TestCase
 
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
-        $publishesProperty->setAccessible(true);
 
         $this->provider->publishes($paths);
 
@@ -163,7 +160,6 @@ class ServiceProviderTest extends TestCase
 
         $reflection = new \ReflectionClass($this->provider);
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishGroupsProperty->setAccessible(true);
 
         $this->provider->publishes($paths, $groups);
 
@@ -180,7 +176,6 @@ class ServiceProviderTest extends TestCase
 
         $reflection = new \ReflectionClass($this->provider);
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishGroupsProperty->setAccessible(true);
 
         $this->provider->publishesMigrations($paths, 'custom-migrations');
 
@@ -195,8 +190,6 @@ class ServiceProviderTest extends TestCase
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishesProperty->setAccessible(true);
-        $publishGroupsProperty->setAccessible(true);
 
         $publishesProperty->setValue($this->provider, ['provider1' => ['path1']]);
         $publishGroupsProperty->setValue($this->provider, ['group1' => ['path2']]);
@@ -210,7 +203,6 @@ class ServiceProviderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->provider);
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishGroupsProperty->setAccessible(true);
         $publishGroupsProperty->setValue($this->provider, ['test-group' => ['group-path']]);
 
         $paths = $this->provider->pathsToPublish(null, 'test-group');
@@ -221,7 +213,6 @@ class ServiceProviderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
-        $publishesProperty->setAccessible(true);
         $publishesProperty->setValue($this->provider, ['test-provider' => ['provider-path']]);
 
         $paths = $this->provider->pathsToPublish('test-provider', null);
@@ -233,8 +224,6 @@ class ServiceProviderTest extends TestCase
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
         $publishGroupsProperty = $reflection->getProperty('publishGroups');
-        $publishesProperty->setAccessible(true);
-        $publishGroupsProperty->setAccessible(true);
 
         $publishesProperty->setValue($this->provider, ['p1' => 'v1']);
         $publishGroupsProperty->setValue($this->provider, ['g1' => 'v2']);

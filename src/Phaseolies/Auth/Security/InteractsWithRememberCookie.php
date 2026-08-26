@@ -24,7 +24,7 @@ trait InteractsWithRememberCookie
     {
         $appName = strtolower(str_replace(' ', '_', config('app.name', 'doppar')));
 
-        return $this->rememberCookiePrefix . sha1($appName);
+        return $this->rememberCookiePrefix . $this->actorName . '_' . sha1($appName);
     }
 
     /**
@@ -41,7 +41,7 @@ trait InteractsWithRememberCookie
 
         $cookieValue = $user->id . '|' . $token . '|' . Hash::make($user->id . $token);
 
-        session()->put('auth_via_remember', true);
+        session()->put($this->getViaRememberKey(), true);
 
         $this->setRememberCookie($cookieValue);
     }
@@ -63,12 +63,12 @@ trait InteractsWithRememberCookie
             $this->getRememberCookieName(),
             $encryptedValue,
             [
-                'expires' => time() + 60 * 60 * 24 * 30,
-                'path' => config('session.path') ?? '/',
-                'domain' => config('session.domain') ?? '',
-                'secure' => request()->isSecure(),
+                'expires'  => time() + 60 * 60 * 24 * 30,
+                'path'     => config('session.path') ?? '/',
+                'domain'   => config('session.domain') ?? '',
+                'secure'   => request()->isSecure(),
                 'httponly' => true,
-                'samesite' => config('session.same_site', 'Lax')
+                'samesite' => config('session.same_site', 'Lax'),
             ]
         );
     }
@@ -83,12 +83,12 @@ trait InteractsWithRememberCookie
         $cookieName = $this->getRememberCookieName();
 
         setcookie($cookieName, '', [
-            'expires' => time() - 3600,
-            'path' => '/',
-            'domain' => config('session.domain') ?? '',
-            'secure' => request()->isSecure(),
+            'expires'  => time() - 3600,
+            'path'     => '/',
+            'domain'   => config('session.domain') ?? '',
+            'secure'   => request()->isSecure(),
             'httponly' => true,
-            'samesite' => 'lax'
+            'samesite' => 'lax',
         ]);
 
         cookie()->remove($cookieName);

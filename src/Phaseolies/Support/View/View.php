@@ -40,15 +40,28 @@ class View extends Factory
      *
      * @var array<string, string>
      */
-    protected $cache = [];
+    protected static array $cache = [];
 
     /**
      * Stack of currently rendering view names.
-     * Useful for debugging and internal state tracking.
      *
      * @var array<int, string>
      */
     protected $renderStack = [];
+
+    /**
+     * Named stacks for inject/slot system
+     *
+     * @var array<string, array>
+     */
+    protected array $stacks = [];
+
+    /**
+     * Currently open inject stack name
+     *
+     * @var string|null
+     */
+    protected ?string $currentInject = null;
 
     public function __construct()
     {
@@ -65,13 +78,9 @@ class View extends Factory
      */
     public function render($name, array $data = [], $returnOnly = false)
     {
-        try {
-            $html = $this->fetch($name, $data);
+        $html = $this->fetch($name, $data);
 
-            return $returnOnly ? $html : print($html);
-        } finally {
-            $this->flush();
-        }
+        return $returnOnly ? $html : print($html);
     }
 
     /**
@@ -88,8 +97,8 @@ class View extends Factory
 
         $cacheKey = $this->generateCacheKey($name, $data);
 
-        if (isset($this->cache[$cacheKey])) {
-            return $this->cache[$cacheKey];
+        if (isset(self::$cache[$cacheKey])) {
+            return self::$cache[$cacheKey];
         }
 
         $this->renderStack[] = $name;
@@ -106,14 +115,16 @@ class View extends Factory
 
             $result = $this->block('__current_template__', '');
 
-            return $this->cache[$cacheKey] = $result;
+            return self::$cache[$cacheKey] = $result;
         } finally {
-            array_pop($this->renderStack);
+            if (!empty($this->renderStack)) {
+                array_pop($this->renderStack);
+            }
         }
     }
 
     /**
-     * Helper method for @extends() directive to define parent view.
+     * Helper method for #extends() directive to define parent view.
      *
      * @param string $name
      * @return void
@@ -199,11 +210,137 @@ class View extends Factory
     {
         $hasher = hash_init('xxh128');
 
-        hash_update($hasher, $name);
+        hash_update($hasher, (string) $name);
 
-        hash_update($hasher, json_encode($payload));
+        $normalized = $this->normalizeForHash($payload);
+
+        hash_update($hasher, serialize($normalized));
 
         return hash_final($hasher);
+    }
+
+    /**
+     * Normalize a value into a serialization-safe structure for hashing.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function normalizeForHash($value)
+    {
+        if ($value instanceof \Closure) {
+            return 'closure';
+        }
+
+        if (is_array($value)) {
+            $normalized = [];
+
+            foreach ($value as $k => $v) {
+                $normalized[$k] = $this->normalizeForHash($v);
+            }
+
+            if ($this->isAssoc($normalized)) {
+                ksort($normalized);
+            }
+
+            return $normalized;
+        }
+
+        if (is_object($value)) {
+            if (method_exists($value, '__toString')) {
+                return (string) $value;
+            }
+
+            return ['__class' => get_class($value)];
+        }
+
+        if (is_resource($value)) {
+            return 'resource:' . get_resource_type($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Determine if an array is associative.
+     *
+     * @param array $array
+     * @return bool
+     */
+    private function isAssoc(array $array): bool
+    {
+        if ($array === []) {
+            return false;
+        }
+
+        return array_keys($array) !== range(0, count($array) - 1);
+    }
+
+    /**
+     * Start capturing content for a named inject stack
+     *
+     * @param string $name
+     * @return void
+     */
+    public function startInject(string $name): void
+    {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Inject stack name must not be empty');
+        }
+
+        $this->currentInject = trim($name, "'\"");
+        ob_start();
+    }
+
+    /**
+     * End capturing and push content into the named stack
+     *
+     * @return void
+     */
+    public function endInject(): void
+    {
+        if ($this->currentInject === null) {
+            throw new \RuntimeException('Cannot end inject — no inject block is open');
+        }
+
+        $content = ob_get_clean();
+        $name = $this->currentInject;
+
+        if (!isset($this->stacks[$name])) {
+            $this->stacks[$name] = [];
+        }
+
+        $this->stacks[$name][] = $content;
+        $this->currentInject = null;
+    }
+
+    /**
+     * Render all content pushed into a named stack
+     *
+     * @param string $name
+     * @return string
+     */
+    public function renderSlot(string $name): string
+    {
+        $name = trim($name, "'\"");
+
+        if (!isset($this->stacks[$name])) {
+            return '';
+        }
+
+        return implode('', $this->stacks[$name]);
+    }
+
+    /**
+     * Check if a stack has any content
+     *
+     * @param string $name
+     * @return bool
+     */
+    public function hasSlot(string $name): bool
+    {
+        $name = trim($name, "'\"");
+
+        return !empty($this->stacks[$name]);
     }
 
     /**
@@ -216,7 +353,8 @@ class View extends Factory
         $this->blocks = [];
         $this->blockStacks = [];
         $this->parents = [];
-        $this->cache = [];
+        $this->stacks = [];
+        $this->currentInject = null;
     }
 
     public function __destruct()

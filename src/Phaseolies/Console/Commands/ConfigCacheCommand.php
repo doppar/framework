@@ -3,8 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Support\Facades\Config;
-
+use Phaseolies\Config\Config;
 class ConfigCacheCommand extends Command
 {
     /**
@@ -26,7 +25,7 @@ class ConfigCacheCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->withTiming(function() {
             Config::clearCache();

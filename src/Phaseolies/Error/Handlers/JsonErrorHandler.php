@@ -17,20 +17,25 @@ class JsonErrorHandler implements ErrorHandlerInterface
      */
     public function handle(Throwable $exception): void
     {
-        $renderer = new JsonErrorRenderer();
+        if ($exception instanceof HttpResponseException && $exception->hasResponse()) {
+            $exception->getResponse()?->prepare(request())->send();
 
-        if ($exception instanceof HttpResponseException) {
-            $responseErrors = $exception->getValidationErrors();
-            $statusCode = $exception->getStatusCode() ?: 500;
-            $renderer->render($exception, $statusCode, $responseErrors);
-        } else {
-            $statusCode = $exception->getCode() ?: 500;
-            $renderer->render($exception, $statusCode);
+            return;
         }
 
-        exit(1);
-    }
+        $renderer = new JsonErrorRenderer();
+        if ($exception instanceof HttpResponseException) {
+            $responseErrors = $exception->getValidationErrors();
 
+            $statusCode = (int) $exception->getStatusCode() ?: 500;
+            $response = $renderer->render($exception, $statusCode, $responseErrors);
+        } else {
+            $statusCode = (int) $exception->getCode() ?: 500;
+            $response = $renderer->render($exception, $statusCode);
+        }
+
+        $response->prepare(request())->send();
+    }
 
     /**
      * Determines whether this handler supports the current request context.

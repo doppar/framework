@@ -30,10 +30,8 @@ class RequestValidationTest extends TestCase
         $reflection = new \ReflectionClass($sanitizer);
 
         $dataProperty = $reflection->getProperty('data');
-        $dataProperty->setAccessible(true);
 
         $rulesProperty = $reflection->getProperty('rules');
-        $rulesProperty->setAccessible(true);
 
         $this->assertEquals($data, $dataProperty->getValue($sanitizer));
         $this->assertEquals($rules, $rulesProperty->getValue($sanitizer));
@@ -74,7 +72,6 @@ class RequestValidationTest extends TestCase
 
         $reflection = new \ReflectionClass($sanitizer);
         $method = $reflection->getMethod('addError');
-        $method->setAccessible(true);
 
         $method->invoke($sanitizer, 'email', 'Email is required');
         $method->invoke($sanitizer, 'email', 'Email must be valid');

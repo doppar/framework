@@ -4,6 +4,7 @@ namespace Phaseolies\Providers;
 
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Support\UrlGenerator;
+use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Support\Session;
@@ -19,8 +20,8 @@ use Phaseolies\Database\Database;
 use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
-use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Application;
+use Phaseolies\Auth\ActorManager;
 
 class FacadeServiceProvider extends ServiceProvider
 {
@@ -47,9 +48,9 @@ class FacadeServiceProvider extends ServiceProvider
         // This provides password hashing and verification functionality.
         $this->app->singleton('hash', PasswordHashing::class);
 
-        // Bind the 'auth' service to a singleton instance of the Authenticate class.
+        // Bind the 'auth' service to a singleton instance of the GuardManager class.
         // This handles user authentication and authorization.
-        $this->app->singleton('auth', Authenticate::class);
+        $this->app->singleton('auth', ActorManager::class);
 
         // Bind the 'crypt' service to a singleton instance of the Encryption class.
         // This provides encryption and decryption functionality.
@@ -77,6 +78,10 @@ class FacadeServiceProvider extends ServiceProvider
         // Bind the 'storage' service to a singleton instance of the Storage class.
         // This handles file uploads.
         $this->app->singleton('storage', StorageFileService::class);
+
+        // Bind the 'vite' service to a singleton instance of the Vite manager.
+        // This resolves dev-server and built frontend assets.
+        $this->app->singleton('vite', ViteManager::class);
 
         // Bind the 'log' service to a singleton instance of the Logger class.
         // This handles user define log.

@@ -4,8 +4,18 @@ namespace Phaseolies\Utilities;
 
 class Paginator
 {
+    /**
+     * Underlying pagination payload used to generate navigation links.
+     *
+     * @var array<string, mixed>
+     */
     protected $data;
 
+    /**
+     * Create a new paginator instance.
+     *
+     * @param array<string, mixed> $data
+     */
     public function __construct($data)
     {
         $this->data = $data;
@@ -199,7 +209,7 @@ class Paginator
      */
     public function linkWithJumps(): ?string
     {
-        if (file_exists(resource_path('views/vendor/pagination/jump.blade.php'))) {
+        if (file_exists(resource_path('views/vendor/pagination/jump.odo.php'))) {
             return view('vendor.pagination.jump', ['paginator' => $this])->render();
         }
 
@@ -262,7 +272,7 @@ class Paginator
      */
     public function links(): ?string
     {
-        if (file_exists(resource_path('views/vendor/pagination/number.blade.php'))) {
+        if (file_exists(resource_path('views/vendor/pagination/number.odo.php'))) {
             return view('vendor.pagination.number', ['paginator' => $this])->render();
         }
 

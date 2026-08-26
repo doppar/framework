@@ -22,7 +22,7 @@ class ViewCacheCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Precompile all Blade views into cached files';
+    protected $description = 'Precompile all odo views into cached files';
 
     /**
      * Maximum number of files to show in output
@@ -34,7 +34,7 @@ class ViewCacheCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
             $viewPath = base_path('resources/views');
@@ -77,8 +77,8 @@ class ViewCacheCommand extends Command
         $results = ['success' => [], 'failed' => []];
 
         foreach ($viewFiles as $file) {
-            $relativePath = str_replace(base_path('resources/views') . '/', '', $file);
-            $viewName = str_replace(['/', '.blade.php'], ['.', ''], $relativePath);
+            $relativePath = $this->relativePath($file, base_path('resources/views'));
+            $viewName = str_replace(['/', '.odo.php'], ['.', ''], $relativePath);
 
             try {
                 $compiledFile = $viewCompiler->prepare($viewName);
@@ -96,7 +96,7 @@ class ViewCacheCommand extends Command
      */
     protected function showResults(array $results, int $totalFiles): void
     {
-        $this->line('<bg=blue;options=bold> COMPILING </> Blade templates');
+        $this->line('<bg=blue;options=bold> COMPILING </> odo templates');
         $this->newLine();
 
         // Show first few successful compilations
@@ -119,7 +119,7 @@ class ViewCacheCommand extends Command
     }
 
     /**
-     * Recursively get all Blade view files
+     * Recursively get all odo view files
      */
     protected function getAllViewFiles(string $dir): array
     {

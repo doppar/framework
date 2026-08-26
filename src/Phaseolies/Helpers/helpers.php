@@ -16,8 +16,10 @@ use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Database\Database;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
+use Phaseolies\Cache\RateLimiter;
 use Phaseolies\Auth\Security\Authenticate;
 use Carbon\Carbon;
+use Phaseolies\Auth\ActorManager;
 
 if (!function_exists('env')) {
     /**
@@ -89,13 +91,22 @@ if (!function_exists('request')) {
 
 if (!function_exists('auth')) {
     /**
-     * Creates a new Authenticate instance
+     * Get the ActorManager, or resolve a specific actor by name.
      *
-     * @return Authenticate
+     * Usage:
+     *   auth()           → ActorManager (proxies calls to the default actor)
+     *   auth('web')      → Authenticate instance for the "web" actor
+     *   auth('admin')    → Authenticate instance for the "admin" actor
+     *
+     * @param string|null $actor
+     * @return ActorManager|Authenticate
      */
-    function auth(): Authenticate
+    function auth(?string $actor = null): ActorManager|Authenticate
     {
-        return app('auth');
+        /** @var ActorManager $manager */
+        $manager = app(ActorManager::class);
+
+        return $actor !== null ? $manager->actor($actor) : $manager;
     }
 }
 
@@ -177,14 +188,11 @@ if (!function_exists('view')) {
     {
         $instance = app(Controller::class);
         $content = $instance->render($view, $data, true);
-        $response = app('response');
-        $response->setBody($content);
 
-        foreach ($headers as $name => $value) {
-            $response->headers->set($name, $value);
-        }
-
-        return $response;
+        return response($content, 200, $headers)->setOriginal([
+            'view' => $view,
+            'data' => $data,
+        ]);
     }
 }
 
@@ -200,11 +208,13 @@ if (!function_exists('redirect')) {
      */
     function redirect($to = null, $status = 302, $headers = [], $secure = null)
     {
+        $redirect = new RedirectResponse();
+
         if (is_null($to)) {
-            return app('redirect');
+            return $redirect;
         }
 
-        return app('redirect')->to($to, $status, $headers, $secure);
+        return $redirect->to($to, $status, $headers, $secure);
     }
 }
 
@@ -219,7 +229,7 @@ if (!function_exists('back')) {
      */
     function back($status = 302, $headers = [], $fallback = false)
     {
-        return app('redirect')->back($status, $headers, $fallback);
+        return redirect()->back($status, $headers, $fallback);
     }
 }
 
@@ -317,9 +327,9 @@ if (!function_exists('config')) {
      *
      * @param string $key
      * @param string $default
-     * @return string|array|null
+     * @return mixed
      */
-    function config(string|array $key, ?string $default = null): null|string|array
+    function config(string|array $key, ?string $default = null): mixed
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
@@ -329,6 +339,30 @@ if (!function_exists('config')) {
         }
 
         return Config::get($key, $default);
+    }
+}
+
+if (!function_exists('cache')) {
+    /**
+     * Get the cache store instance, retrieve an item, or store multiple items
+     *
+     * @param string|array|null $key
+     * @param mixed $default
+     * @return mixed
+     */
+    function cache(string|array|null $key = null, mixed $default = null): mixed
+    {
+        $store = app('cache');
+
+        if (is_null($key)) {
+            return $store;
+        }
+
+        if (is_array($key)) {
+            return $store->setMultiple($key, $default);
+        }
+
+        return $store->get($key, $default);
     }
 }
 
@@ -393,13 +427,22 @@ if (!function_exists('base_path')) {
             return $basePath;
         }
 
-        return $basePath . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $basePath
+            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 }
 
 if (!function_exists('base_url')) {
     /**
-     * Get the base URL of the application.
+     * Get the base URL of the application dynamically.
+     *
+     * For multi-tenant apps, this detects the current subdomain automatically:
+     * - acme.app.com → https://acme.app.com
+     * - globex.app.com → https://globex.app.com
+     * - app.com → https://app.com
      *
      * @param string $path
      * @return string
@@ -407,41 +450,255 @@ if (!function_exists('base_url')) {
     function base_url(string $path = ''): string
     {
         static $baseUrl = null;
+        static $currentHost = null;
 
-        // Return cached version if available
-        // and not forcing a new check
-        if ($baseUrl !== null && !defined('FORCE_BASE_URL_REFRESH')) {
-            return $baseUrl . ($path ? '/' . ltrim($path, '/') : '');
-        }
+        $requestHost = $_SERVER['HTTP_HOST'] ?? null;
 
-        if (PHP_SAPI === 'cli' || defined('STDIN')) {
-            $appUrl = getenv('APP_URL') ?: 'http://localhost';
-            $baseUrl = rtrim($appUrl, '/');
-        } else {
-            // Modern HTTPS detection
-            $isHttps = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
-                || ($_SERVER['SERVER_PORT'] ?? null) == 443
-                || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null) === 'https'
-                || ($_SERVER['HTTP_CF_VISITOR'] ?? null) === '{"scheme":"https"}'; // Cloudflare support
-
-            $scheme = $isHttps ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $baseUrl = $scheme . '://' . $host;
-
-            // Handle subdirectory installations
-            $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-            if ($scriptName) {
-                $baseDir = str_replace(basename($scriptName), '', $scriptName);
-                $baseUrl .= rtrim($baseDir, '/');
-            }
-        }
-
-        // Allow environment override
-        if (getenv('FORCE_HTTPS') === 'true') {
-            $baseUrl = str_replace('http://', 'https://', $baseUrl);
+        if ($baseUrl === null || $currentHost !== $requestHost) {
+            $currentHost = $requestHost;
+            $baseUrl = determine_base_url();
         }
 
         return $baseUrl . ($path ? '/' . ltrim($path, '/') : '');
+    }
+}
+
+if (!function_exists('determine_base_url')) {
+    /**
+     * Determine the base URL based on the current request context.
+     *
+     * @return string
+     */
+    function determine_base_url(): string
+    {
+        if (PHP_SAPI === 'cli' || defined('STDIN')) {
+            $appUrl = getenv('APP_URL') ?: 'http://localhost';
+            return rtrim($appUrl, '/');
+        }
+
+        $scheme = detect_scheme();
+        $host = detect_host();
+        $baseDir = detect_base_directory();
+
+        return $scheme . '://' . $host . rtrim($baseDir, '/');
+    }
+}
+
+if (!function_exists('detect_scheme')) {
+    /**
+     * Detect the current request scheme (http or https).
+     *
+     * Handles:
+     * - Standard HTTPS detection
+     * - Reverse proxies (X-Forwarded-Proto)
+     * - Load balancers
+     * - Cloudflare
+     * - AWS ELB
+     *
+     * @return string 'https' or 'http'
+     */
+    function detect_scheme(): string
+    {
+        // Force HTTPS via environment variable
+        if (getenv('FORCE_HTTPS') === 'true') {
+            return 'https';
+        }
+
+        // Standard HTTPS detection
+        if (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off') {
+            return 'https';
+        }
+
+        // HTTPS via port
+        if (($_SERVER['SERVER_PORT'] ?? null) == 443) {
+            return 'https';
+        }
+
+        // Behind reverse proxy or load balancer
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            return strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https' ? 'https' : 'http';
+        }
+
+        // Cloudflare
+        if (isset($_SERVER['HTTP_CF_VISITOR'])) {
+            $cfVisitor = json_decode($_SERVER['HTTP_CF_VISITOR'], true);
+            if (isset($cfVisitor['scheme']) && $cfVisitor['scheme'] === 'https') {
+                return 'https';
+            }
+        }
+
+        // AWS ELB
+        if (isset($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == 443) {
+            return 'https';
+        }
+
+        return 'http';
+    }
+}
+
+if (!function_exists('detect_host')) {
+    /**
+     * Detect the current request host (domain + port if non-standard).
+     *
+     * This is THE KEY for multi-tenant routing:
+     * - Reads HTTP_HOST directly from the request
+     * - Includes port for local development (localhost:8000)
+     * - Validates against trusted hosts if configured
+     *
+     * Examples:
+     * - acme.app.com → 'acme.app.com'
+     * - globex.app.com → 'globex.app.com'
+     * - localhost:8000 → 'localhost:8000'
+     *
+     * @return string The detected host
+     */
+    function detect_host(): string
+    {
+        // Priority 1: HTTP_HOST (includes port for non-standard ports)
+        if (isset($_SERVER['HTTP_HOST'])) {
+            $host = $_SERVER['HTTP_HOST'];
+
+            // Strip port if it's standard (80 for HTTP, 443 for HTTPS)
+            $scheme = detect_scheme();
+            $standardPort = $scheme === 'https' ? 443 : 80;
+            $currentPort = $_SERVER['SERVER_PORT'] ?? $standardPort;
+
+            // If port is explicitly in HTTP_HOST and it's standard, strip it
+            if (($scheme === 'https' && str_ends_with($host, ':443')) ||
+                ($scheme === 'http' && str_ends_with($host, ':80'))
+            ) {
+                $host = preg_replace('/:(443|80)$/', '', $host);
+            }
+
+            return $host;
+        }
+
+        // Priority 2: SERVER_NAME (fallback without port)
+        if (isset($_SERVER['SERVER_NAME'])) {
+            return $_SERVER['SERVER_NAME'];
+        }
+
+        // Priority 3: SERVER_ADDR (IP address fallback)
+        if (isset($_SERVER['SERVER_ADDR'])) {
+            return $_SERVER['SERVER_ADDR'];
+        }
+
+        // Ultimate fallback
+        return 'localhost';
+    }
+}
+
+if (!function_exists('detect_base_directory')) {
+    /**
+     * Detect if the application is installed in a subdirectory.
+     *
+     * Examples:
+     * - http://example.com/myapp/public/index.php → '/myapp'
+     * - http://example.com/public/index.php → ''
+     * 
+     * @return string
+     */
+    function detect_base_directory(): string
+    {
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+
+        if (empty($scriptName)) {
+            return '';
+        }
+
+        // Remove /public/index.php or /index.php from script name
+        $baseDir = str_replace(['\\', '/public/index.php', '/index.php'], ['/', '', ''], $scriptName);
+
+        return $baseDir;
+    }
+}
+
+if (!function_exists('current_url')) {
+    /**
+     * Get the current full URL including query string.
+     *
+     * Example: https://acme.app.com/dashboard?page=2
+     *
+     * @return string The current complete URL
+     */
+    function current_url(): string
+    {
+        $scheme = detect_scheme();
+        $host = detect_host();
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+
+        return $scheme . '://' . $host . $uri;
+    }
+}
+
+if (!function_exists('current_domain')) {
+    /**
+     * Get the current domain without scheme or path.
+     *
+     * Examples:
+     * - https://acme.app.com/dashboard → 'acme.app.com'
+     * - http://localhost:8000/test → 'localhost:8000'
+     *
+     * @return string
+     */
+    function current_domain(): string
+    {
+        return detect_host();
+    }
+}
+
+if (!function_exists('is_subdomain')) {
+    /**
+     * Check if the current request is on a subdomain.
+     *
+     * @param string
+     * @return bool
+     */
+    function is_subdomain(string $baseDomain): bool
+    {
+        $currentHost = detect_host();
+
+        // Strip port if present
+        $currentHost = preg_replace('/:\d+$/', '', $currentHost);
+        $baseDomain = preg_replace('/:\d+$/', '', $baseDomain);
+
+        // If current host is longer and ends with base domain, it's a subdomain
+        if ($currentHost === $baseDomain) {
+            return false;
+        }
+
+        return str_ends_with($currentHost, '.' . $baseDomain);
+    }
+}
+
+if (!function_exists('extract_subdomain')) {
+    /**
+     * Extract the subdomain from the current host.
+     *
+     * Examples:
+     * - acme.app.com (base: app.com) → 'acme'
+     * - api.staging.app.com (base: app.com) → 'api.staging'
+     * - app.com (base: app.com) → null
+     *
+     * @param string $baseDomain
+     * @return string|null
+     */
+    function extract_subdomain(string $baseDomain): ?string
+    {
+        $currentHost = detect_host();
+
+        // Strip port if present
+        $currentHost = preg_replace('/:\d+$/', '', $currentHost);
+        $baseDomain = preg_replace('/:\d+$/', '', $baseDomain);
+
+        if (!str_ends_with($currentHost, '.' . $baseDomain)) {
+            return null;
+        }
+
+        // Extract subdomain by removing base domain
+        $subdomain = str_replace('.' . $baseDomain, '', $currentHost);
+
+        return $subdomain ?: null;
     }
 }
 
@@ -481,6 +738,19 @@ if (!function_exists('resource_path')) {
     function resource_path(string $path = ''): string
     {
         return app()->resourcesPath($path);
+    }
+}
+
+if (!function_exists('client_path')) {
+    /**
+     * Get the client assets path of the application.
+     *
+     * @param string $path
+     * @return string
+     */
+    function client_path(string $path = ''): string
+    {
+        return app()->clientPath($path);
     }
 }
 
@@ -533,6 +803,34 @@ if (!function_exists('enqueue')) {
     function enqueue(string $path = '', $secure = null): string
     {
         return app('url')->enqueue($path, $secure);
+    }
+}
+
+if (!function_exists('vite')) {
+    /**
+     * Render Vite script/link tags for the provided entrypoints.
+     *
+     * @param string|array $entrypoints
+     * @param string $buildDirectory
+     * @return string
+     */
+    function vite(string|array $entrypoints, string $buildDirectory = 'build'): string
+    {
+        return app('vite')->tags($entrypoints, $buildDirectory);
+    }
+}
+
+if (!function_exists('vite_asset')) {
+    /**
+     * Resolve a single asset URL through the Vite manifest or dev server.
+     *
+     * @param string $asset
+     * @param string $buildDirectory
+     * @return string
+     */
+    function vite_asset(string $asset, string $buildDirectory = 'build'): string
+    {
+        return app('vite')->asset($asset, $buildDirectory);
     }
 }
 
@@ -597,11 +895,12 @@ if (!function_exists('info')) {
      * Generate log info message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function info(mixed $payload): void
+    function info(mixed $message, array $context = []): void
     {
-        Log::info($payload);
+        Log::info($message, $context);
     }
 }
 
@@ -610,11 +909,12 @@ if (!function_exists('warning')) {
      * Generate log warning message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function warning(mixed $payload): void
+    function warning(mixed $message, array $context = []): void
     {
-        Log::warning($payload);
+        Log::warning($message, $context);
     }
 }
 
@@ -623,11 +923,12 @@ if (!function_exists('error')) {
      * Generate log error message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function error(mixed $payload): void
+    function error(mixed $message, array $context = []): void
     {
-        Log::error($payload);
+        Log::error($message, $context);
     }
 }
 
@@ -636,11 +937,12 @@ if (!function_exists('alert')) {
      * Generate log alert message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function alert(mixed $payload): void
+    function alert(mixed $message, array $context = []): void
     {
-        Log::alert($payload);
+        Log::alert($message, $context);
     }
 }
 
@@ -649,11 +951,12 @@ if (!function_exists('notice')) {
      * Generate log notice message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function notice(mixed $payload): void
+    function notice(mixed $message, array $context = []): void
     {
-        Log::notice($payload);
+        Log::notice($message, $context);
     }
 }
 
@@ -662,11 +965,12 @@ if (!function_exists('emergency')) {
      * Generate log emergency message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function emergency(mixed $payload): void
+    function emergency(mixed $message, array $context = []): void
     {
-        Log::emergency($payload);
+        Log::emergency($message, $context);
     }
 }
 
@@ -675,11 +979,12 @@ if (!function_exists('critical')) {
      * Generate log critical message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function critical(mixed $payload): void
+    function critical(mixed $message, array $context = []): void
     {
-        Log::critical($payload);
+        Log::critical($message, $context);
     }
 }
 
@@ -688,11 +993,12 @@ if (!function_exists('debug')) {
      * Generate log debug message
      *
      * @param mixed $message
+     * @param array $context
      * @return void
      */
-    function debug(mixed $payload): void
+    function debug(mixed $message, array $context = []): void
     {
-        Log::debug($payload);
+        Log::debug($message, $context);
     }
 }
 
@@ -889,5 +1195,17 @@ if (!function_exists('db')) {
     function db(): Database
     {
         return app('db');
+    }
+}
+
+if (!function_exists('throttle')) {
+    /**
+     * Get a RateLimiter instance
+     *
+     * @return RateLimiter
+     */
+    function throttle(): RateLimiter
+    {
+        return app(RateLimiter::class);
     }
 }

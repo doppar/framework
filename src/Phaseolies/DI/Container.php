@@ -3,6 +3,7 @@
 namespace Phaseolies\DI;
 
 use ArrayAccess;
+use Phaseolies\DI\Attributes\Immutable;
 
 class Container implements ArrayAccess
 {
@@ -49,21 +50,46 @@ class Container implements ArrayAccess
      */
     public function __wakeup() {}
 
+    /**
+     * Check if a binding exists at the specified offset.
+     *
+     * @param mixed $offset
+     * @return bool
+     */
     public function offsetExists($offset): bool
     {
         return $this->has($offset);
     }
 
+    /**
+     * Get the binding value at the specified offset.
+     *
+     * @param mixed $offset
+     * @return mixed
+     */
     public function offsetGet($offset): mixed
     {
         return $this->get($offset);
     }
 
+    /**
+     * Set a binding at the specified offset.
+     *
+     * @param mixed $offset
+     * @param mixed $value
+     * @return void
+     */
     public function offsetSet($offset, $value): void
     {
         $this->bind($offset, $value);
     }
 
+    /**
+     * Unset/remove a binding at the specified offset.
+     *
+     * @param mixed $offset
+     * @return void
+     */
     public function offsetUnset($offset): void
     {
         unset(self::$bindings[$offset], self::$instances[$offset]);
@@ -72,9 +98,9 @@ class Container implements ArrayAccess
     /**
      * Bind a service to the container.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param callable|string|null $concrete The concrete implementation or class name.
-     * @param bool $singleton Whether the binding should be a singleton.
+     * @param string $abstract
+     * @param callable|string|null $concrete
+     * @param bool $singleton
      * @return void
      */
     public function bind(string $abstract, callable|string|null $concrete = null, bool $singleton = false): void
@@ -96,8 +122,8 @@ class Container implements ArrayAccess
     /**
      * Bind a singleton service to the container.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param callable|string|null $concrete The concrete implementation or class name.
+     * @param string $abstract
+     * @param callable|string|null $concrete
      * @return void
      */
     public function singleton(string $abstract, callable|string|null $concrete = null): void
@@ -108,8 +134,8 @@ class Container implements ArrayAccess
     /**
      * Bind an instance as a singleton.
      *
-     * @param string $abstract The abstract type or service name.
-     * @param mixed $instance The instance to bind.
+     * @param string $abstract
+     * @param mixed $instance
      * @return void
      */
     public function instance(string $abstract, mixed $instance): void
@@ -126,15 +152,23 @@ class Container implements ArrayAccess
      * Resolve a service from the container.
      *
      * @template T of object
-     * @param class-string<T> $abstract The service name or class name
-     * @param array $parameters Additional parameters for the constructor
+     * @param class-string<T> $abstract
+     * @param array $parameters
      * @return T
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function get(string $abstract, array $parameters = []): mixed
     {
         if (isset($this->resolving[$abstract])) {
             throw new \RuntimeException("Circular dependency detected while resolving [{$abstract}]");
+        }
+
+        if (
+            !isset(self::$bindings[$abstract]) &&
+            !array_key_exists($abstract, self::$instances) &&
+            method_exists($this, 'loadGhostProvider')
+        ) {
+            $this->loadGhostProvider($abstract);
         }
 
         $this->resolving[$abstract] = true;
@@ -199,8 +233,8 @@ class Container implements ArrayAccess
      * Resolve a class with its dependencies (alias for get)
      *
      * @template T of object
-     * @param class-string<T> $abstract The class or interface name
-     * @param array $parameters Constructor parameters
+     * @param class-string<T> $abstract
+     * @param array $parameters
      * @return T
      */
     public function make(string $abstract, array $parameters = []): mixed
@@ -212,10 +246,10 @@ class Container implements ArrayAccess
      * Build a concrete instance with dependency injection
      *
      * @template T of object
-     * @param class-string<T> $concrete The class name
-     * @param array $parameters Constructor parameters
+     * @param class-string<T> $concrete
+     * @param array $parameters
      * @return T
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     public function build(string $concrete, array $parameters = []): object
     {
@@ -232,16 +266,36 @@ class Container implements ArrayAccess
         $constructor = $reflector->getConstructor();
 
         if (is_null($constructor)) {
-            return new $concrete(...$parameters);
+            $instance = new $concrete(...$parameters);
+        } else {
+            $dependencies = $this->resolveDependencies(
+                $constructor->getParameters(),
+                $parameters,
+                $concrete
+            );
+            $instance = $reflector->newInstanceArgs($dependencies);
         }
 
-        $dependencies = $this->resolveDependencies(
-            $constructor->getParameters(),
-            $parameters,
-            $concrete
-        );
+        $this->freezeIfImmutable($reflector, $instance);
 
-        return $reflector->newInstanceArgs($dependencies);
+        return $instance;
+    }
+
+    /**
+     * Freeze the instance if the class has the #[Immutable] attribute and uses the EnforcesImmutability trait.
+     *
+     * @param \ReflectionClass $reflector
+     * @param object $instance
+     * @return void
+     */
+    private function freezeIfImmutable(\ReflectionClass $reflector, object $instance): void
+    {
+        $hasAttribute = !empty($reflector->getAttributes(Immutable::class));
+        $usesTrait    = method_exists($instance, 'freeze') && method_exists($instance, 'isFrozen');
+
+        if ($hasAttribute && $usesTrait) {
+            $instance->freeze();
+        }
     }
 
     /**
@@ -267,7 +321,7 @@ class Container implements ArrayAccess
     /**
      * Resolve a single dependency
      *
-     * @param ReflectionParameter $parameter
+     * @param \ReflectionParameter $parameter
      * @param array $primitives
      * @param string $className
      * @return mixed
@@ -318,8 +372,8 @@ class Container implements ArrayAccess
     /**
      * Conditionally execute bindings.
      *
-     * @param callable|bool $condition A boolean or a function returning a boolean.
-     * @return self|null Returns self if condition is true, otherwise null.
+     * @param callable|bool $condition
+     * @return self|null
      */
     public function when(callable|bool $condition): ?self
     {
@@ -333,7 +387,7 @@ class Container implements ArrayAccess
     /**
      * Check if the container has a binding for the given service.
      *
-     * @param string $key The service name or class name.
+     * @param string $key
      * @return bool
      */
     public function has(string $key): bool
@@ -350,6 +404,17 @@ class Container implements ArrayAccess
     public function hasInstance(string $key): bool
     {
         return isset(self::$instances[$key]) && self::$instances[$key] !== null;
+    }
+
+    /**
+     * Forget a resolved instance while keeping its binding intact.
+     *
+     * @param string $abstract
+     * @return void
+     */
+    public function forgetResolved(string $abstract): void
+    {
+        unset(self::$instances[$abstract]);
     }
 
     /**
@@ -476,6 +541,13 @@ class Container implements ArrayAccess
      */
     public function call(callable $callback, array $parameters = []): mixed
     {
+        if (!is_callable($callback)) {
+            throw new \TypeError(sprintf(
+                'Callback must be callable, %s given',
+                is_object($callback) ? get_class($callback) : gettype($callback)
+            ));
+        }
+
         if (is_array($callback)) {
             $reflection = new \ReflectionMethod($callback[0], $callback[1]);
         } elseif (is_object($callback) && method_exists($callback, '__invoke')) {
@@ -484,12 +556,57 @@ class Container implements ArrayAccess
             $reflection = new \ReflectionFunction($callback);
         }
 
-        $dependencies = $this->resolveDependencies(
+        $dependencies = $this->resolveDependenciesWithAttributes(
             $reflection->getParameters(),
-            $parameters
+            $parameters,
+            is_array($callback) ? $callback[0] : null
         );
 
         return call_user_func_array($callback, $dependencies);
+    }
+
+    /**
+     * Resolve dependencies with attribute support
+     *
+     * @param array $parameters
+     * @param array $primitives
+     * @param object|string|null $context
+     * @return array
+     */
+    protected function resolveDependenciesWithAttributes(array $parameters, array $primitives = [], $context = null): array
+    {
+        $dependencies = [];
+
+        foreach ($parameters as $parameter) {
+            $bindAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Bind::class);
+
+            if (!empty($bindAttributes)) {
+                $bindAttribute = $bindAttributes[0]->newInstance();
+                $paramType = $parameter->getType();
+
+                if (!$paramType || $paramType->isBuiltin()) {
+                    throw new \RuntimeException(
+                        "Parameter '\${$parameter->getName()}' must be class-typed when using #[Bind]"
+                    );
+                }
+
+                $abstract = $paramType->getName();
+
+                $bindAttribute->singleton
+                    ? $this->singleton($abstract, $bindAttribute->concrete)
+                    : $this->bind($abstract, $bindAttribute->concrete);
+
+                $dependencies[] = $this->get($abstract);
+                continue;
+            }
+
+            $contextClass = is_object($context) ? get_class($context) : (string) $context;
+
+            $dependency = $this->resolveDependency($parameter, $primitives, $contextClass);
+            $dependencies[] = $dependency;
+        }
+
+        return $dependencies;
     }
 
     /**

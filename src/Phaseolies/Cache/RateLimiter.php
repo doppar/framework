@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Cache;
 
-use Psr\SimpleCache\CacheInterface;
 use Phaseolies\Cache\RateLimit;
 use Psr\SimpleCache\InvalidArgumentException;
 
@@ -11,17 +10,17 @@ class RateLimiter
     /**
      * The cache store implementation.
      *
-     * @var CacheInterface
+     * @var IncrementableCacheInterface
      */
     protected $cache;
 
     /**
      * Create a new rate limiter instance.
      *
-     * @param CacheInterface $cache
+     * @param IncrementableCacheInterface $cache
      * @return void
      */
-    public function __construct(CacheInterface $cache)
+    public function __construct(IncrementableCacheInterface $cache)
     {
         $this->cache = $cache;
     }
@@ -39,16 +38,21 @@ class RateLimiter
     {
         $timerKey = $key . '_timer';
         $now = time();
+        $resetAt = $now + $decaySeconds;
 
         try {
-            if (!$this->cache->has($key)) {
-                $this->cache->set($key, 1, $decaySeconds);
-                $this->cache->set($timerKey, $now + $decaySeconds, $decaySeconds);
+            if ($this->cache->add($key, 1, $decaySeconds)) {
+                $this->cache->add($timerKey, $resetAt, $decaySeconds);
                 $hits = 1;
             } else {
                 $hits = $this->cache->increment($key);
-                if ($hits <= $maxAttempts) {
-                    $this->cache->set($timerKey, $now + $decaySeconds, $decaySeconds);
+
+                if ($hits === false) {
+                    $this->cache->set($key, 1, $decaySeconds);
+                    $this->cache->set($timerKey, $resetAt, $decaySeconds);
+                    $hits = 1;
+                } elseif ($hits <= $maxAttempts) {
+                    $this->cache->set($timerKey, $resetAt, $decaySeconds);
                 }
             }
 
@@ -127,17 +131,25 @@ class RateLimiter
     {
         $timerKey = $key . '_timer';
         $now = time();
+        $resetAt = $now + $decaySeconds;
 
         try {
-            if (!$this->cache->has($key)) {
-                $this->cache->set($key, 1, $decaySeconds);
-                $this->cache->set($timerKey, $now + $decaySeconds, $decaySeconds);
+            if ($this->cache->add($key, 1, $decaySeconds)) {
+                $this->cache->add($timerKey, $resetAt, $decaySeconds);
                 return 1;
-            } else {
-                $hits = $this->cache->increment($key);
-                $this->cache->set($timerKey, $now + $decaySeconds, $decaySeconds);
-                return $hits;
             }
+
+            $hits = $this->cache->increment($key);
+
+            if ($hits === false) {
+                $this->cache->set($key, 1, $decaySeconds);
+                $this->cache->set($timerKey, $resetAt, $decaySeconds);
+                return 1;
+            }
+
+            $this->cache->set($timerKey, $resetAt, $decaySeconds);
+
+            return $hits;
         } catch (InvalidArgumentException $e) {
             throw $e;
         }

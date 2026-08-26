@@ -7,7 +7,9 @@ use PDOStatement;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderMutationDistinctTest extends TestCase
 {
     private $database;
@@ -32,9 +34,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
     {
         $reflection = new \ReflectionClass($className);
         $property = $reflection->getProperty($propertyName);
-        $property->setAccessible(true);
         $property->setValue(null, $value);
-        $property->setAccessible(false);
     }
 
     private function createBuilder(): Builder
@@ -76,7 +76,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
         $describeStmt = $this->createMock(PDOStatement::class);
         $describeStmt->method('fetchAll')
             ->with($this->anything())
-            ->willReturn([ ['Field' => 'id'], ['Field' => 'name'] ]);
+            ->willReturn([['Field' => 'id'], ['Field' => 'name']]);
 
         $this->pdoMock = $this->createMock(PDO::class);
         $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
@@ -94,7 +94,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
         $describeStmt = $this->createMock(PDOStatement::class);
         $describeStmt->method('fetchAll')
             ->with($this->anything())
-            ->willReturn([ ['Field' => 'id'], ['Field' => 'status'] ]);
+            ->willReturn([['Field' => 'id'], ['Field' => 'status']]);
 
         $selectStmt = $this->createMock(PDOStatement::class);
         $selectStmt->method('execute')->willReturn(true);

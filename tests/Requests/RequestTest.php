@@ -3,14 +3,11 @@
 namespace Tests\Unit\Requests;
 
 use Phaseolies\Support\Session;
-use Phaseolies\Support\File;
-use Phaseolies\Http\ServerBag;
-use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\ParameterBag;
-use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
-use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Http\ServerBag;
+use Phaseolies\Http\InputBag;
 use PHPUnit\Framework\TestCase;
 
 class RequestTest extends TestCase
@@ -103,39 +100,6 @@ class RequestTest extends TestCase
         $this->assertEquals(array_merge($this->postData, $this->getData), $data);
     }
 
-    // public function testGetContent()
-    // {
-    //     $content = 'test content';
-
-    //     // $this->content is protected property
-    //     // Make it public before UNIT Test to avoid error
-    //     $this->request->content = $content;
-    //     $this->assertEquals($content, $this->request->getContent());
-    // }
-
-    // public function testGetContentAsResource()
-    // {
-    //     $resource = fopen('php://temp', 'r+');
-    //     fwrite($resource, 'test');
-    //     rewind($resource);
-
-    //     // $this->content is protected property
-    //     // Make it public before UNIT Test to avoid error
-    //     $this->request->content = $resource;
-    //     $result = $this->request->getContent(true);
-
-    //     $this->assertIsResource($result);
-    //     $this->assertEquals('test', stream_get_contents($result));
-    // }
-
-    // public function testIsValidMethod()
-    // {
-    //     $this->assertTrue($this->request->isValidMethod());
-
-    //     $this->request->method = 'INVALID';
-    //     $this->assertFalse($this->request->isValidMethod());
-    // }
-
     public function testIsValidRequest()
     {
         if (empty($this->trustedProxies)) {
@@ -192,14 +156,6 @@ class RequestTest extends TestCase
         Request::setTrustedProxies(['127.0.0.1'], Request::HEADER_X_FORWARDED_FOR);
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
         $this->assertTrue($this->request->isFromTrustedProxy());
-    }
-
-    public function testHttpMethodParameterOverride()
-    {
-        $this->assertFalse(Request::getHttpMethodParameterOverride());
-
-        Request::enableHttpMethodParameterOverride();
-        $this->assertTrue(Request::getHttpMethodParameterOverride());
     }
 
     public function testGetTrustedHeaderValue()

@@ -4,8 +4,12 @@ namespace Tests\Unit;
 
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Response\JsonResponse;
+use Phaseolies\Http\Response\RedirectResponse;
+use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Http\Response\ResponseHeaderBag;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
 class ResponseTest extends TestCase
@@ -99,6 +103,30 @@ class ResponseTest extends TestCase
         $this->assertStringContainsString('text/html', $this->response->headers->get('Content-Type'));
     }
 
+    public function testPrepareNullsBodyForHeadRequests()
+    {
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+        $request->server->set('REQUEST_METHOD', 'HEAD');
+
+        $this->response->setBody('Test');
+        $this->response->prepare($request);
+
+        $this->assertNull($this->response->getBody());
+    }
+
+    public function testPrepareNullsBodyForEmptyResponses()
+    {
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+
+        $this->response->setBody('Test');
+        $this->response->setStatusCode(204);
+        $this->response->prepare($request);
+
+        $this->assertNull($this->response->getBody());
+    }
+
     public function testSendContent()
     {
         $this->response->setBody('Test content');
@@ -128,7 +156,58 @@ class ResponseTest extends TestCase
     public function testJson()
     {
         $jsonResponse = $this->response->json(['test' => 'value'], 201);
-        $this->assertInstanceOf(Response\JsonResponse::class, $jsonResponse);
+        $this->assertInstanceOf(JsonResponse::class, $jsonResponse);
+    }
+
+    public function testJsonResponseUsesBufferedBodyAsSingleSourceOfTruth()
+    {
+        $jsonResponse = $this->response->json(['test' => 'value'], 201);
+
+        ob_start();
+        $jsonResponse->sendContent();
+        $output = ob_get_clean();
+
+        $this->assertSame('{"test":"value"}', $jsonResponse->getBody());
+        $this->assertSame($jsonResponse->getBody(), $output);
+        $this->assertSame('application/json', $jsonResponse->headers->get('Content-Type'));
+    }
+
+    public function testJsonResponsePrepareNullsBodyForHeadRequests()
+    {
+        $jsonResponse = $this->response->json(['test' => 'value'], 200);
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+        $request->server->set('REQUEST_METHOD', 'HEAD');
+
+        $jsonResponse->prepare($request);
+
+        $this->assertNull($jsonResponse->getBody());
+        $this->assertSame('application/json', $jsonResponse->headers->get('Content-Type'));
+    }
+
+    public function testStreamedJsonResponseDoesNotCachePretendBody()
+    {
+        $response = new StreamedJsonResponse([['test' => 'value']]);
+
+        ob_start();
+        $response->sendContent();
+        $output = ob_get_clean();
+
+        $this->assertNull($response->body);
+        $this->assertSame('[{"test":"value"}]', $output);
+    }
+
+    public function testPrepareBodySerializesGenericObjectWithoutToArray()
+    {
+        $payload = new class {
+            public string $name = 'Doppar';
+        };
+
+        $body = $this->response->prepareBody($payload);
+
+        $this->assertSame('{"name":"Doppar"}', $body);
+        $this->assertSame($payload, $this->response->getOriginal());
+        $this->assertSame('{"name":"Doppar"}', $this->response->getBody());
     }
 
     public function testText()
@@ -137,6 +216,43 @@ class ResponseTest extends TestCase
         $this->assertEquals('Plain text', $response->getBody());
         $this->assertEquals('Value', $response->headers->get('X-Test'));
         $this->assertEquals('text/plain', $response->headers->get('Content-Type'));
+    }
+
+    public function testRedirectHelperSetsOriginalToTargetUrl()
+    {
+        $response = redirect('/dashboard');
+
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+        $this->assertSame('/dashboard', $response->getOriginal());
+        $this->assertSame('/dashboard', $response->headers->get('Location'));
+    }
+
+    public function testBackHelperSetsOriginalToPreviousUrl()
+    {
+        $container = new Container();
+        Container::setInstance($container);
+
+        $request = new Request();
+        $request->headers->set('referer', '/previous');
+        $container->instance('request', $request);
+
+        $response = back();
+
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+        $this->assertSame('/previous', $response->getOriginal());
+        $this->assertSame('/previous', $response->headers->get('Location'));
+    }
+
+    public function testRedirectHelperReturnsFreshInstancesWithoutHeaderLeakage()
+    {
+        $first = redirect('/first', 302, ['X-Test' => 'first']);
+        $second = redirect('/second');
+
+        $this->assertNotSame($first, $second);
+        $this->assertSame('/first', $first->getOriginal());
+        $this->assertSame('/second', $second->getOriginal());
+        $this->assertSame('first', $first->headers->get('X-Test'));
+        $this->assertNull($second->headers->get('X-Test'));
     }
 
     public function testIsNotCacheable()

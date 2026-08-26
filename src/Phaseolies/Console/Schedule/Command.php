@@ -12,6 +12,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
+use Phaseolies\Support\Facades\Log;
+use Phaseolies\DI\Container;
 
 abstract class Command extends SymfonyCommand
 {
@@ -87,7 +89,7 @@ abstract class Command extends SymfonyCommand
                     !empty($m[2]) ? InputArgument::OPTIONAL : InputArgument::REQUIRED,
                     $description
                 );
-            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--(\w+)(?:=(.*))?$/', $definition, $m)) {
+            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--([\w-]+)(?:=(.*))?$/', $definition, $m)) {
                 $shortcut = $m[1] ?? null;
                 $name = $m[2];
                 $default = $m[3] ?? null;
@@ -132,15 +134,22 @@ abstract class Command extends SymfonyCommand
         $this->input = $input;
         $this->output = $output;
 
-        return $this->handle();
-    }
+        if (!method_exists($this, 'handle')) {
+            throw new \LogicException(
+                sprintf('Command [%s] must have a handle() method.', static::class)
+            );
+        }
 
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
-    abstract protected function handle(): int;
+        try {
+            $container = Container::getInstance();
+            $result = $container->call([$this, 'handle']);
+
+            return is_int($result) ? $result : self::SUCCESS;
+        } catch (\Throwable $e) {
+            Log::error($e);
+            throw new \Exception($e->getMessage());
+        }
+    }
 
     /**
      * Get the value of a command argument.
@@ -222,7 +231,7 @@ abstract class Command extends SymfonyCommand
     /**
      * Write a blank line to the output.
      *
-     * @param int $count Number of newlines to write
+     * @param int $count
      * @return void
      */
     protected function newLine($count = 1): void
@@ -342,6 +351,78 @@ abstract class Command extends SymfonyCommand
 
             return $result;
         });
+    }
+
+    /**
+     * Normalize a generated class/path name so both "/" and "\" work across platforms.
+     *
+     * @param string $name
+     * @return string
+     */
+    protected function normalizeGeneratedName(string $name): string
+    {
+        $normalized = trim(str_replace('\\', '/', $name));
+        $normalized = preg_replace('#/+#', '/', $normalized) ?? $normalized;
+
+        return trim($normalized, '/');
+    }
+
+    /**
+     * Split a generated class/path name into normalized name, path parts and final class name.
+     *
+     * @param string $name
+     * @return array{string,array<int,string>,string}
+     */
+    protected function splitGeneratedName(string $name): array
+    {
+        $normalized = $this->normalizeGeneratedName($name);
+        $parts = $normalized === '' ? [] : explode('/', $normalized);
+        $className = array_pop($parts) ?? '';
+
+        return [$normalized, $parts, $className];
+    }
+
+    /**
+     * Build an absolute file path for a generated class file.
+     *
+     * @param string $baseDirectory
+     * @param string $name
+     * @param string $extension
+     * @return string
+     */
+    protected function generatedFilePath(string $baseDirectory, string $name, string $extension = '.php'): string
+    {
+        $normalizedName = $this->normalizeGeneratedName($name);
+        $relativePath = trim($baseDirectory, '/\\');
+
+        if ($normalizedName !== '') {
+            $relativePath .= '/' . $normalizedName;
+        }
+
+        return base_path(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath . $extension));
+    }
+
+    /**
+     * Convert an absolute path into a forward-slash relative path with no leading slash.
+     *
+     * @param string $path
+     * @param string|null $basePath
+     * @return string
+     */
+    protected function relativePath(string $path, ?string $basePath = null): string
+    {
+        $normalizedPath = str_replace('\\', '/', $path);
+        $normalizedBase = rtrim(str_replace('\\', '/', $basePath ?? base_path()), '/');
+
+        if ($normalizedPath === $normalizedBase) {
+            return '';
+        }
+
+        if (str_starts_with($normalizedPath, $normalizedBase . '/')) {
+            return substr($normalizedPath, strlen($normalizedBase) + 1);
+        }
+
+        return ltrim($normalizedPath, '/');
     }
 
 

@@ -14,13 +14,14 @@ use Phaseolies\Database\Entity\Query\{
     InteractsWithModelQueryProcessing,
     InteractsWithAggregateFucntion,
     CollectsRelations,
-    InteractsWithNestedRelations
+    InteractsWithNestedRelations,
+    InteractsWithConditionBinding,
+    InteractsWithCursorPagination
 };
 use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
-
 use Phaseolies\Database\Entity\Model;
 
 class Builder
@@ -34,6 +35,8 @@ class Builder
     use InteractsWithAggregateFucntion;
     use CollectsRelations;
     use InteractsWithNestedRelations;
+    use InteractsWithConditionBinding;
+    use InteractsWithCursorPagination;
 
     /**
      * Holds the PDO instance for database connectivity.
@@ -135,17 +138,47 @@ class Builder
     protected bool $suppressEagerLoad = false;
 
     /**
+     * The resolved connection name for this builder.
+     *
+     * @var string|null
+     */
+    protected ?string $connectionName = null;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
      * @param int $rowPerPage
+     * @param string|null $connectionName
      */
-    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage)
+    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage, ?string $connectionName = null)
     {
         $this->pdo = $pdo;
         $this->table = $table;
         $this->modelClass = $modelClass;
         $this->rowPerPage = $rowPerPage;
+        $this->connectionName = $connectionName;
+    }
+
+    /**
+     * Create a new model instance and save it to the database
+     *
+     * @param array $attributes
+     * @return Model
+     */
+    public function create(array $attributes): Model
+    {
+        $modelClass = $this->modelClass;
+        $model = new $modelClass();
+
+        if ($this->connectionName !== null) {
+            $model->setConnectionName($this->connectionName);
+        }
+
+        $model->fill($attributes);
+        $model->save();
+
+        return $model;
     }
 
     /**
@@ -234,6 +267,14 @@ class Builder
             $operator = '=';
         }
 
+        if ($value === null) {
+            if ($operator === '=') {
+                return $this->whereNull($field, 'OR');
+            } elseif ($operator === '!=') {
+                return $this->whereNull($field, 'OR', true);
+            }
+        }
+
         $this->conditions[] = ['OR', $field, $operator, $value];
 
         return $this;
@@ -248,7 +289,7 @@ class Builder
      */
     public function whereNested(callable $callback, string $boolean = 'AND'): self
     {
-        $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage);
+        $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->connectionName);
 
         $callback($nestedQuery);
 
@@ -368,28 +409,9 @@ class Builder
                 ' ON ' . $join['first'] . ' ' . $join['operator'] . ' ' . $join['second'];
         }
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                if (isset($condition['type']) && $condition['type'] === 'NESTED') {
-                    $nestedSql = $condition['query']->toSql();
-                    $nestedWhere = substr($nestedSql, strpos($nestedSql, 'WHERE') + 5);
-                    $conditionStrings[] = "({$nestedWhere})";
-                } elseif (isset($condition['type']) && $condition['type'] === 'RAW_WHERE') {
-                    $conditionStrings[] = $condition['sql'];
-                } elseif (isset($condition['type']) && ($condition['type'] === 'EXISTS' || $condition['type'] === 'NOT EXISTS')) {
-                    $conditionStrings[] = "{$condition['type']} ({$condition['subquery']})";
-                } elseif ($condition[2] === 'BETWEEN' || $condition[2] === 'NOT BETWEEN') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ? AND ?";
-                } elseif ($condition[2] === 'IS NULL' || $condition[2] === 'IS NOT NULL') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]}";
-                } elseif ($condition[2] === 'IN') {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} {$condition[4]}";
-                } else {
-                    $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                }
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $bindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         if (!empty($this->groupBy)) {
@@ -599,7 +621,7 @@ class Builder
      */
     private function addCallbackConditions(string $subquery, mixed $relatedModel, callable $callback, string $relatedTable): string
     {
-        $subQueryBuilder = $relatedModel::query();
+        $subQueryBuilder = $relatedModel::query($this->connectionName);
         $callback($subQueryBuilder);
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
@@ -896,6 +918,10 @@ class Builder
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $model = app($this->modelClass, [$row]);
 
+                if ($this->connectionName !== null) {
+                    $model->setConnectionName($this->connectionName);
+                }
+
                 if ($needsEncryption && $this->takeWithoutEncryption) {
                     foreach ($encryptedAttributes as $attribute) {
                         $model->$attribute = $model->$attribute
@@ -929,9 +955,6 @@ class Builder
         $collection = new Collection($this->modelClass, $models);
 
         unset($models);
-        if (gc_enabled()) {
-            gc_collect_cycles();
-        }
 
         if (!empty($this->eagerLoad)) {
             $this->eagerLoadRelations($collection);
@@ -1524,33 +1547,34 @@ class Builder
         $relatedModelInstance = new $relatedModel();
 
         $pivotColumns = $this->getTableColumns($pivotTable);
-
         $pivotSelects = array_map(function ($column) use ($pivotTable) {
             return "{$pivotTable}.{$column} as pivot_{$column}";
         }, $pivotColumns);
 
-        $query = $relatedModelInstance->query();
-
         // Check if constraint specifies columns
         $hasCustomSelect = false;
+        $selectedColumns = null;
+
         if (is_callable($constraint)) {
-            // Create a test query to check if select is called
-            $testQuery = $relatedModelInstance->query();
-            $constraint($testQuery);
-            if ($testQuery->fields !== ['*']) {
+            $inspectQuery = $relatedModelInstance->query();
+            $constraint($inspectQuery);
+
+            if ($inspectQuery->fields !== ['*']) {
                 $hasCustomSelect = true;
                 $selectedColumns = array_map(function ($field) use ($relatedModelInstance) {
                     if (strpos($field, '.') === false) {
                         return "{$relatedModelInstance->getTable()}.{$field}";
                     }
                     return $field;
-                }, $testQuery->fields);
-
-                $query->select(array_merge($selectedColumns, $pivotSelects));
+                }, $inspectQuery->fields);
             }
         }
 
-        if (!$hasCustomSelect) {
+        $query = $relatedModelInstance->query();
+
+        if ($hasCustomSelect) {
+            $query->select(array_merge($selectedColumns, $pivotSelects));
+        } else {
             $query->select(array_merge(
                 ["{$relatedModelInstance->getTable()}.*"],
                 $pivotSelects
@@ -1564,25 +1588,18 @@ class Builder
             "{$relatedModelInstance->getTable()}.{$relatedModelInstance->getKeyName()}"
         )->whereIn("{$pivotTable}.{$foreignKey}", $keys);
 
-        // Apply constraint for additional conditions
-        // Without overriding select
-        if (is_callable($constraint) && $hasCustomSelect) {
-            $constraint($query);
-        } elseif (is_callable($constraint)) {
-            // Create a new constraint that doesn't override select
-            $constraintWithoutSelect = function ($q) use ($constraint, $relatedModelInstance) {
-                $testQuery = $relatedModelInstance->query();
-                $constraint($testQuery);
-
-                // Apply non-select operations
-                foreach ($testQuery->conditions as $condition) {
-                    $q->conditions[] = $condition;
-                }
-                foreach ($testQuery->orderBy as $order) {
-                    $q->orderBy[] = $order;
-                }
-            };
-            $constraintWithoutSelect($query);
+        // Apply non-select conditions from the already-executed inspectQuery
+        if (is_callable($constraint)) {
+            foreach ($inspectQuery->conditions as $condition) {
+                // Skip the whereIn we added for keys
+                $query->conditions[] = $condition;
+            }
+            foreach ($inspectQuery->orderBy as $order) {
+                $query->orderBy[] = $order;
+            }
+            if ($inspectQuery->limit !== null) {
+                $query->limit($inspectQuery->limit);
+            }
         }
 
         $results = $query->get();
@@ -1590,15 +1607,11 @@ class Builder
 
         foreach ($results as $result) {
             $pivot = [];
-
             foreach ($pivotColumns as $column) {
                 $pivot[$column] = $result["pivot_{$column}"];
                 unset($result["pivot_{$column}"]);
             }
-
-            $pivotObj = (object)$pivot;
-            $result->pivot = $pivotObj;
-
+            $result->pivot = (object) $pivot;
             $grouped[$pivot[$foreignKey]][] = $result;
         }
 
@@ -1665,7 +1678,9 @@ class Builder
         $relationType = $firstModel->getLastRelationType();
         $relatedModel = $firstModel->getLastRelatedModel();
         $foreignKey = $firstModel->getLastForeignKey();
-        $localKey = $firstModel->getLastLocalKey();
+        $localKey = $relationType === "bindToMany"
+            ? $firstModel->getKeyName()
+            : $firstModel->getLastLocalKey();
 
         // Collect all local keys
         $localKeys = array_map(fn($model) => $model->{$localKey}, $models);
@@ -1697,7 +1712,7 @@ class Builder
         // Set the count on each model
         $countAttribute = $relation . '_count';
         foreach ($models as $model) {
-            $key = $model->{$localKey};
+            $key = $model->getKey();
             $model->{$countAttribute} = $counts[$key] ?? 0;
         }
     }
@@ -1725,7 +1740,6 @@ class Builder
         $foreignKey = $firstModel->getLastForeignKey();
         $relatedKey = $firstModel->getLastRelatedKey();
         $pivotTable = $firstModel->getLastPivotTable();
-        $localKey = $firstModel->getLastLocalKey();
 
         $relatedModelInstance = new $relatedModel();
         $relatedTable = $relatedModelInstance->getTable();
@@ -1755,7 +1769,7 @@ class Builder
         // Set the count on each model
         $countAttribute = $relation . '_count';
         foreach ($models as $model) {
-            $key = $model->{$localKey};
+            $key = $model->getKey();
             $model->{$countAttribute} = $counts[$key] ?? 0;
         }
     }
@@ -1786,7 +1800,13 @@ class Builder
      */
     public function getModel(): Model
     {
-        return app($this->modelClass);
+        $model = app($this->modelClass);
+
+        if ($this->connectionName !== null) {
+            $model->setConnectionName($this->connectionName);
+        }
+
+        return $model;
     }
 
     /**
@@ -1947,7 +1967,7 @@ class Builder
         $this->limit(1);
         try {
             $stmt = $this->pdo->prepare($this->toSql());
-            $this->bindValues($stmt);
+            $this->bindAllValues($stmt);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -1956,6 +1976,10 @@ class Builder
             }
 
             $model = new $this->modelClass($result);
+
+            if ($this->connectionName !== null) {
+                $model->setConnectionName($this->connectionName);
+            }
 
             if ($this->needsEncryption() && $this->takeWithoutEncryption) {
                 $encryptedAttributes = $this->getEncryptedAttributes();
@@ -1997,12 +2021,16 @@ class Builder
             $subQuery->fields = $query->groupBy;
 
             $subSql = $subQuery->toSql();
+            [$whereSql, $whereBindings] = $subQuery->buildWhereClause();
 
             $countSql = "SELECT COUNT(*) as aggregate FROM ($subSql) as count_subquery";
 
             try {
                 $stmt = $this->pdo->prepare($countSql);
-                $subQuery->bindValues($stmt);
+                $index = 1;
+                foreach ($whereBindings as $value) {
+                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                }
                 $stmt->execute();
                 $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 return (int) ($result['aggregate'] ?? 0);
@@ -2139,9 +2167,11 @@ class Builder
     public function exists(): bool
     {
         $this->limit(1);
+        $sql = $this->toSql();
+
         try {
-            $stmt = $this->pdo->prepare($this->toSql());
-            $this->bindValues($stmt);
+            $stmt = $this->pdo->prepare($sql);
+            $this->bindAllValues($stmt);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
         } catch (PDOException $e) {
@@ -2204,66 +2234,7 @@ class Builder
      */
     protected function bindValues(PDOStatement $stmt): void
     {
-        $index = 1;
-
-        foreach ($this->orderBy as $order) {
-            if (isset($order['type']) && $order['type'] === 'RAW_ORDER_BY' && !empty($order['bindings'])) {
-                foreach ($order['bindings'] as $value) {
-                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                }
-            }
-        }
-
-        foreach ($this->conditions as $condition) {
-            if (isset($condition['type'])) {
-                // Handle nested conditions - recursively binding values
-                if ($condition['type'] === 'NESTED') {
-                    $this->bindNestedValues($stmt, $condition['query'], $index);
-                    continue;
-                }
-
-                // Bind all RAW_* bindings
-                if (in_array($condition['type'], ['RAW_SELECT', 'RAW_GROUP_BY', 'RAW_WHERE'])) {
-                    if (!empty($condition['bindings']) && is_array($condition['bindings'])) {
-                        foreach ($condition['bindings'] as $value) {
-                            $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                        }
-                    }
-
-                    continue;
-                }
-
-                // Skip EXISTS/NOT EXISTS
-                if (in_array($condition['type'], ['EXISTS', 'NOT EXISTS'])) {
-                    continue;
-                }
-            }
-
-            // Handle IS NULL / IS NOT NULL (no binding needed)
-            if (isset($condition[2]) && in_array($condition[2], ['IS NULL', 'IS NOT NULL'])) {
-                continue;
-            }
-
-            // BETWEEN / NOT BETWEEN
-            if (isset($condition[2]) && in_array($condition[2], ['BETWEEN', 'NOT BETWEEN'])) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-                $stmt->bindValue($index++, $condition[4], $this->getPdoParamType($condition[4]));
-                continue;
-            }
-
-            // IN clause
-            if (isset($condition[2]) && $condition[2] === 'IN') {
-                foreach ($condition[3] as $value) {
-                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-                }
-                continue;
-            }
-
-            // Standard case: column, operator, value
-            if (isset($condition[3])) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
-        }
+        $this->bindAllValues($stmt);
     }
 
     /**
@@ -2315,9 +2286,20 @@ class Builder
             $stmt = $this->pdo->prepare($sql);
             $this->bindValuesForInsertOrUpdate($stmt, $attributes);
             $stmt->execute();
-            $lastInsertId = $this->pdo->lastInsertId();
 
-            return $lastInsertId ? (int) $lastInsertId : false;
+            $model = $this->getModel();
+            $primaryKey = $model->getKeyName();
+
+            if (isset($attributes[$primaryKey])) {
+                return $attributes[$primaryKey];
+            }
+
+            try {
+                $lastInsertId = $this->pdo->lastInsertId();
+                return $lastInsertId ? (int) $lastInsertId : false;
+            } catch (\PDOException $e) {
+                return false;
+            }
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -2355,6 +2337,10 @@ class Builder
             $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
             if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
                 $hasCastToDateAttribute = true;
+                trigger_error(
+                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                    E_USER_DEPRECATED
+                );
             }
         }
 
@@ -2472,30 +2458,19 @@ class Builder
         }
 
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
+        $setBindings = array_values($attributes);
 
         $sql = "UPDATE {$this->table} SET $setClause";
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            // Bind SET clause values
-            $index = 1;
-            foreach ($attributes as $value) {
-                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
-            }
-
-            // Bind WHERE clause values
-            foreach ($this->conditions as $condition) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
+            $this->bindAllValues($stmt, $setBindings);
 
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -2525,20 +2500,14 @@ class Builder
     {
         $sql = "DELETE FROM {$this->table}";
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $index = 1;
-            foreach ($this->conditions as $condition) {
-                $stmt->bindValue($index++, $condition[3], $this->getPdoParamType($condition[3]));
-            }
+            $this->bindAllValues($stmt);
 
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -2571,7 +2540,15 @@ class Builder
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Convert results to model instances
-            $models = array_map(fn($item) => new $this->modelClass($item), $results);
+            $models = array_map(function ($item) {
+                $model = new $this->modelClass($item);
+
+                if ($this->connectionName !== null) {
+                    $model->setConnectionName($this->connectionName);
+                }
+
+                return $model;
+            }, $results);
 
             $collection = new Collection($this->modelClass, $models);
 
@@ -2609,24 +2586,17 @@ class Builder
      */
     public function distinct(string $column): Collection
     {
-        // Validate the column exists
         if (!in_array($column, $this->getTableColumns())) {
             throw new \InvalidArgumentException("Column {$column} does not exist in table {$this->table}");
         }
 
-        // Build the distinct query
         $sql = "SELECT DISTINCT {$column} FROM {$this->table}";
 
-        // Add WHERE conditions if any
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $bindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
-        // Add ORDER BY if any
         if (!empty($this->orderBy)) {
             $orderByStrings = array_map(fn($o) => "$o[0] $o[1]", $this->orderBy);
             $sql .= ' ORDER BY ' . implode(', ', $orderByStrings);
@@ -2634,13 +2604,10 @@ class Builder
 
         try {
             $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
+            $this->bindAllValues($stmt);
             $stmt->execute();
 
-            // Fetch just the column values
-            $results = $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
-
-            return new Collection('array', $results);
+            return new Collection('array', $stmt->fetchAll(PDO::FETCH_COLUMN, 0));
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
         }
@@ -2833,24 +2800,23 @@ class Builder
             $sql .= ', ' . implode(', ', $extraUpdates);
         }
 
-        if (!empty($this->conditions)) {
-            $conditionStrings = [];
-            foreach ($this->conditions as $condition) {
-                $conditionStrings[] = "{$condition[1]} {$condition[2]} ?";
-                $bindings[] = $condition[3];
-            }
-            $sql .= ' WHERE ' . implode(' ', $this->formatConditions($conditionStrings));
+        [$whereSql, $whereBindings] = $this->buildWhereClause();
+        if ($whereSql) {
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            foreach ($bindings as $index => $value) {
-                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
+            $index = 1;
+            foreach ($bindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+            }
+            foreach ($whereBindings as $value) {
+                $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
             }
 
             $stmt->execute();
-
             return $stmt->rowCount();
         } catch (PDOException $e) {
             throw new PDOException("Database error: " . $e->getMessage());
@@ -3049,6 +3015,245 @@ class Builder
         };
 
         return $this->where($searchQuery);
+    }
+
+    /**
+     * Get records and fix/normalize data
+     *
+     * @param callable $fixer
+     * @param bool $saveChanges
+     * @return Collection
+     */
+    public function repair(callable $fixer, bool $saveChanges = false): Collection
+    {
+        $results = $this->get();
+
+        foreach ($results as $item) {
+            $original = $item->getAttributes();
+            $fixer($item);
+
+            if ($saveChanges && $item->getAttributes() !== $original) {
+                $item->save();
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get records grouped by a callback result
+     *
+     * @param callable $callback
+     * @return array
+     */
+    public function groupByCallback(callable $callback): array
+    {
+        $results = $this->get();
+        $grouped = [];
+
+        foreach ($results as $item) {
+            $key = $callback($item);
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [];
+            }
+            $grouped[$key][] = $item;
+        }
+
+        return array_map(
+            fn($items) => new Collection($this->modelClass, $items),
+            $grouped
+        );
+    }
+
+    /**
+     * Partition results into two groups based on a callback
+     *
+     * @param callable $callback
+     * @return array [matched, unmatched]
+     */
+    public function partition(callable $callback): array
+    {
+        $results = $this->get();
+        $matched = [];
+        $unmatched = [];
+
+        foreach ($results as $item) {
+            if ($callback($item)) {
+                $matched[] = $item;
+            } else {
+                $unmatched[] = $item;
+            }
+        }
+
+        return [
+            new Collection($this->modelClass, $matched),
+            new Collection($this->modelClass, $unmatched)
+        ];
+    }
+
+    /**
+     * Get records and apply transformations in pipeline
+     *
+     * @param array $transformers
+     * @return Collection
+     */
+    public function pipeline(array $transformers): Collection
+    {
+        $results = $this->get();
+
+        foreach ($transformers as $transformer) {
+            $results = $transformer($results);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Sample random records using reservoir sampling (memory efficient)
+     *
+     * @param int $count
+     * @return Collection
+     */
+    public function sample(int $count): Collection
+    {
+        $reservoir = [];
+        $index = 0;
+
+        $this->cursor(function ($item) use (&$reservoir, &$index, $count) {
+            if ($index < $count) {
+                $reservoir[] = $item;
+            } else {
+                $j = mt_rand(0, $index);
+                if ($j < $count) {
+                    $reservoir[$j] = $item;
+                }
+            }
+            $index++;
+        });
+
+        return new Collection($this->modelClass, $reservoir);
+    }
+
+    /**
+     * Execute multiple queries in parallel using promises
+     *
+     * @param array $queries
+     * @return array
+     */
+    public function parallel(array $queries): array
+    {
+        $fibers = [];
+        $results = [];
+
+        foreach ($queries as $key => $queryCallback) {
+            $query = clone $this;
+            $queryCallback($query);
+
+            $fibers[$key] = new \Fiber(function () use ($query) {
+                return $query->get();
+            });
+
+            $fibers[$key]->start();
+        }
+
+        foreach ($fibers as $key => $fiber) {
+            if (!$fiber->isTerminated()) {
+                $results[$key] = $fiber->resume();
+            } else {
+                $results[$key] = $fiber->getReturn();
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get records with validation errors
+     *
+     * @param array $rules
+     * @return array [valid, invalid]
+     */
+    public function validate(array $rules): array
+    {
+        $results = $this->get();
+        $valid = [];
+        $invalid = [];
+
+        foreach ($results as $item) {
+            $errors = [];
+
+            foreach ($rules as $field => $rule) {
+                $value = $item->$field ?? null;
+
+                if (is_callable($rule)) {
+                    if (!$rule($value, $item)) {
+                        $errors[$field] = "Validation failed for {$field}";
+                    }
+                } elseif ($rule === 'required' && empty($value)) {
+                    $errors[$field] = "{$field} is required";
+                }
+            }
+
+            if (empty($errors)) {
+                $valid[] = $item;
+            } else {
+                $item->validation_errors = $errors;
+                $invalid[] = $item;
+            }
+        }
+
+        return [
+            'valid' => new Collection($this->modelClass, $valid),
+            'invalid' => new Collection($this->modelClass, $invalid)
+        ];
+    }
+
+    /**
+     * Get records and apply side effects without modifying them
+     *
+     * @param callable $callback
+     * @return Collection
+     */
+    public function tap(callable $callback): Collection
+    {
+        $results = $this->get();
+
+        $callback($results);
+
+        return $results;
+    }
+
+    /**
+     * Get records with their age/duration since a timestamp
+     *
+     * @param string $timestampColumn
+     * @param string $unit (seconds, minutes, hours, days)
+     * @return Collection
+     */
+    public function withAge(string $timestampColumn, string $unit = 'days'): Collection
+    {
+        $results = $this->get();
+        $now = time();
+
+        $divisors = [
+            'seconds' => 1,
+            'minutes' => 60,
+            'hours' => 3600,
+            'days' => 86400,
+            'weeks' => 604800,
+            'months' => 2592000,
+            'years' => 31536000
+        ];
+
+        $divisor = $divisors[$unit] ?? 86400;
+
+        foreach ($results as $item) {
+            $timestamp = strtotime($item->$timestampColumn);
+            $item->age = ($now - $timestamp) / $divisor;
+            $item->age_unit = $unit;
+        }
+
+        return $results;
     }
 
     /**

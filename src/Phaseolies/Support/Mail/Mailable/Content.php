@@ -7,8 +7,8 @@ class Content
     /**
      * Constructor for the Content class.
      *
-     * @param string $view The view file for the email content.
-     * @param mixed $data The data to pass to the view.
+     * @param string $view
+     * @param mixed $data
      */
     public function __construct(public string $view = '', public mixed $data = '') {}
 

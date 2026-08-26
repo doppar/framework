@@ -53,7 +53,7 @@ class ColumnDefinition
         if ($driver === 'pgsql' && is_bool($value)) {
             $this->attributes['default'] = new RawExpression($value ? 'TRUE' : 'FALSE');
         } else {
-            $this->attributes['default'] = $value === false ? 0 : $value;
+            $this->attributes['default'] = $value;
         }
 
         return $this;
@@ -137,13 +137,20 @@ class ColumnDefinition
 
         // Add DEFAULT value if specified
         if (isset($this->attributes['default'])) {
-            $default = is_string($this->attributes['default'])
-                ? "'{$this->attributes['default']}'"  // Quote string values
-                : $this->attributes['default'];       // Leave non-strings as-is
+            $defaultValue = $this->attributes['default'];
+
+            $default = match (true) {
+                $defaultValue instanceof RawExpression => $defaultValue->getValue(),
+                is_string($defaultValue)              => "'" . addslashes($defaultValue) . "'",
+                is_bool($defaultValue)                => $defaultValue ? '1' : '0',
+                is_null($defaultValue)                => 'NULL',
+                default                               => $defaultValue,
+            };
+
             $sql .= " DEFAULT {$default}";
         }
 
-        if ((!$this->getDriver()) === 'pgsql') {
+        if ($this->getDriver() !== 'pgsql') {
             if (isset($this->attributes['after'])) {
                 $sql .= " AFTER {$this->attributes['after']}";
             }

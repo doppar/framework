@@ -25,7 +25,7 @@ class ClearSessionCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->withTiming(function() {
             $sessionDir = base_path('storage/framework/sessions');

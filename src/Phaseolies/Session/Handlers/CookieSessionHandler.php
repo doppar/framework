@@ -90,9 +90,9 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Called when a session is opened.
      *
-     * @param string $savePath The path where session data is stored (not used in cookie handler).
-     * @param string $sessionName The name of the session (not used in cookie handler).
-     * @return bool Always returns true, indicating success.
+     * @param string $savePath
+     * @param string $sessionName
+     * @return bool
      */
     public function open($savePath, $sessionName): bool
     {
@@ -102,7 +102,7 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Called when a session is closed.
      *
-     * @return bool Always returns true, indicating success.
+     * @return bool
      */
     public function close(): bool
     {
@@ -112,8 +112,8 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Reads session data from the cookie, decrypting it.
      *
-     * @param string $sessionId The ID of the session to read (not directly used as data is in cookie).
-     * @return string The decrypted session data, or an empty string if not found or invalid.
+     * @param string $sessionId
+     * @return string
      */
     public function read($sessionId): string
     {
@@ -137,9 +137,9 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Writes session data to the cookie, encrypting it.
      *
-     * @param string $sessionId The ID of the session to write (not directly used as data is in cookie).
-     * @param string $sessionData The raw session data string to be written.
-     * @return bool True on successful write, false otherwise (e.g., if `setcookie` fails).
+     * @param string $sessionId
+     * @param string $sessionData
+     * @return bool
      */
     public function write($sessionId, $sessionData): bool
     {
@@ -179,8 +179,8 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Destroys the session data by invalidating the session cookie.
      *
-     * @param string $sessionId The ID of the session to destroy (not directly used).
-     * @return bool True on successful destruction, false if headers have already been sent.
+     * @param string $sessionId
+     * @return bool
      */
     public function destroy($sessionId): bool
     {
@@ -190,8 +190,8 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Performs garbage collection for session data.
      *
-     * @param int $maxlifetime The maximum lifetime of a session (not used for cookie handler).
-     * @return bool Always returns true.
+     * @param int $maxlifetime
+     * @return bool
      */
     public function gc($maxlifetime): bool
     {
@@ -201,7 +201,7 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Destroys the session cookie by setting its expiration to a past time.
      *
-     * @return bool True on successful cookie destruction, false if headers have already been sent.
+     * @return bool
      */
     private function destroyCookie(): bool
     {
@@ -225,9 +225,9 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Encrypts the given data using AES-256-CBC encryption.
      *
-     * @param string $data The plain text data to encrypt.
-     * @return string The base64-encoded string containing the IV and encrypted data.
-     * @throws RuntimeException If the application key is not set or encryption fails.
+     * @param string $data
+     * @return string
+     * @throws RuntimeException
      */
     private function encrypt(string $data): string
     {
@@ -241,17 +241,28 @@ class CookieSessionHandler extends AbstractSessionHandler
     /**
      * Decrypts the given base64-encoded encrypted data using AES-256-CBC decryption.
      *
-     * @param string $data The base64-encoded string containing the IV and encrypted data.
-     * @return string The decrypted plain text data.
-     * @throws RuntimeException If the application key is not set, data is malformed, or decryption fails.
+     * @param string $data
+     * @return string
+     * @throws RuntimeException
      */
     private function decrypt(string $data): string
     {
         $key = Config::get('app.key');
+
+        // Ensure key is not null to avoid deprecation
+        if ($key === null) {
+            throw new RuntimeException('Encryption key not configured');
+        }
+
         $data = base64_decode($data);
         $ivSize = openssl_cipher_iv_length('aes-256-cbc');
         $iv = substr($data, 0, $ivSize);
         $encrypted = substr($data, $ivSize);
+
+        // Ensure IV is the correct length (16 bytes for aes-256-cbc)
+        if (strlen($iv) < $ivSize) {
+            $iv = str_pad($iv, $ivSize, "\0");
+        }
 
         return openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
     }

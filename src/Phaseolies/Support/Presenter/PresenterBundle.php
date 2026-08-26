@@ -59,9 +59,9 @@ class PresenterBundle implements JsonSerializable
     /**
      * Create a new PresenterBundle instance
      *
-     * @param array|Collection $collection  The data source (array or Collection)
-     * @param string $presenter Class name of the bundle
-     * @throws \InvalidArgumentException If $collection is not a supported type
+     * @param array|Collection $collection
+     * @param string $presenter
+     * @throws \InvalidArgumentException
      */
     public function __construct($collection, string $presenter)
     {

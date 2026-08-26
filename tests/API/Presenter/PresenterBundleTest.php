@@ -143,7 +143,6 @@ class PresenterBundleTest extends TestCase
 
         $reflection = new \ReflectionClass($bundle);
         $method = $reflection->getMethod('isPaginatedArray');
-        $method->setAccessible(true);
 
         $this->assertTrue($method->invoke($bundle, $paginatedData));
         $this->assertFalse($method->invoke($bundle, [['id' => 1]]));
@@ -162,7 +161,6 @@ class PresenterBundleTest extends TestCase
 
         $reflection = new \ReflectionClass($bundle);
         $method = $reflection->getMethod('extractPaginationMeta');
-        $method->setAccessible(true);
 
         $meta = $method->invoke($bundle, $paginatedData);
 

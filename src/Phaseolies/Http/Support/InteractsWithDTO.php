@@ -7,9 +7,9 @@ trait InteractsWithDTO
     /**
      * Binds the current data to the given object's properties.
      *
-     * @param object $object The target object to bind data to
-     * @param bool $strict Whether to enforce property existence checks (default: true)
-     * @return object The modified object with bound data
+     * @param object $object
+     * @param bool $strict
+     * @return object
      */
     public function bindTo(object $object, bool $strict = true): object
     {
@@ -29,10 +29,10 @@ trait InteractsWithDTO
     /**
      * Dynamically sets a property on an object with type checking and nested object support.
      *
-     * @param object $object The target object
-     * @param string $key The property name to set
-     * @param mixed $value The value to assign
-     * @param bool $strict Whether to enforce type checking
+     * @param object $object
+     * @param string $key
+     * @param mixed $value
+     * @param bool $strict
      * @return void
      */
     protected function setDynamicProperty(object $object, string $key, $value, bool $strict): void
@@ -65,12 +65,12 @@ trait InteractsWithDTO
     /**
      * Handles conversion and binding of nested objects.
      *
-     * @param object $object The parent object
-     * @param string $key The property name
-     * @param mixed $value The value to convert to a nested object
-     * @param string $className The target class name for the nested object
-     * @param bool $strict Whether to enforce strict mode
-     * @throws \RuntimeException When the target class doesn't exist
+     * @param object $object
+     * @param string $key
+     * @param mixed $value
+     * @param string $className
+     * @param bool $strict
+     * @throws \RuntimeException
      */
     protected function handleNestedObject(object $object, string $key, $value, string $className, bool $strict): void
     {
@@ -96,9 +96,9 @@ trait InteractsWithDTO
     /**
      * Determines if a property might represent a nested object.
      *
-     * @param object $object The object to check
-     * @param string $key The property name to check
-     * @return bool True if the property might be a nested object
+     * @param object $object
+     * @param string $key
+     * @return bool
      */
     protected function isPotentialNestedObject(object $object, string $key): bool
     {
@@ -114,12 +114,9 @@ trait InteractsWithDTO
     /**
      * Attempts to guess the class name for a potential nested object.
      *
-     * Uses common naming conventions to determine possible class names
-     * for nested DTO objects based on property name and namespace context.
-     *
-     * @param object $object The parent object
-     * @param string $key The property name
-     * @return string The guessed class name (falls back to stdClass)
+     * @param object $object
+     * @param string $key
+     * @return string
      */
     protected function guessClassName(object $object, string $key): string
     {

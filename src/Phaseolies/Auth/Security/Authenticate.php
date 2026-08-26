@@ -4,7 +4,6 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Support\Facades\Cache;
 use Phaseolies\Database\Entity\Model;
 
 class Authenticate
@@ -17,34 +16,115 @@ class Authenticate
     private $data = [];
 
     /**
-     * The current stateless user (for onceUsingId)
+     * The name of this actor instance (e.g. "web", "admin").
+     *
+     * @var string
+     */
+    protected string $actorName;
+
+    /**
+     * The actor configuration array from config/auth.php.
+     *
+     * @var array
+     */
+    protected array $config;
+
+    /**
+     * The current stateless user (for onceUsingId).
      *
      * @var Model|null
      */
     private $statelessUser = null;
 
     /**
-     * Cache for user version checks during the current request
-     *
-     * @var array
-     */
-    private static $versionCheckCache = [];
-
-    /**
-     * Get the current authenticated user
+     * Per-instance resolved user cache
      *
      * @var Model|null
      */
-    private static ?Model $currentUser = null;
+    private ?Model $resolvedUser = null;
 
+    /**
+     * Create a new actor instance.
+     *
+     * @param string $actorName
+     * @param array  $config
+     */
+    public function __construct(string $actorName, array $config)
+    {
+        $this->actorName = $actorName;
+        $this->config    = $config;
+    }
+
+    /**
+     * Set a property on the actor.
+     *
+     * @param string $name
+     * @param mixed $value
+     */
     public function __set($name, $value)
     {
         $this->data[$name] = $value;
     }
 
+    /**
+     * Get a property from the actor.
+     *
+     * @param string $name
+     * @return mixed
+     */
     public function __get($name)
     {
         return $this->data[$name] ?? null;
+    }
+
+    /**
+     * Resolve a fresh instance of the configured auth model.
+     *
+     * @return Model
+     */
+    protected function getModel(): Model
+    {
+        return app($this->config['model']);
+    }
+
+    /**
+     * The session key used to store the authenticated user's ID for this actor.
+     *
+     * @return string
+     */
+    protected function getSessionKey(): string
+    {
+        return $this->config['session_key'];
+    }
+
+    /**
+     * The session key used to store the "authenticated via remember token" flag.
+     *
+     * @return string
+     */
+    protected function getViaRememberKey(): string
+    {
+        return 'auth_via_remember_' . $this->actorName;
+    }
+
+    /**
+     * The session key used to store a pending 2FA user ID for this actor.
+     *
+     * @return string
+     */
+    protected function getTwoFactorUserKey(): string
+    {
+        return '2fa_' . $this->actorName . '_user_id';
+    }
+
+    /**
+     * The session key used to store the 2FA remember flag for this actor.
+     *
+     * @return string
+     */
+    protected function getTwoFactorRememberKey(): string
+    {
+        return '2fa_' . $this->actorName . '_remember';
     }
 
     /**
@@ -57,13 +137,13 @@ class Authenticate
      */
     public function try(array $credentials = [], bool $remember = false): bool
     {
-        $authModel = app(config('auth.model'));
+        $authModel    = $this->getModel();
         $customAuthKey = $authModel->getAuthKeyName();
 
         $authKeyValue = $credentials[$customAuthKey] ?? '';
-        $password = $credentials['password'] ?? '';
+        $password     = $credentials['password'] ?? '';
 
-        $user = $authModel::query()->where($customAuthKey, $authKeyValue)->first();
+        $user = $authModel::where($customAuthKey, $authKeyValue)->first();
 
         if (!$user || !Hash::check($password, $user->password)) {
             return false;
@@ -84,17 +164,18 @@ class Authenticate
      */
     public function login($user, bool $remember = false): bool
     {
-        $authModel = app(config('auth.model'));
+        $authModel = $this->getModel();
+        $modelClass = $authModel::class;
 
-        if (!$user instanceof $authModel) {
+        if (!$user instanceof $modelClass) {
             throw new \InvalidArgumentException(
-                "Argument #1 ($user) must be an instance of $authModel " . gettype($user) . ' given'
+                "Argument #1 ($user) must be an instance of $modelClass " . gettype($user) . ' given'
             );
         }
 
-        if ($this->hasTwoFactorEnabled($user) && ! $this->isApiRequest()) {
-            session()->put('2fa_user_id', $user->id);
-            session()->put('2fa_remember', $remember);
+        if ($this->hasTwoFactorEnabled($user) && !$this->isApiRequest()) {
+            session()->put($this->getTwoFactorUserKey(), $user->id);
+            session()->put($this->getTwoFactorRememberKey(), $remember);
 
             return true;
         }
@@ -117,7 +198,7 @@ class Authenticate
      */
     public function loginUsingId(int $id, bool $remember = false): ?Model
     {
-        $authModel = app(config('auth.model'));
+        $authModel = $this->getModel();
 
         $user = $authModel::find($id);
 
@@ -136,7 +217,7 @@ class Authenticate
      */
     public function onceUsingId(int $id): ?Model
     {
-        $authModel = app(config('auth.model'));
+        $authModel = $this->getModel();
 
         $user = $authModel::find($id);
 
@@ -156,15 +237,16 @@ class Authenticate
      */
     public function user(): ?Model
     {
-        if (self::$currentUser !== null) {
-            return self::$currentUser;
+        if ($this->resolvedUser !== null) {
+            return $this->resolvedUser;
         }
-
-        $authModel = app(config('auth.model'));
 
         if ($this->statelessUser !== null) {
             return $this->statelessUser;
         }
+
+        $authModel  = $this->getModel();
+        $sessionKey = $this->getSessionKey();
 
         if ($this->isApiRequest()) {
             $hasAuthApi = false;
@@ -176,27 +258,17 @@ class Authenticate
             }
 
             if ($hasAuthApi) {
-                return self::$currentUser = $hasAuthApi
+                return $this->resolvedUser = $hasAuthApi
                     ? app(\Doppar\Flarion\ApiAuthenticate::class)->user()
                     : null;
             }
         }
 
-        if (session()->has('cache_auth_user')) {
-            $cache = session('cache_auth_user');
-            if ($this->isUserCacheValid($cache)) {
-                if ($this->isUserCacheValid($cache)) {
-                    return self::$currentUser = $cache['user'];
-                }
-            }
-        }
-
-        if (session()->has('user')) {
-            $user = $authModel::find(session('user'));
+        if (session()->has($sessionKey)) {
+            $user = $authModel::find(session($sessionKey));
 
             if ($user) {
-                $this->cacheUser($user);
-                return self::$currentUser = $user;
+                return $this->resolvedUser = $user;
             }
         }
 
@@ -234,13 +306,13 @@ class Authenticate
 
             if (Hash::check($token, $user->remember_token)) {
                 if ($this->hasTwoFactorEnabled($user)) {
-                    session()->put('2fa_user_id', $user->id);
-                    session()->put('2fa_remember', true);
+                    session()->put($this->getTwoFactorUserKey(), $user->id);
+                    session()->put($this->getTwoFactorRememberKey(), true);
                 }
 
                 $this->setUser($user);
 
-                return self::$currentUser = $user;
+                return $this->resolvedUser = $user;
             }
 
             // Token didn't match - possible theft attempt
@@ -265,18 +337,11 @@ class Authenticate
     /**
      * Logs the currently authenticated user out of the application.
      *
-     * This method:
-     * - Clears the user's `remember_token` to prevent future "remember me" logins.
-     * - Resets any stateless user data.
-     * - Removes relevant authentication and user-related data from the session.
-     * - Invalidates the current session and regenerates the CSRF token for security.
-     * - Deletes the "remember me" cookie if it exists.
-     *
      * @return void
      */
     public function logout(): void
     {
-        $user = auth()->user();
+        $user = $this->user();
 
         if ($user && $user?->remember_token) {
             $user->remember_token = null;
@@ -284,12 +349,18 @@ class Authenticate
             $user->save();
         }
 
-        session()->forget('user');
-        session()->forget('auth_via_remember');
-        session()->forget('cache_auth_user');
+        $this->resolvedUser  = null;
+        $this->statelessUser = null;
 
-        session()->invalidate();
-        session()->regenerateToken();
+        session()->forget($this->getSessionKey());
+        session()->forget($this->getViaRememberKey());
+
+        // Only fully invalidate the session on the default actor so that other
+        // actors (e.g. "admin") remain active when only the "web" actor logs out.
+        if ($this->actorName === config('auth.default', 'web')) {
+            session()->invalidate();
+            session()->regenerateToken();
+        }
 
         if (cookie()->has($this->getRememberCookieName())) {
             $this->expireRememberCookie();
@@ -303,54 +374,9 @@ class Authenticate
      */
     private function setUser(Model $user): void
     {
-        session()->put('user', $user->id);
+        session()->put($this->getSessionKey(), $user->id);
 
-        $this->cacheUser($user);
-    }
-
-    /**
-     * Cache the user data
-     *
-     * @param Model $user
-     * @return void
-     */
-    private function cacheUser(Model $user): void
-    {
-        session()->put('cache_auth_user', [
-            'user' => $user,
-            'version' => $user?->updated_at,
-            'expires_at' => now()->addMinutes(30)->timestamp
-        ]);
-    }
-
-    /**
-     * Check cache expiry
-     *
-     * @param array $cache
-     * @return bool
-     */
-    private function isUserCacheValid(array $cache): bool
-    {
-        if ($cache['expires_at'] < time()) {
-            return false;
-        }
-
-        $userId = $cache['user']->id;
-
-        // Check if we already verified this user's version during this request
-        if (isset(self::$versionCheckCache[$userId])) {
-            return $cache['version'] === self::$versionCheckCache[$userId];
-        }
-
-        $currentVersion = $cache['user']->newQuery()
-            ->select('updated_at')
-            ->where('id', $userId)
-            ->first();
-
-        // Cache the version check result for this request
-        self::$versionCheckCache[$userId] = $currentVersion?->updated_at;
-
-        return $cache['version'] === $currentVersion?->updated_at;
+        $this->resolvedUser = $user;
     }
 
     /**
@@ -360,7 +386,7 @@ class Authenticate
      */
     public function viaRemember(): bool
     {
-        return session('auth_via_remember', false)
+        return session($this->getViaRememberKey(), false)
             && cookie()->has($this->getRememberCookieName());
     }
 
@@ -371,16 +397,27 @@ class Authenticate
      */
     public function id(): ?int
     {
-        return auth()->user()->id ?? null;
+        return $this->user()?->id ?? null;
+    }
+
+    /**
+     * Get the name of the actor.
+     *
+     * @return string
+     */
+    public function name(): string
+    {
+        return $this->actorName;
     }
 
     /**
      * Check if the user is authorized to do some action.
      *
      * @param string $scope
+     * @param mixed  ...$arguments
      * @return bool
      */
-    public function can(string $scope): bool
+    public function can(string $scope, mixed ...$arguments): bool
     {
         if (!class_exists(\Doppar\Authorizer\Support\Facades\Guard::class)) {
             throw new \RuntimeException(
@@ -388,11 +425,7 @@ class Authenticate
             );
         }
 
-        return (bool) Cache::stash(
-            "auth_scope_{$scope}_" . $this->id(),
-            3600,
-            fn() => \Doppar\Authorizer\Support\Facades\Guard::allows($scope)
-        );
+        return (bool) \Doppar\Authorizer\Support\Facades\Guard::allows($scope, ...$arguments);
     }
 
     /**

@@ -68,6 +68,17 @@ class CollectionTest extends TestCase
         $this->assertFalse(isset($collection->baz));
     }
 
+    public function testNullValuesAreStillConsideredPresent()
+    {
+        $collection = new Collection(Model::class, ["foo" => null]);
+
+        $this->assertArrayHasKey("foo", $collection->all());
+        $this->assertTrue(isset($collection["foo"]));
+        $this->assertTrue(isset($collection->foo));
+        $this->assertNull($collection["foo"]);
+        $this->assertNull($collection->foo);
+    }
+
     public function testGetIterator()
     {
         $items = [1, 2, 3];
@@ -96,6 +107,9 @@ class CollectionTest extends TestCase
     {
         $collection = new Collection(Model::class, [1, 2, 3]);
         $this->assertEquals(1, $collection->first());
+
+        $associativeCollection = new Collection(Model::class, ['a' => 10, 'b' => 20]);
+        $this->assertEquals(10, $associativeCollection->first());
 
         $emptyCollection = new Collection(Model::class, []);
         $this->assertNull($emptyCollection->first());
@@ -756,7 +770,6 @@ class CollectionTest extends TestCase
     {
         $reflection = new \ReflectionClass(get_class($object));
         $method = $reflection->getMethod($methodName);
-        $method->setAccessible(true);
 
         return $method->invokeArgs($object, $parameters);
     }
@@ -1039,5 +1052,541 @@ class CollectionTest extends TestCase
             ['id' => 3, 'name' => 'Charlie'],
             ['id' => 4, 'name' => 'Diana']
         ], $result->all());
+    }
+
+    public function testSortByWithStringKey()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by name
+        $result = $collection->sortBy('name');
+        $this->assertEquals([
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ], $result->all());
+
+        // Sort by age
+        $result2 = $collection->sortBy('age');
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30]
+        ], $result2->all());
+    }
+
+    public function testSortByWithCallback()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by name length
+        $result = $collection->sortBy(fn($user) => strlen($user['name']));
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ], $result->all());
+    }
+
+    public function testSortByWithObjects()
+    {
+        $model1 = $this->makeTestModel(3, 'Charlie');
+        $model2 = $this->makeTestModel(1, 'Alice');
+        $model3 = $this->makeTestModel(2, 'Bob');
+
+        $collection = new Collection(get_class($model1), [$model1, $model2, $model3]);
+
+        // Sort by id
+        $result = $collection->sortBy('id');
+        $this->assertEquals([$model2, $model3, $model1], $result->all());
+
+        // Sort by name
+        $result2 = $collection->sortBy('name');
+        $this->assertEquals([$model2, $model3, $model1], $result2->all());
+    }
+
+    public function testSortByDesc()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Sort by age descending
+        $result = $collection->sortByDesc('age');
+        $this->assertEquals([
+            ['id' => 1, 'name' => 'Alice', 'age' => 30],
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20]
+        ], $result->all());
+
+        // Sort by name descending
+        $result2 = $collection->sortByDesc('name');
+        $this->assertEquals([
+            ['id' => 3, 'name' => 'Charlie', 'age' => 25],
+            ['id' => 2, 'name' => 'Bob', 'age' => 20],
+            ['id' => 1, 'name' => 'Alice', 'age' => 30]
+        ], $result2->all());
+    }
+
+    public function testSortByWithNumericOptions()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $items = [
+            ['value' => '100'],
+            ['value' => '20'],
+            ['value' => '3']
+        ];
+
+        $collection = new Collection($modelClass, $items);
+
+        // String sort (lexicographic comparison)
+        $result1 = $collection->sortBy('value', SORT_STRING);
+        $this->assertEquals([
+            ['value' => '100'],
+            ['value' => '20'],
+            ['value' => '3']
+        ], $result1->all());
+
+        // Numeric sort
+        $result2 = $collection->sortBy('value', SORT_NUMERIC);
+        $this->assertEquals([
+            ['value' => '3'],
+            ['value' => '20'],
+            ['value' => '100']
+        ], $result2->all());
+    }
+
+    public function testSortByWithEmptyCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $result = $collection->sortBy('name');
+        $this->assertEquals([], $result->all());
+    }
+
+    public function testSortByPreservesModelType()
+    {
+        $model1 = $this->makeTestModel(3, 'Charlie');
+        $model2 = $this->makeTestModel(1, 'Alice');
+
+        $collection = new Collection(get_class($model1), [$model1, $model2]);
+
+        $result = $collection->sortBy('id');
+
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertEquals(get_class($model1), $result->getModel());
+    }
+
+    public function testSortByChainability()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'department' => 'IT', 'age' => 30],
+            ['id' => 2, 'name' => 'Bob', 'department' => 'IT', 'age' => 25],
+            ['id' => 3, 'name' => 'Charlie', 'department' => 'HR', 'age' => 35]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        // Chain sortBy with filter
+        $result = $collection
+            ->filter(fn($user) => $user['department'] === 'IT')
+            ->sortBy('age');
+
+        $this->assertEquals([
+            ['id' => 2, 'name' => 'Bob', 'department' => 'IT', 'age' => 25],
+            ['id' => 1, 'name' => 'Alice', 'department' => 'IT', 'age' => 30]
+        ], $result->all());
+    }
+
+    public function testSortByWithNullValues()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'score' => 100],
+            ['id' => 2, 'name' => 'Bob', 'score' => null],
+            ['id' => 3, 'name' => 'Charlie', 'score' => 50]
+        ];
+
+        $collection = new Collection($modelClass, $users);
+
+        $result = $collection->sortBy('score');
+
+        // Null values should sort to the beginning with SORT_REGULAR
+        $this->assertEquals(null, $result->all()[0]['score']);
+        $this->assertEquals(50, $result->all()[1]['score']);
+        $this->assertEquals(100, $result->all()[2]['score']);
+    }
+
+    public function testSortByWithMixedTypes()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+
+        $collection = new Collection($modelClass, [
+            ['data' => 'zebra'],
+            ['data' => 100],
+            ['data' => 'apple'],
+            ['data' => 50]
+        ]);
+
+        // This tests that sortBy handles mixed types gracefully
+        $result = $collection->sortBy('data');
+
+        // Should not throw an error
+        $this->assertInstanceOf(Collection::class, $result);
+        $this->assertCount(4, $result);
+    }
+
+    public function testChunkDividesCollectionIntoChunks()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6, 7]);
+
+        $chunks = $collection->chunk(3);
+
+        $this->assertEquals([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7]
+        ], $chunks->all());
+    }
+
+    public function testChunkWithExactDivision()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6]);
+
+        $chunks = $collection->chunk(2);
+
+        $this->assertEquals([
+            [1, 2],
+            [3, 4],
+            [5, 6]
+        ], $chunks->all());
+    }
+
+    public function testChunkWithInvalidSize()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $collection->chunk(0);
+    }
+
+
+    public function testPartitionDividesCollectionByCondition()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5, 6]);
+
+        [$even, $odd] = $collection->partition(fn($num) => $num % 2 === 0);
+
+        $this->assertEquals([2, 4, 6], $even->all());
+        $this->assertEquals([1, 3, 5], $odd->all());
+    }
+
+    public function testPartitionWithObjects()
+    {
+        $users = [
+            ['name' => 'Alice', 'active' => true],
+            ['name' => 'Bob', 'active' => false],
+            ['name' => 'Charlie', 'active' => true],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        [$active, $inactive] = $collection->partition(fn($user) => $user['active']);
+
+        $this->assertCount(2, $active);
+        $this->assertCount(1, $inactive);
+    }
+
+    public function testDiffReturnsItemsNotInOtherCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $diff = $collection1->diff($collection2);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
+
+    public function testDiffWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $diff = $collection->diff([3, 4, 5]);
+
+        $this->assertEquals([1, 2], $diff->all());
+    }
+
+    public function testIntersectReturnsCommonItems()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection1 = new Collection($modelClass, [1, 2, 3, 4, 5]);
+        $collection2 = new Collection($modelClass, [3, 4, 5, 6, 7]);
+
+        $intersect = $collection1->intersect($collection2);
+
+        $this->assertEquals([3, 4, 5], $intersect->all());
+    }
+
+    public function testIntersectWithArray()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $intersect = $collection->intersect([2, 3, 6]);
+
+        $this->assertEquals([2, 3], $intersect->all());
+    }
+
+    public function testTapExecutesCallbackWithoutModifying()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $tapped = null;
+        $result = $collection->tap(function ($col) use (&$tapped) {
+            $tapped = $col->count();
+        });
+
+        $this->assertEquals(3, $tapped);
+        $this->assertSame($collection, $result);
+        $this->assertEquals([1, 2, 3], $collection->all());
+    }
+
+    public function testPipePassesCollectionToCallback()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $result = $collection->pipe(fn($col) => $col->sum());
+
+        $this->assertEquals(6, $result);
+    }
+
+    public function testPipeCanReturnAnything()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, ['a', 'b', 'c']);
+
+        $result = $collection->pipe(fn($col) => implode(',', $col->all()));
+
+        $this->assertEquals('a,b,c', $result);
+    }
+
+    public function testDuplicatesFindsRepeatedValues()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 2, 3, 3, 3, 4]);
+
+        $duplicates = $collection->duplicates();
+
+        // Should return all duplicate occurrences except the first
+        $this->assertEquals([2, 3, 3], $duplicates->all());
+    }
+
+    public function testDuplicatesWithKey()
+    {
+        $users = [
+            ['id' => 1, 'email' => 'alice@example.com'],
+            ['id' => 2, 'email' => 'bob@example.com'],
+            ['id' => 3, 'email' => 'alice@example.com'],
+            ['id' => 4, 'email' => 'charlie@example.com'],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $duplicates = $collection->duplicates('email');
+
+        $this->assertCount(1, $duplicates);
+        $this->assertEquals('alice@example.com', $duplicates->first()['email']);
+    }
+
+    public function testSumCalculatesTotal()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(15, $collection->sum());
+    }
+
+    public function testSumWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 200],
+            ['price' => 300],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(600, $collection->sum('price'));
+    }
+
+    public function testSumWithCallback()
+    {
+        $items = [
+            ['quantity' => 2, 'price' => 10],
+            ['quantity' => 3, 'price' => 20],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $total = $collection->sum(fn($item) => $item['quantity'] * $item['price']);
+
+        $this->assertEquals(80, $total);
+    }
+
+    public function testAvgCalculatesAverage()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3, 4, 5]);
+
+        $this->assertEquals(3, $collection->avg());
+    }
+
+    public function testAvgWithKey()
+    {
+        $users = [
+            ['age' => 20],
+            ['age' => 30],
+            ['age' => 40],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $this->assertEquals(30, $collection->avg('age'));
+    }
+
+    public function testAvgWithEmptyCollection()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->assertNull($collection->avg());
+    }
+
+    public function testMinReturnsSmallestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(1, $collection->min());
+    }
+
+    public function testMaxReturnsLargestValue()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [5, 2, 8, 1, 9]);
+
+        $this->assertEquals(9, $collection->max());
+    }
+
+    public function testMinWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(50, $collection->min('price'));
+    }
+
+    public function testMaxWithKey()
+    {
+        $items = [
+            ['price' => 100],
+            ['price' => 50],
+            ['price' => 200],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $items);
+
+        $this->assertEquals(200, $collection->max('price'));
+    }
+
+    public function testSoleReturnsOnlyItem()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [42]);
+
+        $this->assertEquals(42, $collection->sole());
+    }
+
+    public function testSoleWithCallback()
+    {
+        $users = [
+            ['id' => 1, 'name' => 'Alice', 'active' => true],
+            ['id' => 2, 'name' => 'Bob', 'active' => false],
+            ['id' => 3, 'name' => 'Charlie', 'active' => true],
+        ];
+
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, $users);
+
+        $inactive = $collection->sole(fn($user) => !$user['active']);
+
+        $this->assertEquals('Bob', $inactive['name']);
+    }
+
+    public function testSoleThrowsWhenEmpty()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, []);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No items found');
+        $collection->sole();
+    }
+
+    public function testSoleThrowsWhenMultiple()
+    {
+        $modelClass = get_class($this->makeTestModel(0, ""));
+        $collection = new Collection($modelClass, [1, 2, 3]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Multiple items found');
+        $collection->sole();
     }
 }

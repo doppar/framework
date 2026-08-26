@@ -8,8 +8,9 @@ use Phaseolies\Database\Entity\Model;
 use IteratorAggregate;
 use ArrayIterator;
 use ArrayAccess;
+use JsonSerializable;
 
-class Collection extends RamseyCollection implements IteratorAggregate, ArrayAccess
+class Collection extends RamseyCollection implements IteratorAggregate, ArrayAccess, JsonSerializable
 {
     /**
      * @var array
@@ -36,8 +37,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Access collection data properties directly.
      *
-     * @param string $name The property name to access
-     * @return mixed|null The value if exists, null otherwise
+     * @param string $name
+     * @return mixed|null
      */
     public function __get($name)
     {
@@ -93,12 +94,12 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Check if a property exists in the collection data
      *
-     * @param string $name The property name to check
-     * @return bool True if property exists, false otherwise
+     * @param string $name
+     * @return bool
      */
     public function __isset($name)
     {
-        return isset($this->data[$name]);
+        return array_key_exists($name, $this->data);
     }
 
     /**
@@ -109,7 +110,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function offsetExists($offset): bool
     {
-        return isset($this->data[$offset]);
+        return array_key_exists($offset, $this->data);
     }
 
     /**
@@ -148,12 +149,22 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
 
     /**
      * Required for looping data
-     * 
+     *
      * @return Traversable
      */
     public function getIterator(): Traversable
     {
         return new ArrayIterator($this->data);
+    }
+
+    /**
+     * Specify data which should be serialized to JSON
+     *
+     * @return array
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 
     /**
@@ -183,7 +194,11 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function first(): mixed
     {
-        return $this->data[0] ?? null;
+        foreach ($this->data as $item) {
+            return $item;
+        }
+
+        return null;
     }
 
     /**
@@ -265,7 +280,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Flatten a multi-dimensional collection into a single level.
      *
-     * @param int $depth The maximum depth to flatten (default: infinite)
+     * @param int $depth
      * @return static
      */
     public function flatten(int $depth = PHP_INT_MAX): self
@@ -322,8 +337,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Return a new collection with unique items.
      *
-     * @param string|null $key Optional key to use for determining uniqueness
-     * @param bool $strict Whether to use strict comparison (===)
+     * @param string|null $key
+     * @param bool $strict
      * @return static
      */
     public function unique(?string $key = null, bool $strict = false): self
@@ -350,8 +365,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Pluck an array of values from a given key.
      *
-     * @param string $value The key to pluck values from
-     * @param string|null $key Optional key to use as array keys in the result
+     * @param string $value
+     * @param string|null $key
      * @return static
      */
     public function pluck(string $value, ?string $key = null): self
@@ -400,7 +415,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Output or return memory usage stats related to the current collection.
      *
-     * @param bool $asString If true, returns human-readable string. Otherwise, returns an array.
+     * @param bool $asString
      * @return string|array
      */
     public function withMemoryUsage(bool $asString = true): string|array
@@ -429,8 +444,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Map the collection and group the results by the given key.
      *
-     * @param callable|string $groupBy Key to group by or callback that returns the group key
-     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @param callable|string $groupBy
+     * @param callable|null $mapCallback
      * @return array
      */
     public function mapAsGroup($groupBy, ?callable $mapCallback = null): array
@@ -456,8 +471,8 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Map the collection and use the given key as array keys.
      *
-     * @param callable|string $keyBy Key to use as array key or callback that returns the key
-     * @param callable|null $mapCallback Callback to transform each item (optional)
+     * @param callable|string $keyBy
+     * @param callable|null $mapCallback
      * @return array
      */
     public function mapAsKey($keyBy, ?callable $mapCallback = null): array
@@ -528,6 +543,50 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     }
 
     /**
+     * Sort the collection by a given key or callback.
+     *
+     * @param callable|string $callback
+     * @param int $options
+     * @param bool $descending
+     * @return static
+     */
+    public function sortBy($callback, int $options = SORT_REGULAR, bool $descending = false): self
+    {
+        $results = [];
+
+        $resolver = $this->buildKeyResolver($callback);
+
+        foreach ($this->data as $key => $item) {
+            $results[$key] = $resolver($item, $key);
+        }
+
+        if ($descending) {
+            arsort($results, $options);
+        } else {
+            asort($results, $options);
+        }
+
+        $sortedData = [];
+        foreach (array_keys($results) as $key) {
+            $sortedData[] = $this->data[$key];
+        }
+
+        return new static($this->model, $sortedData);
+    }
+
+    /**
+     * Sort the collection in descending order by a given key or callback.
+     *
+     * @param callable|string $callback
+     * @param int $options
+     * @return static
+     */
+    public function sortByDesc($callback, int $options = SORT_REGULAR): self
+    {
+        return $this->sortBy($callback, $options, true);
+    }
+
+    /**
      * Transform each item in the collection into one or more key-value pairs grouped by keys.
      *
      * @param callable $callback
@@ -572,7 +631,7 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     /**
      * Convert the collection to JSON.
      *
-     * @param int $options JSON encoding options
+     * @param int $options
      * @return string
      */
     public function toJson(int $options = 0): string
@@ -660,5 +719,258 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
     public function getModel(): ?string
     {
         return $this->model ?? null;
+    }
+
+    /**
+     * Split collection into chunks of given size.
+     *
+     * @param int $size
+     * @return static
+     */
+    public function chunk(int $size): self
+    {
+        if ($size <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than 0');
+        }
+
+        $chunks = [];
+        foreach (array_chunk($this->data, $size, false) as $chunk) {
+            $chunks[] = $chunk;
+        }
+
+        return new static($this->model, $chunks);
+    }
+
+    /**
+     * Split collection into two groups based on condition
+     *
+     * @param callable $callback
+     * @return array [passedCollection, failedCollection]
+     */
+    public function partition(callable $callback): array
+    {
+        $passed = [];
+        $failed = [];
+
+        foreach ($this->data as $key => $item) {
+            if ($callback($item, $key)) {
+                $passed[] = $item;
+            } else {
+                $failed[] = $item;
+            }
+        }
+
+        return [
+            new static($this->model, $passed),
+            new static($this->model, $failed)
+        ];
+    }
+
+    /**
+     * Get items not present in the given items.
+     *
+     * @param mixed $items
+     * @return static
+     */
+    public function diff($items): self
+    {
+        $compare = $items instanceof self ? $items->all() : (array) $items;
+
+        $result = [];
+        foreach ($this->data as $item) {
+            if (!in_array($item, $compare, true)) {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
+
+    /**
+     * Get items present in both this collection and given items
+     *
+     * @param mixed $items
+     * @return static
+     */
+    public function intersect($items): self
+    {
+        $compare = $items instanceof self ? $items->all() : (array) $items;
+
+        $result = [];
+        foreach ($this->data as $item) {
+            if (in_array($item, $compare, true)) {
+                $result[] = $item;
+            }
+        }
+
+        return new static($this->model, $result);
+    }
+
+    /**
+     * Execute a callback over the collection without modifying it.
+     *
+     * @param callable $callback
+     * @return $this
+     */
+    public function tap(callable $callback): self
+    {
+        $callback($this);
+
+        return $this;
+    }
+
+    /**
+     * Pass the collection to a callback and return the result
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function pipe(callable $callback): mixed
+    {
+        return $callback($this);
+    }
+
+    /**
+     * Find duplicate items in the collection.
+     *
+     * @param string|null $key
+     * @return static
+     */
+    public function duplicates(?string $key = null): self
+    {
+        $seen = [];
+        $duplicates = [];
+
+        foreach ($this->data as $item) {
+            $value = $key !== null
+                ? (is_array($item) ? ($item[$key] ?? null) : ($item->$key ?? null))
+                : $item;
+
+            $serialized = is_scalar($value) ? (string) $value : serialize($value);
+
+            if (isset($seen[$serialized])) {
+                $duplicates[] = $item;
+            } else {
+                $seen[$serialized] = true;
+            }
+        }
+
+        return new static($this->model, $duplicates);
+    }
+
+    /**
+     * Get the sum of values
+     *
+     * @param string|callable|null $callback
+     * @return int|float
+     */
+    public function sum($callback = null): int|float
+    {
+        if ($callback === null) {
+            return array_sum($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->sum();
+        }
+
+        return $this->map($callback)->sum();
+    }
+
+    /**
+     * Get the average (mean) value.
+     *
+     * @param string|callable|null $callback
+     * @return int|float|null
+     */
+    public function avg($callback = null): int|float|null
+    {
+        $count = $this->count();
+
+        if ($count === 0) {
+            return null;
+        }
+
+        return $this->sum($callback) / $count;
+    }
+
+    /**
+     * Get the minimum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function min($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return min($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->min();
+        }
+
+        return $this->map($callback)->min();
+    }
+
+    /**
+     * Get the maximum value.
+     *
+     * @param string|callable|null $callback
+     * @return mixed
+     */
+    public function max($callback = null): mixed
+    {
+        if ($this->isEmpty()) {
+            return null;
+        }
+
+        if ($callback === null) {
+            return max($this->data);
+        }
+
+        if (is_string($callback)) {
+            return $this->pluck($callback)->max();
+        }
+
+        return $this->map($callback)->max();
+    }
+
+    /**
+     * Get a single item that matches the criteria, or throw an exception.
+     *
+     * @param callable|null $callback
+     * @return mixed
+     * @throws \RuntimeException
+     */
+    public function sole(?callable $callback = null): mixed
+    {
+        $filtered = $callback ? $this->filter($callback) : $this;
+
+        $count = $filtered->count();
+
+        if ($count === 0) {
+            throw new \RuntimeException('No items found matching the criteria');
+        }
+
+        if ($count > 1) {
+            throw new \RuntimeException("Multiple items found ({$count} items), expected exactly one");
+        }
+
+        return $filtered->first();
+    }
+
+    /**
+     * Get all items in the collection
+     *
+     * @return array
+     */
+    public function get(): array
+    {
+        return $this->data;
     }
 }

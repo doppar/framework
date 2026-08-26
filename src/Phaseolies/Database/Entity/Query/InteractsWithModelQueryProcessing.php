@@ -31,20 +31,21 @@ trait InteractsWithModelQueryProcessing
             Database::getPdoInstance($connection),
             $model->getTable(),
             static::class,
-            $model->pageSize
+            $model->pageSize,
+            $connection
         );
     }
 
     /**
      * Disable the execution of model hooks for the current instance.
      *
-     * @return self
+     * @return \Phaseolies\Database\Entity\Builder
      */
-    public static function withoutHook(): self
+    public static function withoutHook(): Builder
     {
         self::$isHookShouldBeCalled = false;
 
-        return app(static::class);
+        return static::query();
     }
 
     /**
@@ -106,31 +107,6 @@ trait InteractsWithModelQueryProcessing
     }
 
     /**
-     * Converts the model's attributes to an array.
-     *
-     * @return array.
-     */
-    public function toArray(): array
-    {
-        $attributes = $this->makeVisible();
-
-        // Include loaded relationships
-        foreach ($this->relations as $key => $relation) {
-            if ($relation === null) {
-                $attributes[$key] = null;
-            } elseif ($relation instanceof Model) {
-                $attributes[$key] = $relation->toArray();
-            } elseif ($relation instanceof Collection) {
-                $attributes[$key] = $relation->all();
-            } else {
-                $attributes[$key] = $relation;
-            }
-        }
-
-        return $attributes;
-    }
-
-    /**
      * Pluck an array of values from a single column.
      *
      * @param string $value
@@ -189,69 +165,80 @@ trait InteractsWithModelQueryProcessing
 
         if (!array_key_exists($class, $attributeCache)) {
             $attributeCache[$class] = $this->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class);
+            if ($attributeCache[$class]) {
+                trigger_error(
+                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                    E_USER_DEPRECATED
+                );
+            }
         }
 
-        $dateTime = $attributeCache[$class]
-            ? now()->startOfDay()
-            : now();
+        $dateTime = $attributeCache[$class] ? now()->startOfDay() : now();
 
-        $isUpdatable = isset($this->attributes[$this->primaryKey]);
+        try {
+            $isUpdatable = isset($this->attributes[$this->primaryKey]);
 
-        if ($isUpdatable) {
-            $dirtyAttributes = $this->getDirtyAttributes();
-            if (!empty($this->creatable)) {
-                $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+            if ($isUpdatable) {
+                if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                    return false;
+                }
+
+                $dirtyAttributes = $this->getDirtyAttributes();
+                $this->pruneNonColumnDirtyAttributes($dirtyAttributes);
+                $dirtyAttributes = $this->getDirtyAttributes();
+                if (!empty($this->creatable)) {
+                    $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+                }
+
+                if (empty($dirtyAttributes)) {
+                    return true;
+                }
+
+                if ($this->timeStamps) {
+                    $dirtyAttributes['updated_at'] = $dateTime;
+                }
+
+                $response = $this->newQuery()
+                    ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+                    ->update($dirtyAttributes);
+
+                if (self::$isHookShouldBeCalled && $response) {
+                    $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
+                    $this->fireAfterHooks('updated');
+                    $this->firePropertyWatches($dirtyAttributes);
+                    $this->originalAttributes = $this->attributes;
+                }
+
+                return $response;
             }
 
-            if (empty($dirtyAttributes)) {
-                return true;
-            }
-
-            if ($this->timeStamps) {
-                $dirtyAttributes['updated_at'] = $dateTime;
-            }
-
-            $primaryKeyValue = $this->attributes[$this->primaryKey];
-
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
                 return false;
             }
 
-            $response = $this->query()
-                ->where($this->primaryKey, $primaryKeyValue)
-                ->update($dirtyAttributes);
+            $this->pruneNonColumnAttributes();
+            $attributes = $this->getCreatableAttributes();
 
-            if (self::$isHookShouldBeCalled && $response) {
-                $this->fireAfterHooks('updated');
-                $this->originalAttributes = $this->attributes;
+            if ($this->timeStamps) {
+                $attributes['created_at'] = $dateTime;
+                $attributes['updated_at'] = $dateTime;
             }
 
-            return $response;
-        }
+            $id = $this->newQuery()->insert($attributes);
 
-        $attributes = $this->getCreatableAttributes();
+            if ($id && self::$isHookShouldBeCalled) {
+                $this->fireAfterHooks('created');
+            }
 
-        if ($this->timeStamps) {
-            $attributes['created_at'] = $dateTime;
-            $attributes['updated_at'] = $dateTime;
-        }
+            if ($id) {
+                $this->attributes[$this->primaryKey] = $id;
+                return true;
+            }
 
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
             return false;
+        } finally {
+            self::$isHookShouldBeCalled = true;
         }
-
-        $id = $this->query()->insert($attributes);
-
-        if ($id && self::$isHookShouldBeCalled) {
-            $this->fireAfterHooks('created');
-        }
-
-        if ($id) {
-            $this->attributes[$this->primaryKey] = $id;
-            return true;
-        }
-
-        return false;
     }
 
     /**
@@ -265,13 +252,28 @@ trait InteractsWithModelQueryProcessing
         foreach ($this->attributes as $key => $value) {
             if (
                 !array_key_exists($key, $this->originalAttributes) ||
-                $this->originalAttributes[$key] != $value
+                !$this->valuesAreEqual($this->originalAttributes[$key], $value)
             ) {
                 $dirty[$key] = $value;
             }
         }
 
         return $dirty;
+    }
+
+    /**
+     * Compare original and current values for equality, treating nulls as equal
+     *
+     * @param mixed $original
+     * @param mixed $current
+     * @return bool
+     */
+    protected function valuesAreEqual(mixed $original, mixed $current): bool
+    {
+        if ($original === null && $current === null) return true;
+        if ($original === null || $current === null) return false;
+
+        return (string)$original === (string)$current;
     }
 
     /**
@@ -282,8 +284,22 @@ trait InteractsWithModelQueryProcessing
      */
     public static function saveMany(array $rows, int $chunkSize = 100): int
     {
-        $filteredRows = array_map(function ($row) {
-            $model = new static();
+        $model = new static();
+        $usesTimestamps = $model->timeStamps;
+        $hasCastToDate = $usesTimestamps
+            ? $model->propertyHasAttribute($model, 'timeStamps', CastToDate::class)
+            : false;
+
+        if ($hasCastToDate) {
+            trigger_error(
+                'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                E_USER_DEPRECATED
+            );
+        }
+
+        $dateTime = $hasCastToDate ? now()->startOfDay() : now();
+
+        $filteredRows = array_map(function ($row) use ($model, $usesTimestamps, $dateTime) {
             $creatable = $model->creatable;
 
             if (empty($creatable)) {
@@ -293,7 +309,14 @@ trait InteractsWithModelQueryProcessing
                 }
             }
 
-            return array_intersect_key($row, array_flip($creatable));
+            $filtered = array_intersect_key($row, array_flip($creatable));
+
+            if ($usesTimestamps) {
+                $filtered['created_at'] = $filtered['created_at'] ?? $dateTime;
+                $filtered['updated_at'] = $dateTime;
+            }
+
+            return $filtered;
         }, $rows);
 
         return static::query()->insertMany($filteredRows, $chunkSize);
@@ -408,6 +431,12 @@ trait InteractsWithModelQueryProcessing
      */
     protected function getCreatableAttributes(): array
     {
+        if (empty($this->creatable)) {
+            throw new \RuntimeException(
+                "Model " . static::class . " has no \$creatable attributes defined."
+            );
+        }
+
         $creatableAttributes = [];
         foreach ($this->creatable as $attribute) {
             if (isset($this->attributes[$attribute])) {
@@ -459,14 +488,16 @@ trait InteractsWithModelQueryProcessing
             return false;
         }
 
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
-            return false;
-        }
-
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
         }
 
+        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+            return false;
+        }
+
+        $dirty = $this->getDirtyAttributes();
+        $this->pruneNonColumnDirtyAttributes($dirty);
         $dirty = $this->getDirtyAttributes();
 
         if (empty($dirty)) {
@@ -478,21 +509,39 @@ trait InteractsWithModelQueryProcessing
         }
 
         if ($this->usesTimestamps()) {
-            $hasCastToDate = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
-            $dirty['updated_at'] = $hasCastToDate
+            static $castToDateCache = [];
+            $class = static::class;
+
+            if (!array_key_exists($class, $castToDateCache)) {
+                $castToDateCache[$class] = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
+                if ($castToDateCache[$class]) {
+                    trigger_error(
+                        'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
+                        E_USER_DEPRECATED
+                    );
+                }
+            }
+
+            $dirty['updated_at'] = $castToDateCache[$class]
                 ? now()->startOfDay()
                 : now();
         }
 
-        $result = static::query()
-            ->where($this->primaryKey, $this->attributes[$this->primaryKey])
-            ->update($dirty);
+        try {
+            $result = $this->newQuery()
+                ->where($this->primaryKey, $this->attributes[$this->primaryKey])
+                ->update($dirty);
 
-        if ($result) {
-            if (self::$isHookShouldBeCalled) {
-                $this->fireAfterHooks('updated');
+            if ($result) {
+                $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
+                if (self::$isHookShouldBeCalled) {
+                    $this->fireAfterHooks('updated');
+                    $this->firePropertyWatches($dirty);
+                }
+                $this->originalAttributes = $this->attributes;
             }
-            $this->originalAttributes = $this->attributes;
+        } finally {
+            self::$isHookShouldBeCalled = true;
         }
 
         return $result;
@@ -512,7 +561,6 @@ trait InteractsWithModelQueryProcessing
 
         if ($reflection->hasProperty($attribute)) {
             $property = $reflection->getProperty($attribute);
-            $property->setAccessible(true);
 
             return $property->isStatic()
                 ? $property->getValue()

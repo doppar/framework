@@ -1,5 +1,406 @@
 # Release Notes
 
+## v3.26.6 - 2026-07-24
+
+* Add model helpers for clearing and reloading cached relationships by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/288
+
+## v3.26.5 - 2026-06-16
+
+* fix collection first() and null-key existence handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/287
+
+## v3.26.4 - 2026-06-04
+
+* Fix many-to-many embedCount() when multiple relations are eager loaded by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/286
+
+## v3.26.3 - 2026-05-21
+
+* Fix lazy bindToMany relation caching to match eager-loaded collections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/285
+
+## v3.26.2 - 2026-05-16
+
+* Add real MySQL and PostgreSQL coverage for ORM query and relationship test suites by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/284
+
+## v3.26.1 - 2026-05-09
+
+* Fix: Normalize console generator paths across cross platform by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/283
+
+## v3.26.0 - 2026-05-08
+
+* Add ghostable providers for lazy-loading framework services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/282
+
+## v3.25.3 - 2026-05-06
+
+* Fix: per-request singleton state leakage in worker mode by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/275
+* Fix: Normalize the error paths onto real Response objects by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/276
+* Fix: Stop using the shared singleton response object as the mutable envelope for route results by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/277
+* Fix: Make JsonResponse use a single response body source by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/278
+* Fix: Make Response body contract explicitly nullable by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/279
+* Harden response lifecycle consistency and add lifecycle regression coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/280
+* Deleted InteractsWithInsightErrorTracking after changing error lifecyle by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/281
+
+## v3.25.2 - 2026-05-04
+
+* Track Insight 404/HttpException errors from abort flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/273
+
+## v3.25.1 - 2026-05-02
+
+* Fix: storage:link cross-platform support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/272
+
+## v3.25.0 - 2026-05-01
+
+* fix: resolve background command argument parsing, config cache race condition, pid capture, and add per-job log control by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/270
+* Add broad console command test coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/271
+
+## v3.24.0 - 2026-04-30
+
+* Add explicit request termination lifecycle and terminable dispatch result by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/268
+* Fix logger context output for helper and facade logging by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/269
+
+## v3.23.0 - 2026-04-29
+
+* remove cache user version from authenticate class: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/264
+* adding proper error message if user use reserved keywords of model: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/265
+* Improve cron:list output with schedule timing and runtime constraints by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/266
+* Add throttle enforcement for second-based cron schedules by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/267
+
+## v3.22.0 - 2026-04-28
+
+* adding htmx support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/262
+* Improve CacheStore correctness, add cache() helper by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/263
+
+## v3.21.2 - 2026-04-28
+
+* split the bootstrap scaffold into language-specific stubs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/261
+
+## v3.21.1 - 2026-04-27
+
+* Always scaffold frontend welcome pages through layouts/app.odo.php by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/259
+
+## v3.21.0 - 2026-04-26
+
+* Add first-class Vite frontend scaffolding for React, Vue, Svelte, and Tailwind by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/258
+
+## v3.20.2 - 2026-04-25
+
+* Improve thin-coverage test areas by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/253
+* Fix multi-connection ORM state handling and prevent non-column attribute leaks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/254
+* fix: relation loading forces related models onto the parent/builder connection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/255
+* Fix eager-loaded relations across multiple database connections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/256
+* Fix temporal migrations for models on non-default database connections by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/257
+
+## v3.20.1 - 2026-04-24
+
+* fix: remove all deprecations and php notices and warnings from unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/247
+* Entity model namespace remove and \ added for some classes: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/248
+* Readme.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/249
+* Add comprehensive Temporal ORM test coverage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/250
+* remove User model dependencey from framework core code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/251
+* change config() method return type to mixed: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/252
+
+## v3.20.0 - 2026-04-16
+
+* Adding some missing unit test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/242
+* adding missing unit test for or* query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/243
+* Deprecate CastToDate in favor of attribute cast system by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/244
+* feat: Add #[Computed] attribute for virtual model properties by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/245
+* Fix redundant instantiations and uncached reflection in model internals by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/246
+
+## v3.19.0 - 2026-04-14
+
+* (feat) Attribute-driven model casting by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/240
+* feat: Observable Model Properties (#[Watches] attribute system) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/241
+
+## v3.18.1 - 2026-04-07
+
+* fix: resolve Builder::create() crash when chaining after withoutHook() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/239
+
+## v3.18.0 - 2026-04-05
+
+* (feat) Temporal  Time Travel ORM using #[Temporal] Attribute by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/238
+
+## v3.17.0 - 2026-04-04
+
+* adding some new validation rules by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/236
+* feat(validation): introduce custom Bind rule system by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/237
+
+## v3.16.3 - 2026-04-01
+
+* fix: error message not showing in browser issue for some cases: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/235
+
+## v3.16.2 - 2026-03-25
+
+* performance bottlenecks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/233
+* delete pull-request.md by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/234
+
+## v3.16.1 - 2026-03-15
+
+* Error Message Exception Improvement for json response by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/232
+
+## v3.16.0 - 2026-03-15
+
+* reduce glob and disk reads for config initialization by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/230
+* feat: add #blank, #solo, #inject, and #slot directives to Odo templat… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/231
+
+## v3.15.0 - 2026-03-14
+
+* feat: actor-based multi-session authentication by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/228
+* fix: load .env before config cache to prevent null env values on startup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/229
+
+## v3.14.0 - 2026-03-13
+
+* Add Comprehensive Relationship Test Suite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/226
+* UUID Primary Key Support for Entity ORM Model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/227
+
+## v3.13.0 - 2026-03-12
+
+* feat: add cursor pagination with direction support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/224
+* test: add regression tests for ORM bug fixes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/225
+
+## v3.12.1 - 2026-03-11
+
+* feat: saveMany() now injects timestamps by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/217
+* Add proper error message if creatable attribute not defined in model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/218
+* Refactored entity builder class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/219
+* Improved get dirty attr value get method: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/220
+* remove gc_collect_cycles() from get() in both builders by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/221
+* fix: loadManyToManyRelation() runs constraint callback only once by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/222
+* remove implicit empty string to null conversion in sanitize() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/223
+
+## v3.12.0 - 2026-03-11
+
+* feat: custom Odo template directives via Odo::stamp() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/212
+* fix: preventing hook suppression from leaking into subsequent calls by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/213
+* fix: orWhere() null handling delegates to whereNull() with correct boolean by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/214
+* fix: distinct() uses buildWhereClause() instead of legacy condition loop by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/215
+* fix: updateColumn() / increment() / decrement() use buildWhereClause() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/216
+
+## v3.11.2 - 2026-03-09
+
+* fix: cross-platform path handling, cache reliability, and error handler robustness by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/211
+
+## v3.11.1 - 2026-03-08
+
+* Remove cache from can() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/210
+
+## v3.11.0 - 2026-03-07
+
+* fix: make:controller --c commande by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/208
+* fix: duplicate multiple path on windows for error page by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/207
+* feat(orm): #[Hook] attribute system for declarative model lifecycle hooks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/209
+
+## v3.9.2 - 2026-03-04
+
+* Controller Registration Improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/205
+
+## v3.9.1 - 2026-03-03
+
+* Fix: copy as mark down and url in error page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/204
+
+## v3.9.0 - 2026-03-02
+
+* Unit test new month count issue: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/202
+* Boot-time Frozen Services via #[Immutable] by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/203
+
+## v3.8.4 - 2026-02-28
+
+* InputBag doc comment updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/199
+* Domain Restriction Route Test by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/200
+* Enhanced UrlGenerator with Multi-tenancy Support by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/201
+
+## v3.8.3 - 2026-02-25
+
+* fix: mergeIfMissing function: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/198
+
+## v3.8.2 - 2026-02-25
+
+* route parameter issue resolved for tenant based routing: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/197
+
+## v3.8.1 - 2026-02-22
+
+* Improved CLI Error Output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/196
+
+## v3.8.0 - 2026-02-21
+
+* Some comments updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/192
+* Paginator class doc updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/193
+* Domain-Restricted Route Matching by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/194
+* Error Page Improved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/195
+
+## v3.7.0 - 2026-02-15
+
+* Add Support for #[Bind] Attribute in Console Command Handle Methods by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/191
+
+## v3.6.0 - 2026-02-14
+
+* Adding noContent() and redirect() method in ResponseFactory by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/190
+
+## v3.5.4 - 2026-02-12
+
+* Add PHP 8.5 to CI Test Matrix and Fix PHP 8.5 null as an array offset is deprecated issue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/189
+
+## v3.5.3 - 2026-02-11
+
+* web error handler supports method updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/186
+* load only CLiErrorHandler for cli request: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/187
+* Fix: PHP 8.5 Compatibility – Null Array Offset Deprecation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/188
+
+## v3.5.2 - 2026-02-11
+
+* Prevent fatal errors in app() helper on PHP 8.5 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/185
+
+## v3.5.1 - 2026-02-11
+
+* Unit test count isssue resolved for Last month by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/183
+* Fix: PHP 8.5 PDO MySQL Constant Deprecations (Backward Compatible) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/184
+
+## v3.5.0 - 2026-01-30
+
+* console command handle() method dependency injection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/182
+
+## v3.4.2 - 2026-01-29
+
+* Entity Model: some comments updated: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/180
+* github action tests.yml updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/181
+
+## v3.4.1 - 2026-01-26
+
+* Handle dynamic method calls into the model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/179
+
+## v3.4.0 - 2026-01-22
+
+* New sortBy() collection method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/173
+* Added new chunk() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/174
+* New partition() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/175
+* tap() intersect() and diff() collection method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/176
+* Some collection method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/177
+* cron daemon second based issue resolved by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/178
+
+## v3.3.0 - 2026-01-20
+
+* remove array return and add collection return for groupByCallback by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/170
+* New pipeline() entity orm method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/171
+* Add 5 new Entity ORM methods for improved query ergonomics by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/172
+
+## v3.2.1 - 2026-01-19
+
+* Application installer file updated, remove system requirements check by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/169
+
+## v3.2.0 - 2026-01-19
+
+### What's Changed
+
+* Unit test issue resolve for new year date: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/163
+* Update Doc Comments to Maintain Doppar Comment Convention by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/164
+* update doc for maintaining doppar convention by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/165
+* New Entity ORM repair() method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/166
+* New Entity ORM Method groupByCallback by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/167
+* New Entity ORM partition method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/168
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v3.1.1...v3.2.0
+
+## v3.1.1 - 2025-12-19
+
+* Fix file path in CLI output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/162
+
+## v3.1.0 - 2025-12-14
+
+* database connection reset and reconnect method added by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/159
+* new database class function added in DB facades by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/160
+* [unit:test] command added with details and fliter options by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/161
+
+## v3.0.4 - 2025-12-07
+
+* Improve container resolution error message for unbound interfaces by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/158
+
+## v3.0.3 - 2025-12-06
+
+* refactored query builder query binding for condition by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/157
+
+## v3.0.2 - 2025-12-05
+
+* login and register page design improved and showing error message by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/156
+
+## v3.0.1 - 2025-12-04
+
+* updated ErrorHandler class triggerBeforeException method: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/155
+
+## v3.0.0-beta.24 - 2025-11-27
+
+### What's Changed
+
+* config update position change to top from bottom in vendor publish co… by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/148
+* remove config code from vendor publish command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/149
+* Fix Symfony Console deprecation: Replace add() with addCommand() by [@xentixar](https://github.com/xentixar) in https://github.com/doppar/framework/pull/150
+* bump symfony 7.4 by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/151
+
+### New Contributors
+
+* [@xentixar](https://github.com/xentixar) made their first contribution in https://github.com/doppar/framework/pull/150
+
+**Full Changelog**: https://github.com/doppar/framework/compare/v3.0.0-beta.23...v3.0.0-beta.24
+
+## v3.0.0-beta.23 - 2025-11-26
+
+* [Error] Handle errors by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/146
+* error page path calling way change to directory separator by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/147
+
+## v3.0.0-beta.22 - 2025-11-23
+
+* refactored controller and view class code by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/144
+* Introducing cron:daemon command to handle pure daemon by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/145
+
+## v3.0.0-beta.21 - 2025-11-22
+
+* remove # from cdn from skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/142
+* searchViewInPath method remove from controller and adding search inline by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/143
+
+## v3.0.0-beta.20 - 2025-11-22
+
+* update the redesign dashboard starter by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/140
+* fix: redesign starter template by [@AR-Shahin](https://github.com/AR-Shahin) in https://github.com/doppar/framework/pull/138
+* Introducing [odo] template engine for doppar by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/141
+
+## v3.0.0-beta.19 - 2025-11-22
+
+* Updated Secure Two-Factor Authentication (2FA) Flow by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/139
+
+## v3.0.0-beta.18 - 2025-11-21
+
+* verify 2fa token page to increase security by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/137
+
+## v3.0.0-beta.17 - 2025-11-20
+
+* New global [throttle()] helper method to ratelimit request by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/136
+
+## v3.0.0-beta.16 - 2025-11-18
+
+* Default dashboard skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/134
+* default admin dashboard layout skeleton design improvement by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/135
+
+## v3.0.0-beta.15 - 2025-11-17
+
+* cron:finish command remove executing with timing block by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/132
+* dark mode supported for default skeleton app layout by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/133
+
+## v3.0.0-beta.14 - 2025-11-16
+
+* daemon mode for second based schedule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/131
+
+## v3.0.0-beta.13 - 2025-11-16
+
+* [Unit Test] Request class and its all trait method by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/129
+* vendor:publish command updated with cache config by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/130
+
+## v3.0.0-beta.12 - 2025-11-15
+
+* make:job deleted and move to doppar queue by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/128
+
+## v3.0.0-beta.11 - 2025-11-15
+
+* Merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/125
+* Merged with master (#125) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/126
+* make:job command to handle job as queue or as sync by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/127
+
 ## v3.0.0-beta.10 - 2025-11-13
 
 * [Unite Test] All possible test case unit test for DI container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/122

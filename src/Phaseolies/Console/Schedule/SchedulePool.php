@@ -10,13 +10,6 @@ class SchedulePool
     /**
      * List of processes currently managed by the schedule pool.
      *
-     * Each element is an associative array containing:
-     * - pid (int) Process ID.
-     * - start_time (int) UNIX timestamp indicating when the process started.
-     *
-     * This property is used to keep track of background processes initiated
-     * through the pool, allowing status checks and management.
-     *
      * @var array<int, array{pid:int, start_time:int}>
      */
     protected static $runningProcesses = [];
@@ -24,14 +17,16 @@ class SchedulePool
     /**
      * Call a command through the pool
      *
-     * @param string $command The command to execute
-     * @param bool $background Run in background (recommended for web)
-     * @return array Process information
+     * @param string $command
+     * @param bool $background
+     * @return array
      */
     public static function call(string $command, bool $background = false): array
     {
-        $commandArray = ['php', 'pool'];
-        $commandArray = array_merge($commandArray, explode(' ', $command));
+        $commandArray = array_merge(
+            ['php', 'pool'],
+            preg_split('/\s+/', trim($command))
+        );
 
         $process = new Process(
             $commandArray,
@@ -62,11 +57,15 @@ class SchedulePool
 
             return $processInfo;
         } else {
+            $pid = null;
+
             try {
-                $process->run();
+                $process->start();
+                $pid = $process->getPid();
+                $process->wait();
 
                 return [
-                    'pid' => $process->getPid(),
+                    'pid' => $pid,
                     'command' => $command,
                     'status' => $process->isSuccessful() ? 'success' : 'failed',
                     'output' => $process->getOutput(),
@@ -74,7 +73,7 @@ class SchedulePool
                 ];
             } catch (ProcessFailedException $e) {
                 return [
-                    'pid' => $process->getPid(),
+                    'pid' => $pid,
                     'command' => $command,
                     'status' => 'failed',
                     'error' => $e->getMessage()

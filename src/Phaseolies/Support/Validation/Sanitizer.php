@@ -3,6 +3,7 @@
 namespace Phaseolies\Support\Validation;
 
 use Phaseolies\Http\Support\ValidationRules;
+use Phaseolies\Http\Validation\Bind;
 
 class Sanitizer
 {
@@ -39,8 +40,8 @@ class Sanitizer
     /**
      * Create a new Sanitizer instance.
      *
-     * @param array $data The input data to validate.
-     * @param array $rules The validation rules.
+     * @param array $data
+     * @param array $rules
      */
     public function __construct(array $data, array $rules)
     {
@@ -51,8 +52,8 @@ class Sanitizer
     /**
      * Create a new Validator instance statically.
      *
-     * @param array $data The input data to validate.
-     * @param array $rules The validation rules.
+     * @param array $data
+     * @param array $rules
      * @return self
      */
     public function request(array $data, array $rules): self
@@ -68,6 +69,15 @@ class Sanitizer
     public function validate(): bool
     {
         foreach ($this->rules as $field => $ruleString) {
+            // Custom rule class bound via Bind::to(new Rule())->context([...])
+            if ($ruleString instanceof Bind) {
+                $errorMessage = $ruleString->evaluate($field, $this->data);
+                if ($errorMessage) {
+                    $this->addError($field, $errorMessage);
+                }
+                continue;
+            }
+
             $rulesArray = explode('|', $ruleString);
 
             foreach ($rulesArray as $rule) {
@@ -135,9 +145,10 @@ class Sanitizer
     {
         $value = $this->data[$field] ?? null;
 
-        // Handle rules with parameters (e.g., min:2, max:100)
+        // Handle rules with parameters (e.g., min:2, date_format:Y-m-d H:i:s)
+        // Limit to 2 parts so values containing ':' (e.g., datetime formats) are preserved.
         if (str_contains($rule, ':')) {
-            [$rule, $param] = explode(':', $rule);
+            [$rule, $param] = explode(':', $rule, 2);
         }
 
         $errorMessage = $this->sanitizeUserRequest($this->data, $field, $rule, $param ?? null);

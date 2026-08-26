@@ -25,19 +25,17 @@ class MakeMiddlewareCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Http\\Middleware' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Http/Middleware/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Http/Middleware', $name);
 
             // Check if middleware already exists
             if (file_exists($filePath)) {
                 $this->displayError('Middleware already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -52,7 +50,7 @@ class MakeMiddlewareCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Middleware created successfully');
-            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>🛡️  File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>🔒 Class:</> <fg=white>' . $className . '</>');
 

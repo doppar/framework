@@ -32,23 +32,28 @@ class LoginController extends Controller
      * @return \Phaseolies\Http\Response\RedirectResponse
      */
     #[Route('/', name: 'login', methods: ['POST'], middleware: ['guest'])]
-    public function login(Request $request): RedirectResponse
+     public function login(Request $request): RedirectResponse
     {
         $request->sanitize([
             'email' => 'required|exists_in:users,email',
             'password' => 'required|min:2|max:20'
         ]);
 
-        $user = User::whereEmail($request->email)->first();
-
         if (Auth::try($request->passed())) {
-            if (Auth::hasTwoFactorEnabled($user)) {
+            if (Auth::hasTwoFactorEnabled(
+                $user = User::whereEmail($request->email)->first()
+            )) {
+                $rawToken = bin2hex(random_bytes(64));
+                $signature = hash_hmac('sha256', $user->id . '|' . $rawToken . '|' . $timestamp = time(), config('app.key'));
+                $token = implode('|', [$user->id, $rawToken, $signature, $timestamp]);
+                session(['2fa_token' => $token]);
+
                 return redirect()->route('verify.2fa');
             }
             return redirect()->intended('/home')->withSuccess('You are logged in');
         }
 
-        return back()->withError('Incorrect password, please try again');
+        return back()->withError('Email or password is incorrect');
     }
 
     /**

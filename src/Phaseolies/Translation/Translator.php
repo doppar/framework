@@ -171,7 +171,11 @@ class Translator extends FileLoader
         $this->loadTranslations($namespace, $group, $locale);
 
         $keys = explode('.', $item);
-        $line = $this->loaded[$namespace][$group][$locale] ?? null;
+
+        $namespaceKey = $namespace ?? '';
+        $groupKey = $group ?? '';
+
+        $line = $this->loaded[$namespaceKey][$groupKey][$locale] ?? null;
 
         foreach ($keys as $key) {
             if (!is_array($line)) {
@@ -225,7 +229,10 @@ class Translator extends FileLoader
 
         $lines = $this->loader->load($locale, $group, $namespace);
 
-        $this->loaded[$namespace][$group][$locale] = $lines;
+        $namespaceKey = $namespace ?? '';
+        $groupKey = $group ?? '';
+
+        $this->loaded[$namespaceKey][$groupKey][$locale] = $lines;
     }
 
     /**
@@ -238,7 +245,10 @@ class Translator extends FileLoader
      */
     protected function isLoaded($namespace, $group, $locale)
     {
-        return isset($this->loaded[$namespace][$group][$locale]);
+        $namespaceKey = $namespace ?? '';
+        $groupKey = $group ?? '';
+
+        return isset($this->loaded[$namespaceKey][$groupKey][$locale]);
     }
 
     /**

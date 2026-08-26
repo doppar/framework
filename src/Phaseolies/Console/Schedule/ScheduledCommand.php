@@ -39,6 +39,13 @@ class ScheduledCommand
     private $runInBackground = false;
 
     /**
+     * Custom output destination for background process stdout/stderr
+     *
+     * @var string|null
+     */
+    private $outputTo = null;
+
+    /**
      * Path to a file used to store the timestamp of the last run.
      *
      * @var string
@@ -131,6 +138,34 @@ class ScheduledCommand
     private $retryDelay = 60;
 
     /**
+     * Indicates if this is a second-based schedule
+     *
+     * @var bool
+     */
+    private $isSecondSchedule = false;
+
+    /**
+     * The interval in seconds for second-based schedules
+     *
+     * @var int|null
+     */
+    private $secondInterval = null;
+
+    /**
+     * The specific second(s) to run on for second-based schedules
+     *
+     * @var array
+     */
+    private $specificSeconds = [];
+
+    /**
+     * Timestamp of the last execution for second-based schedules
+     *
+     * @var int|null
+     */
+    private $lastExecutionTime = null;
+
+    /**
      * Initializes the command with default lock and tracking file paths.
      *
      * @param string $command
@@ -181,6 +216,226 @@ class ScheduledCommand
     public function getLockFile(): string
     {
         return $this->lockFile;
+    }
+
+    /**
+     * Schedule the command to run every second.
+     *
+     * @return self
+     */
+    public function everySecond(): self
+    {
+        return $this->everySeconds(1);
+    }
+
+    /**
+     * Schedule the command to run every N seconds.
+     *
+     * @param int $seconds
+     * @return self
+     */
+    public function everySeconds(int $seconds): self
+    {
+        if ($seconds < 1 || $seconds > 59) {
+            throw new \InvalidArgumentException('Seconds must be between 1 and 59');
+        }
+
+        $this->isSecondSchedule = true;
+        $this->secondInterval = $seconds;
+
+        // Run every minute as base
+        $this->cron("* * * * *");
+
+        return $this;
+    }
+
+    /**
+     * Schedule the command to run every 5 seconds.
+     *
+     * @return self
+     */
+    public function everyFiveSeconds(): self
+    {
+        return $this->everySeconds(5);
+    }
+
+    /**
+     * Schedule the command to run every 10 seconds.
+     *
+     * @return self
+     */
+    public function everyTenSeconds(): self
+    {
+        return $this->everySeconds(10);
+    }
+
+    /**
+     * Schedule the command to run every 15 seconds.
+     *
+     * @return self
+     */
+    public function everyFifteenSeconds(): self
+    {
+        return $this->everySeconds(15);
+    }
+
+    /**
+     * Schedule the command to run every 20 seconds.
+     *
+     * @return self
+     */
+    public function everyTwentySeconds(): self
+    {
+        return $this->everySeconds(20);
+    }
+
+    /**
+     * Schedule the command to run every 30 seconds.
+     *
+     * @return self
+     */
+    public function everyThirtySeconds(): self
+    {
+        return $this->everySeconds(30);
+    }
+
+    /**
+     * Schedule the command to run at specific second(s) of each minute.
+     *
+     * @param int|array $seconds Single second or array of seconds (0-59)
+     * @return self
+     */
+    public function atSeconds($seconds): self
+    {
+        $seconds = is_array($seconds) ? $seconds : [$seconds];
+
+        foreach ($seconds as $second) {
+            if ($second < 0 || $second > 59) {
+                throw new \InvalidArgumentException('Second must be between 0 and 59');
+            }
+        }
+
+        $this->isSecondSchedule = true;
+        $this->specificSeconds = $seconds;
+
+        // Run every minute as base
+        $this->cron("* * * * *");
+
+        return $this;
+    }
+
+    /**
+     * Check if this is a second-based schedule.
+     *
+     * @return bool
+     */
+    public function isSecondSchedule(): bool
+    {
+        return $this->isSecondSchedule;
+    }
+
+    /**
+     * Get the second interval.
+     *
+     * @return int|null
+     */
+    public function getSecondInterval(): ?int
+    {
+        return $this->secondInterval;
+    }
+
+    /**
+     * Get specific seconds to run on.
+     *
+     * @return array
+     */
+    public function getSpecificSeconds(): array
+    {
+        return $this->specificSeconds;
+    }
+
+    /**
+     * Load the last execution time from storage.
+     *
+     * @return void
+     */
+    private function loadLastExecutionTime(): void
+    {
+        if (file_exists($this->lastRunFile)) {
+            $data = @json_decode(file_get_contents($this->lastRunFile), true);
+            $this->lastExecutionTime = $data['last_run'] ?? null;
+        }
+    }
+
+    /**
+     * Save the current execution time to storage.
+     *
+     * @return void
+     */
+    private function saveLastExecutionTime(): void
+    {
+        $dir = dirname($this->lastRunFile);
+        if (!file_exists($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        file_put_contents(
+            $this->lastRunFile,
+            json_encode(['last_run' => time()]),
+            LOCK_EX
+        );
+    }
+
+    /**
+     * Determine if a second-based schedule is due.
+     *
+     * @return bool
+     */
+    private function isSecondScheduleDue(): bool
+    {
+        $timezone = $this->timezone ?: config('app.timezone', 'UTC');
+        $now = Carbon::now($timezone);
+        $currentSecond = $now->second;
+        $currentTimestamp = $now->timestamp;
+
+        // Load last execution time
+        $this->loadLastExecutionTime();
+
+        // If we have specific seconds defined
+        if (!empty($this->specificSeconds)) {
+            // Check if current second matches any of the specified seconds
+            if (!in_array($currentSecond, $this->specificSeconds)) {
+                return false;
+            }
+
+            // Ensure we don't run multiple times in the same second
+            if (
+                $this->lastExecutionTime !== null &&
+                $currentTimestamp === $this->lastExecutionTime
+            ) {
+                return false;
+            }
+
+            return true;
+        }
+
+        // If we have an interval defined
+        if ($this->secondInterval !== null) {
+            // First run or no previous execution
+            if ($this->lastExecutionTime === null) {
+                return true;
+            }
+
+            // Check if enough time has passed
+            $elapsed = $currentTimestamp - $this->lastExecutionTime;
+            if ($elapsed >= $this->secondInterval) {
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
     }
 
     /**
@@ -589,6 +844,26 @@ class ScheduledCommand
     }
 
     /**
+     * Get the raw cron expression for the command.
+     *
+     * @return string
+     */
+    public function getExpression(): string
+    {
+        return $this->expression;
+    }
+
+    /**
+     * Get the maximum overlap lock time in minutes.
+     *
+     * @return int
+     */
+    public function getMaxLockTime(): int
+    {
+        return $this->maxLockTime;
+    }
+
+    /**
      * Prevent overlapping executions of the command.
      *
      * @param int $minutes The maximum lock time in minutes. Default: 1440 (24 hours)
@@ -626,6 +901,39 @@ class ScheduledCommand
     }
 
     /**
+     * Redirect background process output to the given file path.
+     *
+     * @param string $location
+     * @return self
+     */
+    public function sendOutputTo(string $location): self
+    {
+        $this->outputTo = $location;
+
+        return $this;
+    }
+
+    /**
+     * Discard all background process output instead of writing a per-job log file.
+     *
+     * @return self
+     */
+    public function withoutLog(): self
+    {
+        return $this->sendOutputTo('/dev/null');
+    }
+
+    /**
+     * Get the configured output destination, or null to use the default per-job log file.
+     *
+     * @return string|null
+     */
+    public function getOutputTo(): ?string
+    {
+        return $this->outputTo;
+    }
+
+    /**
      * Add dates when the command should NOT run (e.g., holidays).
      *
      * @param array|string $dates Format: "YYYY-MM-DD" or ["YYYY-MM-DD", ...]
@@ -659,6 +967,46 @@ class ScheduledCommand
         $this->rateLimit = $limit;
 
         return $this;
+    }
+
+    /**
+     * Get excluded dates for the command.
+     *
+     * @return array
+     */
+    public function getExcludedDates(): array
+    {
+        return $this->excludedDates;
+    }
+
+    /**
+     * Get the configured throttle expression.
+     *
+     * @return string|null
+     */
+    public function getRateLimit(): ?string
+    {
+        return $this->rateLimit;
+    }
+
+    /**
+     * Determine if the command has additional time-based conditions.
+     *
+     * @return bool
+     */
+    public function hasAdditionalConditions(): bool
+    {
+        return !empty($this->additionalConditions);
+    }
+
+    /**
+     * Determine if the command has a custom when() condition.
+     *
+     * @return bool
+     */
+    public function hasCustomCondition(): bool
+    {
+        return $this->condition !== null;
     }
 
     /**
@@ -777,6 +1125,10 @@ class ScheduledCommand
     public function run()
     {
         try {
+            if ($this->isSecondSchedule) {
+                $this->saveLastExecutionTime();
+            }
+
             $command = $this->sanitizeCommand($this->command);
 
             if ($this->shouldRunInBackground()) {
@@ -890,12 +1242,32 @@ class ScheduledCommand
     }
 
     /**
+     * Get the maximum number of retry attempts.
+     *
+     * @return int
+     */
+    public function getMaxRetries(): int
+    {
+        return $this->maxRetries;
+    }
+
+    /**
+     * Get the retry delay in seconds.
+     *
+     * @return int
+     */
+    public function getRetryDelay(): int
+    {
+        return $this->retryDelay;
+    }
+
+    /**
      * Determine if the command is due to run with comprehensive checks.
      *
      * @return bool
      * @throws \InvalidArgumentException
      */
-    public function isDue(): bool
+    public function isDue(bool $checkSecondSchedule = true): bool
     {
         try {
             $timezone = $this->timezone ?: config('app.timezone', 'UTC');
@@ -938,6 +1310,13 @@ class ScheduledCommand
                     call_user_func($this->onSuccessCallback, 'Not due according to schedule');
                 }
                 return false;
+            }
+
+            // For second-based schedules, perform additional checks
+            if ($checkSecondSchedule && $this->isSecondSchedule) {
+                if (!$this->isSecondScheduleDue()) {
+                    return false;
+                }
             }
 
             // Check rate limiting
@@ -1030,10 +1409,14 @@ class ScheduledCommand
     {
         $this->releaseLock();
 
-        $throttleFile = $this->lastRunFile . '_throttle.log';
+        $throttleFile = storage_path('schedule/cron_throttle_' . md5($this->command) . '.log');
 
         if (file_exists($throttleFile)) {
             unlink($throttleFile);
+        }
+
+        if ($this->isSecondSchedule && file_exists($this->lastRunFile)) {
+            unlink($this->lastRunFile);
         }
     }
 

@@ -67,9 +67,9 @@ class FileSystem
     /**
      * Writes data from a stream to a file at the specified path
      *
-     * @param string $path The directory path where the file will be saved.
-     * @param string $name The name of the file to be created.
-     * @param resource $stream The input stream to read data from.
+     * @param string $path
+     * @param string $name
+     * @param resource $stream
      * @return bool
      */
     public function writeStream(string $path, string $name, $stream): bool
@@ -99,8 +99,8 @@ class FileSystem
     /**
      * Retrieves the size of a given stream.
      *
-     * @param resource $stream The stream resource to get the size of.
-     * @return int The size of the stream in bytes.
+     * @param resource $stream
+     * @return int
      */
     private function getStreamSize($stream)
     {
@@ -128,7 +128,7 @@ class FileSystem
     /**
      * Determine if the given path is a directory.
      *
-     * @param  string  $directory
+     * @param string $directory
      * @return bool
      */
     public function isDirectory(string $directory): bool

@@ -49,6 +49,6 @@ class RegisterController extends Controller
 
         User::create($payload);
 
-        return back()->withSuccess('User created successfully');
+        return redirect('/login')->withSuccess('User created successfully');
     }
 }

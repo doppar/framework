@@ -33,7 +33,7 @@ class LocalFileSystem extends FileSystem implements IFileSystem
      * Get the contents of a file.
      *
      * @param string $path
-     * @return string|null The file path, or null if the file does not exist.
+     * @return string|null
      */
     public function get(string $path): ?string
     {
@@ -72,8 +72,8 @@ class LocalFileSystem extends FileSystem implements IFileSystem
     /**
      * Delete one or more files.
      *
-     * @param string|array $path The path(s) to the file(s) to delete.
-     * @return bool True if all files were successfully deleted, false otherwise.
+     * @param string|array $path
+     * @return bool
      */
     public function delete(string|array $path): bool
     {

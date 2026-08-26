@@ -25,19 +25,16 @@ class PresenterCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $name = $this->argument('name');
-
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Http\\Presenters' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Http/Presenters/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Http/Presenters', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Presenters already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -50,7 +47,7 @@ class PresenterCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Presenters created successfully');
-            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📁 File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
 
             return Command::SUCCESS;

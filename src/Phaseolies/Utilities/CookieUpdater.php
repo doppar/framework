@@ -25,7 +25,7 @@ class CookieUpdater
     /**
      * Update the cookie's value
      *
-     * @param string|null $value The new cookie value
+     * @param string|null $value
      * @return self
      */
     public function withValue(?string $value): self
@@ -38,7 +38,7 @@ class CookieUpdater
     /**
      * Update the expiration time
      *
-     * @param int|string|\DateTimeInterface $expire Timestamp, DateTime or strtotime string
+     * @param int|string|\DateTimeInterface $expire
      * @return self
      */
     public function withExpires($expire): self
@@ -51,7 +51,7 @@ class CookieUpdater
     /**
      * Update the cookie path
      *
-     * @param string $path The path on the server where the cookie is available
+     * @param string $path
      * @return self
      */
     public function withPath(string $path): self
@@ -64,7 +64,7 @@ class CookieUpdater
     /**
      * Update the cookie domain
      *
-     * @param string|null $domain The domain that the cookie is available to
+     * @param string|null $domain
      * @return self
      */
     public function withDomain(?string $domain): self
@@ -77,7 +77,7 @@ class CookieUpdater
     /**
      * Set whether the cookie is HTTPS-only
      *
-     * @param bool $secure Whether the cookie should only be sent over HTTPS
+     * @param bool $secure
      * @return self
      */
     public function withSecure(bool $secure = true): self
@@ -90,7 +90,7 @@ class CookieUpdater
     /**
      * Set whether the cookie is HTTP-only
      *
-     * @param bool $httpOnly Whether the cookie is accessible only through HTTP
+     * @param bool $httpOnly
      * @return self
      */
     public function withHttpOnly(bool $httpOnly = true): self
@@ -103,7 +103,7 @@ class CookieUpdater
     /**
      * Set whether the cookie value should be raw
      *
-     * @param bool $raw Whether to disable URL encoding
+     * @param bool $raw
      * @return self
      * @throws \InvalidArgumentException If cookie name contains invalid characters
      */
@@ -117,9 +117,9 @@ class CookieUpdater
     /**
      * Set the SameSite attribute
      *
-     * @param string|null $sameSite One of: 'lax', 'strict', 'none', or null
+     * @param string|null $sameSite
      * @return self
-     * @throws \InvalidArgumentException For invalid SameSite values
+     * @throws \InvalidArgumentException
      */
     public function withSameSite(?string $sameSite): self
     {
@@ -131,7 +131,7 @@ class CookieUpdater
     /**
      * Set whether the cookie is partitioned (CHIPS)
      *
-     * @param bool $partitioned Whether the cookie should be partitioned
+     * @param bool $partitioned
      * @return self
      */
     public function withPartitioned(bool $partitioned = true): self
@@ -144,7 +144,7 @@ class CookieUpdater
     /**
      * Persist the modified cookie to the response
      *
-     * @return bool True on successful header set, false otherwise
+     * @return bool
      */
     public function update(): bool
     {

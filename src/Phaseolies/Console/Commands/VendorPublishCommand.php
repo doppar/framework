@@ -2,10 +2,10 @@
 
 namespace Phaseolies\Console\Commands;
 
-use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Application;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Application;
 use FilesystemIterator;
 
 class VendorPublishCommand extends Command
@@ -37,7 +37,7 @@ class VendorPublishCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function () {
             $provider = $this->option('provider');
@@ -55,6 +55,7 @@ class VendorPublishCommand extends Command
             }
 
             $this->publishAll($force);
+
             return Command::SUCCESS;
         });
     }

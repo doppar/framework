@@ -5,6 +5,7 @@ namespace Phaseolies\Error\Handlers;
 use Throwable;
 use Phaseolies\Error\WebErrorRenderer;
 use Phaseolies\Error\Contracts\ErrorHandlerInterface;
+use Phaseolies\Http\Exceptions\HttpResponseException;
 
 class WebErrorHandler implements ErrorHandlerInterface
 {
@@ -16,15 +17,21 @@ class WebErrorHandler implements ErrorHandlerInterface
      */
     public function handle(Throwable $exception): void
     {
+        if ($exception instanceof HttpResponseException && $exception->hasResponse()) {
+            $exception->getResponse()?->prepare(request())->send();
+
+            return;
+        }
+
         $renderer = new WebErrorRenderer();
 
         if (env('APP_DEBUG') === "true") {
-            $renderer->renderDebug($exception);
+            $response = $renderer->renderDebug($exception);
         } else {
-            $renderer->renderProduction($exception);
+            $response = $renderer->renderProduction($exception);
         }
 
-        exit(1);
+        $response->prepare(request())->send();
     }
 
     /**
@@ -34,6 +41,6 @@ class WebErrorHandler implements ErrorHandlerInterface
      */
     public function supports(): bool
     {
-        return !request()->isAjax() && !request()->isApiRequest() && PHP_SAPI !== 'cli';
+        return !request()->isAjax() || !request()->isApiRequest() || PHP_SAPI !== 'cli';
     }
 }

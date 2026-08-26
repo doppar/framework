@@ -122,9 +122,9 @@ class Response implements HttpStatus
     /**
      * Get the response body content.
      *
-     * @return string
+     * @return string|null
      */
-    public function getBody(): string
+    public function getBody(): ?string
     {
         return $this->body;
     }
@@ -192,7 +192,7 @@ class Response implements HttpStatus
      * Set the HTTP status code for the response.
      *
      * @param int $statusCode The HTTP status code.
-     * @return int The updated status code.
+     * @return static
      */
     public function setStatusCode(int $statusCode, ?string $text = null): static
     {
@@ -656,29 +656,28 @@ class Response implements HttpStatus
     /**
      * Render an HTML error page.
      *
-     * This method attempts to include an error page template corresponding to the status code.
-     * If the template does not exist, it throws an HTTP exception.
-     *
-     * @param int $statusCode The HTTP status code.
-     * @param string $message The error message.
+     * @param int $status
+     * @param string $message
      * @return void
      */
-    protected static function renderErrorPage(int $statusCode, string $message): void
+    protected static function renderErrorPage(int $status, string $message): void
     {
-        $customPath = base_path("resources/views/errors/{$statusCode}.blade.php");
-        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$statusCode}.blade.php");
+        $customPath = base_path("resources/views/errors/{$status}.odo.php");
+        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$status}.odo.php");
 
         if (file_exists($customPath)) {
             include $customPath;
         } elseif (file_exists($errorPage)) {
             include $errorPage;
         } else {
-            abort($statusCode, $message);
+            abort($status, $message);
         }
     }
 
     /**
      * Renders a view with the given data and returns the rendered content as a string.
+     *
+     * @return string
      */
     public function render(): string
     {
@@ -704,9 +703,9 @@ class Response implements HttpStatus
     /**
      * Renders a view with the given data and returns a Response object.
      *
-     * @param string $view The name of the view file to render.
-     * @param array $data An associative array of data to pass to the view (default is an empty array).
-     * @return Response A Response object containing the rendered view.
+     * @param string $view
+     * @param array $data
+     * @return Response
      */
     public function view(string $view, array $data = [], array $headers = []): Response
     {
@@ -723,9 +722,9 @@ class Response implements HttpStatus
     /**
      * Renders a view with the given data and returns the rendered content as a string.
      *
-     * @param string $view The name of the view file to render.
-     * @param array $data An associative array of data to pass to the view.
-     * @return string The rendered view content.
+     * @param string $view
+     * @param array $data
+     * @return string
      */
     public function renderView(string $view, array $data = []): string
     {
@@ -735,41 +734,41 @@ class Response implements HttpStatus
 
         ob_start();
 
-        include base_path("resources/views/{$viewPath}.blade.php");
+        include base_path("resources/views/{$viewPath}.odo.php");
 
         return ob_get_clean();
     }
 
     /**
-     * Return a JSON response.
-     *
      * This method sets the appropriate headers for a JSON response and returns the JSON-encoded data.
      *
-     * @param mixed $data The data to encode as JSON.
-     * @param int $statusCode The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
+     * @param mixed $data
+     * @param int $status
+     * @param array<string, string> $headers
      * @return JsonResponse
      */
-    public function json(mixed $data, int $statusCode = 200, array $headers = []): JsonResponse
+    public function json(mixed $data, int $status = 200, array $headers = []): JsonResponse
     {
-        return response()->json($data, $statusCode, $headers);
+        return response()->json($data, $status, $headers);
     }
 
     /**
      * Return a plain text response.
      *
-     * @param string $content The plain text content.
-     * @param int $statusCode The HTTP status code (default: 200).
-     * @param array<string, string> $headers Additional headers to include in the response.
+     * @param string $content
+     * @param int $status
+     * @param array<string, string> $headers
      * @return Response
      */
-    public function text(string $content, int $statusCode = 200, array $headers = []): Response
+    public function text(string $content, int $status = 200, array $headers = []): Response
     {
         $this->body = $content;
-        $this->statusCode = $statusCode;
+        $this->statusCode = $status;
+
         foreach ($headers as $name => $value) {
             $this->headers->set($name, $value);
         }
+
         $this->headers->set('Content-Type', 'text/plain');
 
         return $this;
@@ -1571,20 +1570,45 @@ class Response implements HttpStatus
 
         if (
             is_array($content) ||
-            $content instanceof \JsonSerializable ||
-            $content instanceof \Phaseolies\Database\Entity\Model ||
-            $content instanceof \Phaseolies\Database\Entity\Builder ||
-            $content instanceof \stdClass ||
-            $content instanceof \ArrayObject
+            is_object($content)
         ) {
-            $content = json_encode($content);
-        } elseif ($content instanceof \Phaseolies\Support\Collection || is_object($content)) {
-            $content = json_encode($content->toArray());
+            $content = $this->encodeJsonContent($content);
         }
 
         $this->setBody($content);
 
         return $content;
+    }
+
+    /**
+     * Encode a value for JSON responses without assuming every object has toArray().
+     *
+     * @param mixed $content
+     * @param int $options
+     * @return string
+     */
+    protected function encodeJsonContent(mixed $content, int $options = 0): string
+    {
+        if ($content instanceof \Phaseolies\Support\Collection) {
+            return json_encode($content->toArray(), $options);
+        }
+
+        if (
+            $content instanceof \Phaseolies\Database\Entity\Model ||
+            $content instanceof \Phaseolies\Database\Entity\Builder ||
+            $content instanceof \JsonSerializable ||
+            $content instanceof \stdClass ||
+            $content instanceof \ArrayObject ||
+            is_array($content)
+        ) {
+            return json_encode($content, $options);
+        }
+
+        if (is_object($content) && method_exists($content, 'toArray')) {
+            return json_encode($content->toArray(), $options);
+        }
+
+        return json_encode($content, $options);
     }
 
     /**
@@ -1605,7 +1629,9 @@ class Response implements HttpStatus
         $this->setException($status);
 
         // Fallback
-        http_response_code($status);
+        if (!headers_sent()) {
+            http_response_code($status);
+        }
 
         return $this;
     }

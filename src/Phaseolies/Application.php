@@ -2,8 +2,11 @@
 
 namespace Phaseolies;
 
+use Phaseolies\Auth\ActorManager;
 use Phaseolies\Support\Router;
+use Phaseolies\Providers\GhostableProvider;
 use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Exceptions\HttpException;
@@ -11,13 +14,14 @@ use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\ApplicationBuilder;
+use Dotenv\Dotenv;
 
 class Application extends Container
 {
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '3.0.0-beta.10';
+    const VERSION = '3.26.6';
 
     /**
      * The base path of the application installation.
@@ -53,6 +57,13 @@ class Application extends Container
      * @var string
      */
     protected $resourcesPath;
+
+    /**
+     * The path to the client-side assets directory.
+     *
+     * @var string
+     */
+    protected $clientPath;
 
     /**
      * The path to the application directory.
@@ -118,11 +129,53 @@ class Application extends Container
     protected $serviceProviders = [];
 
     /**
+     * The queued ghost providers keyed by class name.
+     *
+     * @var array<class-string<ServiceProvider>, ServiceProvider>
+     */
+    protected array $ghostProviders = [];
+
+    /**
+     * Map of service identifiers to ghost provider classes.
+     *
+     * @var array<string, class-string<ServiceProvider>>
+     */
+    protected array $ghostServices = [];
+
+    /**
+     * Tracks ghost providers that have already been loaded.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $loadedGhostProviders = [];
+
+    /**
+     * Tracks ghost providers currently being loaded.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $loadingGhostProviders = [];
+
+    /**
      * Indicates if the providers has been booted
      *
      * @var bool
      */
     protected $providersBooted = false;
+
+    /**
+     * Indicates if the application is currently booting eager providers.
+     *
+     * @var bool
+     */
+    protected bool $bootingProviders = false;
+
+    /**
+     * Tracks providers whose boot method has already run.
+     *
+     * @var array<class-string<ServiceProvider>, true>
+     */
+    protected array $bootedProviderClasses = [];
 
     /**
      * @var Router
@@ -151,10 +204,18 @@ class Application extends Container
     protected $relaxablePaths = [];
 
     /**
+     * Callbacks that should run after the request lifecycle has finished.
+     *
+     * @var array<int, array{callback: callable, parameters: array<int, \ReflectionParameter>}>
+     */
+    protected array $terminatingCallbacks = [];
+
+    /**
      * Application constructor.
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
+     * - Loading environment variables from .env before anything else.
      * - Setting up exception handling.
      * - Loading configuration.
      * - Defining necessary folder paths.
@@ -163,6 +224,7 @@ class Application extends Container
     public function __construct()
     {
         parent::setInstance($this);
+        $this->loadEnvironmentVariables();
         $this->withExceptionHandler();
         $this->withConfiguration();
         $this->bindSingletonClasses();
@@ -177,7 +239,7 @@ class Application extends Container
      */
     public function langPath($path = ''): string
     {
-        return $this->getPath("lang/{$path}");
+        return $this->getPath($this->buildPathFragment('lang', $path));
     }
 
     /**
@@ -196,6 +258,7 @@ class Application extends Container
     /**
      * Set the application base path
      *
+     * @param string $basePath
      * @return self
      */
     public function withBasePath(string $basePath): self
@@ -220,6 +283,21 @@ class Application extends Container
     }
 
     /**
+     * Load environment variables from .env file
+     *
+     * @return void
+     */
+    protected function loadEnvironmentVariables(): void
+    {
+        if (isset($_ENV['APP_ENV'])) {
+            return;
+        }
+
+        $dotenv = Dotenv::createImmutable(base_path());
+        $dotenv->safeLoad();
+    }
+
+    /**
      * Registers the application configuration
      *
      * @return self
@@ -231,7 +309,7 @@ class Application extends Container
             $this->cachedConfig = true;
         }
 
-        $this->environment = $this->cachedConfig['app.env'] ?? env('APP_ENV');
+        $this->environment = config('app.env') ?? env('APP_ENV');
 
         return $this;
     }
@@ -269,10 +347,61 @@ class Application extends Container
     {
         foreach ($providers as $provider) {
             $providerInstance = new $provider($this);
+
             if ($providerInstance instanceof ServiceProvider) {
-                $providerInstance->register();
-                $this->serviceProviders[] = $providerInstance;
+                if ($this->shouldQueueGhostProvider($providerInstance)) {
+                    $this->queueGhostProvider($providerInstance);
+                    continue;
+                }
+
+                $this->registerProviderInstance($providerInstance);
             }
+        }
+    }
+
+    /**
+     * Determine if the provider should be queued as a ghost provider
+     *
+     * @param ServiceProvider $providerInstance
+     * @return bool
+     */
+    protected function shouldQueueGhostProvider(ServiceProvider $providerInstance): bool
+    {
+        return !$this->runningInConsole() && $providerInstance instanceof GhostableProvider;
+    }
+
+    /**
+     * Register and track an eager provider instance.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function registerProviderInstance(ServiceProvider $providerInstance): void
+    {
+        $providerInstance->register();
+
+        $this->serviceProviders[] = $providerInstance;
+    }
+
+    /**
+     * Queue a ghost provider until one of its services is requested.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function queueGhostProvider(ServiceProvider $providerInstance): void
+    {
+        /** @var GhostableProvider $providerInstance */
+        $providerClass = $providerInstance::class;
+
+        $this->ghostProviders[$providerClass] = $providerInstance;
+
+        foreach ($providerInstance->ghosts() as $ghost) {
+            if (!is_string($ghost) || $ghost === '') {
+                continue;
+            }
+
+            $this->ghostServices[$ghost] = $providerClass;
         }
     }
 
@@ -299,8 +428,14 @@ class Application extends Container
      */
     protected function bootProviders(): void
     {
-        foreach ($this->serviceProviders as $providerInstance) {
-            $providerInstance->boot();
+        $this->bootingProviders = true;
+
+        try {
+            foreach ($this->serviceProviders as $providerInstance) {
+                $this->bootProviderInstance($providerInstance);
+            }
+        } finally {
+            $this->bootingProviders = false;
         }
 
         $this->bootstrap();
@@ -323,6 +458,7 @@ class Application extends Container
         $this->publicPath = $this->publicPath();
         $this->storagePath = $this->storagePath();
         $this->resourcesPath = $this->resourcesPath();
+        $this->clientPath = $this->clientPath();
     }
 
     /**
@@ -333,61 +469,96 @@ class Application extends Container
      */
     protected function getPath(string $folder): string
     {
-        if (!isset($this->pathCache[$folder])) {
-            $this->pathCache[$folder] = base_path($folder);
+        $normalizedFolder = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $folder), DIRECTORY_SEPARATOR);
+
+        if (!isset($this->pathCache[$normalizedFolder])) {
+            $this->pathCache[$normalizedFolder] = base_path($normalizedFolder);
         }
 
-        return $this->pathCache[$folder];
+        return $this->pathCache[$normalizedFolder];
     }
 
     /**
      * Gets the resources path.
      *
+     * @param string $path
      * @return string
      */
     public function resourcesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath("resources/{$path}");
+        return $this->resourcesPath = $this->getPath($this->buildPathFragment('resources', $path));
+    }
+
+    /**
+     * Gets the client assets path.
+     *
+     * @param string $path
+     * @return string
+     */
+    public function clientPath($path = ''): string
+    {
+        return $this->clientPath = $this->getPath($this->buildPathFragment('resources/client', $path));
     }
 
     /**
      * Gets the bootstrap path.
      *
+     * @param string $path
      * @return string
      */
     public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath("bootstrap/{$path}");
+        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('bootstrap', $path));
     }
 
     /**
      * Gets the database path.
      *
+     * @param string $path
      * @return string
      */
     public function databasePath($path = ''): string
     {
-        return $this->databasePath = $this->getPath("database/{$path}");
+        return $this->databasePath = $this->getPath($this->buildPathFragment('database', $path));
     }
 
     /**
      * Gets the public path.
      *
+     * @param string $path
      * @return string
      */
     public function publicPath($path = ''): string
     {
-        return $this->publicPath = $this->getPath("public/{$path}");
+        return $this->publicPath = $this->getPath($this->buildPathFragment('public', $path));
     }
 
     /**
      * Gets the storage path.
      *
+     * @param string $path
      * @return string
      */
     public function storagePath($path = ''): string
     {
-        return $this->storagePath = $this->getPath("storage/{$path}");
+        return $this->storagePath = $this->getPath($this->buildPathFragment('storage', $path));
+    }
+
+    /**
+     * Build a relative path fragment from a prefix and optional child path.
+     *
+     * @param string $prefix
+     * @param string $path
+     * @return string
+     */
+    protected function buildPathFragment(string $prefix, string $path = ''): string
+    {
+        $normalizedPrefix = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $prefix), DIRECTORY_SEPARATOR);
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return $normalizedPath === ''
+            ? $normalizedPrefix
+            : $normalizedPrefix . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**
@@ -578,6 +749,7 @@ class Application extends Container
         $this->singleton('path.public', fn() => $this->publicPath());
         $this->singleton('path.storage', fn() => $this->storagePath());
         $this->singleton('path.resources', fn() => $this->resourcesPath());
+        $this->singleton('path.client', fn() => $this->clientPath());
         $this->singleton('path.database', fn() => $this->databasePath());
     }
 
@@ -622,7 +794,6 @@ class Application extends Container
     protected function loadCoreProviders(): array
     {
         return [
-            \Phaseolies\Providers\EnvServiceProvider::class,
             \Phaseolies\Providers\FacadeServiceProvider::class,
             \Phaseolies\Providers\LanguageServiceProvider::class,
             \Phaseolies\Providers\SessionServiceProvider::class,
@@ -657,6 +828,81 @@ class Application extends Container
         }
 
         return null;
+    }
+
+    /**
+     * Determine if the application has a binding or queued ghost for the given service.
+     *
+     * @param string $key
+     * @return bool
+     */
+    public function has(string $key): bool
+    {
+        return parent::has($key) || isset($this->ghostServices[$key]);
+    }
+
+    /**
+     * Load a queued ghost provider when one of its services is requested.
+     *
+     * @param string $abstract
+     * @return bool
+     */
+    public function loadGhostProvider(string $abstract): bool
+    {
+        $providerClass = $this->ghostServices[$abstract] ?? null;
+
+        if ($providerClass === null) {
+            return false;
+        }
+
+        if (isset($this->loadedGhostProviders[$providerClass]) || isset($this->loadingGhostProviders[$providerClass])) {
+            return true;
+        }
+
+        $providerInstance = $this->ghostProviders[$providerClass] ?? null;
+
+        if (!$providerInstance instanceof ServiceProvider) {
+            return false;
+        }
+
+        $this->loadingGhostProviders[$providerClass] = true;
+
+        foreach (($providerInstance instanceof GhostableProvider ? $providerInstance->ghosts() : []) as $ghost) {
+            unset($this->ghostServices[$ghost]);
+        }
+
+        try {
+            $this->registerProviderInstance($providerInstance);
+
+            if ($this->providersBooted || $this->bootingProviders) {
+                $this->bootProviderInstance($providerInstance);
+            }
+
+            $this->loadedGhostProviders[$providerClass] = true;
+
+            return true;
+        } finally {
+            unset($this->loadingGhostProviders[$providerClass], $this->ghostProviders[$providerClass]);
+        }
+    }
+
+    /**
+     * Boot a provider instance once.
+     *
+     * @param ServiceProvider $providerInstance
+     * @return void
+     */
+    protected function bootProviderInstance(ServiceProvider $providerInstance): void
+    {
+        $providerClass = $providerInstance::class;
+
+        if (isset($this->bootedProviderClasses[$providerClass])) {
+            return;
+        }
+
+        $providerInstance->boot();
+
+        $this->bootedProviderClasses[$providerClass] = true;
     }
 
     /**
@@ -774,22 +1020,205 @@ class Application extends Container
     }
 
     /**
+     * Register a callback to run after the response has been sent.
+     *
+     * Supported callback parameter names are: $request, $response, $exception.
+     *
+     * @param callable $callback
+     * @return self
+     */
+    public function terminating(callable $callback): self
+    {
+        $this->terminatingCallbacks[] = [
+            'callback' => $callback,
+            'parameters' => $this->reflectCallable($callback)->getParameters(),
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Run all registered terminating callbacks for the completed request.
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    public function terminate(Request $request, ?Response $response = null, ?\Throwable $exception = null): void
+    {
+        try {
+            foreach ($this->terminatingCallbacks as $callback) {
+                $this->callTerminatingCallback($callback, $request, $response, $exception);
+            }
+        } finally {
+            $this->cleanupRequestScopedServices();
+        }
+    }
+
+    /**
+     * Drop resolved request-scoped services while preserving their bindings.
+     *
+     * @return void
+     */
+    protected function cleanupRequestScopedServices(): void
+    {
+        if ($this->has('auth')) {
+            $auth = $this->make('auth');
+
+            if ($auth instanceof ActorManager) {
+                $auth->forgetActors();
+            }
+        }
+
+        foreach (['session', 'request', 'response', 'redirect'] as $abstract) {
+            $this->forgetResolved($abstract);
+        }
+    }
+
+    /**
+     * Invoke a terminating callback with the current lifecycle context.
+     *
+     * @param array{callback: callable, parameters: array<int, \ReflectionParameter>} $callback
+     * @param Request $request
+     * @param Response|null $response
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    protected function callTerminatingCallback(array $callback, Request $request, ?Response $response = null, ?\Throwable $exception = null): void
+    {
+        $namedContext = [
+            'request' => $request,
+            'response' => $response,
+            'exception' => $exception,
+        ];
+
+        $arguments = [];
+
+        foreach ($callback['parameters'] as $parameter) {
+            $resolved = false;
+            $type = $parameter->getType();
+
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $typeName = $type->getName();
+
+                if ($request instanceof $typeName) {
+                    $arguments[] = $request;
+                    $resolved = true;
+                } elseif ($response instanceof $typeName) {
+                    $arguments[] = $response;
+                    $resolved = true;
+                } elseif ($exception instanceof $typeName) {
+                    $arguments[] = $exception;
+                    $resolved = true;
+                } elseif ($this->typeAllowsNull($type)) {
+                    $arguments[] = null;
+                    $resolved = true;
+                }
+            } elseif ($type instanceof \ReflectionUnionType && $this->typeAllowsNull($type)) {
+                $arguments[] = null;
+                $resolved = true;
+            }
+
+            if (!$resolved && array_key_exists($parameter->getName(), $namedContext)) {
+                $arguments[] = $namedContext[$parameter->getName()];
+                $resolved = true;
+            }
+
+            if (!$resolved && $parameter->isDefaultValueAvailable()) {
+                $arguments[] = $parameter->getDefaultValue();
+                $resolved = true;
+            }
+
+            if (!$resolved) {
+                throw new \RuntimeException(
+                    "Unresolvable terminating callback parameter '\${$parameter->getName()}'."
+                );
+            }
+        }
+
+        call_user_func_array($callback['callback'], $arguments);
+    }
+
+    /**
+     * Create a reflection instance for a generic PHP callable.
+     *
+     * @param callable $callback
+     * @return \ReflectionFunctionAbstract
+     */
+    protected function reflectCallable(callable $callback): \ReflectionFunctionAbstract
+    {
+        if (is_array($callback)) {
+            return new \ReflectionMethod($callback[0], $callback[1]);
+        }
+
+        if (is_object($callback) && method_exists($callback, '__invoke')) {
+            return new \ReflectionMethod($callback, '__invoke');
+        }
+
+        return new \ReflectionFunction($callback);
+    }
+
+    /**
+     * Determine whether a reflected parameter type explicitly allows null.
+     *
+     * @param \ReflectionType $type
+     * @return bool
+     */
+    protected function typeAllowsNull(\ReflectionType $type): bool
+    {
+        if ($type instanceof \ReflectionNamedType) {
+            return $type->allowsNull();
+        }
+
+        if ($type instanceof \ReflectionUnionType) {
+            foreach ($type->getTypes() as $innerType) {
+                if ($innerType instanceof \ReflectionNamedType && $innerType->getName() === 'null') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolve the incoming request into a response instance.
+     *
+     * @param Request $request
+     * @return Response
+     */
+    public function handle(Request $request): Response
+    {
+        $response = $this->router->resolve($this, $request);
+
+        if (!$response instanceof Response) {
+            $response = $response->setBody((string) $response);
+        }
+
+        return $response;
+    }
+
+    /**
      * Dispatches the application request.
      *
      * @param Request $request
-     * @return void
+     * @return DispatchResult
      */
-    public function dispatch($request): void
+    public function dispatch($request): DispatchResult
     {
         try {
-            $response = $this->router->resolve($this, $request);
-            if (!$response instanceof Response) {
-                $response = $response->setBody((string) $response);
-            }
+            $this->instance('request', $request);
+
+            $response = $this->handle($request);
 
             $response->prepare($request)->send();
+
+            return new DispatchResult($this, $request, $response);
         } catch (HttpException $e) {
             Response::dispatchHttpException($e);
+
+            return new DispatchResult($this, $request, null, $e);
         }
     }
 }

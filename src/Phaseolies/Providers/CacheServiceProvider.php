@@ -8,9 +8,11 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Psr\SimpleCache\CacheInterface;
 use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Providers\GhostableProvider;
 use Phaseolies\Cache\CacheStore;
+use Phaseolies\Cache\IncrementableCacheInterface;
 
-class CacheServiceProvider extends ServiceProvider
+class CacheServiceProvider extends ServiceProvider implements GhostableProvider
 {
     /**
      * @var \Closure[] Custom adapter factories
@@ -26,6 +28,8 @@ class CacheServiceProvider extends ServiceProvider
     {
         $adapter = $this->createAdapter(config('caching.default', 'file'));
         $cacheStore = new CacheStore($adapter, config('caching.prefix'));
+        $this->app->singleton(CacheStore::class, fn() => $cacheStore);
+        $this->app->singleton(IncrementableCacheInterface::class, fn() => $cacheStore);
         $this->app->singleton(CacheInterface::class, fn() => $cacheStore);
         $this->app->singleton('cache', fn() => $cacheStore);
     }
@@ -154,5 +158,20 @@ class CacheServiceProvider extends ServiceProvider
     public function boot()
     {
         //
+    }
+
+    /**
+     * Get the services that should ghost-load this provider.
+     *
+     * @return array<int, string>
+     */
+    public function ghosts(): array
+    {
+        return [
+            CacheStore::class,
+            IncrementableCacheInterface::class,
+            CacheInterface::class,
+            'cache',
+        ];
     }
 }

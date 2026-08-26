@@ -1,70 +1,78 @@
 <?php
 
-namespace Tests\Unit\Application;
+namespace Tests\Application;
 
-use Tests\Application\Mock\StaticCallableClass;
-use Tests\Application\Mock\SimpleClass;
-use Tests\Application\Mock\Services\ConcreteServiceLayer;
-use Tests\Application\Mock\Services\ConcreteService;
-use Tests\Application\Mock\Services\AlternateDependency;
-use Tests\Application\Mock\Repository\ConcreteRepository;
-use Tests\Application\Mock\Providers\TestServiceProvider;
-use Tests\Application\Mock\Providers\ProviderWithDependencies;
-use Tests\Application\Mock\Providers\BootableServiceProvider;
-use Tests\Application\Mock\Providers\BootableProviderWithDependencies;
-use Tests\Application\Mock\Providers\AnotherServiceProvider;
-use Tests\Application\Mock\MixedOptionalClass;
-use Tests\Application\Mock\InvokableClass;
-use Tests\Application\Mock\Interfaces\UnboundInterface;
-use Tests\Application\Mock\Interfaces\TestInterface;
-use Tests\Application\Mock\Interfaces\ServiceLayerInterface;
-use Tests\Application\Mock\Interfaces\ServiceInterface;
-use Tests\Application\Mock\Interfaces\RepositoryInterface;
-use Tests\Application\Mock\Interfaces\DependencyInterface;
-use Tests\Application\Mock\ExtendedSimpleClass;
-use Tests\Application\Mock\DeepNestedClass;
-use Tests\Application\Mock\DatabaseConnection;
-use Tests\Application\Mock\Counter;
-use Tests\Application\Mock\Controllers\ControllerClass;
-use Tests\Application\Mock\ConcreteImplementation;
-use Tests\Application\Mock\ConcreteDependency;
-use Tests\Application\Mock\ComplexDependencyGraph;
-use Tests\Application\Mock\ComplexConstructorClass;
-use Tests\Application\Mock\ClassWithoutConstructor;
-use Tests\Application\Mock\ClassWithVariadic;
-use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
-use Tests\Application\Mock\ClassWithUnboundDependency;
-use Tests\Application\Mock\ClassWithTypedVariadic;
-use Tests\Application\Mock\ClassWithString;
-use Tests\Application\Mock\ClassWithOptionalDependency;
-use Tests\Application\Mock\ClassWithOnlyOptionals;
-use Tests\Application\Mock\ClassWithNullableDefault;
-use Tests\Application\Mock\ClassWithNullableClass;
-use Tests\Application\Mock\ClassWithNullable;
-use Tests\Application\Mock\ClassWithNestedDependency;
-use Tests\Application\Mock\ClassWithMultiplePrimitives;
-use Tests\Application\Mock\ClassWithMultipleDependencies;
-use Tests\Application\Mock\ClassWithMixedRequiredOptional;
-use Tests\Application\Mock\ClassWithMixedParams;
-use Tests\Application\Mock\ClassWithManyParams;
-use Tests\Application\Mock\ClassWithInt;
-use Tests\Application\Mock\ClassWithFloat;
-use Tests\Application\Mock\ClassWithEmptyConstructor;
-use Tests\Application\Mock\ClassWithDependencyChain;
-use Tests\Application\Mock\ClassWithDependencyAndVariadic;
-use Tests\Application\Mock\ClassWithDependency;
-use Tests\Application\Mock\ClassWithDefaults;
-use Tests\Application\Mock\ClassWithBool;
-use Tests\Application\Mock\ClassWithArray;
-use Tests\Application\Mock\ClassWithAllDefaults;
-use Tests\Application\Mock\CircularC;
-use Tests\Application\Mock\CircularB;
-use Tests\Application\Mock\CircularA;
-use Tests\Application\Mock\CallableClass;
-use Tests\Application\Mock\ApplicationClass;
-use Tests\Application\Mock\Abstracts\AbstractClass;
 use Phaseolies\DI\Container;
+use Phaseolies\DI\Exceptions\ImmutableViolationException;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use Tests\Application\Mock\Abstracts\AbstractClass;
+use Tests\Application\Mock\ApplicationClass;
+use Tests\Application\Mock\CallableClass;
+use Tests\Application\Mock\CircularA;
+use Tests\Application\Mock\CircularB;
+use Tests\Application\Mock\CircularC;
+use Tests\Application\Mock\ClassWithAllDefaults;
+use Tests\Application\Mock\ClassWithArray;
+use Tests\Application\Mock\ClassWithBool;
+use Tests\Application\Mock\ClassWithDefaults;
+use Tests\Application\Mock\ClassWithDependency;
+use Tests\Application\Mock\ClassWithDependencyAndVariadic;
+use Tests\Application\Mock\ClassWithDependencyChain;
+use Tests\Application\Mock\ClassWithEmptyConstructor;
+use Tests\Application\Mock\ClassWithFloat;
+use Tests\Application\Mock\ClassWithInt;
+use Tests\Application\Mock\ClassWithManyParams;
+use Tests\Application\Mock\ClassWithMixedParams;
+use Tests\Application\Mock\ClassWithMixedRequiredOptional;
+use Tests\Application\Mock\ClassWithMultipleDependencies;
+use Tests\Application\Mock\ClassWithMultiplePrimitives;
+use Tests\Application\Mock\ClassWithNestedDependency;
+use Tests\Application\Mock\ClassWithNullable;
+use Tests\Application\Mock\ClassWithNullableClass;
+use Tests\Application\Mock\ClassWithNullableDefault;
+use Tests\Application\Mock\ClassWithOnlyOptionals;
+use Tests\Application\Mock\ClassWithOptionalDependency;
+use Tests\Application\Mock\ClassWithoutConstructor;
+use Tests\Application\Mock\ClassWithString;
+use Tests\Application\Mock\ClassWithTypedVariadic;
+use Tests\Application\Mock\ClassWithUnboundDependency;
+use Tests\Application\Mock\ClassWithUnresolvablePrimitive;
+use Tests\Application\Mock\ClassWithVariadic;
+use Tests\Application\Mock\ComplexConstructorClass;
+use Tests\Application\Mock\ComplexDependencyGraph;
+use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\ConcreteImplementation;
+use Tests\Application\Mock\Controllers\ControllerClass;
+use Tests\Application\Mock\Counter;
+use Tests\Application\Mock\DatabaseConnection;
+use Tests\Application\Mock\DeepNestedClass;
+use Tests\Application\Mock\ExtendedSimpleClass;
+use Tests\Application\Mock\Interfaces\ConnectionInterface;
+use Tests\Application\Mock\Interfaces\DependencyInterface;
+use Tests\Application\Mock\Interfaces\RepositoryInterface;
+use Tests\Application\Mock\Interfaces\ServiceInterface;
+use Tests\Application\Mock\Interfaces\ServiceLayerInterface;
+use Tests\Application\Mock\Interfaces\TestInterface;
+use Tests\Application\Mock\Interfaces\UnboundInterface;
+use Tests\Application\Mock\InvokableClass;
+use Tests\Application\Mock\MixedOptionalClass;
+use Tests\Application\Mock\Providers\AnotherServiceProvider;
+use Tests\Application\Mock\Providers\BootableProviderWithDependencies;
+use Tests\Application\Mock\Providers\BootableServiceProvider;
+use Tests\Application\Mock\Providers\ProviderWithDependencies;
+use Tests\Application\Mock\Providers\TestServiceProvider;
+use Tests\Application\Mock\Repository\ConcreteRepository;
+use Tests\Application\Mock\Services\AlternateDependency;
+use Tests\Application\Mock\Services\ConcreteService;
+use Tests\Application\Mock\Services\ConcreteServiceLayer;
+use Tests\Application\Mock\Services\MockMailerService;
+use Tests\Application\Mock\Services\MockMutableService;
+use Tests\Application\Mock\Services\MockPaymentService;
+use Tests\Application\Mock\Services\MockServiceWithConstructor;
+use Tests\Application\Mock\SimpleClass;
+use Tests\Application\Mock\StaticCallableClass;
+use TypeError;
 
 class ContainerTest extends TestCase
 {
@@ -81,15 +89,12 @@ class ContainerTest extends TestCase
         $reflection = new \ReflectionClass(Container::class);
 
         $bindings = $reflection->getProperty('bindings');
-        $bindings->setAccessible(true);
         $bindings->setValue(null, []);
 
         $instances = $reflection->getProperty('instances');
-        $instances->setAccessible(true);
         $instances->setValue(null, []);
 
         $instance = $reflection->getProperty('instance');
-        $instance->setAccessible(true);
         $instance->setValue(null, null);
     }
 
@@ -879,6 +884,36 @@ class ContainerTest extends TestCase
         $this->assertFalse($this->container->hasInstance('service2'));
     }
 
+    public function testForgetResolvedClearsResolvedSingletonInstanceButKeepsBinding()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+        $this->container->get('service');
+
+        $this->container->forgetResolved('service');
+
+        $this->assertTrue($this->container->has('service'));
+        $this->assertFalse($this->container->hasInstance('service'));
+        $this->assertFalse($this->container->resolved('service'));
+    }
+
+    public function testForgetResolvedAllowsSingletonToBeResolvedFresh()
+    {
+        $this->container->singleton('service', fn() => new \stdClass());
+
+        $first = $this->container->get('service');
+        $this->container->forgetResolved('service');
+        $second = $this->container->get('service');
+
+        $this->assertNotSame($first, $second);
+    }
+
+    public function testForgetResolvedForUnknownBindingDoesNotThrow()
+    {
+        $this->container->forgetResolved('missing-service');
+
+        $this->assertFalse($this->container->hasInstance('missing-service'));
+    }
+
     public function testFlushAllowsRebinding()
     {
         $this->container->bind('service', fn() => 'value1');
@@ -968,7 +1003,7 @@ class ContainerTest extends TestCase
         $this->assertInstanceOf(ConcreteDependency::class, $instance->dependency);
     }
 
-     public function testMakeWithParameters()
+    public function testMakeWithParameters()
     {
         $instance = $this->container->make(ClassWithString::class, ['name' => 'Test']);
         $this->assertEquals('Test', $instance->name);
@@ -1128,7 +1163,7 @@ class ContainerTest extends TestCase
 
     public function testIsResolvingDuringResolution()
     {
-        $this->container->bind('service', function() {
+        $this->container->bind('service', function () {
             return $this->container->isResolving('service') ? 'resolving' : 'not';
         });
 
@@ -1323,7 +1358,7 @@ class ContainerTest extends TestCase
 
     public function testCallableWithContainerParameter()
     {
-        $this->container->bind('test', function(Container $container) {
+        $this->container->bind('test', function (Container $container) {
             return $container->has('dependency') ? 'has' : 'not';
         });
 
@@ -1333,7 +1368,7 @@ class ContainerTest extends TestCase
 
     public function testCallableWithParameters()
     {
-        $this->container->bind('test', function(Container $c, array $params) {
+        $this->container->bind('test', function (Container $c, array $params) {
             return $params['value'] ?? 'default';
         });
 
@@ -1344,7 +1379,7 @@ class ContainerTest extends TestCase
     public function testNestedCallableResolution()
     {
         $this->container->bind('inner', fn() => 'inner_value');
-        $this->container->bind('outer', function(Container $c) {
+        $this->container->bind('outer', function (Container $c) {
             return $c->get('inner') . '_outer';
         });
 
@@ -1437,11 +1472,11 @@ class ContainerTest extends TestCase
 
     public function testNestedContainerCalls()
     {
-        $this->container->bind('level1', function(Container $c) {
+        $this->container->bind('level1', function (Container $c) {
             return $c->get('level2') . ':1';
         });
 
-        $this->container->bind('level2', function(Container $c) {
+        $this->container->bind('level2', function (Container $c) {
             return $c->get('level3') . ':2';
         });
 
@@ -1568,7 +1603,7 @@ class ContainerTest extends TestCase
     // COMPLEX SCENARIOS
     //====================================
 
-     public function testDependencyGraphWithSingletons()
+    public function testDependencyGraphWithSingletons()
     {
         $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
         $this->container->bind(ServiceInterface::class, ConcreteService::class);
@@ -1583,7 +1618,7 @@ class ContainerTest extends TestCase
     public function testComplexDependencyWithExtend()
     {
         $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
-        $this->container->extend(DependencyInterface::class, function($dep, $c) {
+        $this->container->extend(DependencyInterface::class, function ($dep, $c) {
             $dep->extended = true;
             return $dep;
         });
@@ -1610,11 +1645,11 @@ class ContainerTest extends TestCase
         $this->assertEquals([], $instance->items);
     }
 
-   //========================================
-   // EDGE CASES
-   //========================================
+    //========================================
+    // EDGE CASES
+    //========================================
 
-   public function testBindingWithSpecialCharacters()
+    public function testBindingWithSpecialCharacters()
     {
         $this->container->bind('service.name', fn() => 'value');
         $this->assertEquals('value', $this->container->get('service.name'));
@@ -1730,7 +1765,7 @@ class ContainerTest extends TestCase
 
     public function testDependencyWithFactory()
     {
-        $this->container->bind(DependencyInterface::class, function() {
+        $this->container->bind(DependencyInterface::class, function () {
             static $counter = 0;
             $dep = new ConcreteDependency();
             $dep->id = ++$counter;
@@ -1745,7 +1780,7 @@ class ContainerTest extends TestCase
 
     public function testSingletonWithFactory()
     {
-        $this->container->singleton(DependencyInterface::class, function() {
+        $this->container->singleton(DependencyInterface::class, function () {
             static $counter = 0;
             $dep = new ConcreteDependency();
             $dep->id = ++$counter;
@@ -1762,7 +1797,7 @@ class ContainerTest extends TestCase
     public function testExtendWithComplexLogic()
     {
         $this->container->bind('service', fn() => ['base' => true]);
-        $this->container->extend('service', function($original, $c) {
+        $this->container->extend('service', function ($original, $c) {
             $original['extended'] = true;
             $original['dependency'] = $c->has('dep') ? 'yes' : 'no';
             return $original;
@@ -1833,7 +1868,7 @@ class ContainerTest extends TestCase
     {
         $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
 
-        $result = $this->container->call(function(DependencyInterface $dep) {
+        $result = $this->container->call(function (DependencyInterface $dep) {
             return get_class($dep);
         });
 
@@ -1984,7 +2019,7 @@ class ContainerTest extends TestCase
         $this->assertTrue($this->container->has('provider_service'));
     }
 
-     public function testServiceProviderBootReceivesDependencies()
+    public function testServiceProviderBootReceivesDependencies()
     {
         $this->container->bind(DependencyInterface::class, ConcreteDependency::class);
         $provider = new BootableProviderWithDependencies();
@@ -2025,7 +2060,7 @@ class ContainerTest extends TestCase
     public function testExtendPreservesSingletonBehavior()
     {
         $this->container->singleton('service', fn() => new \stdClass());
-        $this->container->extend('service', function($obj) {
+        $this->container->extend('service', function ($obj) {
             $obj->extended = true;
             return $obj;
         });
@@ -2040,7 +2075,7 @@ class ContainerTest extends TestCase
     public function testExtendPreservesTransientBehavior()
     {
         $this->container->bind('service', fn() => new \stdClass());
-        $this->container->extend('service', function($obj) {
+        $this->container->extend('service', function ($obj) {
             $obj->extended = true;
             return $obj;
         });
@@ -2195,7 +2230,7 @@ class ContainerTest extends TestCase
 
     public function testCallWithClosureBindTo()
     {
-        $closure = function() {
+        $closure = function () {
             return $this->container->has('test') ? 'yes' : 'no';
         };
 
@@ -2368,7 +2403,7 @@ class ContainerTest extends TestCase
         // Setup complex scenario
         $this->container->singleton(DependencyInterface::class, ConcreteDependency::class);
         $this->container->bind(ServiceInterface::class, ConcreteService::class);
-        $this->container->extend(DependencyInterface::class, function($dep) {
+        $this->container->extend(DependencyInterface::class, function ($dep) {
             $dep->extended = true;
             return $dep;
         });
@@ -2384,4 +2419,598 @@ class ContainerTest extends TestCase
         $aliased = $this->container->get('service');
         $this->assertInstanceOf(ConcreteService::class, $aliased);
     }
+
+    // =========================================================================
+    // FREEZE STATE TESTS
+    // =========================================================================
+
+    public function testServiceIsNotFrozenBeforeContainerResolves()
+    {
+        $service = new MockPaymentService();
+        $this->assertFalse($service->isFrozen());
+    }
+
+    public function testServiceIsFrozenAfterMake()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertTrue($service->isFrozen());
+    }
+
+    public function testServiceIsFrozenAfterSingletonResolves()
+    {
+        $this->container->singleton(MockPaymentService::class);
+        $service = $this->container->get(MockPaymentService::class);
+        $this->assertTrue($service->isFrozen());
+    }
+
+    public function testManualFreezeWorks()
+    {
+        $service = new MockPaymentService();
+        $this->assertFalse($service->isFrozen());
+        $service->freeze();
+        $this->assertTrue($service->isFrozen());
+    }
+
+    public function testFreezeIsIdempotent()
+    {
+        $service = new MockPaymentService();
+        $service->freeze();
+        // $service->freeze(); // second call must not throw
+        // Phaseolies\DI\Exceptions\ImmutableViolationException: Cannot mutate property $gateway on immutable service [Tests\Application\Mock\Services\MockPaymentService]. Services marked #[Immutable] are frozen after instantiation.
+
+        $this->assertTrue($service->isFrozen());
+    }
+
+    // =========================================================================
+    // PROPERTY READ TESTS
+    // =========================================================================
+
+    public function testReadStringPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals('stripe', $service->gateway);
+    }
+
+    public function testReadFloatPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(0.08, $service->taxRate);
+    }
+
+    public function testReadBoolPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse($service->liveMode);
+    }
+
+    public function testReadIntPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(3, $service->retries);
+    }
+
+    public function testReadArrayPropertyAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(['card', 'bank'], $service->methods);
+    }
+
+    public function testAllPropertiesRetainCorrectValuesAfterFreeze()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->assertEquals('stripe',         $service->gateway);
+        $this->assertEquals(0.08,             $service->taxRate);
+        $this->assertFalse($service->liveMode);
+        $this->assertEquals(3,                $service->retries);
+        $this->assertEquals(['card', 'bank'], $service->methods);
+    }
+
+    public function testIssetOnFrozenPropertyReturnsTrue()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertTrue(isset($service->gateway));
+    }
+
+    public function testIssetOnNonExistentPropertyReturnsFalse()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse(isset($service->nonExistent));
+    }
+
+    // =========================================================================
+    // METHOD CALL TESTS
+    // =========================================================================
+
+    public function testMethodCallAfterFreezeWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(100.00);
+
+        $this->assertEquals('stripe',  $result['gateway']);
+        $this->assertEquals(100.00,    $result['amount']);
+        $this->assertEquals(8.00,      $result['tax']);
+        $this->assertEquals(108.00,    $result['total']);
+        $this->assertEquals('charged', $result['status']);
+    }
+
+    public function testMethodThatReadsStringPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals('stripe', $service->getGateway());
+    }
+
+    public function testMethodThatReadsBoolPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertFalse($service->isLive());
+    }
+
+    public function testMethodThatReadsIntPropertyInternallyWorks()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $this->assertEquals(3, $service->getRetries());
+    }
+
+    public function testChargeComputesTaxCorrectly()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(200.00);
+
+        $this->assertEquals(16.00,  $result['tax']);
+        $this->assertEquals(216.00, $result['total']);
+    }
+
+    public function testChargeWithZeroAmount()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $result  = $service->charge(0.00);
+
+        $this->assertEquals(0.00, $result['tax']);
+        $this->assertEquals(0.00, $result['total']);
+    }
+
+    // =========================================================================
+    // MUTATION BLOCKING TESTS — core immutability contract
+    // =========================================================================
+
+    public function testWriteStringPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->gateway = 'paypal';
+    }
+
+    public function testWriteFloatPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->taxRate = 0.0;
+    }
+
+    public function testWriteBoolPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->liveMode = true;
+    }
+
+    public function testWriteIntPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->retries = 99;
+    }
+
+    public function testWriteArrayPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->methods = ['crypto'];
+    }
+
+    public function testWriteNewDynamicPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->brandNewProp = 'sneaky';
+    }
+
+    public function testUnsetPropertyAfterFreezeThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        unset($service->gateway);
+    }
+
+    public function testExceptionMessageContainsClassName()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('MockPaymentService', $e->getMessage());
+        }
+    }
+
+    public function testExceptionMessageContainsPropertyName()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('taxRate', $e->getMessage());
+        }
+    }
+
+    public function testExceptionMessageContainsBothClassAndProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->gateway = 'paypal';
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('MockPaymentService', $e->getMessage());
+            $this->assertStringContainsString('gateway',            $e->getMessage());
+        }
+    }
+
+    public function testPropertyValueUnchangedAfterBlockedWrite()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+        } catch (ImmutableViolationException $e) {
+            // expected — swallow
+        }
+
+        $this->assertEquals(0.08, $service->taxRate);
+    }
+
+    public function testGatewayUnchangedAfterBlockedWrite()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->gateway = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            // expected — swallow
+        }
+
+        $this->assertEquals('stripe', $service->gateway);
+    }
+
+    public function testAllWriteAttemptsThrow()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+        $caught  = 0;
+
+        $attempts = [
+            fn() => ($service->gateway  = 'paypal'),
+            fn() => ($service->taxRate  = 0.0),
+            fn() => ($service->liveMode = true),
+            fn() => ($service->retries  = 99),
+        ];
+
+        foreach ($attempts as $attempt) {
+            try {
+                $attempt();
+            } catch (ImmutableViolationException $e) {
+                $caught++;
+            }
+        }
+
+        $this->assertEquals(4, $caught);
+    }
+
+    // =========================================================================
+    // CLONE PROTECTION TESTS
+    // =========================================================================
+
+    public function testCloningFrozenServiceThrows()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $cloned = clone $service;
+    }
+
+    public function testCloningUnfrozenServiceIsAllowed()
+    {
+        $service = new MockPaymentService(); // not through container — not frozen yet
+        $cloned  = clone $service;
+
+        $this->assertNotSame($service, $cloned);
+    }
+
+
+    // =========================================================================
+    // PRE-FREEZE (BOOT WINDOW) TESTS
+    // =========================================================================
+
+    public function testWriteBeforeFreezeSucceeds()
+    {
+        $service          = new MockPaymentService();
+        $service->gateway = 'paypal'; // not frozen — must succeed
+
+        $this->assertEquals('paypal', $service->gateway);
+    }
+
+    public function testMultipleWritesBeforeFreezeAllSucceed()
+    {
+        $service           = new MockPaymentService();
+        $service->gateway  = 'paypal';
+        $service->taxRate  = 0.15;
+        $service->liveMode = true;
+
+        $this->assertEquals('paypal', $service->gateway);
+        $this->assertEquals(0.15,     $service->taxRate);
+        $this->assertTrue($service->liveMode);
+    }
+
+    public function testFreezeSnapshotsValuesSetBeforeFreeze()
+    {
+        $service           = new MockPaymentService();
+        $service->gateway  = 'braintree';
+        $service->taxRate  = 0.10;
+        $service->liveMode = true;
+        $service->freeze();
+
+        $this->assertEquals('braintree', $service->gateway);
+        $this->assertEquals(0.10,        $service->taxRate);
+        $this->assertTrue($service->liveMode);
+    }
+
+    public function testWriteAfterManualFreezeThrows()
+    {
+        $service          = new MockPaymentService();
+        $service->gateway = 'braintree'; // ok — pre-freeze
+        $service->freeze();
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->gateway = 'paypal'; // must throw — post-freeze
+    }
+
+    public function testServiceProviderBootWindowPattern()
+    {
+        // Simulates a ServiceProvider configuring the service before binding
+        $payment          = new MockPaymentService();
+        $payment->gateway = config_mock('payment.gateway', 'braintree');
+        $payment->taxRate = config_mock('payment.tax_rate', 0.15);
+
+        $this->container->singleton(MockPaymentService::class, fn() => $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertEquals('braintree', $resolved->gateway);
+        $this->assertEquals(0.15,        $resolved->taxRate);
+    }
+
+    // =========================================================================
+    // MUTABLE SERVICE CONTROL — non-immutable services must be unaffected
+    // =========================================================================
+
+    public function testMutableServiceCanBeModified()
+    {
+        $service        = $this->container->make(MockMutableService::class);
+        $service->state = 'modified';
+
+        $this->assertEquals('modified', $service->state);
+    }
+
+    public function testMutableServiceMethodMutatesState()
+    {
+        $service = $this->container->make(MockMutableService::class);
+        $service->increment();
+        $service->increment();
+
+        $this->assertEquals(2, $service->count);
+    }
+
+    public function testMutableSingletonStateIsShared()
+    {
+        $this->container->singleton(MockMutableService::class);
+
+        $a = $this->container->get(MockMutableService::class);
+        $a->increment();
+
+        $b = $this->container->get(MockMutableService::class);
+        $this->assertEquals(1, $b->count);
+    }
+
+    // =========================================================================
+    // SINGLETON BEHAVIOUR WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableSingletonReturnsSameInstance()
+    {
+        $this->container->singleton(MockPaymentService::class);
+
+        $first  = $this->container->get(MockPaymentService::class);
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame($first, $second);
+    }
+
+    public function testImmutableSingletonIsFrozenOnFirstResolve()
+    {
+        $this->container->singleton(MockPaymentService::class);
+        $first = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+    }
+
+    public function testImmutableSingletonBlocksMutationOnSecondResolve()
+    {
+        $this->container->singleton(MockPaymentService::class);
+        $this->container->get(MockPaymentService::class);
+
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $second->taxRate = 0.0;
+    }
+
+    public function testImmutableSingletonBothReferencesAreFrozen()
+    {
+        $this->container->singleton(MockPaymentService::class);
+
+        $first  = $this->container->get(MockPaymentService::class);
+        $second = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+        $this->assertSame($first, $second);
+    }
+
+    // =========================================================================
+    // TRANSIENT BEHAVIOUR WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableTransientReturnsDifferentInstances()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertNotSame($first, $second);
+    }
+
+    public function testImmutableTransientEachInstanceIsFrozen()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+    }
+
+    public function testImmutableTransientMutationBlockedOnBothInstances()
+    {
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $firstThrew  = false;
+        $secondThrew = false;
+
+        try {
+            $first->gateway  = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $firstThrew  = true;
+        }
+        try {
+            $second->gateway = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $secondThrew = true;
+        }
+
+        $this->assertTrue($firstThrew);
+        $this->assertTrue($secondThrew);
+    }
+
+    // =========================================================================
+    // CONSTRUCTOR INJECTION WITH IMMUTABLE
+    // =========================================================================
+
+    public function testImmutableServiceWithConstructorArgsIsFrozen()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->assertTrue($service->isFrozen());
+    }
+
+    public function testImmutableServiceWithConstructorArgsPreservesValues()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->assertEquals('doppar', $service->name);
+        $this->assertEquals(42,       $service->value);
+    }
+
+    public function testImmutableServiceWithConstructorArgsMutationThrows()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class, [
+            'name'  => 'doppar',
+            'value' => 42,
+        ]);
+
+        $this->expectException(ImmutableViolationException::class);
+        $service->name = 'hacked';
+    }
+
+    public function testImmutableServiceConstructorDefaultsPreserved()
+    {
+        $service = $this->container->make(MockServiceWithConstructor::class);
+
+        $this->assertEquals('default', $service->name);
+        $this->assertEquals(0,         $service->value);
+        $this->assertTrue($service->isFrozen());
+    }
+
+    // =========================================================================
+    // MULTIPLE IMMUTABLE SERVICES
+    // =========================================================================
+
+    public function testMultipleImmutableServicesAreIndependentlyFrozen()
+    {
+        $payment = $this->container->make(MockPaymentService::class);
+        $mailer  = $this->container->make(MockMailerService::class);
+
+        $this->assertTrue($payment->isFrozen());
+        $this->assertTrue($mailer->isFrozen());
+    }
+
+    public function testMultipleImmutableServicesGuardedIndependently()
+    {
+        $payment = $this->container->make(MockPaymentService::class);
+        $mailer  = $this->container->make(MockMailerService::class);
+
+        $paymentThrew = false;
+        $mailerThrew  = false;
+
+        try {
+            $payment->gateway  = 'paypal';
+        } catch (ImmutableViolationException $e) {
+            $paymentThrew = true;
+        }
+        try {
+            $mailer->host      = 'smtp.hacked.com';
+        } catch (ImmutableViolationException $e) {
+            $mailerThrew  = true;
+        }
+
+        $this->assertTrue($paymentThrew);
+        $this->assertTrue($mailerThrew);
+    }
+
+    public function testMailerServiceReadsWorkAfterFreeze()
+    {
+        $mailer = $this->container->make(MockMailerService::class);
+
+        $this->assertEquals('smtp.example.com', $mailer->host);
+        $this->assertEquals(587,                $mailer->port);
+    }
+}
+
+function config_mock(string $key, mixed $default = null): mixed
+{
+    return $default;
 }

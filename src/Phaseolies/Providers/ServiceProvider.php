@@ -9,11 +9,15 @@ abstract class ServiceProvider
 {
     /**
      * The paths that should be published.
+     *
+     * @var array<string, null|string>
      */
     protected array $publishes = [];
 
     /**
      * The paths that should be published by groups.
+     *
+     * @var array<string, array<string, string>>
      */
     protected array $publishGroups = [];
 
@@ -23,12 +27,16 @@ abstract class ServiceProvider
     public function __construct(protected Application $app) {}
 
     /**
-     * Register bindings into the container.
+     * Register any application services.
+     *
+     * @return void
      */
     abstract public function register();
 
     /**
      * Bootstrap any application services.
+     *
+     * @return void
      */
     abstract public function boot();
 

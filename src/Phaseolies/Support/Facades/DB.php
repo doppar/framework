@@ -22,6 +22,12 @@ namespace Phaseolies\Support\Facades;
  * @method static  execute(string $sql, array $params = []): int
  * @method static  statement(string $sql, array $params = []): \PDOStatement
  * @method static  connection(?string $name = null): self
+ * @method static  bucket(string $table): \Phaseolies\Database\Entity\Query\Builder
+ * @method static  disconnect(?string $connection = null): bool
+ * @method static  reconnect(?string $connection = null): PDO
+ * @method static  isConnected(?string $connection = null): bool
+ * @method static  getFreshConnection(?string $connection = null): PDO
+ * @method static  cleanupAllConnections(): void
  *
  * @see \Phaseolies\Database\Database
  */

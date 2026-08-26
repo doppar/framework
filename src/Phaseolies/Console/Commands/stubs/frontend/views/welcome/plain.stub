@@ -1,0 +1,41 @@
+#extends('layouts.app')
+#section('title')
+    Doppar
+#endsection
+#section('content')
+<main class="doppar-welcome-shell">
+    <header class="doppar-welcome-header">
+        <img class="doppar-welcome-logo" src="[[ enqueue('logo.png') ]]" alt="Logo" />
+        <h2 class="doppar-welcome-title">Welcome to Doppar</h2>
+    </header>
+    <section class="doppar-cta-box">
+        <h3>[[ trans('messages.welcome', ['version' => 'v' . Application::VERSION]) ]]</h3>
+        <p>Craft Fast-Loading PHP Application</p>
+    </section>
+    <section class="doppar-grid">
+        <a href="https://doppar.com/versions/3.x/starter-kits" class="doppar-card">
+            <h3>Starter kits</h3>
+            <p>To give you a head start building your new Doppar application, we are happy to offer application starter kits.</p>
+        </a>
+        <a href="https://doppar.com/versions/3.x/architecture-concept" class="doppar-card">
+            <h3>System Architecture</h3>
+            <p>Doppar follows the Model-View-Controller (MVC) architectural pattern, a widely accepted standard in web application development.</p>
+        </a>
+        <a href="https://doppar.com/versions/3.x/routing" class="doppar-card">
+            <h3>Routing</h3>
+            <p>With support for route prefix grouping, named routes, throttle route, middleware assignment, and RESTful resource routing, Doppar gives developers full control over how requests are handled.</p>
+        </a>
+        <a href="https://doppar.com/versions/3.x/authentication" class="doppar-card">
+            <h3>Authentication</h3>
+            <p>Doppar simplifies this process by providing built-in tools and scaffolding to help you implement user authentication quickly and securely.</p>
+        </a>
+    </section>
+    <div class="doppar-btn-group">
+        <a href="https://github.com/doppar" class="doppar-btn">GitHub</a>
+        <a href="https://doppar.com" class="doppar-btn">Website</a>
+    </div>
+    <div class="doppar-footer">
+        PHP [[ phpversion() ]]
+    </div>
+</main>
+#endsection

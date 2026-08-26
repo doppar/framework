@@ -40,6 +40,7 @@ class RedirectResponse extends Response
             throw new \InvalidArgumentException('Cannot redirect to an empty URL.');
         }
 
+        $this->setOriginal($url);
         $this->setBody(
             sprintf('<!DOCTYPE html>
 <html>

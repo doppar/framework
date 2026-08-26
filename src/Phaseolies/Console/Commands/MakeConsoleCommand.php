@@ -25,18 +25,16 @@ class MakeConsoleCommand extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $name = $this->argument('name');
-            $parts = explode('/', $name);
-            $className = array_pop($parts);
+            [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Schedule\\Commands' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = base_path('app/Schedule/Commands/' . str_replace('/', DIRECTORY_SEPARATOR, $name) . '.php');
+            $filePath = $this->generatedFilePath('app/Schedule/Commands', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Command already exists at:');
-                $this->line('<fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+                $this->line('<fg=white>' . $this->relativePath($filePath) . '</>');
                 return Command::FAILURE;
             }
 
@@ -49,7 +47,7 @@ class MakeConsoleCommand extends Command
             file_put_contents($filePath, $content);
 
             $this->displaySuccess('Command created successfully');
-            $this->line('<fg=yellow>📁 File:</> <fg=white>' . str_replace(base_path(), '', $filePath) . '</>');
+            $this->line('<fg=yellow>📁 File:</> <fg=white>' . $this->relativePath($filePath) . '</>');
             $this->newLine();
             $this->line('<fg=yellow>📌 Command Name:</> <fg=white>doppar:' . $this->convertToKebabCase($className) . '</>');
 
@@ -112,7 +110,7 @@ class {$className} extends Command
      *
      * @return int
      */
-    protected function handle(): int
+    public function handle(): int
     {
         return Command::SUCCESS;
     }

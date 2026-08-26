@@ -5,12 +5,20 @@ namespace Tests\Unit\Application;
 use ReflectionClass;
 use Tests\Support\Kernel;
 use Phaseolies\Application;
+use Phaseolies\Auth\ActorManager;
 use Phaseolies\DI\Container;
+use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Config\Config;
+use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Support\Router;
+use Phaseolies\Support\Session;
 use Phaseolies\Console\Console;
+use Tests\Application\Mock\Providers\GhostableTestProvider;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
 
@@ -46,6 +54,7 @@ class ErrorHandler
     }
 }
 
+#[AllowMockObjectsWithoutExpectations]
 final class ApplicationTest extends TestCase
 {
     private Application $app;
@@ -54,6 +63,7 @@ final class ApplicationTest extends TestCase
     protected function setUp(): void
     {
         $container = new Container();
+        $container->flush();
         $container->bind('config', fn() => Config::class);
 
         // Create a temporary directory structure
@@ -61,12 +71,15 @@ final class ApplicationTest extends TestCase
         $this->createDirectoryStructure();
 
         // Create application instance without calling constructor
-        $this->app = $this->createPartialMock(Application::class, [
-            'registerCoreProviders',
-            'bootCoreProviders',
-            'withConfiguration',
-            'withExceptionHandler'
-        ]);
+        $this->app = $this->getMockBuilder(Application::class)
+            ->onlyMethods([
+                'registerCoreProviders',
+                'bootCoreProviders',
+                'withConfiguration',
+                'withExceptionHandler'
+            ])
+            ->disableOriginalConstructor()
+            ->getMock();
 
         // Set up the mock methods to do nothing
         $this->app->method('registerCoreProviders')->willReturnSelf();
@@ -77,7 +90,6 @@ final class ApplicationTest extends TestCase
         // Now call the parent constructor manually without the problematic initialization
         $reflection = new ReflectionClass(Application::class);
         $constructor = $reflection->getConstructor();
-        $constructor->setAccessible(true);
         $constructor->invoke($this->app);
 
         // Set base path for testing
@@ -86,6 +98,9 @@ final class ApplicationTest extends TestCase
 
     protected function tearDown(): void
     {
+        GhostableTestProvider::resetState();
+        $this->app->flush();
+        Container::forgetInstance();
         $this->deleteDirectory($this->tempBasePath);
     }
 
@@ -140,7 +155,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         $property->setValue($object, $value);
     }
 
@@ -148,7 +162,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $property = $reflection->getProperty($property);
-        $property->setAccessible(true);
         return $property->getValue($object);
     }
 
@@ -156,7 +169,6 @@ final class ApplicationTest extends TestCase
     {
         $reflection = new ReflectionClass($object);
         $method = $reflection->getMethod($method);
-        $method->setAccessible(true);
         return $method->invokeArgs($object, $args);
     }
 
@@ -174,6 +186,7 @@ final class ApplicationTest extends TestCase
     {
         $stringService = app(StringService::class);
         $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
+        $this->assertStringEndsWith('/resources/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
         $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
         $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
         $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
@@ -204,9 +217,73 @@ final class ApplicationTest extends TestCase
         $providers = $this->callProtectedMethod($this->app, 'loadCoreProviders');
 
         $this->assertIsArray($providers);
-        $this->assertContains(\Phaseolies\Providers\EnvServiceProvider::class, $providers);
         $this->assertContains(\Phaseolies\Providers\RouteServiceProvider::class, $providers);
         $this->assertContains(\Phaseolies\Providers\LanguageServiceProvider::class, $providers);
+    }
+
+    public function testGhostableProvidersAreQueuedOutsideConsole(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertTrue($this->app->has('ghost.service'));
+        $this->assertSame([], $this->app->getProviders());
+        $this->assertSame(0, GhostableTestProvider::$registerCount);
+    }
+
+    public function testGhostServiceResolutionLoadsQueuedProviderAndBootsIt(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+        $this->setProtectedProperty($this->app, 'providersBooted', true);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame('ghost-value', $this->app->make('ghost.service'));
+        $this->assertSame('booted', $this->app->make('ghost.booted'));
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
+        $this->assertSame(1, GhostableTestProvider::$bootCount);
+        $this->assertInstanceOf(
+            GhostableTestProvider::class,
+            $this->app->getProvider(GhostableTestProvider::class)
+        );
+    }
+
+    public function testGhostServiceCanBeResolvedDuringProviderRegistration(): void
+    {
+        GhostableTestProvider::resetState();
+        GhostableTestProvider::$resolveDuringRegister = true;
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', false);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame('ghost-value', $this->app->make('ghost.service'));
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
+    }
+
+    public function testGhostableProvidersRemainEagerInConsole(): void
+    {
+        GhostableTestProvider::resetState();
+
+        $this->setProtectedProperty($this->app, 'isRunningInConsole', true);
+
+        $this->callProtectedMethod($this->app, 'registerProviders', [
+            [GhostableTestProvider::class],
+        ]);
+
+        $this->assertSame(1, GhostableTestProvider::$registerCount);
+        $this->assertCount(1, $this->app->getProviders());
     }
 
     public function testSingletonBindings(): void
@@ -288,5 +365,266 @@ final class ApplicationTest extends TestCase
         $result = $this->app->withConfiguration();
 
         $this->assertSame($this->app, $result);
+    }
+
+    public function testHandleReturnsResolvedResponse(): void
+    {
+        $request = new Request();
+        $response = new Response('handled');
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $handled = $this->app->handle($request);
+
+        $this->assertSame($response, $handled);
+    }
+
+    public function testDispatchReturnsTerminableResult(): void
+    {
+        $request = new Request();
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($request)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $captured = [];
+
+        $this->app->terminating(
+            function (
+                Request $requestArg,
+                ?Response $responseArg,
+                ?\Throwable $exception
+            ) use (&$captured): void {
+                $captured = [$requestArg, $responseArg, $exception];
+            }
+        );
+
+        $result = $this->app->dispatch($request);
+
+        $this->assertInstanceOf(DispatchResult::class, $result);
+
+        $result->terminate();
+
+        $this->assertSame($response, $result->response());
+        $this->assertNull($result->exception());
+        $this->assertSame($request, $captured[0]);
+        $this->assertSame($response, $captured[1]);
+        $this->assertNull($captured[2]);
+    }
+
+    public function testDispatchStillTerminatesWhenResultIsIgnored(): void
+    {
+        $request = new Request();
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($request)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $request)
+            ->willReturn($response);
+
+        $this->app->router = $router;
+
+        $captured = [];
+
+        $this->app->terminating(function (
+            Request $requestArg,
+            ?Response $responseArg,
+            ?\Throwable $exception
+        ) use (&$captured): void {
+            $captured = [$requestArg, $responseArg, $exception];
+        });
+
+        $this->app->dispatch($request);
+
+        $this->assertSame($request, $captured[0]);
+        $this->assertSame($response, $captured[1]);
+        $this->assertNull($captured[2]);
+    }
+
+    public function testDispatchRebindsCurrentRequestBeforeResolvingRoutes(): void
+    {
+        $oldRequest = new Request();
+        $newRequest = new Request();
+
+        $this->app->instance('request', $oldRequest);
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+
+        $response->expects($this->once())
+            ->method('prepare')
+            ->with($newRequest)
+            ->willReturnSelf();
+
+        $response->expects($this->once())
+            ->method('send')
+            ->with()
+            ->willReturnSelf();
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->once())
+            ->method('resolve')
+            ->with($this->app, $newRequest)
+            ->willReturnCallback(function () use ($oldRequest, $newRequest, $response) {
+                $this->assertSame($newRequest, app('request'));
+                $this->assertSame($newRequest, app(Request::class));
+                $this->assertNotSame($oldRequest, app('request'));
+
+                return $response;
+            });
+
+        $this->app->router = $router;
+
+        $this->app->dispatch($newRequest);
+    }
+
+    public function testDispatchResultDoesNotTerminateTwiceAfterExplicitTermination(): void
+    {
+        $request = new Request();
+        $response = new Response('ok');
+        $calls = 0;
+
+        $this->app->terminating(function () use (&$calls): void {
+            $calls++;
+        });
+
+        $result = new DispatchResult($this->app, $request, $response);
+
+        $result->terminate();
+        unset($result);
+
+        $this->assertSame(1, $calls);
+    }
+
+    public function testTerminateProvidesLifecycleContextToNamedParameters(): void
+    {
+        $request = new Request();
+        $response = new Response('ok');
+        $exception = new HttpException(500, 'Lifecycle failed');
+
+        $captured = [];
+
+        $this->app->terminating(function ($request, $response, $exception) use (&$captured): void {
+            $captured = compact('request', 'response', 'exception');
+        });
+
+        $this->app->terminate($request, $response, $exception);
+
+        $this->assertSame($request, $captured['request']);
+        $this->assertSame($response, $captured['response']);
+        $this->assertSame($exception, $captured['exception']);
+    }
+
+    public function testTerminateCleansRequestScopedServicesAfterCallbacks(): void
+    {
+        $_SESSION = [];
+
+        $request = new Request();
+        $response = new Response('ok');
+        $session = new Session();
+        $redirect = new RedirectResponse();
+
+        $auth = $this->getMockBuilder(ActorManager::class)
+            ->onlyMethods(['forgetActors'])
+            ->getMock();
+
+        $auth->expects($this->once())
+            ->method('forgetActors');
+
+        $this->app->instance('request', $request);
+        $this->app->instance('response', $response);
+        $this->app->instance('session', $session);
+        $this->app->instance('redirect', $redirect);
+        $this->app->instance('auth', $auth);
+
+        $seenInsideCallback = [];
+
+        $this->app->terminating(function () use (&$seenInsideCallback): void {
+            $seenInsideCallback = [
+                'request' => $this->app->hasInstance('request'),
+                'response' => $this->app->hasInstance('response'),
+                'session' => $this->app->hasInstance('session'),
+                'redirect' => $this->app->hasInstance('redirect'),
+                'auth' => $this->app->hasInstance('auth'),
+            ];
+        });
+
+        $this->app->terminate($request, $response);
+
+        $this->assertSame([
+            'request' => true,
+            'response' => true,
+            'session' => true,
+            'redirect' => true,
+            'auth' => true,
+        ], $seenInsideCallback);
+
+        $this->assertFalse($this->app->hasInstance('request'));
+        $this->assertFalse($this->app->hasInstance('response'));
+        $this->assertFalse($this->app->hasInstance('session'));
+        $this->assertFalse($this->app->hasInstance('redirect'));
+        $this->assertTrue($this->app->hasInstance('auth'));
+    }
+
+    public function testTerminateStillCleansRequestScopedServicesWithoutCallbacks(): void
+    {
+        $_SESSION = [];
+
+        $request = new Request();
+        $response = new Response('ok');
+
+        $this->app->instance('request', $request);
+        $this->app->instance('response', $response);
+        $this->app->instance('session', new Session());
+        $this->app->instance('redirect', new RedirectResponse());
+
+        $this->app->terminate($request, $response);
+
+        $this->assertFalse($this->app->hasInstance('request'));
+        $this->assertFalse($this->app->hasInstance('response'));
+        $this->assertFalse($this->app->hasInstance('session'));
+        $this->assertFalse($this->app->hasInstance('redirect'));
     }
 }

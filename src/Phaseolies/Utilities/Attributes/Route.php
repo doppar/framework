@@ -13,7 +13,8 @@ final class Route
         public ?string $name = null,
         public array $middleware = [],
         public ?int $rateLimit = null,
-        public ?int $rateLimitDecay = 1
+        public ?int $rateLimitDecay = 1,
+        public ?string $domain = null
     ) {
         if (is_string($this->methods)) {
             $this->methods = [$this->methods];
