@@ -30,7 +30,7 @@ class MakeHookCommand extends Command
         return $this->executeWithTiming(function() {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Hooks' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Hooks', $name);
+            $filePath = $this->generatedFilePath('src/Hooks', $name);
 
             // Check if hook already exists
             if (file_exists($filePath)) {

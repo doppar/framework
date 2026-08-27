@@ -73,7 +73,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $command->fakeArguments['name'] = 'ReportsSyncCommand';
 
         $result = $command->handle();
-        $file = Env::path('app/Schedule/Commands/ReportsSyncCommand.php');
+        $file = Env::path('src/Schedule/Commands/ReportsSyncCommand.php');
 
         $this->assertSame(0, $result);
         $this->assertFileExists($file);
@@ -88,16 +88,16 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $routesPath = Env::path('routes/web.php');
+        $routesPath = Env::path('runtime/routes/web.php');
         mkdir(dirname($routesPath), 0755, true);
         file_put_contents($routesPath, "<?php\n");
 
         $result = $command->handle();
 
         $this->assertSame(0, $result);
-        $this->assertFileExists(Env::path('app/Http/Controllers/Auth/LoginController.php'));
-        $this->assertFileExists(Env::path('resources/views/auth/login.odo.php'));
-        $this->assertFileExists(Env::path('resources/views/layouts/app.odo.php'));
+        $this->assertFileExists(Env::path('src/Http/Controllers/Auth/LoginController.php'));
+        $this->assertFileExists(Env::path('templates/views/auth/login.odo.php'));
+        $this->assertFileExists(Env::path('templates/views/layouts/app.odo.php'));
         $this->assertSame("<?php\n", (string) file_get_contents($routesPath));
         $this->assertContains('Authentication scaffolding generated successfully', $command->capturedSuccesses);
     }
@@ -122,7 +122,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertStringContainsString('namespace App\\Http\\Controllers\\Admin;', $content);
         $this->assertStringContainsString('class UserController', $content);
         $this->assertStringContainsString('view admin.users', $content);
-        $this->assertStringContainsString('path app/Http/Controllers/Admin/UserController.php', $content);
+        $this->assertStringContainsString('path src/Http/Controllers/Admin/UserController.php', $content);
     }
 
     public function testCommandHelpersNormalizeGeneratedNamesAndRelativePaths(): void
@@ -140,8 +140,8 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(['Admin', 'Hello'], $parts);
         $this->assertSame('TestProvider', $className);
         $this->assertSame(
-            'app/Providers/Hello/TestProvider.php',
-            $this->invokeMethod($command, 'relativePath', [Env::path('app/Providers/Hello/TestProvider.php')])
+            'src/Providers/Hello/TestProvider.php',
+            $this->invokeMethod($command, 'relativePath', [Env::path('src/Providers/Hello/TestProvider.php')])
         );
     }
 
@@ -155,7 +155,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $command->fakeArguments['name'] = 'Hello\\TestProvider';
 
         $result = $command->handle();
-        $file = Env::path('app/Providers/Hello/TestProvider.php');
+        $file = Env::path('src/Providers/Hello/TestProvider.php');
         $contents = (string) file_get_contents($file);
         $lines = array_map(static fn(array $line): string => $line[0], $command->capturedLines);
 
@@ -164,7 +164,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertStringContainsString('namespace App\\Providers\\Hello;', $contents);
         $this->assertStringContainsString('class TestProvider extends ServiceProvider', $contents);
         $this->assertContains(
-            '<fg=yellow>📦 File:</> <fg=white>app/Providers/Hello/TestProvider.php</>',
+            '<fg=yellow>📦 File:</> <fg=white>src/Providers/Hello/TestProvider.php</>',
             $lines
         );
     }
@@ -194,11 +194,11 @@ class CommandBehaviorCoverageTest extends TestCase
 
         $this->assertSame('App\\Http\\Controllers\\Admin', $namespace);
         $this->assertSame(
-            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, Env::path('app/Http/Controllers/Admin/UserController.php')),
+            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, Env::path('src/Http/Controllers/Admin/UserController.php')),
             $filePath
         );
         $this->assertSame('UserController', $className);
-        $this->assertFileExists(Env::path('resources/views/admin/users/default.odo.php'));
+        $this->assertFileExists(Env::path('templates/views/admin/users/default.odo.php'));
     }
 
     public function testMakeAuthorizerCommandGeneratesModelAwarePolicyMethods(): void
@@ -338,8 +338,8 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(0, $addColumn->handle());
         $this->assertSame(
             [
-                ['create_users_table', Env::path('database/migrations'), 'users', true],
-                ['add_status_to_orders', Env::path('database/migrations'), 'orders', false, 'status', 'string', 'name'],
+            ['create_users_table', Env::path('schema/migrations'), 'users', true],
+            ['add_status_to_orders', Env::path('schema/migrations'), 'orders', false, 'status', 'string', 'name'],
             ],
             $calls
         );
@@ -355,7 +355,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $firstRun = $command->handle();
         $secondRun = $command->handle();
 
-        $paginationDir = Env::path('resources/views/vendor/pagination');
+        $paginationDir = Env::path('templates/views/vendor/pagination');
 
         $this->assertSame(0, $firstRun);
         $this->assertSame(0, $secondRun);
@@ -541,13 +541,13 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $viewDir = Env::path('resources/views/admin');
+        $viewDir = Env::path('templates/views/admin');
         mkdir($viewDir, 0755, true);
         file_put_contents($viewDir . '/dashboard.odo.php', '<h1>Dashboard</h1>');
 
         $cacheDir = Env::path('storage/framework/views');
-        $this->invokeMethod($command, 'ensureDirectoriesExist', [Env::path('resources/views'), $cacheDir]);
-        $files = $this->invokeMethod($command, 'getAllViewFiles', [Env::path('resources/views')]);
+        $this->invokeMethod($command, 'ensureDirectoriesExist', [Env::path('templates/views'), $cacheDir]);
+        $files = $this->invokeMethod($command, 'getAllViewFiles', [Env::path('templates/views')]);
 
         $this->assertDirectoryExists($cacheDir);
         $this->assertSame([realpath($viewDir . '/dashboard.odo.php')], $files);

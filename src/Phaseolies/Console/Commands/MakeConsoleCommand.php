@@ -30,7 +30,7 @@ class MakeConsoleCommand extends Command
         return $this->executeWithTiming(function() {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Schedule\\Commands' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Schedule/Commands', $name);
+            $filePath = $this->generatedFilePath('src/Schedule/Commands', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Command already exists at:');

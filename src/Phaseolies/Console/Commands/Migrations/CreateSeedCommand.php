@@ -29,7 +29,7 @@ class CreateSeedCommand extends Command
     {
         return $this->executeWithTiming(function() {
             $name = $this->argument('name');
-            $filePath = base_path('database/seeders/' . $name . '.php');
+            $filePath = base_path('schema/seeders/' . $name . '.php');
 
             if (file_exists($filePath)) {
                 $this->displayError('Seed file already exists!');

@@ -78,6 +78,6 @@ class CreateMigrationCommand extends Command
      */
     protected function getMigrationPath(): string
     {
-        return base_path('database/migrations');
+        return base_path('schema/migrations');
     }
 }

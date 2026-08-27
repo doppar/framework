@@ -37,7 +37,7 @@ class MigrateTemporalCommand extends Command
         return $this->executeWithTiming(function () {
             $connection = $this->option('connection') ?: null;
             $dryRun     = (bool) $this->option('show');
-            $modelsPath = $this->option('path') ?: base_path('app/Models');
+            $modelsPath = $this->option('path') ?: base_path('src/Models');
 
             $connectionLabel = $connection ?: 'per-model';
 

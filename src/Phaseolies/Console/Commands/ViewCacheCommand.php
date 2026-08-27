@@ -37,7 +37,7 @@ class ViewCacheCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function() {
-            $viewPath = base_path('resources/views');
+            $viewPath = base_path('templates/views');
             $cachePath = base_path('storage/framework/views');
 
             // Validate directories
@@ -77,7 +77,7 @@ class ViewCacheCommand extends Command
         $results = ['success' => [], 'failed' => []];
 
         foreach ($viewFiles as $file) {
-            $relativePath = $this->relativePath($file, base_path('resources/views'));
+            $relativePath = $this->relativePath($file, base_path('templates/views'));
             $viewName = str_replace(['/', '.odo.php'], ['.', ''], $relativePath);
 
             try {

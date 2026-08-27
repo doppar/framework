@@ -30,7 +30,7 @@ class MakeWatcherCommand extends Command
         return $this->executeWithTiming(function () {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Watchers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath  = $this->generatedFilePath('app/Watchers', $name);
+            $filePath  = $this->generatedFilePath('src/Watchers', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Watcher already exists at:');

@@ -225,7 +225,7 @@ if (!function_exists('back')) {
      * @param int $status
      * @param array $headers
      * @param mixed $fallback
-     * @return \Phaseolies\Http\RedirectResponse
+     * @return \Phaseolies\Http\Response\RedirectResponse
      */
     function back($status = 302, $headers = [], $fallback = false)
     {
@@ -326,10 +326,10 @@ if (!function_exists('config')) {
      * Retrieve a configuration value by key.
      *
      * @param string $key
-     * @param string $default
+     * @param mixed $default
      * @return mixed
      */
-    function config(string|array $key, ?string $default = null): mixed
+    function config(string|array $key, mixed $default = null): mixed
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
@@ -728,16 +728,16 @@ if (!function_exists('public_path')) {
     }
 }
 
-if (!function_exists('resource_path')) {
+if (!function_exists('template_path')) {
     /**
-     * Get the resources path of the application.
+     * Get the template path of the application.
      *
      * @param string $path
      * @return string
      */
-    function resource_path(string $path = ''): string
+    function template_path(string $path = ''): string
     {
-        return app()->resourcesPath($path);
+        return app()->templatesPath($path);
     }
 }
 
@@ -767,16 +767,16 @@ if (!function_exists('config_path')) {
     }
 }
 
-if (!function_exists('database_path')) {
+if (!function_exists('schema_path')) {
     /**
-     * Get the database path of the application.
+     * Get the schema path of the application.
      *
      * @param string $path
      * @return string
      */
-    function database_path(string $path = ''): string
+    function schema_path(string $path = ''): string
     {
-        return app()->databasePath($path);
+        return app()->schemaPath($path);
     }
 }
 

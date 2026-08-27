@@ -569,7 +569,7 @@ trait ValidationRules
     {
         $value = $input[$fieldName] ?? '';
 
-        return $value === null || $value === '';
+        return $value === '';
     }
 
     /**
@@ -832,7 +832,7 @@ trait ValidationRules
             return empty($value);
         }
 
-        return $value === '' || $value === null;
+        return $value === '';
     }
 
     /**

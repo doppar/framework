@@ -151,7 +151,7 @@ trait InteractsWithDynamicControllerBinding
      */
     protected function scanDefaultControllerDirectory(): array
     {
-        $controllerPath = base_path('app/Http/Controllers');
+        $controllerPath = base_path('src/Http/Controllers');
         $controllers = [];
 
         if (!is_dir($controllerPath)) {

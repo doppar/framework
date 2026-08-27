@@ -12,8 +12,8 @@
 {{ jsxOption }}
         "baseUrl": ".",
         "paths": {
-            "@/*": ["resources/client/js/*"]
+            "@/*": ["templates/client/js/*"]
         }
     },
-    "include": ["resources/client/**/*.ts", "resources/client/**/*.tsx", "resources/client/**/*.vue", "resources/client/**/*.svelte"]
+    "include": ["templates/client/**/*.ts", "templates/client/**/*.tsx", "templates/client/**/*.vue", "templates/client/**/*.svelte"]
 }

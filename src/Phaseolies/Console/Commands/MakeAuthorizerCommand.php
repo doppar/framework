@@ -32,7 +32,7 @@ class MakeAuthorizerCommand extends Command
             $model = $this->option('model') ?? $this->option('m');
 
             $namespace = 'App\\Authorizers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Authorizers', $name);
+            $filePath = $this->generatedFilePath('src/Authorizers', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Authorizer already exists at:');

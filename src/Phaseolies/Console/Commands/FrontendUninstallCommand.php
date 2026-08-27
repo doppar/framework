@@ -135,11 +135,11 @@ class FrontendUninstallCommand extends Command
             client_path('js/App.tsx'),
             client_path('js/App.vue'),
             client_path('js/App.svelte'),
-            base_path('client/css/app.css'),
-            base_path('client/js/app.js'),
-            base_path('client/js/app.ts'),
-            base_path('client/js/bootstrap.js'),
-            base_path('client/js/bootstrap.ts'),
+            base_path('templates/client/css/app.css'),
+            base_path('templates/client/js/app.js'),
+            base_path('templates/client/js/app.ts'),
+            base_path('templates/client/js/bootstrap.js'),
+            base_path('templates/client/js/bootstrap.ts'),
             base_path('client/js/main.js'),
             base_path('client/js/main.ts'),
             base_path('client/js/main.jsx'),
@@ -195,7 +195,7 @@ class FrontendUninstallCommand extends Command
     protected function legacyFrontendDirectories(): array
     {
         return [
-            $this->projectPath('resources/client'),
+            $this->projectPath('templates/client'),
             $this->projectPath('client'),
         ];
     }
@@ -226,7 +226,7 @@ class FrontendUninstallCommand extends Command
      */
     protected function removeLegacyViteMarkersFromLayouts(): int
     {
-        $viewsPath = base_path('resources/views');
+        $viewsPath = base_path('templates/views');
 
         if (!is_dir($viewsPath)) {
             return 0;
@@ -357,7 +357,7 @@ class FrontendUninstallCommand extends Command
             && str_contains($contents, "storage/framework/vite.hot")
             && str_contains($contents, "outDir: 'public/build'")
             && (
-                str_contains($contents, "path.resolve(__dirname, 'resources/client')")
+                str_contains($contents, "path.resolve(__dirname, 'templates/client')")
                 || str_contains($contents, "path.resolve(__dirname, 'client')")
             );
     }
@@ -378,13 +378,13 @@ class FrontendUninstallCommand extends Command
 
         return ($decoded['compilerOptions']['moduleResolution'] ?? null) === 'Bundler'
             && ($decoded['compilerOptions']['baseUrl'] ?? null) === '.'
-            && in_array(($decoded['compilerOptions']['paths']['@/*'][0] ?? null), ['resources/client/js/*', 'client/js/*'], true)
+            && in_array(($decoded['compilerOptions']['paths']['@/*'][0] ?? null), ['templates/client/js/*', 'client/js/*'], true)
             && (
-                in_array('resources/client/**/*.ts', $decoded['include'] ?? [], true)
+                in_array('templates/client/**/*.ts', $decoded['include'] ?? [], true)
                 || in_array('client/**/*.ts', $decoded['include'] ?? [], true)
             )
             && (
-                in_array('resources/client/**/*.tsx', $decoded['include'] ?? [], true)
+                in_array('templates/client/**/*.tsx', $decoded['include'] ?? [], true)
                 || in_array('client/**/*.tsx', $decoded['include'] ?? [], true)
             );
     }

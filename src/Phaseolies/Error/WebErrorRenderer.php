@@ -223,7 +223,7 @@ class WebErrorRenderer
     protected function resolveErrorViewPath(int $statusCode): ?string
     {
         $customPath = base_path(
-            'resources'
+            'templates'
             . DIRECTORY_SEPARATOR . 'views'
             . DIRECTORY_SEPARATOR . 'errors'
             . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"

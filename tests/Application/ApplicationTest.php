@@ -107,22 +107,26 @@ final class ApplicationTest extends TestCase
     private function createDirectoryStructure(): void
     {
         $dirs = [
-            '/config',
-            '/bootstrap',
-            '/database/migrations',
+            '/runtime/config',
+            '/runtime',
+            '/schema/migrations',
             '/public',
             '/storage',
-            '/resources',
-            '/resources/lang',
-            '/app',
+            '/templates',
+            '/templates/lang',
+            '/src',
         ];
 
         foreach ($dirs as $dir) {
-            mkdir($this->tempBasePath . $dir, 0777, true);
+            $path = $this->tempBasePath . $dir;
+
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
         }
 
         // Create minimal config file
-        file_put_contents($this->tempBasePath . '/config/app.php', "<?php return [
+        file_put_contents($this->tempBasePath . '/runtime/config/app.php', "<?php return [
             'env' => 'testing',
             'locale' => 'en',
             'fallback_locale' => 'en',
@@ -185,14 +189,14 @@ final class ApplicationTest extends TestCase
     public function testPathMethodsReturnCorrectPaths(): void
     {
         $stringService = app(StringService::class);
-        $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
-        $this->assertStringEndsWith('/resources/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
-        $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
-        $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
+        $this->assertStringEndsWith('/templates/views', $stringService->urlHarmonize($this->app->templatesPath('views')));
+        $this->assertStringEndsWith('/templates/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
+        $this->assertStringEndsWith('/runtime/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
+        $this->assertStringEndsWith('/schema/migrations', $stringService->urlHarmonize($this->app->schemaPath('migrations')));
         $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
         $this->assertStringEndsWith('/storage/logs', $stringService->urlHarmonize($this->app->storagePath('logs')));
-        $this->assertStringEndsWith('/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
-        $this->assertStringEndsWith('/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
+        $this->assertStringEndsWith('/runtime/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
+        $this->assertStringEndsWith('/templates/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
     }
 
     public function testPathCaching(): void

@@ -30,7 +30,7 @@ class MakeMiddlewareCommand extends Command
         return $this->executeWithTiming(function() {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Http\\Middleware' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Http/Middleware', $name);
+            $filePath = $this->generatedFilePath('src/Http/Middleware', $name);
 
             // Check if middleware already exists
             if (file_exists($filePath)) {

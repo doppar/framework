@@ -84,8 +84,8 @@ abstract class PackageServiceProvider extends ServiceProvider
 
         foreach ($paths as $from) {
             $publishPaths[$from] = match ($type) {
-                'migrations' => database_path('migrations/' . basename($from)),
-                'views' => resource_path('views/vendor/' . $this->packageName),
+                'migrations' => schema_path('migrations/' . basename($from)),
+                'views' => template_path('views/vendor/' . $this->packageName),
                 'lang' => lang_path('vendor/' . $this->packageName),
                 default => $from,
             };

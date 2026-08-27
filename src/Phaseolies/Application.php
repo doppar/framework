@@ -56,7 +56,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $resourcesPath;
+    protected $templatesPath;
 
     /**
      * The path to the client-side assets directory.
@@ -84,7 +84,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $databasePath;
+    protected $schemaPath;
 
     /**
      * The path to the public directory.
@@ -239,7 +239,7 @@ class Application extends Container
      */
     public function langPath($path = ''): string
     {
-        return $this->getPath($this->buildPathFragment('lang', $path));
+        return $this->getPath($this->buildPathFragment('templates/lang', $path));
     }
 
     /**
@@ -454,10 +454,10 @@ class Application extends Container
         $this->configPath = $this->configPath();
         $this->appPath = $this->appPath();
         $this->bootstrapPath = $this->bootstrapPath();
-        $this->databasePath = $this->databasePath();
+        $this->schemaPath = $this->schemaPath();
         $this->publicPath = $this->publicPath();
         $this->storagePath = $this->storagePath();
-        $this->resourcesPath = $this->resourcesPath();
+        $this->templatesPath = $this->templatesPath();
         $this->clientPath = $this->clientPath();
     }
 
@@ -479,14 +479,14 @@ class Application extends Container
     }
 
     /**
-     * Gets the resources path.
+     * Gets the templates path.
      *
      * @param string $path
      * @return string
      */
-    public function resourcesPath($path = ''): string
+    public function templatesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath($this->buildPathFragment('resources', $path));
+        return $this->templatesPath = $this->getPath($this->buildPathFragment('templates', $path));
     }
 
     /**
@@ -497,7 +497,7 @@ class Application extends Container
      */
     public function clientPath($path = ''): string
     {
-        return $this->clientPath = $this->getPath($this->buildPathFragment('resources/client', $path));
+        return $this->clientPath = $this->getPath($this->buildPathFragment('templates/client', $path));
     }
 
     /**
@@ -508,7 +508,7 @@ class Application extends Container
      */
     public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('bootstrap', $path));
+        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('runtime', $path));
     }
 
     /**
@@ -517,9 +517,9 @@ class Application extends Container
      * @param string $path
      * @return string
      */
-    public function databasePath($path = ''): string
+    public function schemaPath($path = ''): string
     {
-        return $this->databasePath = $this->getPath($this->buildPathFragment('database', $path));
+        return $this->schemaPath = $this->getPath($this->buildPathFragment('schema', $path));
     }
 
     /**
@@ -568,7 +568,7 @@ class Application extends Container
      */
     public function appPath(): string
     {
-        return $this->appPath = $this->basePath();
+        return $this->appPath = $this->getPath('src');
     }
 
     /**
@@ -588,7 +588,7 @@ class Application extends Container
      */
     public function configPath($path = ''): string
     {
-        return $this->configPath = $this->getPath("config/{$path}");
+        return $this->configPath = $this->getPath("runtime/config/{$path}");
     }
 
     /**
@@ -748,9 +748,9 @@ class Application extends Container
         $this->singleton('path.config', fn() => $this->configPath());
         $this->singleton('path.public', fn() => $this->publicPath());
         $this->singleton('path.storage', fn() => $this->storagePath());
-        $this->singleton('path.resources', fn() => $this->resourcesPath());
+        $this->singleton('path.templates', fn() => $this->templatesPath());
         $this->singleton('path.client', fn() => $this->clientPath());
-        $this->singleton('path.database', fn() => $this->databasePath());
+        $this->singleton('path.database', fn() => $this->schemaPath());
     }
 
     /**
@@ -781,7 +781,7 @@ class Application extends Container
             fn() =>
             new \Phaseolies\Database\Migration\Migrator(
                 new \Phaseolies\Database\Migration\MigrationRepository(),
-                database_path('migrations')
+                schema_path('migrations')
             )
         );
     }

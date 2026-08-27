@@ -88,7 +88,7 @@ class Migrator
         $migrations = array_diff($fileNames, $ran);
 
         foreach ($vendorMigrations as $basename => $vendorPath) {
-            if (!file_exists(database_path('migration/' . $basename))) {
+            if (!file_exists(schema_path('migrations/' . $basename))) {
                 $migrations[] = $vendorPath;
             }
 
@@ -171,7 +171,7 @@ class Migrator
         /**
          * 🧠 Build a map by basename so project migrations override vendor ones
          * Example:
-         *   2025_10_11_000001_create_users_table.php → pick from database/migrations if exists
+         *   2025_10_11_000001_create_users_table.php → pick from schema/migrations if exists
          */
         $migrationMap = [];
 

@@ -30,7 +30,7 @@ class MakeProviderCommand extends Command
         return $this->executeWithTiming(function () {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Providers' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Providers', $name);
+            $filePath = $this->generatedFilePath('src/Providers', $name);
 
             // Check if provider already exists
             if (file_exists($filePath)) {

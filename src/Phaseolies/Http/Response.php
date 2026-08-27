@@ -662,7 +662,7 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $status, string $message): void
     {
-        $customPath = base_path("resources/views/errors/{$status}.odo.php");
+        $customPath = base_path("templates/views/errors/{$status}.odo.php");
         $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$status}.odo.php");
 
         if (file_exists($customPath)) {
@@ -734,7 +734,7 @@ class Response implements HttpStatus
 
         ob_start();
 
-        include base_path("resources/views/{$viewPath}.odo.php");
+        include base_path("templates/views/{$viewPath}.odo.php");
 
         return ob_get_clean();
     }
