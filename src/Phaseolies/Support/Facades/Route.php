@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Support\Facades;
 
+use Phaseolies\Facade\BaseFacade;
+
 /**
  * @method static \Phaseolies\Support\Router get(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router post(string $uri, array|string|callable|null $callback)
@@ -26,9 +28,6 @@ namespace Phaseolies\Support\Facades;
  *
  * @see \Phaseolies\Support\Router
  */
-
-use Phaseolies\Facade\BaseFacade;
-
 class Route extends BaseFacade
 {
     protected static function getFacadeAccessor()
