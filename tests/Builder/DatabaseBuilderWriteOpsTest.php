@@ -18,7 +18,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -48,7 +48,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
     //     $stmt->method('execute')->willReturn(true);
 
     //     $this->pdoMock = $this->createMock(PDO::class);
-    //     $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+    //     $this->pdoMock->method('getAttribute')->willReturn('mysql');
     //     $this->pdoMock->method('prepare')->willReturn($stmt);
     //     $this->pdoMock->method('lastInsertId')->willReturn('42');
 
@@ -82,7 +82,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
         $stmt->method('rowCount')->willReturn(2);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturn($stmt);
 
         $builder = $this->createBuilder();
@@ -103,7 +103,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
         $stmt->method('bindValue');
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturn($stmt);
 
         $builder = $this->createBuilder();
@@ -119,7 +119,7 @@ class DatabaseBuilderWriteOpsTest extends TestCase
         $stmt->method('bindValue');
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturn($stmt);
 
         $builder = $this->createBuilder();

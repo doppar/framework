@@ -1,13 +1,13 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
-use Phaseolies\Providers\ServiceProvider;
-use Phaseolies\Providers\GhostableProvider;
+use Phaseolies\Launchers\ServiceLauncher;
+use Phaseolies\Launchers\GhostableLauncher;
 use Phaseolies\Cache\IncrementableCacheInterface;
 use Phaseolies\Cache\RateLimiter;
 
-class RateLimiterServiceProvider extends ServiceProvider implements GhostableProvider
+class RateLimiterLauncher extends ServiceLauncher implements GhostableLauncher
 {
     /**
      * Register the service provider.
@@ -26,7 +26,7 @@ class RateLimiterServiceProvider extends ServiceProvider implements GhostablePro
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         //
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Support\UrlGenerator;
@@ -23,7 +23,7 @@ use Phaseolies\Auth\Security\PasswordHashing;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 
-class FacadeServiceProvider extends ServiceProvider
+class FacadeLauncher extends ServiceLauncher
 {
     /**
      * Register any application services.
@@ -123,7 +123,7 @@ class FacadeServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         //
     }

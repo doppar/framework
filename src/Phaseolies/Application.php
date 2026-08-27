@@ -4,8 +4,8 @@ namespace Phaseolies;
 
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\Support\Router;
-use Phaseolies\Providers\GhostableProvider;
-use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Launchers\GhostableLauncher;
+use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
@@ -122,7 +122,7 @@ class Application extends Container
     protected $isRunningInConsole = null;
 
     /**
-     * The registered service providers.
+     * The registered service launchers.
      *
      * @var array
      */
@@ -131,28 +131,28 @@ class Application extends Container
     /**
      * The queued ghost providers keyed by class name.
      *
-     * @var array<class-string<ServiceProvider>, ServiceProvider>
+     * @var array<class-string<ServiceLauncher>, ServiceLauncher>
      */
     protected array $ghostProviders = [];
 
     /**
      * Map of service identifiers to ghost provider classes.
      *
-     * @var array<string, class-string<ServiceProvider>>
+     * @var array<string, class-string<ServiceLauncher>>
      */
     protected array $ghostServices = [];
 
     /**
      * Tracks ghost providers that have already been loaded.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $loadedGhostProviders = [];
 
     /**
      * Tracks ghost providers currently being loaded.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $loadingGhostProviders = [];
 
@@ -173,7 +173,7 @@ class Application extends Container
     /**
      * Tracks providers whose boot method has already run.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $bootedProviderClasses = [];
 
@@ -331,7 +331,7 @@ class Application extends Container
      */
     protected function registerCoreProviders(): self
     {
-        $providers = [...($this->loadCoreProviders()), ...(config('app.providers') ?? [])];
+        $providers = [...($this->loadCoreProviders()), ...(config('app.launchers') ?? [])];
 
         $this->registerProviders($providers);
 
@@ -348,7 +348,7 @@ class Application extends Container
         foreach ($providers as $provider) {
             $providerInstance = new $provider($this);
 
-            if ($providerInstance instanceof ServiceProvider) {
+            if ($providerInstance instanceof ServiceLauncher) {
                 if ($this->shouldQueueGhostProvider($providerInstance)) {
                     $this->queueGhostProvider($providerInstance);
                     continue;
@@ -362,21 +362,21 @@ class Application extends Container
     /**
      * Determine if the provider should be queued as a ghost provider
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return bool
      */
-    protected function shouldQueueGhostProvider(ServiceProvider $providerInstance): bool
+    protected function shouldQueueGhostProvider(ServiceLauncher $providerInstance): bool
     {
-        return !$this->runningInConsole() && $providerInstance instanceof GhostableProvider;
+        return !$this->runningInConsole() && $providerInstance instanceof GhostableLauncher;
     }
 
     /**
      * Register and track an eager provider instance.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function registerProviderInstance(ServiceProvider $providerInstance): void
+    protected function registerProviderInstance(ServiceLauncher $providerInstance): void
     {
         $providerInstance->register();
 
@@ -386,12 +386,12 @@ class Application extends Container
     /**
      * Queue a ghost provider until one of its services is requested.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function queueGhostProvider(ServiceProvider $providerInstance): void
+    protected function queueGhostProvider(ServiceLauncher $providerInstance): void
     {
-        /** @var GhostableProvider $providerInstance */
+        /** @var ServiceLauncher&GhostableLauncher $providerInstance */
         $providerClass = $providerInstance::class;
 
         $this->ghostProviders[$providerClass] = $providerInstance;
@@ -794,12 +794,12 @@ class Application extends Container
     protected function loadCoreProviders(): array
     {
         return [
-            \Phaseolies\Providers\FacadeServiceProvider::class,
-            \Phaseolies\Providers\LanguageServiceProvider::class,
-            \Phaseolies\Providers\SessionServiceProvider::class,
-            \Phaseolies\Providers\RouteServiceProvider::class,
-            \Phaseolies\Providers\CacheServiceProvider::class,
-            \Phaseolies\Providers\RateLimiterServiceProvider::class,
+            \Phaseolies\Launchers\FacadeLauncher::class,
+            \Phaseolies\Launchers\LanguageLauncher::class,
+            \Phaseolies\Launchers\SessionLauncher::class,
+            \Phaseolies\Launchers\RouteLauncher::class,
+            \Phaseolies\Launchers\CacheLauncher::class,
+            \Phaseolies\Launchers\RateLimiterLauncher::class,
         ];
     }
 
@@ -814,12 +814,22 @@ class Application extends Container
     }
 
     /**
+     * Get all registered service launchers.
+     *
+     * @return array
+     */
+    public function getLaunchers(): array
+    {
+        return $this->serviceProviders;
+    }
+
+    /**
      * Get a specific provider by class name
      *
      * @param string $provider
-     * @return ServiceProvider|null
+     * @return ServiceLauncher|null
      */
-    public function getProvider(string $provider): ?ServiceProvider
+    public function getProvider(string $provider): ?ServiceLauncher
     {
         foreach ($this->serviceProviders as $serviceProvider) {
             if (get_class($serviceProvider) === $provider) {
@@ -828,6 +838,14 @@ class Application extends Container
         }
 
         return null;
+    }
+
+    /**
+     * Get a registered launcher by class name.
+     */
+    public function getLauncher(string $launcher): ?ServiceLauncher
+    {
+        return $this->getProvider($launcher);
     }
 
     /**
@@ -861,13 +879,13 @@ class Application extends Container
 
         $providerInstance = $this->ghostProviders[$providerClass] ?? null;
 
-        if (!$providerInstance instanceof ServiceProvider) {
+        if (!$providerInstance instanceof ServiceLauncher) {
             return false;
         }
 
         $this->loadingGhostProviders[$providerClass] = true;
 
-        foreach (($providerInstance instanceof GhostableProvider ? $providerInstance->ghosts() : []) as $ghost) {
+        foreach (($providerInstance instanceof GhostableLauncher ? $providerInstance->ghosts() : []) as $ghost) {
             unset($this->ghostServices[$ghost]);
         }
 
@@ -889,10 +907,10 @@ class Application extends Container
     /**
      * Boot a provider instance once.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function bootProviderInstance(ServiceProvider $providerInstance): void
+    protected function bootProviderInstance(ServiceLauncher $providerInstance): void
     {
         $providerClass = $providerInstance::class;
 
@@ -900,7 +918,7 @@ class Application extends Container
             return;
         }
 
-        $providerInstance->boot();
+        $providerInstance->launch();
 
         $this->bootedProviderClasses[$providerClass] = true;
     }

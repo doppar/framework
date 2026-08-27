@@ -1,11 +1,11 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
 use Phaseolies\Database\Migration\Migration;
 use Phaseolies\Application;
 
-abstract class ServiceProvider
+abstract class ServiceLauncher
 {
     /**
      * The paths that should be published.
@@ -22,7 +22,7 @@ abstract class ServiceProvider
     protected array $publishGroups = [];
 
     /**
-     * Create a new service provider instance.
+     * Create a new service launcher instance.
      */
     public function __construct(protected Application $app) {}
 
@@ -38,7 +38,7 @@ abstract class ServiceProvider
      *
      * @return void
      */
-    abstract public function boot();
+    abstract public function launch();
 
     /**
      * Register routes from the given path.
@@ -172,13 +172,7 @@ abstract class ServiceProvider
      */
     protected function ensurePublishArrayInitialized(): void
     {
-        if (!isset($this->publishes)) {
-            $this->publishes = [];
-        }
-
-        if (!isset($this->publishGroups)) {
-            $this->publishGroups = [];
-        }
+        // Publish registries are initialized at declaration time.
     }
 
     /**
@@ -223,7 +217,7 @@ abstract class ServiceProvider
         } elseif ($group && isset($this->publishGroups[$group])) {
             return $this->publishGroups[$group];
         } elseif ($provider && isset($this->publishes[$provider])) {
-            return $this->publishes[$provider];
+            return [$provider => $this->publishes[$provider]];
         }
 
         return null;

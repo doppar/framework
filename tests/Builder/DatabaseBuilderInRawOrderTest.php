@@ -5,9 +5,11 @@ namespace Tests\Unit\Builder;
 use PDO;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderInRawOrderTest extends TestCase
 {
     private $database;
@@ -16,7 +18,7 @@ class DatabaseBuilderInRawOrderTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -43,7 +45,7 @@ class DatabaseBuilderInRawOrderTest extends TestCase
     private function setBuilderDriver(string $driver): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn($driver);
+        $this->pdoMock->method('getAttribute')->willReturn($driver);
     }
 
     public function testWhereInGeneratesPlaceholdersAndToSql()

@@ -1,10 +1,10 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
 use Phaseolies\Support\Facades\Route;
 
-class RouteServiceProvider extends ServiceProvider
+class RouteLauncher extends ServiceLauncher
 {
     /**
      * Register any application services.
@@ -28,7 +28,7 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         if (
             $this->app->router->shouldCacheRoutes() &&

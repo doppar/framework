@@ -25,9 +25,7 @@ class DatabaseTest extends TestCase
         $this->pdoMock = $this->createMock(PDO::class);
 
         // Mock the driver attribute for all tests
-        $this->pdoMock->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn('mysql'); // or 'sqlite'
+        $this->pdoMock->method('getAttribute')->willReturn('mysql'); // or 'sqlite'
 
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);

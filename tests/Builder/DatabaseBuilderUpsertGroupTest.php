@@ -17,7 +17,7 @@ class DatabaseBuilderUpsertGroupTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -44,7 +44,7 @@ class DatabaseBuilderUpsertGroupTest extends TestCase
     private function setBuilderDriver(string $driver): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn($driver);
+        $this->pdoMock->method('getAttribute')->willReturn($driver);
     }
 
     public function testGroupByAutoAggregatesNonGroupedFields()
@@ -98,12 +98,12 @@ class DatabaseBuilderUpsertGroupTest extends TestCase
     public function testGetUpsertSqlSQLite()
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('sqlite');
+        $this->pdoMock->method('getAttribute')->willReturn('sqlite');
 
         $versionStmt = $this->createMock(\PDOStatement::class);
         $versionStmt->method('fetchColumn')->willReturn('3.39.0');
 
-        $this->pdoMock->method('query')
+        $this->pdoMock->expects($this->once())->method('query')
             ->with($this->equalTo('SELECT sqlite_version()'))
             ->willReturn($versionStmt);
 

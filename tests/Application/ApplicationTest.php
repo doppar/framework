@@ -221,8 +221,8 @@ final class ApplicationTest extends TestCase
         $providers = $this->callProtectedMethod($this->app, 'loadCoreProviders');
 
         $this->assertIsArray($providers);
-        $this->assertContains(\Phaseolies\Providers\RouteServiceProvider::class, $providers);
-        $this->assertContains(\Phaseolies\Providers\LanguageServiceProvider::class, $providers);
+        $this->assertContains(\Phaseolies\Launchers\RouteLauncher::class, $providers);
+        $this->assertContains(\Phaseolies\Launchers\LanguageLauncher::class, $providers);
     }
 
     public function testGhostableProvidersAreQueuedOutsideConsole(): void
