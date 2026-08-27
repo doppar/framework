@@ -1,0 +1,2605 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^Call to method forgetActors\(\) on an unknown class auth\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^Instanceof between Phaseolies\\Http\\Response and Phaseolies\\Http\\Response will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^PHPDoc tag @var with type Phaseolies\\Providers\\GhostableProvider is not subtype of native type Phaseolies\\Providers\\ServiceProvider\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^Parameter \#1 \$abstract of method Phaseolies\\Application\:\:make\(\) expects class\-string\<auth\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^Property Phaseolies\\Application\:\:\$cachedConfig \(null\) does not accept true\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Phaseolies/Application.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\Router\:\:handle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/ApplicationBuilder.php
+
+		-
+			message: '#^PHPDoc tag @var for property Phaseolies\\ApplicationBuilder\:\:\$request contains generic type Phaseolies\\Http\\Request\<string\> but class Phaseolies\\Http\\Request is not generic\.$#'
+			identifier: generics.notGeneric
+			count: 1
+			path: src/Phaseolies/ApplicationBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$abstract of method Phaseolies\\Application\:\:make\(\) expects class\-string\<request\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/ApplicationBuilder.php
+
+		-
+			message: '#^Parameter \#1 \$abstract of method Phaseolies\\Application\:\:make\(\) expects class\-string\<response\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/ApplicationBuilder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$remember_token\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$two_factor_recovery_codes\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$two_factor_secret\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Access to undefined constant chillerlan\\QRCode\\QRCode\:\:ECC_M\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Access to undefined constant chillerlan\\QRCode\\QRCode\:\:OUTPUT_MARKUP_SVG\.$#'
+			identifier: classConstant.notFound
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Database\\Entity\\Model\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Crypt\:\:decrypt\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Crypt\:\:encrypt\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 5
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Hash\:\:check\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Hash\:\:make\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Class Doppar\\Flarion\\ApiAuthenticate not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$size$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Phaseolies\\Database\\Entity\\Model\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Auth/Security/Authenticate.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Cache/CacheStore.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$owner with type string\|null is not subtype of native type string\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: src/Phaseolies/Cache/CacheStore.php
+
+		-
+			message: '#^Parameter \#3 \$ttl of method Phaseolies\\Cache\\CacheStore\:\:set\(\) expects null, int\|Phaseolies\\Cache\\DateInterval given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Cache/CacheStore.php
+
+		-
+			message: '#^Parameter \$ttl of method Phaseolies\\Cache\\CacheStore\:\:stash\(\) has invalid type Phaseolies\\Cache\\DateInterval\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Cache/CacheStore.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between null and null will always evaluate to false\.$#'
+			identifier: notIdentical.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Cache/CacheStore.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Pool\:\:call\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/AppBoostCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Cache\:\:clear\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/ClearCacheCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:clearRouteCache\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/ClearRouteCacheCommand.php
+
+		-
+			message: '#^Call to method getCommands\(\) on an unknown class App\\Schedule\\Schedule\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Cron/CronListCommand.php
+
+		-
+			message: '#^Call to method schedule\(\) on an unknown class App\\Schedule\\Schedule\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Cron/CronListCommand.php
+
+		-
+			message: '#^Instantiated class App\\Schedule\\Schedule not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Cron/CronListCommand.php
+
+		-
+			message: '#^Call to method getCommands\(\) on an unknown class App\\Schedule\\Schedule\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Phaseolies/Console/Commands/Cron/CronRunCommand.php
+
+		-
+			message: '#^Call to method schedule\(\) on an unknown class App\\Schedule\\Schedule\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Phaseolies/Console/Commands/Cron/CronRunCommand.php
+
+		-
+			message: '#^Instantiated class App\\Schedule\\Schedule not found\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Phaseolies/Console/Commands/Cron/CronRunCommand.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Phaseolies/Console/Commands/KeyGenerateCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Hash\:\:make\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/MakePasswordCommand.php
+
+		-
+			message: '#^Method Phaseolies\\Database\\Migration\\MigrationCreator\:\:create\(\) invoked with 7 parameters, 2\-4 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/AddColumnMigrationCommand.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(string \\\$className\)\: Unexpected token "\\\\\$className", expected variable at offset 82 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/CreateSeedCommand.php
+
+		-
+			message: '#^Call to method run\(\) on an unknown class Database\\Seeders\\DatabaseSeeder\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/DBSeedCommand.php
+
+		-
+			message: '#^Instantiated class Database\\Seeders\\DatabaseSeeder not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/DBSeedCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\DB\:\:connection\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/MigrateRefreshCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Schema\:\:connection\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Phaseolies/Console/Commands/Migrations/MigrateRefreshCommand.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>trackActor" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/MigrateTemporalCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:cacheRoutes\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/RouteCacheCommand.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Pool\:\:call\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Commands/RouteListCommand.php
+
+		-
+			message: '#^Call to function is_int\(\) with int\<min, \-1\>\|int\<1, max\> will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Console/Commands/Server/ServerStartCommand.php
+
+		-
+			message: '#^Parameter \#1 \$port of method Phaseolies\\Console\\Commands\\Server\\ServerStartCommand\:\:isPortOk\(\) expects int\|null, array\|string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Console/Commands/Server/ServerStartCommand.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(string string\)\: Unexpected token "string", expected variable at offset 113 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Console/Console.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Console\\Helper\\HelperInterface\:\:ask\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: src/Phaseolies/Console/Schedule/Command.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Console\\Question\\ChoiceQuestion\:\:setDefault\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Console/Schedule/Command.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:error\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Console/Schedule/Command.php
+
+		-
+			message: '#^Offset 1 on array\{0\: non\-falsy\-string, 1\: string, 2\: non\-empty\-string, 3\?\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Phaseolies/Console/Schedule/Command.php
+
+		-
+			message: '#^Trait Phaseolies\\Console\\Schedule\\InteractsWithSchedule is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: src/Phaseolies/Console/Schedule/InteractsWithSchedule.php
+
+		-
+			message: '#^Parameter \#3 \$env of class Symfony\\Component\\Process\\Process constructor expects array\<string, string\|Stringable\|false\>\|null, non\-empty\-array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Console/Schedule/SchedulePool.php
+
+		-
+			message: '#^Function now invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Method Phaseolies\\Console\\Schedule\\ScheduledCommand\:\:getRateLimit\(\) should return string\|null but returns int\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Parameter \#1 \$hour of method Carbon\\Traits\\Date\:\:setTime\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Parameter \#2 \$minute of method Carbon\\Traits\\Date\:\:setTime\(\) expects int, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Parameter \#2 \$string of function explode expects string, int\<min, \-1\>\|int\<1, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Property Phaseolies\\Console\\Schedule\\ScheduledCommand\:\:\$additionalConditions \(array\) in isset\(\) is not nullable\.$#'
+			identifier: isset.property
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Property Phaseolies\\Console\\Schedule\\ScheduledCommand\:\:\$rateLimit \(int\|null\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Property Phaseolies\\Console\\Schedule\\ScheduledCommand\:\:\$rateLimit \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Phaseolies/Console/Schedule/ScheduledCommand.php
+
+		-
+			message: '#^Trait Phaseolies\\DI\\Concerns\\EnforcesImmutability is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: src/Phaseolies/DI/Concerns/EnforcesImmutability.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:isBuiltin\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Call to function is_callable\(\) with callable\(\)\: mixed will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Call to function is_object\(\) with \*NEVER\* will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Right side of && is always false\.$#'
+			identifier: booleanAnd.rightAlwaysFalse
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/DI/Container.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Database\:\:\$conditions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Database\:\:\$pdo\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Database\:\:\$table\.$#'
+			identifier: property.notFound
+			count: 7
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^Dead catch \- Throwable is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^Variable \$stmt in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: src/Phaseolies/Database/Database.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$name$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Drivers/SQLiteDriver.php
+
+		-
+			message: '#^Access to an undefined property \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:\$originalAttributes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:\$primaryKey\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:\$timeStamps\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$attributes\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$connection\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$creatable\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$originalAttributes\.$#'
+			identifier: property.notFound
+			count: 3
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$pageSize\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$primaryKey\.$#'
+			identifier: property.notFound
+			count: 4
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$relations\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Builder\:\:\$timeStamps\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:fireAfterHooks\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:fireBeforeHooks\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:firePropertyWatches\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:newQuery\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Database\\Entity\\Builder\)\:\:pruneNonColumnDirtyAttributes\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:fill\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:fireAfterHooks\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:fireBeforeHooks\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:getTable\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:newQuery\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:pruneNonColumnAttributes\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:setRelation\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Database\\Entity\\Builder\:\:toArray\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\URL\:\:current\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to function is_callable\(\) with null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to function is_int\(\) with int will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to function unset\(\) contains undefined variable \$chunkQuery\.$#'
+			identifier: unset.variable
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Call to function unset\(\) contains undefined variable \$results\.$#'
+			identifier: unset.variable
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Instanceof between \$this\(Phaseolies\\Database\\Entity\\Builder\) and Phaseolies\\Support\\Collection will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Method Phaseolies\\Database\\Entity\\Builder\:\:absent\(\) invoked with 2 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Method Phaseolies\\Database\\Entity\\Builder\:\:createFromModel\(\) should return static\(Phaseolies\\Database\\Entity\\Builder\) but returns Phaseolies\\Database\\Entity\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(int chunkSize\)\: Unexpected token "chunkSize", expected variable at offset 89 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$boolean$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$page$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$arrays of function array_merge expects array, null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Parameter \#2 \$type of method Phaseolies\\Database\\Entity\\Builder\:\:formatDateTime\(\) expects string, true given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Static call to instance method Phaseolies\\Database\\Entity\\Builder\:\:create\(\)\.$#'
+			identifier: method.staticCall
+			count: 3
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Undefined variable\: \$inspectQuery$#'
+			identifier: variable.undefined
+			count: 4
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 6
+			path: src/Phaseolies/Database/Entity/Builder.php
+
+		-
+			message: '#^Offset ''when'' on array\{handler\: \(callable\(\)\: mixed\)\|string, when\: bool\|\(callable\(\)\: mixed\)\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Phaseolies/Database/Entity/Hooks/HookHandler.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__action\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__actor\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__changed_cols\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__history_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__valid_from\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$modelClass\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Offset ''key'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 4
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Offset ''method'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 5
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Property Phaseolies\\Database\\Entity\\Model\:\:\$lastLocalKey \(string\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Property Phaseolies\\Database\\Entity\\Model\:\:\$table \(string\) in isset\(\) is not nullable\.$#'
+			identifier: isset.property
+			count: 2
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 11
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\URL\:\:current\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^Call to function is_int\(\) with int will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$boolean$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$modelClass$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$page$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$rowPerPage$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^Parameter \#2 \$type of method Phaseolies\\Database\\Entity\\Query\\Builder\:\:formatDateTime\(\) expects string, true given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Database/Entity/Query/Builder.php
+
+		-
+			message: '#^Call to function is_bool\(\) with bool will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Database/Entity/Watches/WatchesHandler.php
+
+		-
+			message: '#^Call to function is_null\(\) with mixed will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: src/Phaseolies/Database/Migration/ColumnDefinition.php
+
+		-
+			message: '#^Variable \$keys in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: src/Phaseolies/Database/Migration/Grammars/SQLiteGrammar.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\DB\:\:connection\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 4
+			path: src/Phaseolies/Database/Migration/MigrationRepository.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Schema\:\:connection\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Database/Migration/MigrationRepository.php
+
+		-
+			message: '#^Variable \$connection on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: src/Phaseolies/Database/Migration/Migrator.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\DB\:\:connection\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 6
+			path: src/Phaseolies/Database/Migration/Schema.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Database/Migration/Schema.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(array\)\: Unexpected token "\\n     ", expected variable at offset 98 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Database/Procedure/ProcedureResult.php
+
+		-
+			message: '#^Method Phaseolies\\Database\\Temporal\\TemporalManager\:\:resolveActor\(\) never returns int so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Phaseolies/Database/Temporal/TemporalManager.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>suffix" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Database/Temporal/TemporalManager.php
+
+		-
+			message: '#^Class App\\Http\\Exceptions\\BeforeExceptionHandler not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Error/ErrorHandler.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(int\)\: Unexpected token "\\n     \* ", expected variable at offset 98 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Error/Handlers/CliErrorHandler.php
+
+		-
+			message: '#^PHPDoc tag @return with type void is incompatible with native type string\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Error/Handlers/CliErrorHandler.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 2
+			path: src/Phaseolies/Error/Traces/Frame.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value ''request_body'' \(''request_body'', ''request_body''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:currentRouteAction\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:currentRouteName\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:getCurrentMiddlewareNames\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Parameter \#1 \$content of function response expects null, string given\.$#'
+			identifier: argument.type
+			count: 3
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Phaseolies\\Auth\\ActorManager\|Phaseolies\\Auth\\Security\\Authenticate\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Error/WebErrorRenderer.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Facade/BaseFacade.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Phaseolies/Facade/BaseFacade.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Crypt\:\:decrypt\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Crypt\:\:encrypt\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:alert\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:critical\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:debug\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:emergency\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:error\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:info\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:notice\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Log\:\:warning\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Call to static method create\(\) on an unknown class Faker\\Factory\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Condition "null is null" in conditional return type is always true\.$#'
+			identifier: conditionalType.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Function __\(\) never returns array so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Function fake\(\) has invalid return type Faker\\Generator\.$#'
+			identifier: class.notFound
+			count: 2
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(int\)\: Unexpected token "\\n     \* ", expected variable at offset 108 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(string\)\: Unexpected token "\\n     \* ", expected variable at offset 86 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^Variable \$content on left side of \?\? always exists and is always null\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: src/Phaseolies/Helpers/helpers.php
+
+		-
+			message: '#^PHPDoc tag @param for parameter \$callback with type string is incompatible with native type Closure\.$#'
+			identifier: parameter.phpDocType
+			count: 1
+			path: src/Phaseolies/Http/Controllers/Controller.php
+
+		-
+			message: '#^Property Phaseolies\\Http\\Controllers\\Controller\:\:\$soloCounter \(int\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Http/Controllers/Controller.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Http/Controllers/Controller.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Http/Exceptions/HttpException.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Exceptions\\StreamedResponseException\:\:render\(\) has invalid return type Illuminate\\Http\\Response\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Http/Exceptions/StreamedResponseException.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Exceptions\\StreamedResponseException\:\:render\(\) should return Illuminate\\Http\\Response but returns Phaseolies\\Http\\Response\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Http/Exceptions/StreamedResponseException.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\HeaderBag\:\:getIterator\(\) should return ArrayIterator\<string, list\<string\|null\>\> but returns ArrayIterator\<string, list\<string\|null\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Http/HeaderBag.php
+
+		-
+			message: '#^Instanceof between array\|null and Closure will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ParameterBag.php
+
+		-
+			message: '#^Argument of an invalid type Phaseolies\\Http\\InputBag supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:isBuiltin\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\App\:\:setLocale\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:contains\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:startsWith\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:substr\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:header\(\) invoked with 2 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:headers\(\) should return array\<string, string\> but returns array\<string, list\<string\|null\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:prefers\(\) should return string\|null but return statement is missing\.$#'
+			identifier: return.missing
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Non\-static access to static property Phaseolies\\Http\\Request\:\:\$trustedHeaderSet\.$#'
+			identifier: staticProperty.nonStaticAccess
+			count: 5
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Non\-static access to static property Phaseolies\\Http\\Request\:\:\$trustedProxies\.$#'
+			identifier: staticProperty.nonStaticAccess
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^PHPDoc tag @return has invalid value \(string\|null\.\)\: Unexpected token "\.", expected TOKEN_HORIZONTAL_WS at offset 108 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^PHPDoc tag @return with type array\|Phaseolies\\Http\\Response\|null is not subtype of native type array\|Phaseolies\\Http\\Response\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^PHPDoc tag @throws with type Phaseolies\\Http\\SuspiciousOperationException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Property Phaseolies\\Http\\Request\:\:\$errors \(array\<string, mixed\>\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between resource\|string and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 3
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between null and string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between resource\|string and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/Request.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Instanceof between array\<string, string\> and Phaseolies\\Http\\HeaderBag will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:isHead\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^PHPDoc tag @return with type Phaseolies\\Http\\Response is not subtype of native type static\(Phaseolies\\Http\\Response\)\.$#'
+			identifier: return.phpDocType
+			count: 4
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^PHPDoc tag @return with type void is incompatible with native type static\(Phaseolies\\Http\\Response\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Parameter \#2 \$datetime of static method DateTimeImmutable\:\:createFromFormat\(\) expects string, int\<\-172799, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Parameter \#2 \$value of method Phaseolies\\Http\\HeaderBag\:\:addCacheControlDirective\(\) expects bool\|string, int given\.$#'
+			identifier: argument.type
+			count: 4
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Parameter \#2 \$values of method Phaseolies\\Http\\Response\\ResponseHeaderBag\:\:set\(\) expects array\<string\>\|string\|null, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Parameter \#2 \$values of method Phaseolies\\Http\\Response\\ResponseHeaderBag\:\:set\(\) expects array\<string\>\|string\|null, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Phaseolies/Http/Response.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Response\\BaseJsonResponse\:\:update\(\) should return \$this\(Phaseolies\\Http\\Response\\BaseJsonResponse\) but returns static\(Phaseolies\\Http\\Response\\BaseJsonResponse\)\.$#'
+			identifier: return.type
+			count: 2
+			path: src/Phaseolies/Http/Response/BaseJsonResponse.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Http/Response/BaseJsonResponse.php
+
+		-
+			message: '#^Call to function in_array\(\) with arguments ''lax''\|''none''\|''strict''\|null, array\{''lax'', ''strict'', ''none'', null\} and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Http/Response/Cookie.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Http/Response/Cookie.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:snake\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Http/Response/RedirectResponse.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:startsWith\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Http/Response/RedirectResponse.php
+
+		-
+			message: '#^PHPDoc tag @return with type Phaseolies\\Http\\Response is not subtype of native type Phaseolies\\Http\\Response\\RedirectResponse\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Http/Response/RedirectResponse.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: src/Phaseolies/Http/Response/ResponseHeaderBag.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$partitioned$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Http/Response/ResponseHeaderBag.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:isGet\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Method Phaseolies\\Http\\Request\:\:isHead\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Parameter \#2 \$datetime of static method DateTimeImmutable\:\:createFromFormat\(\) expects string, int\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Parameter \#2 \$values of method Phaseolies\\Http\\Response\\ResponseHeaderBag\:\:set\(\) expects array\<string\>\|string\|null, int given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between false and int will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between false and string will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/Response/Stream/BinaryFileResponse.php
+
+		-
+			message: '#^Instanceof between mixed and ArrayObject will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Instanceof between mixed and JsonSerializable will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Instanceof between mixed and Phaseolies\\Database\\Entity\\Builder will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Instanceof between mixed and Phaseolies\\Database\\Entity\\Model will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Instanceof between mixed and Phaseolies\\Support\\Collection will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Instanceof between mixed and stdClass will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Http/ResponseFactory.php
+
+		-
+			message: '#^Trait Phaseolies\\Http\\Support\\InteractsWithTrustedProxies is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: src/Phaseolies/Http/Support/InteractsWithTrustedProxies.php
+
+		-
+			message: '#^Trait Phaseolies\\Http\\Support\\InteractsWithVerifyTwoFactorUser is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: src/Phaseolies/Http/Support/InteractsWithVerifyTwoFactorUser.php
+
+		-
+			message: '#^Parameter \#1 \$content of function response expects null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Http/Support/RequestAbortion.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Http/Validation/Bind.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Http\\Validation\\FormRequest\:\:sanitize\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Http/Validation/FormRequest.php
+
+		-
+			message: '#^PHPDoc tag @throws with type Phaseolies\\Http\\Validation\\HttpResponseException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: src/Phaseolies/Http/Validation/FormRequest.php
+
+		-
+			message: '#^Call to method getIO\(\) on an unknown class Composer\\Script\\Event\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Installer.php
+
+		-
+			message: '#^Parameter \$event of method Phaseolies\\Installer\:\:postCreateProject\(\) has invalid type Composer\\Script\\Event\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Installer.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$channel$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Logger/Contracts/AbstractHandler.php
+
+		-
+			message: '#^Method Phaseolies\\Middleware\\CacheHeaders\:\:__invoke\(\) has invalid return type Phaseolies\\Middleware\\Phaseolies\\Http\\Response\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Middleware/CacheHeaders.php
+
+		-
+			message: '#^Method Phaseolies\\Middleware\\CacheHeaders\:\:__invoke\(\) should return Phaseolies\\Http\\Response but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Middleware/CacheHeaders.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(\\Closure\(\\Phaseolies\\Http\\Request\) \$next\)\: Unexpected token "\(", expected variable at offset 124 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Middleware/CacheHeaders.php
+
+		-
+			message: '#^PHPDoc tag @return with type Phaseolies\\Middleware\\Phaseolies\\Http\\Response is not subtype of native type Phaseolies\\Http\\Response\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Middleware/CacheHeaders.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string\|null and false will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Middleware/CacheHeaders.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Str\:\:toUpper\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Middleware/CsrfTokenMiddleware.php
+
+		-
+			message: '#^Dead catch \- Exception is never thrown in the try block\.$#'
+			identifier: catch.neverThrown
+			count: 1
+			path: src/Phaseolies/Middleware/CsrfTokenMiddleware.php
+
+		-
+			message: '#^Method Phaseolies\\Middleware\\CsrfTokenMiddleware\:\:shouldAddXsrfTokenCookie\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Middleware/CsrfTokenMiddleware.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(\\Closure\(\\Phaseolies\\Http\\Request\) \$next\)\: Unexpected token "\(", expected variable at offset 128 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Middleware/CsrfTokenMiddleware.php
+
+		-
+			message: '#^PHPDoc tag @throws with type Phaseolies\\Middleware\\HttpException is not subtype of Throwable$#'
+			identifier: throws.notThrowable
+			count: 1
+			path: src/Phaseolies/Middleware/CsrfTokenMiddleware.php
+
+		-
+			message: '#^Parameter \#1 \$string of function sha1 expects string, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Middleware/ThrottleRequests.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:group\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Providers/RouteServiceProvider.php
+
+		-
+			message: '#^Method Phaseolies\\Providers\\ServiceProvider\:\:pathsForProviderOrGroup\(\) should return array\|null but returns string\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Phaseolies/Providers/ServiceProvider.php
+
+		-
+			message: '#^Property Phaseolies\\Providers\\ServiceProvider\:\:\$publishGroups \(array\<string, array\<string, string\>\>\) in isset\(\) is not nullable\.$#'
+			identifier: isset.property
+			count: 1
+			path: src/Phaseolies/Providers/ServiceProvider.php
+
+		-
+			message: '#^Property Phaseolies\\Providers\\ServiceProvider\:\:\$publishes \(array\<string, string\|null\>\) in isset\(\) is not nullable\.$#'
+			identifier: isset.property
+			count: 1
+			path: src/Phaseolies/Providers/ServiceProvider.php
+
+		-
+			message: '#^Property Phaseolies\\Support\\Collection\:\:\$data \(array\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Support/Collection.php
+
+		-
+			message: '#^Property Phaseolies\\Support\\Collection\:\:\$model \(string\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 2
+			path: src/Phaseolies/Support/Collection.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 16
+			path: src/Phaseolies/Support/Collection.php
+
+		-
+			message: '#^Comparison operation "\<" between int\<80500, 80599\> and 70300 is always false\.$#'
+			identifier: smaller.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/CookieJar.php
+
+		-
+			message: '#^PHPDoc tag @return with type void is incompatible with native type bool\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Support/CookieJar.php
+
+		-
+			message: '#^Variable \$cookies on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: src/Phaseolies/Support/CookieJar.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: array\)\: Unexpected token "\\n \* ", expected type at offset 430 on line 10$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: array\)\: Unexpected token "\\n \* ", expected type at offset 657 on line 14$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 327 on line 7$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 477 on line 11$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 763 on line 16$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(Model \$user\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 714 on line 15$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(Model \$user, string \$code\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 605 on line 13$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$code\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 535 on line 12$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$qrCodeUrl\)\: string\)\: Unexpected token "\\n \*", expected type at offset 832 on line 17$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static id\(\)\: \?int\)\: Unexpected token "\\n \* ", expected type at offset 383 on line 9$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static onceUsingId\(int \$id\)\: \?User\)\: Unexpected token "\\n \* ", expected type at offset 263 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static user\(\)\: \?User\)\: Unexpected token "\\n \* ", expected type at offset 295 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Auth.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$name, string \$owner\)\: AtomicLock\)\: Unexpected token "\\n \* ", expected type at offset 1405 on line 18$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Cache.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: PDO\)\: Unexpected token "\\n \* ", expected type at offset 631 on line 14$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: array\)\: Unexpected token "\\n \* ", expected type at offset 489 on line 11$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: int\)\: Unexpected token "\\n \* ", expected type at offset 297 on line 7$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: int\)\: Unexpected token "\\n \* ", expected type at offset 402 on line 9$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 114 on line 3$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 148 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 184 on line 5$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \*", expected type at offset 1532 on line 26$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(Model \$model\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 591 on line 13$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$table\)\: Builder\)\: Unexpected token "\\n \* ", expected type at offset 451 on line 10$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$table\)\: \\Phaseolies\\Database\\Entity\\Query\\Builder\)\: Unexpected token "\\n \* ", expected type at offset 1221 on line 21$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$table\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 541 on line 12$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/DB.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: array\)\: Unexpected token "\\n \* ", expected type at offset 2932 on line 58$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 1633 on line 30$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 1667 on line 31$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 1708 on line 32$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 1886 on line 36$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 1927 on line 37$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 2897 on line 57$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3103 on line 61$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3142 on line 62$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3182 on line 63$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3222 on line 64$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3253 on line 65$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3291 on line 66$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3328 on line 67$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 661 on line 14$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 695 on line 15$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: int\)\: Unexpected token "\\n \* ", expected type at offset 2068 on line 40$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: int\)\: Unexpected token "\\n \* ", expected type at offset 433 on line 10$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 1020 on line 21$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 1747 on line 33$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 1785 on line 34$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2103 on line 41$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2863 on line 56$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 1252 on line 25$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 804 on line 17$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\?\\DateTimeInterface \$date\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2219 on line 43$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\?string \$body\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 52 on line 2$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(HttpException \$exception\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 1217 on line 24$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(Request \$request\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 3067 on line 60$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(Request \$request\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 856 on line 18$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\\DateTimeInterface \$date\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2036 on line 39$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(array \$headers\)\: Response\)\: Unexpected token "\\n \* ", expected type at offset 573 on line 12$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(array \$options\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2820 on line 55$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$seconds\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2553 on line 50$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$seconds\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2606 on line 51$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$statusCode\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 980 on line 20$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$targetLevel, bool \$flush\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 1145 on line 23$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$value\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2303 on line 45$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$value\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2357 on line 46$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$value\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2419 on line 47$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(int \$value\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 2473 on line 48$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$charset\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 224 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$version\)\: static\)\: Unexpected token "\\n \* ", expected type at offset 757 on line 16$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getBody\(\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 89 on line 3$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getCharset\(\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 264 on line 7$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getDate\(\)\: \?\\DateTimeImmutable\)\: Unexpected token "\\n \* ", expected type at offset 1976 on line 38$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getEtag\(\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 2700 on line 53$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getExpires\(\)\: \?\\DateTimeImmutable\)\: Unexpected token "\\n \* ", expected type at offset 2155 on line 42$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getLastModified\(\)\: \?\\DateTimeImmutable\)\: Unexpected token "\\n \* ", expected type at offset 2663 on line 52$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getMaxAge\(\)\: \?int\)\: Unexpected token "\\n \* ", expected type at offset 2255 on line 44$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static getTtl\(\)\: \?int\)\: Unexpected token "\\n \* ", expected type at offset 2506 on line 49$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Response.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: array\)\: Unexpected token "\\n \* ", expected type at offset 529 on line 12$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 563 on line 13$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 253 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 432 on line 10$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 639 on line 15$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 801 on line 19$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: void\)\: Unexpected token "\\n \*", expected type at offset 843 on line 20$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$id\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 605 on line 14$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$key\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 356 on line 8$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string \$key\)\: void\)\: Unexpected token "\\n \* ", expected type at offset 400 on line 9$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static token\(\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 674 on line 16$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Facades/Session.php
+
+		-
+			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Storage\:\:getDiskPath\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: src/Phaseolies/Support/File.php
+
+		-
+			message: '#^Call to function is_null\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: src/Phaseolies/Support/File.php
+
+		-
+			message: '#^Method Phaseolies\\Support\\File\:\:generateUniqueName\(\) invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 2
+			path: src/Phaseolies/Support/File.php
+
+		-
+			message: '#^PHPDoc tag @method for method Phaseolies\\Support\\Lens\:\:flat\(\) parameter \#2 \$depth default value contains unresolvable type\.$#'
+			identifier: methodTag.unresolvableType
+			count: 1
+			path: src/Phaseolies/Support/Lens.php
+
+		-
+			message: '#^Unsafe call to private method Phaseolies\\Support\\Lens\:\:make\(\) through static\:\:\.$#'
+			identifier: staticClassAccess.privateMethod
+			count: 1
+			path: src/Phaseolies/Support/Lens.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Support/Lens.php
+
+		-
+			message: '#^Property Phaseolies\\Support\\Mail\\Driver\\MailMailDriver\:\:\$config is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Phaseolies/Support/Mail/Driver/MailMailDriver.php
+
+		-
+			message: '#^Property Phaseolies\\Support\\Mail\\Driver\\QmailMailDriver\:\:\$config is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Phaseolies/Support/Mail/Driver/QmailMailDriver.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Support/Mail/MailService.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\Mail\\Mailable\:\:attachment\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Support/Mail/MailService.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\Mail\\Mailable\:\:subject\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Support/Mail/MailService.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Phaseolies/Support/Mail/MailService.php
+
+		-
+			message: '#^Class Phaseolies\\Support\\Mail\\MailService constructor invoked with 1 parameter, 0 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: src/Phaseolies/Support/Mail/MailService.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\Mail\\Mailable\:\:content\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: src/Phaseolies/Support/Mail/Mailable/View.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Support/Mail/Mailable/View.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>view" in empty\(\) is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Support/Mail/Mailable/View.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: src/Phaseolies/Support/Presenter/Presenter.php
+
+		-
+			message: '#^Access to an undefined property Phaseolies\\Support\\Router\:\:\$routeMiddleware\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to an undefined method \$this\(Phaseolies\\Support\\Router\)\:\:applyMiddleware\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\Router\:\:handle\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to an undefined method ReflectionType\:\:isBuiltin\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 2
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Call to function is_string\(\) with \*NEVER\* will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Cannot call method bindTo\(\) on request\|string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Class App\\Http\\Controllers\\Controller not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between \*NEVER\* and Closure will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and ArrayObject will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and JsonSerializable will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and Phaseolies\\Database\\Entity\\Builder will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and Phaseolies\\Database\\Entity\\Model will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and Ramsey\\Collection\\Collection will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Instanceof between mixed and stdClass will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Method Phaseolies\\Support\\Router\:\:middleware\(\) has invalid return type Phaseolies\\Support\\Route\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<mixed\>&callable\(string\)\: void on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$key$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^PHPDoc tag @return with type Phaseolies\\Support\\Route is not subtype of native type Phaseolies\\Support\\Router\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Parameter \#1 \$abstract of method Phaseolies\\Application\:\:make\(\) expects class\-string\<request\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Property Phaseolies\\Utilities\\Attributes\\BindPayload\:\:\$strict \(bool\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Property Phaseolies\\Utilities\\Attributes\\Route\:\:\$middleware \(array\) on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.property
+			count: 1
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^Variable \$attributes on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 2
+			path: src/Phaseolies/Support/Router.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$data$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Support/Session.php
+
+		-
+			message: '#^Call to function is_null\(\) with string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: src/Phaseolies/Support/Storage/FileSystem.php
+
+		-
+			message: '#^PHPDoc tag @method for method Phaseolies\\Support\\Storage\\StorageFileService\:\:store\(\) parameter \#2 \$file contains unknown class Phaseolies\\Support\\Storage\\File\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Phaseolies/Support/Storage/StorageFileService.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 130 on line 3$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Storage/StorageFileService.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(\(string\|array \$path\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 259 on line 6$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Storage/StorageFileService.php
+
+		-
+			message: '#^PHPDoc tag @method has invalid value \(static get\(string \$path\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 175 on line 4$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/Storage/StorageFileService.php
+
+		-
+			message: '#^Instanceof between Iterator and Traversable will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Support/StreamCollection.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: src/Phaseolies/Support/StreamCollection.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: src/Phaseolies/Support/StreamCollection.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 10
+			path: src/Phaseolies/Support/StreamCollection.php
+
+		-
+			message: '#^Offset 0 on array\{list\<string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: src/Phaseolies/Support/StringService.php
+
+		-
+			message: '#^PHPDoc tag @param has invalid value \(string\)\: Unexpected token "\\n     ", expected variable at offset 219 on line 7$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: src/Phaseolies/Support/StringService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: src/Phaseolies/Support/UrlGenerator.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 2
+			path: src/Phaseolies/Support/Validation/Sanitizer.php
+
+		-
+			message: '#^Call to an undefined method Phaseolies\\Support\\View\\View\:\:prepare\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Phaseolies/Support/View/View.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: src/Phaseolies/Support/View/View.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$view$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Support/View/View.php
+
+		-
+			message: '#^Variable \$message might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Phaseolies/Support/View/errors/401.odo.php
+
+		-
+			message: '#^Variable \$message might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Phaseolies/Support/View/errors/403.odo.php
+
+		-
+			message: '#^Variable \$message might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Phaseolies/Support/View/errors/404.odo.php
+
+		-
+			message: '#^Variable \$message might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Phaseolies/Support/View/errors/429.odo.php
+
+		-
+			message: '#^Variable \$message might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/Phaseolies/Support/View/errors/500.odo.php
+
+		-
+			message: '#^Call to function is_string\(\) with array will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: src/Phaseolies/Utilities/Attributes/Route.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$v4Bytes$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Utilities/IpUtils.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$v6Bytes$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Phaseolies/Utilities/IpUtils.php
+
+		-
+			message: '#^PHPDoc tag @return with type string\|null is incompatible with native type array\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: src/Phaseolies/Utilities/Paginator.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between 1 and 1 will always evaluate to true\.$#'
+			identifier: identical.alwaysTrue
+			count: 1
+			path: src/Phaseolies/Utilities/Paginator.php

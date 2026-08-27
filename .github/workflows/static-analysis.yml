@@ -16,7 +16,7 @@ jobs:
       matrix:
         directory: [src]
 
-    name: ${{ matrix.directory == 'src'}}
+    name: PHPStan (${{ matrix.directory }})
 
     steps:
       - name: Checkout code
@@ -38,3 +38,6 @@ jobs:
           timeout_minutes: 5
           max_attempts: 5
           command: composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: Run PHPStan
+        run: composer analyse -- --no-progress --error-format=github

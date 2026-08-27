@@ -38,6 +38,7 @@
   },
   "require-dev": {
     "mockery/mockery": "^1.6",
+    "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^13.3"
   },
   "autoload": {
@@ -58,7 +59,8 @@
     "test:sqlite": "@test",
     "test:mysql": "vendor/bin/phpunit --group mysql",
     "test:pgsql": "vendor/bin/phpunit --group pgsql",
-    "test:all": "vendor/bin/phpunit"
+    "test:all": "vendor/bin/phpunit",
+    "analyse": "vendor/bin/phpstan analyse --memory-limit=1G"
   },
   "extra": {
     "branch-alias": {
