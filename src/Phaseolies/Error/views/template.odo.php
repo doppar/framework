@@ -996,7 +996,7 @@
     <div class="wrap">
 
         <header class="bar rise-1">
-            <span class="pill"><i class="dot"></i>[[ $exception_class ]]</span>
+            <span class="pill">[[ $status_code ]]</span>
             <div class="bar-right">
                 <div class="chipset">
                     <span>DOPPAR <b>[[ $doppar_version ]]</b></span>
@@ -1016,8 +1016,6 @@
             <p class="kicker">Uncaught &mdash; [[ $exception_class ]]</p>
             <h1 class="headline">[[ $error_message ]]</h1>
             <div class="stat-row">
-                <span class="chip on-signal">[[ $status_code ]]</span>
-                <span class="chip on-wire">[[ $request_method ]]</span>
                 <span class="chip">[[ count($traces) ]] frames</span>
                 <span class="meta-time">[[ $timestamp ]]</span>
             </div>
@@ -1109,7 +1107,7 @@
                     <div>
                         <div class="field-label">Middleware ([[ count($current_middleware ?? []) ]])</div>
                         #if (!empty($current_middleware))
-                        #foreach(($current_middleware ?? []) as $index => $mw)
+                        #foreach (($current_middleware ?? []) as $index => $mw)
                         <div class="route-row"><span class="route-key">[[ $index + 1 ]]</span><span class="route-dots"></span><span class="route-val">[[ $mw ]]</span></div>
                         #endforeach
                         #else
