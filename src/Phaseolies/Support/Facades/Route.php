@@ -31,11 +31,6 @@ use Phaseolies\Facade\BaseFacade;
 
 class Route extends BaseFacade
 {
-    public static function group(array $attributes, \Closure $callback): void
-    {
-        static::resolveInstance()->group($attributes, $callback);
-    }
-
     protected static function getFacadeAccessor()
     {
         return 'route';
