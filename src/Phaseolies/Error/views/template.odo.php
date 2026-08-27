@@ -9,7 +9,7 @@
     <style>
         /* ============ TOKENS ============ */
         :root {
-            --paper: #f2f0ea;
+            --paper: #edece7;
             --ink: #1c1712;
             --ink-soft: #4a4238;
             --muted: #8a8274;
@@ -103,14 +103,21 @@
         }
 
         body {
-            background: var(--paper);
+            background-color: var(--paper);
             color: var(--ink);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             font-size: 15px;
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
-            background-image: radial-gradient(circle, color-mix(in srgb, var(--ink) 9%, transparent) 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-image:
+                radial-gradient(640px 460px at 100% 0%, var(--signal-soft), transparent 62%),
+                radial-gradient(560px 420px at 0% 100%, var(--wire-soft), transparent 62%),
+                linear-gradient(color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+                linear-gradient(90deg, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+            background-position: top right, bottom left, center, center;
+            background-repeat: no-repeat, no-repeat, repeat, repeat;
+            background-size: auto, auto, 44px 44px, 44px 44px;
+            background-attachment: fixed, fixed, fixed, fixed;
         }
 
         code,
@@ -322,17 +329,6 @@
         .hero {
             position: relative;
             padding: 8px 0 22px;
-            overflow: hidden;
-        }
-
-        .hero-glow {
-            position: absolute;
-            top: -120px;
-            right: -140px;
-            width: 480px;
-            height: 380px;
-            background: radial-gradient(closest-side, var(--signal-soft), transparent 72%);
-            pointer-events: none;
         }
 
         .kicker {
@@ -652,7 +648,7 @@
         .rail::before {
             content: "";
             position: absolute;
-            left: 27px;
+            left: 19px;
             top: 30px;
             bottom: 30px;
             width: 2px;
@@ -687,15 +683,15 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: var(--surface-2);
-            border: 2px solid var(--line);
+            background: var(--surface);
+            border: 2px solid var(--muted);
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
-            color: var(--muted);
+            color: var(--ink);
         }
 
         .frame:first-child .node {
@@ -1017,7 +1013,6 @@
         </header>
 
         <section class="hero rise-2">
-            <div class="hero-glow" aria-hidden="true"></div>
             <p class="kicker">Uncaught &mdash; [[ $exception_class ]]</p>
             <h1 class="headline">[[ $error_message ]]</h1>
             <div class="stat-row">
