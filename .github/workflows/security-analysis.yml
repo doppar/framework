@@ -45,10 +45,10 @@ jobs:
       - name: Audit dependencies for known vulnerabilities
         run: composer audit --no-dev --format=table --locked
 
-  codeql:
+  semgrep:
     runs-on: ubuntu-24.04
 
-    name: CodeQL
+    name: Semgrep
 
     permissions:
       contents: read
@@ -58,13 +58,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+      - name: Run Semgrep
+        uses: semgrep/semgrep-action@v1
         with:
-          languages: php
-          queries: security-extended
+          config: p/security-audit p/php
+          generateSarif: '1'
 
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+      - name: Upload SARIF results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          category: '/language:php'
+          sarif_file: semgrep.sarif
