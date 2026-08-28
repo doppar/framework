@@ -32,6 +32,7 @@ use Phaseolies\Console\Commands\StorageLinkCommand;
 use Phaseolies\Console\Commands\StorageUnlinkCommand;
 use Phaseolies\Console\Commands\Tests\UnitTestCommand;
 use Phaseolies\Console\Commands\VendorPublishCommand;
+use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Console\Commands\ViewCacheCommand;
 use Phaseolies\Console\Commands\ViewClearCommand;
 use Phaseolies\Database\Migration\MigrationCreator;
@@ -678,10 +679,130 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertContains('Skipping: File already exists at ' . $targetFile, $command->capturedWarnings);
     }
 
+    public function testVendorPublishCommandWarnsWhenNoLaunchersArePublishable(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $appStub->method('getLaunchers')->willReturn([]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertContains('No publishable launchers found.', $command->capturedWarnings);
+        $this->assertEmpty($command->capturedChoiceQuestions);
+    }
+
+    public function testVendorPublishCommandFallsBackToPublishingAllWhenNonInteractive(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = $this->makeFakePublishableLauncher($appStub, 'alpha');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeInteractive = false;
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertEmpty($command->capturedChoiceQuestions);
+        $this->assertContains('Published assets from 1 launchers', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishCommandPublishesAllWhenChoiceIsAll(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcherA = $this->makeFakePublishableLauncher($appStub, 'alpha', FakePublishableLauncherAlpha::class);
+        $launcherB = $this->makeFakePublishableLauncher($appStub, 'beta', FakePublishableLauncherBeta::class);
+        $appStub->method('getLaunchers')->willReturn([$launcherA, $launcherB]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeChoiceAnswer = 'All';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertCount(1, $command->capturedChoiceQuestions);
+        $this->assertSame('All', $command->capturedChoiceQuestions[0]['default']);
+        $this->assertContains(get_class($launcherA), $command->capturedChoiceQuestions[0]['choices']);
+        $this->assertContains(get_class($launcherB), $command->capturedChoiceQuestions[0]['choices']);
+        $this->assertContains('Published assets from 2 launchers', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishCommandPublishesOnlyTheChosenLauncher(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcherA = $this->makeFakePublishableLauncher($appStub, 'alpha', FakePublishableLauncherAlpha::class);
+        $launcherB = $this->makeFakePublishableLauncher($appStub, 'beta', FakePublishableLauncherBeta::class);
+        $appStub->method('getLaunchers')->willReturn([$launcherA, $launcherB]);
+        $appStub->method('getLauncher')->willReturnCallback(
+            fn(string $class) => $class === get_class($launcherA) ? $launcherA : null
+        );
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeChoiceAnswer = get_class($launcherA);
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertContains('Published assets for launcher: ' . get_class($launcherA), $command->capturedSuccesses);
+        $this->assertNotContains('Published assets for launcher: ' . get_class($launcherB), $command->capturedSuccesses);
+    }
+
+    private function makeFakePublishableLauncher(object $app, string $label, string $className = FakePublishableLauncherAlpha::class): ServiceLauncher
+    {
+        $from = Env::path("vendor/{$label}/config.php");
+        $to = Env::path("published/{$label}/config.php");
+
+        @mkdir(dirname($from), 0755, true);
+        file_put_contents($from, '<?php return [];');
+
+        $launcher = new $className($app);
+        $launcher->publishes([$from => $to]);
+
+        return $launcher;
+    }
+
     private function invokeMethod(object $instance, string $method, array $arguments = []): mixed
     {
         $reflection = new \ReflectionMethod($instance, $method);
 
         return $reflection->invokeArgs($instance, $arguments);
     }
+}
+
+/**
+ * Distinct launcher fixtures for VendorPublishCommand tests.
+ *
+ * These must be separately-named (not anonymous) classes: two anonymous
+ * class expressions with identical bodies at the same source location
+ * resolve to the same PHP class, which would make it impossible to tell
+ * two fake launchers apart by class name in the tests above.
+ */
+class FakePublishableLauncherAlpha extends ServiceLauncher
+{
+    public function register() {}
+    public function launch() {}
+}
+
+class FakePublishableLauncherBeta extends ServiceLauncher
+{
+    public function register() {}
+    public function launch() {}
 }

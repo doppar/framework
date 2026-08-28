@@ -42,7 +42,7 @@ class VendorPublishCommand extends Command
         return $this->executeWithTiming(function () {
             $launcher = $this->option('launcher');
             $tag = $this->option('tag');
-            $force = $this->option('force');
+            $force = (bool) $this->option('force');
 
             if ($launcher) {
                 $this->publishLauncher($launcher, $force);
@@ -54,10 +54,61 @@ class VendorPublishCommand extends Command
                 return Command::SUCCESS;
             }
 
-            $this->publishAll($force);
-
-            return Command::SUCCESS;
+            return $this->publishInteractively($force);
         });
+    }
+
+    /**
+     * Prompt the user to choose which registered launcher to publish,
+     * falling back to publishing everything in non-interactive environments.
+     *
+     * @param bool $force
+     * @return int
+     */
+    protected function publishInteractively(bool $force): int
+    {
+        $launchers = $this->publishableLaunchers();
+
+        if (empty($launchers)) {
+            $this->displayWarning('No publishable launchers found.');
+            return Command::SUCCESS;
+        }
+
+        if (!$this->isInteractive()) {
+            $this->publishAll($force);
+            return Command::SUCCESS;
+        }
+
+        $choices = array_merge(['All'], $launchers);
+
+        $choice = $this->choice('Which launcher would you like to publish?', $choices, 'All');
+
+        if ($choice === 'All') {
+            $this->publishAll($force);
+            return Command::SUCCESS;
+        }
+
+        $this->publishLauncher($choice, $force);
+
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Get the class names of registered launchers that have publishable paths.
+     *
+     * @return array<int, string>
+     */
+    protected function publishableLaunchers(): array
+    {
+        $launchers = [];
+
+        foreach ($this->app->getLaunchers() as $launcherInstance) {
+            if (!empty($launcherInstance->pathsToPublish())) {
+                $launchers[] = get_class($launcherInstance);
+            }
+        }
+
+        return $launchers;
     }
 
     protected function publishLauncher(string $launcher, bool $force = false)

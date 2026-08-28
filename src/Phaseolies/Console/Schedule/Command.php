@@ -483,6 +483,16 @@ abstract class Command extends SymfonyCommand
     }
 
     /**
+     * Determine if the command is running in an interactive environment.
+     *
+     * @return bool
+     */
+    protected function isInteractive(): bool
+    {
+        return $this->input->isInteractive();
+    }
+
+    /**
      * Give the user a single choice from an array of answers.
      *
      * @param string $question

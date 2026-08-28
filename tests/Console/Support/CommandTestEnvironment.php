@@ -217,6 +217,28 @@ namespace Tests\Unit\Console\Support {
             $this->capturedInfos[] = $message;
         }
 
+        public bool $fakeInteractive = true;
+
+        public mixed $fakeChoiceAnswer = null;
+
+        public array $capturedChoiceQuestions = [];
+
+        protected function isInteractive(): bool
+        {
+            return $this->fakeInteractive;
+        }
+
+        protected function choice(string $question, array $choices, $default = null): mixed
+        {
+            $this->capturedChoiceQuestions[] = [
+                'question' => $question,
+                'choices' => $choices,
+                'default' => $default,
+            ];
+
+            return $this->fakeChoiceAnswer ?? $default;
+        }
+
         protected function executeWithTiming(callable $callback): int
         {
             $result = $callback();
