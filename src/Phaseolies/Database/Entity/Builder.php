@@ -18,7 +18,6 @@ use Phaseolies\Database\Entity\Query\{
     InteractsWithConditionBinding,
     InteractsWithCursorPagination
 };
-use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
@@ -2329,23 +2328,15 @@ class Builder
 
         // Handle timestamp configuration
         static $timestamps = [];
-        $hasCastToDateAttribute = false;
         $class = $this->modelClass;
         $model = $this->getModel();
 
         if (!array_key_exists($class, $timestamps)) {
             $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
-            if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
-                $hasCastToDateAttribute = true;
-                trigger_error(
-                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                    E_USER_DEPRECATED
-                );
-            }
         }
 
         $usesTimestamps = $timestamps[$class] && $model->usesTimestamps();
-        $currentTime = $hasCastToDateAttribute ? now()->startOfDay() : now();
+        $currentTime = now();
 
         // Get column names from first record and add timestamp columns if needed
         $columns = array_keys(reset($values));
@@ -2451,10 +2442,7 @@ class Builder
         $class = $this->modelClass;
 
         if (app($class)->usesTimestamps()) {
-            $hasCastToDate = $this->propertyHasAttribute($class, 'timeStamps', CastToDate::class);
-            $attributes['updated_at'] = $hasCastToDate
-                ? now()->startOfDay()
-                : now();
+            $attributes['updated_at'] = now();
         }
 
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
