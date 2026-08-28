@@ -2425,13 +2425,13 @@ parameters:
 			path: src/Phaseolies/Support/Router.php
 
 		-
-			message: '#^Property Phaseolies\\Utilities\\Attributes\\BindPayload\:\:\$strict \(bool\) on left side of \?\? is not nullable\.$#'
+			message: '#^Property Phaseolies\\Http\\Requests\\Attributes\\BindPayload\:\:\$strict \(bool\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
 			count: 1
 			path: src/Phaseolies/Support/Router.php
 
 		-
-			message: '#^Property Phaseolies\\Utilities\\Attributes\\Route\:\:\$middleware \(array\) on left side of \?\? is not nullable\.$#'
+			message: '#^Property Phaseolies\\Support\\Router\\Attributes\\Route\:\:\$middleware \(array\) on left side of \?\? is not nullable\.$#'
 			identifier: nullCoalesce.property
 			count: 1
 			path: src/Phaseolies/Support/Router.php

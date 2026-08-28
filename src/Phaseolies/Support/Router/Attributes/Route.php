@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Utilities\Attributes;
+namespace Phaseolies\Support\Router\Attributes;
 
 use Attribute;
 
@@ -15,9 +15,5 @@ final class Route
         public ?int $rateLimit = null,
         public ?int $rateLimitDecay = 1,
         public ?string $domain = null
-    ) {
-        if (is_string($this->methods)) {
-            $this->methods = [$this->methods];
-        }
-    }
+    ) {}
 }

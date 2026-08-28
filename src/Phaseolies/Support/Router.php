@@ -3,10 +3,10 @@
 namespace Phaseolies\Support;
 
 use Ramsey\Collection\Collection;
-use Phaseolies\Utilities\Attributes\Resolver;
-use Phaseolies\Utilities\Attributes\Middleware;
-use Phaseolies\Utilities\Attributes\BindPayload;
-use Phaseolies\Utilities\Attributes\Bind;
+use Phaseolies\DI\Attributes\Resolver;
+use Phaseolies\Middleware\Attributes\Middleware;
+use Phaseolies\Http\Requests\Attributes\BindPayload;
+use Phaseolies\DI\Attributes\Bind;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Support\Router\InteractsWithDynamicControllerBinding;
@@ -350,7 +350,7 @@ class Router extends Kernel
     {
         $reflection = new \ReflectionClass($controllerClass);
 
-        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Utilities\Attributes\Mapper::class);
+        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Support\Router\Attributes\Mapper::class);
         $classPrefix = null;
         $classMiddleware = [];
 
@@ -361,7 +361,7 @@ class Router extends Kernel
         }
 
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
+            $routeAttributes = $method->getAttributes(\Phaseolies\Support\Router\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
                 $route = $attribute->newInstance();
@@ -1059,7 +1059,7 @@ class Router extends Kernel
      */
     protected function processThrottleAttribute(\ReflectionMethod $method): void
     {
-        $throttleAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Throttle::class);
+        $throttleAttributes = $method->getAttributes(\Phaseolies\Support\Router\Attributes\Throttle::class);
 
         if (empty($throttleAttributes)) {
             return;
@@ -1642,7 +1642,7 @@ class Router extends Kernel
      */
     private function handleModelAttribute(\ReflectionParameter $parameter, array $routeParams): array
     {
-        $modelAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Model::class);
+        $modelAttributes = $parameter->getAttributes(\Phaseolies\Database\Entity\Attributes\Model::class);
 
         if (empty($modelAttributes)) {
             return ['handled' => false, 'instance' => null];
@@ -1725,7 +1725,7 @@ class Router extends Kernel
     protected function getTransactionConfig(\ReflectionClass $reflector, string $actionMethod): ?array
     {
         $method = $reflector->getMethod($actionMethod);
-        $methodAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Transaction::class);
+        $methodAttributes = $method->getAttributes(\Phaseolies\Database\Attributes\Transaction::class);
 
         if (!empty($methodAttributes)) {
             $transaction = $methodAttributes[0]->newInstance();

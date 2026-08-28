@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Utilities\Attributes;
+namespace Phaseolies\Http\Requests\Attributes;
 
 #[\Attribute(\Attribute::TARGET_PARAMETER)]
 final class BindPayload
