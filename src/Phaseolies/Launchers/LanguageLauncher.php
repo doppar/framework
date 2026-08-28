@@ -1,14 +1,14 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
 use Phaseolies\Support\Facades\Lang;
 use Phaseolies\Translation\FileLoader;
 use Phaseolies\Translation\Translator;
-use Phaseolies\Providers\ServiceProvider;
-use Phaseolies\Providers\GhostableProvider;
+use Phaseolies\Launchers\ServiceLauncher;
+use Phaseolies\Launchers\GhostableLauncher;
 
-class LanguageServiceProvider extends ServiceProvider implements GhostableProvider
+class LanguageLauncher extends ServiceLauncher implements GhostableLauncher
 {
     /**
      * Register the service provider.
@@ -52,7 +52,7 @@ class LanguageServiceProvider extends ServiceProvider implements GhostableProvid
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         Lang::setFacadeApplication($this->app);
     }

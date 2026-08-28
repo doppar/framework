@@ -1,8 +1,8 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
-abstract class PackageServiceProvider extends ServiceProvider
+abstract class PackageServiceLauncher extends ServiceLauncher
 {
     /**
      * The package name.

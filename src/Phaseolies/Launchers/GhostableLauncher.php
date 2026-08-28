@@ -1,8 +1,8 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
-interface GhostableProvider
+interface GhostableLauncher
 {
     /**
      * Get the service identifiers that should trigger loading this provider.

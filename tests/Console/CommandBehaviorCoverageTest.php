@@ -140,8 +140,8 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(['Admin', 'Hello'], $parts);
         $this->assertSame('TestProvider', $className);
         $this->assertSame(
-            'src/Providers/Hello/TestProvider.php',
-            $this->invokeMethod($command, 'relativePath', [Env::path('src/Providers/Hello/TestProvider.php')])
+            'src/Launchers/Hello/TestProvider.php',
+            $this->invokeMethod($command, 'relativePath', [Env::path('src/Launchers/Hello/TestProvider.php')])
         );
     }
 
@@ -152,19 +152,19 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $command->fakeArguments['name'] = 'Hello\\TestProvider';
+        $command->fakeArguments['name'] = 'Hello\\TestLauncher';
 
         $result = $command->handle();
-        $file = Env::path('src/Providers/Hello/TestProvider.php');
+        $file = Env::path('src/Launchers/Hello/TestLauncher.php');
         $contents = (string) file_get_contents($file);
         $lines = array_map(static fn(array $line): string => $line[0], $command->capturedLines);
 
         $this->assertSame(0, $result);
         $this->assertFileExists($file);
-        $this->assertStringContainsString('namespace App\\Providers\\Hello;', $contents);
-        $this->assertStringContainsString('class TestProvider extends ServiceProvider', $contents);
+        $this->assertStringContainsString('namespace App\\Launchers\\Hello;', $contents);
+        $this->assertStringContainsString('class TestLauncher extends ServiceLauncher', $contents);
         $this->assertContains(
-            '<fg=yellow>📦 File:</> <fg=white>src/Providers/Hello/TestProvider.php</>',
+            '<fg=yellow>📦 File:</> <fg=white>src/Launchers/Hello/TestLauncher.php</>',
             $lines
         );
     }
@@ -245,11 +245,11 @@ class CommandBehaviorCoverageTest extends TestCase
         };
 
         return [
-            'provider' => [
+            'launcher' => [
                 new MakeProviderCommand(),
                 'generateProviderContent',
-                ['App\\Providers', 'AppServiceProvider'],
-                ['class AppServiceProvider extends ServiceProvider', 'public function register(): void'],
+                ['App\\Launchers', 'AppLauncher'],
+                ['class AppLauncher extends ServiceLauncher', 'public function launch(): void'],
             ],
             'rule' => [
                 new MakeRuleCommand(),

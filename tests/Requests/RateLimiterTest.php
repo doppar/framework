@@ -150,7 +150,8 @@ class RateLimiterTest extends TestCase
         $key = 'test_key';
         $maxAttempts = 5;
 
-        $this->cache->method('get')
+        $this->cache->expects($this->once())
+            ->method('get')
             ->with($key)
             ->willReturn(5);
 
@@ -163,7 +164,8 @@ class RateLimiterTest extends TestCase
         $remainingTime = 30;
         $now = time();
 
-        $this->cache->method('get')
+        $this->cache->expects($this->once())
+            ->method('get')
             ->with($key . '_timer')
             ->willReturn($now + $remainingTime);
 
@@ -175,7 +177,8 @@ class RateLimiterTest extends TestCase
     {
         $key = 'test_key';
 
-        $this->cache->method('get')
+        $this->cache->expects($this->once())
+            ->method('get')
             ->with($key . '_timer')
             ->willReturn(null);
 
@@ -274,7 +277,8 @@ class RateLimiterTest extends TestCase
         $key = 'test_key';
         $attempts = 3;
 
-        $this->cache->method('get')
+        $this->cache->expects($this->once())
+            ->method('get')
             ->with($key)
             ->willReturn($attempts);
 
@@ -286,7 +290,8 @@ class RateLimiterTest extends TestCase
     {
         $key = 'test_key';
 
-        $this->cache->method('get')
+        $this->cache->expects($this->once())
+            ->method('get')
             ->with($key)
             ->willReturn(null);
 
@@ -311,7 +316,8 @@ class RateLimiterTest extends TestCase
         $key = 'test_key';
         $exception = new class extends \Exception implements InvalidArgumentException {};
 
-        $this->cache->method('add')
+        $this->cache->expects($this->once())
+            ->method('add')
             ->with($key, 1, 60)
             ->willThrowException($exception);
 

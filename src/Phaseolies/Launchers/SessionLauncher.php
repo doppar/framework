@@ -1,10 +1,10 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
-use Phaseolies\Session\ConfigSession;
+use Phaseolies\Session\ConfigSession as Session;
 
-class SessionServiceProvider extends ServiceProvider
+class SessionLauncher extends ServiceLauncher
 {
     /**
      * Register any application services.
@@ -13,7 +13,7 @@ class SessionServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        ConfigSession::configAppSession();
+        Session::configAppSession();
     }
 
     /**
@@ -21,7 +21,7 @@ class SessionServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         //
     }

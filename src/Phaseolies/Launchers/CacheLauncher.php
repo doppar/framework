@@ -1,18 +1,18 @@
 <?php
 
-namespace Phaseolies\Providers;
+namespace Phaseolies\Launchers;
 
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Psr\SimpleCache\CacheInterface;
-use Phaseolies\Providers\ServiceProvider;
-use Phaseolies\Providers\GhostableProvider;
+use Phaseolies\Launchers\ServiceLauncher;
+use Phaseolies\Launchers\GhostableLauncher;
 use Phaseolies\Cache\CacheStore;
 use Phaseolies\Cache\IncrementableCacheInterface;
 
-class CacheServiceProvider extends ServiceProvider implements GhostableProvider
+class CacheLauncher extends ServiceLauncher implements GhostableLauncher
 {
     /**
      * @var \Closure[] Custom adapter factories
@@ -155,7 +155,7 @@ class CacheServiceProvider extends ServiceProvider implements GhostableProvider
      *
      * @return void
      */
-    public function boot()
+    public function launch()
     {
         //
     }

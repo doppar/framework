@@ -15,7 +15,7 @@ class VendorPublishCommand extends Command
      *
      * @var string
      */
-    protected $name = 'vendor:publish {--provider=} {--tag=} {--force}';
+    protected $name = 'vendor:publish {--launcher=} {--tag=} {--force}';
 
     /**
      * The description of the console command.
@@ -40,12 +40,12 @@ class VendorPublishCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $provider = $this->option('provider');
+            $launcher = $this->option('launcher');
             $tag = $this->option('tag');
             $force = $this->option('force');
 
-            if ($provider) {
-                $this->publishProvider($provider, $force);
+            if ($launcher) {
+                $this->publishLauncher($launcher, $force);
                 return Command::SUCCESS;
             }
 
@@ -60,28 +60,28 @@ class VendorPublishCommand extends Command
         });
     }
 
-    protected function publishProvider(string $provider, bool $force = false)
+    protected function publishLauncher(string $launcher, bool $force = false)
     {
-        $providerClass = $this->app->getProvider($provider);
+        $launcherClass = $this->app->getLauncher($launcher);
 
-        if (!$providerClass) {
-            $this->displayError("Unable to locate provider: {$provider}");
+        if (!$launcherClass) {
+            $this->displayError("Unable to locate launcher: {$launcher}");
             return;
         }
 
-        $paths = $providerClass->pathsToPublish($provider);
+        $paths = $launcherClass->pathsToPublish($launcher);
         $this->publishPaths($paths, $force);
 
         $this->newLine();
-        $this->displaySuccess("Published assets for provider: {$provider}");
+            $this->displaySuccess("Published assets for launcher: {$launcher}");
     }
 
     protected function publishTag(string $tag, bool $force = false)
     {
         $paths = [];
 
-        foreach ($this->app->getProviders() as $provider) {
-            $providerPaths = $provider->pathsToPublish(null, $tag);
+        foreach ($this->app->getLaunchers() as $launcher) {
+            $providerPaths = $launcher->pathsToPublish(null, $tag);
             if (!empty($providerPaths)) {
                 $paths = array_merge($paths, $providerPaths);
             }
@@ -101,8 +101,8 @@ class VendorPublishCommand extends Command
     protected function publishAll(bool $force = false)
     {
         $publishedCount = 0;
-        foreach ($this->app->getProviders() as $provider) {
-            $paths = $provider->pathsToPublish();
+        foreach ($this->app->getLaunchers() as $launcher) {
+            $paths = $launcher->pathsToPublish();
             if (!empty($paths)) {
                 $this->publishPaths($paths, $force);
                 $publishedCount++;
@@ -110,7 +110,7 @@ class VendorPublishCommand extends Command
         }
 
         $this->newLine();
-        $this->displaySuccess("Published assets from {$publishedCount} providers");
+        $this->displaySuccess("Published assets from {$publishedCount} launchers");
     }
 
     protected function publishPaths(array $paths, bool $force = false)

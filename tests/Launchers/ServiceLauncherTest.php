@@ -1,22 +1,22 @@
 <?php
 
-namespace Tests\Unit\Providers;
+namespace Tests\Unit\Launchers;
 
 use Phaseolies\Application;
-use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Launchers\ServiceLauncher;
 use PHPUnit\Framework\TestCase;
 use Phaseolies\Database\Migration\Migration;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-// Mock ServiceProvider for testing
-class TestServiceProvider extends ServiceProvider
+// Mock ServiceLauncher for testing
+class TestServiceLauncher extends ServiceLauncher
 {
     public function register()
     {
         // Test implementation
     }
 
-    public function boot()
+    public function launch()
     {
         // Test implementation
     }
@@ -37,20 +37,20 @@ class TestMigration extends Migration
 }
 
 #[AllowMockObjectsWithoutExpectations]
-class ServiceProviderTest extends TestCase
+class ServiceLauncherTest extends TestCase
 {
     private $app;
     private $provider;
 
     protected function setUp(): void
     {
-        $this->app = $this->createMock(Application::class);
-        $this->provider = new TestServiceProvider($this->app);
+        $this->app = $this->createStub(Application::class);
+        $this->provider = new TestServiceLauncher($this->app);
     }
 
     public function testConstructor()
     {
-        $this->assertInstanceOf(ServiceProvider::class, $this->provider);
+        $this->assertInstanceOf(ServiceLauncher::class, $this->provider);
 
         // Test that app is properly set via reflection
         $reflection = new \ReflectionClass($this->provider);
@@ -84,7 +84,7 @@ class ServiceProviderTest extends TestCase
 
     public function testMergeConfigWithoutConfigService()
     {
-        $this->app->method('has')->with('config')->willReturn(false);
+        $this->app->method('has')->willReturn(false);
 
         // Should not throw any exception when config service doesn't exist
         $this->provider->mergeConfig('/some/path.php', 'test.key');
@@ -94,7 +94,7 @@ class ServiceProviderTest extends TestCase
     {
         $paths = ['path1', 'path2'];
 
-        $provider = new class($this->app) extends TestServiceProvider {
+        $provider = new class($this->app) extends TestServiceLauncher {
             public function testPublishesViews(array $paths, string $group = 'views')
             {
                 $this->publishesViews($paths, $group);
@@ -113,14 +113,14 @@ class ServiceProviderTest extends TestCase
 
     public function testLoadViewsWithoutViewService()
     {
-        $this->app->method('has')->with('view')->willReturn(false);
+        $this->app->method('has')->willReturn(false);
 
         $this->provider->loadViews('/test/path', 'test-namespace');
     }
 
     public function testLoadTranslationsWithoutTranslatorService()
     {
-        $this->app->method('has')->with('translator')->willReturn(false);
+        $this->app->method('has')->willReturn(false);
 
         $this->provider->loadTranslations('/test/path', 'test-namespace');
     }
@@ -213,10 +213,10 @@ class ServiceProviderTest extends TestCase
     {
         $reflection = new \ReflectionClass($this->provider);
         $publishesProperty = $reflection->getProperty('publishes');
-        $publishesProperty->setValue($this->provider, ['test-provider' => ['provider-path']]);
+        $publishesProperty->setValue($this->provider, ['test-provider' => 'provider-path']);
 
         $paths = $this->provider->pathsToPublish('test-provider', null);
-        $this->assertEquals(['provider-path'], $paths);
+        $this->assertEquals(['test-provider' => 'provider-path'], $paths);
     }
 
     public function testPathsToPublishWithoutArguments()
@@ -244,6 +244,6 @@ class ServiceProviderTest extends TestCase
     public function testAbstractMethodsExist()
     {
         $this->assertTrue(method_exists($this->provider, 'register'));
-        $this->assertTrue(method_exists($this->provider, 'boot'));
+        $this->assertTrue(method_exists($this->provider, 'launch'));
     }
 }
