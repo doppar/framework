@@ -128,7 +128,7 @@ trait InteractsWithDynamicControllerBinding
 
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
                 if (!empty($method->getAttributes(
-                    \Phaseolies\Utilities\Attributes\Route::class
+                    \Phaseolies\Support\Router\Attributes\Route::class
                 ))) {
                     return true;
                 }

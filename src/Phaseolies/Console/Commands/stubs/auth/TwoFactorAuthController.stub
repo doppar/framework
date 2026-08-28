@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Auth;
 
-use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Facades\Auth;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
-use Phaseolies\Utilities\Attributes\Route;
+use Phaseolies\Support\Router\Attributes\Route;
 use App\Http\Middleware\GuestMiddleware;
 use App\Http\Middleware\VerifyTwoFactorUser;
 use App\Http\Middleware\Authenticate;

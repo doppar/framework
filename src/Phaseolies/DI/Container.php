@@ -578,7 +578,7 @@ class Container implements ArrayAccess
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
-            $bindAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Bind::class);
+            $bindAttributes = $parameter->getAttributes(\Phaseolies\DI\Attributes\Bind::class);
 
             if (!empty($bindAttributes)) {
                 $bindAttribute = $bindAttributes[0]->newInstance();

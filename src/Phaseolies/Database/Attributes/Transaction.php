@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Utilities\Attributes;
+namespace Phaseolies\Database\Attributes;
 
 #[\Attribute(\Attribute::TARGET_METHOD)]
 final class Transaction

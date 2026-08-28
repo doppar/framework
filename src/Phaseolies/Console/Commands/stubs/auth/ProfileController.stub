@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Auth;
-use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Http\Response\RedirectResponse;
-use Phaseolies\Utilities\Attributes\Route;
+use Phaseolies\Support\Router\Attributes\Route;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use App\Http\Middleware\Authenticate;

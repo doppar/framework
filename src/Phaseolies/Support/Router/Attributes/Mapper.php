@@ -1,10 +1,10 @@
 <?php
 
-namespace Phaseolies\Utilities\Attributes;
+namespace Phaseolies\Support\Router\Attributes;
 
 use Attribute;
 
-#[\Attribute(\Attribute::TARGET_CLASS)]
+#[Attribute(Attribute::TARGET_CLASS)]
 final class Mapper
 {
     public function __construct(

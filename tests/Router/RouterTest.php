@@ -4,7 +4,7 @@ namespace Tests\Unit\Router;
 
 use Tests\Support\MockContainer;
 use Tests\Support\Kernel;
-use Phaseolies\Utilities\Attributes\Middleware;
+use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;

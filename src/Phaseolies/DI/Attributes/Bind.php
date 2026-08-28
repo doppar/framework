@@ -1,6 +1,6 @@
 <?php
 
-namespace Phaseolies\Utilities\Attributes;
+namespace Phaseolies\DI\Attributes;
 
 #[\Attribute(\Attribute::TARGET_PARAMETER)]
 final class Bind
