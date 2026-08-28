@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Database\Entity\Query;
 
-use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Collection;
 use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
@@ -160,20 +159,7 @@ trait InteractsWithModelQueryProcessing
      */
     public function save(): bool
     {
-        static $attributeCache = [];
-        $class = static::class;
-
-        if (!array_key_exists($class, $attributeCache)) {
-            $attributeCache[$class] = $this->propertyHasAttribute(new static(), 'timeStamps', CastToDate::class);
-            if ($attributeCache[$class]) {
-                trigger_error(
-                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                    E_USER_DEPRECATED
-                );
-            }
-        }
-
-        $dateTime = $attributeCache[$class] ? now()->startOfDay() : now();
+        $dateTime = now();
 
         try {
             $isUpdatable = isset($this->attributes[$this->primaryKey]);
@@ -286,18 +272,7 @@ trait InteractsWithModelQueryProcessing
     {
         $model = new static();
         $usesTimestamps = $model->timeStamps;
-        $hasCastToDate = $usesTimestamps
-            ? $model->propertyHasAttribute($model, 'timeStamps', CastToDate::class)
-            : false;
-
-        if ($hasCastToDate) {
-            trigger_error(
-                'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                E_USER_DEPRECATED
-            );
-        }
-
-        $dateTime = $hasCastToDate ? now()->startOfDay() : now();
+        $dateTime = now();
 
         $filteredRows = array_map(function ($row) use ($model, $usesTimestamps, $dateTime) {
             $creatable = $model->creatable;
@@ -509,22 +484,7 @@ trait InteractsWithModelQueryProcessing
         }
 
         if ($this->usesTimestamps()) {
-            static $castToDateCache = [];
-            $class = static::class;
-
-            if (!array_key_exists($class, $castToDateCache)) {
-                $castToDateCache[$class] = $this->propertyHasAttribute(static::class, 'timeStamps', CastToDate::class);
-                if ($castToDateCache[$class]) {
-                    trigger_error(
-                        'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                        E_USER_DEPRECATED
-                    );
-                }
-            }
-
-            $dirty['updated_at'] = $castToDateCache[$class]
-                ? now()->startOfDay()
-                : now();
+            $dirty['updated_at'] = now();
         }
 
         try {
