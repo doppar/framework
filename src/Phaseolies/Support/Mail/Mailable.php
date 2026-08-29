@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Support\Mail;
 
+use Phaseolies\Support\Mail\Mailable\Content;
+use Phaseolies\Support\Mail\Mailable\Subject;
 use Phaseolies\Support\Mail\Mailable\View;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -295,7 +297,7 @@ class Mailable
         if (method_exists($this, 'subject')) {
             $subject = $this->subject();
 
-            if ($subject?->subject !== null) {
+            if ($subject instanceof Subject) {
                 $email->subject($subject->subject);
             }
         }
@@ -314,10 +316,12 @@ class Mailable
         } elseif (method_exists($this, 'content')) {
             $content = $this->content();
 
-            if ($content?->view) {
-                $email->html(View::render($this));
-            } elseif ($content?->data !== null && $content?->data !== '') {
-                $email->text((string) $content->data);
+            if ($content instanceof Content) {
+                if ($content->view) {
+                    $email->html(View::render($this));
+                } elseif ($content->data !== null && $content->data !== '') {
+                    $email->text((string) $content->data);
+                }
             }
         }
 
