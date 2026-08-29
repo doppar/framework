@@ -2,178 +2,315 @@
 
 namespace Phaseolies\Support\Mail;
 
-use Phaseolies\Support\Mail\Mailable\View;
-use Phaseolies\Support\Mail\MailDriverInterface;
-use Phaseolies\Support\Mail\Driver\SmtpMailDriver;
-use Phaseolies\Support\Mail\Driver\SendmailMailDriver;
-use Phaseolies\Support\Mail\Driver\QmailMailDriver;
-use Phaseolies\Support\Mail\Driver\MailMailDriver;
 use Phaseolies\Database\Entity\Model;
+use Symfony\Component\Mailer\Envelope;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mailer\Transport\Smtp\SmtpTransport;
+use Symfony\Component\Mailer\Transport\TransportInterface;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Crypto\DkimSigner;
+use Symfony\Component\Mime\Crypto\SMimeSigner;
+use Symfony\Component\Mime\Message;
 
 class MailService
 {
     /**
-     * The mail driver used to send emails.
+     * The address the next email will be delivered to.
      *
-     * @var MailDriverInterface
+     * @var string|null
      */
-    private $driver;
+    private ?string $recipient = null;
 
     /**
-     * The Mailable object representing the email message.
+     * The display name of the recipient.
      *
-     * @var Mailable
+     * @var string|null
      */
-    private $message;
-
-    public function __construct()
-    {
-        $this->driver = self::resolveDriver();
-        $this->message = new Mailable();
-    }
+    private ?string $recipientName = null;
 
     /**
-     * Creates a new Mail instance with the specified driver.
+     * The CC (carbon copy) recipient(s) for the next email.
      *
-     * @param MailDriverInterface $driver
-     * @return self
+     * @var array
      */
-    public function driver(MailDriverInterface $driver)
-    {
-        return new self($driver);
-    }
+    private array $cc = [];
 
     /**
-     * Creates a new Mail instance and sets the primary recipient.
+     * The BCC (blind carbon copy) recipient(s) for the next email.
      *
-     * @param Model|string $recipient
+     * @var array
+     */
+    private array $bcc = [];
+
+    /**
+     * A one-off Symfony transport to use instead of the configured mailer.
+     *
+     * @var TransportInterface|null
+     */
+    private ?TransportInterface $transport = null;
+
+    /**
+     * The lazily built DKIM signer, cached for the lifetime of this service.
+     *
+     * @var DkimSigner|null
+     */
+    private ?DkimSigner $dkimSigner = null;
+
+    /**
+     * The lazily built S/MIME signer, cached for the lifetime of this service.
+     *
+     * @var SMimeSigner|null
+     */
+    private ?SMimeSigner $smimeSigner = null;
+
+    /**
+     * Set the primary recipient of the next email.
+     *
+     * @param Model|string|array $recipient
      * @param string|null $name
      * @return self
      */
-    public function to(Model|string $recipient, ?string $name = null): self
+    public function to(Model|string|array $recipient, ?string $name = null): self
     {
         if ($recipient instanceof Model) {
-            $this->message->to = [
-                'address' => $recipient->email,
-                'name' => $recipient->name ?? null
-            ];
-        } else {
-
-            if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                throw new \InvalidArgumentException('Invalid email address provided');
-            }
-
-            $this->message->to = [
-                'address' => $recipient,
-                'name' => $name
-            ];
+            $recipient = ['address' => $recipient->email, 'name' => $recipient->name ?? null];
         }
 
-        $this->message->from = [
-            'address' => config('mail.from.address'),
-            'name' => config('mail.from.name'),
-        ];
+        if (is_array($recipient)) {
+            $this->recipient = $recipient['address'];
+            $this->recipientName = $recipient['name'] ?? null;
+
+            return $this;
+        }
+
+        if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Invalid email address provided');
+        }
+
+        $this->recipient = $recipient;
+        $this->recipientName = $name;
 
         return $this;
     }
 
     /**
-     * Sends the email using the provided Mailable object.
-     *
-     * @param Mailable $mailable
-     * @return mixed
-     * @throws \Exception
-     */
-    public function send(Mailable $mailable)
-    {
-        $this->message->subject = $mailable->subject()?->subject;
-        $this->message->body =  View::render($mailable);
-        $this->message->cc = array_merge($this->message->cc, $mailable->cc);
-        $this->message->bcc = array_merge($this->message->bcc, $mailable->bcc);
-
-        $attachment = $mailable->attachment() ?? [];
-
-        if (isset($attachment[0])) {
-            foreach ($attachment as $filePath) {
-                if (!file_exists($filePath)) {
-                    throw new \Exception("$filePath not found");
-                }
-                $this->message->attachments[] = [
-                    'path' => $filePath,
-                    'name' => basename($filePath),
-                    'mime' => mime_content_type($filePath),
-                ];
-            }
-        } else {
-            foreach ($attachment as $filePath => $fileDetails) {
-                if (!file_exists($filePath)) {
-                    throw new \Exception("$filePath not found");
-                }
-                $this->message->attachments[] = [
-                    'path' => $filePath,
-                    'name' => $fileDetails['as'] ?? basename($filePath),
-                    'mime' => $fileDetails['mime'] ?? mime_content_type($filePath),
-                ];
-            }
-        }
-
-        return $this->driver->send($this->message);
-    }
-
-    /**
-     * Adds CC (carbon copy) recipients to the email
+     * Add CC (carbon copy) recipients to the next email.
      *
      * @param string|array $cc
      * @return self
      */
-    public function cc($cc): self
+    public function cc(string|array $cc): self
     {
-        if (is_string($cc)) {
-            $this->message->cc[] = $cc;
-        } else {
-            $this->message->cc = array_merge($this->message->cc, is_array($cc) ? $cc : [$cc]);
-        }
+        $this->cc = array_merge($this->cc, $this->normalize($cc));
+
         return $this;
     }
 
     /**
-     * Adds BCC (blind carbon copy) recipients to the email.
+     * Add BCC (blind carbon copy) recipients to the next email.
      *
      * @param string|array $bcc
      * @return self
      */
-    public function bcc($bcc): self
+    public function bcc(string|array $bcc): self
     {
-        if (is_string($bcc)) {
-            $this->message->bcc[] = $bcc;
-        } else {
-            $this->message->bcc = array_merge($this->message->bcc, is_array($bcc) ? $bcc : [$bcc]);
-        }
+        $this->bcc = array_merge($this->bcc, $this->normalize($bcc));
+
         return $this;
     }
 
     /**
-     * Resolves the mail driver based on the application configuration.
+     * Send the next email through a specific Symfony Mailer transport
+     * instead of the one configured in `mail.php`.
      *
-     * @return MailDriverInterface
-     * @throws \Exception
+     * @param TransportInterface|string $transport A transport instance, or a Mailer DSN string.
+     * @return self
      */
-    private static function resolveDriver(): MailDriverInterface
+    public function driver(TransportInterface|string $transport): self
     {
-        $mailer = config('mail.default');
-        $config = config('mail.mailers.' . $mailer);
+        $this->transport = is_string($transport) ? Transport::fromDsn($transport) : $transport;
 
-        switch ($mailer) {
-            case 'smtp':
-                return new SmtpMailDriver($config);
-            case 'sendmail':
-                return new SendmailMailDriver($config);
-            case 'qmail':
-                return new QmailMailDriver($config);
-            case 'mail':
-                return new MailMailDriver($config);
-            default:
-                throw new \Exception("Unsupported mailer: $mailer");
+        return $this;
+    }
+
+    /**
+     * Alias for `send()`.
+     *
+     * @param Mailable $mailable
+     * @return SentMessage
+     */
+    public function deliver(Mailable $mailable): SentMessage
+    {
+        return $this->send($mailable);
+    }
+
+    /**
+     * Send the given Mailable to the recipient set via `to()`.
+     *
+     * @param Mailable $mailable
+     * @return SentMessage
+     */
+    public function send(Mailable $mailable): SentMessage
+    {
+        if (!$this->recipient) {
+            throw new \LogicException('A recipient is required before sending mail.');
         }
+
+        $from = config('mail.from', []);
+        $fromAddress = new Address(
+            $mailable->from['address'] ?? $from['address'],
+            $mailable->from['name'] ?? $from['name'] ?? ''
+        );
+        $toAddress = new Address($this->recipient, $this->recipientName ?? '');
+
+        $email = $mailable->toEmail();
+        $email->from($fromAddress)->to($toAddress);
+
+        foreach ($this->cc as $recipient) {
+            $email->addCc($this->address($recipient));
+        }
+
+        foreach ($this->bcc as $recipient) {
+            $email->addBcc($this->address($recipient));
+        }
+
+        foreach ($mailable->tags as $tag) {
+            $email->getHeaders()->addTextHeader('X-Doppar-Tag', $tag);
+        }
+
+        foreach ($mailable->metadata as $key => $value) {
+            $email->getHeaders()->addTextHeader('X-Doppar-Metadata-' . $key, (string) $value);
+        }
+
+        $message = $this->applySigning($email);
+        $sent = $this->resolveTransport()->send($message, Envelope::create($message));
+
+        $this->recipient = $this->recipientName = $this->transport = null;
+        $this->cc = $this->bcc = [];
+
+        return $sent;
+    }
+
+    /**
+     * Resolve the Symfony Mailer transport for the current send.
+     *
+     * @return TransportInterface
+     */
+    private function resolveTransport(): TransportInterface
+    {
+        if ($this->transport) {
+            return $this->transport;
+        }
+
+        $config = config('mail.mailers.' . config('mail.default'), []);
+        $transport = Transport::fromDsn($this->resolveDsn($config));
+
+        if ($transport instanceof SmtpTransport && !empty($config['timeout'])) {
+            $stream = $transport->getStream();
+
+            if (method_exists($stream, 'setTimeout')) {
+                $stream->setTimeout((float) $config['timeout']);
+            }
+        }
+
+        return $transport;
+    }
+
+    /**
+     * Resolve the Symfony Mailer DSN for a mailer config entry, either from
+     * an explicit `dsn` string or assembled from its individual smtp parts.
+     *
+     * @param array $config
+     * @return string
+     */
+    private function resolveDsn(array $config): string
+    {
+        if (!empty($config['dsn'])) {
+            return $config['dsn'];
+        }
+
+        if (empty($config['host'])) {
+            throw new \RuntimeException('Mail DSN is not configured.');
+        }
+
+        $scheme = ($config['encryption'] ?? null) === 'ssl' ? 'smtps' : 'smtp';
+
+        $dsn = sprintf(
+            '%s://%s:%s@%s:%s',
+            $scheme,
+            rawurlencode((string) ($config['username'] ?? '')),
+            rawurlencode((string) ($config['password'] ?? '')),
+            $config['host'],
+            $config['port'] ?? 25
+        );
+
+        $query = array_filter([
+            'local_domain' => $config['local_domain'] ?? null,
+            'auto_tls' => empty($config['encryption']) ? 'false' : null,
+        ], fn($value) => $value !== null && $value !== '');
+
+        return $query ? $dsn . '?' . http_build_query($query) : $dsn;
+    }
+
+    /**
+     * Sign the message with DKIM and/or S/MIME when configured in `mail.php`.
+     *
+     * @param Message $message
+     * @return Message
+     */
+    private function applySigning(Message $message): Message
+    {
+        $dkim = config('mail.signing.dkim', []);
+
+        if (!empty($dkim['enabled'])) {
+            $this->dkimSigner ??= new DkimSigner(
+                $dkim['private_key'],
+                $dkim['domain'],
+                $dkim['selector'],
+                [],
+                $dkim['passphrase'] ?? ''
+            );
+
+            $message = $this->dkimSigner->sign($message);
+        }
+
+        $smime = config('mail.signing.smime', []);
+
+        if (!empty($smime['enabled'])) {
+            $this->smimeSigner ??= new SMimeSigner(
+                $smime['certificate'],
+                $smime['private_key'],
+                $smime['passphrase'] ?? null
+            );
+
+            $message = $this->smimeSigner->sign($message);
+        }
+
+        return $message;
+    }
+
+    /**
+     * Normalize a CC/BCC value into a flat list of recipients.
+     *
+     * @param string|array $recipients
+     * @return array
+     */
+    private function normalize(string|array $recipients): array
+    {
+        return isset($recipients['address']) ? [$recipients] : (is_array($recipients) ? $recipients : [$recipients]);
+    }
+
+    /**
+     * Convert a string or `['address' => ..., 'name' => ...]` array into an `Address`.
+     *
+     * @param string|array $recipient
+     * @return Address
+     */
+    private function address(string|array $recipient): Address
+    {
+        return is_array($recipient)
+            ? new Address($recipient['address'], $recipient['name'] ?? '')
+            : Address::create($recipient);
     }
 }
