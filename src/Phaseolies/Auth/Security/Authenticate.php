@@ -374,6 +374,8 @@ class Authenticate
      */
     private function setUser(Model $user): void
     {
+        session()->regenerate();
+
         session()->put($this->getSessionKey(), $user->id);
 
         $this->resolvedUser = $user;

@@ -5,6 +5,8 @@ namespace Phaseolies\Auth\Security {
     {
         private array $data = [];
 
+        public int $regenerateCallCount = 0;
+
         public function get(string $key, mixed $default = null): mixed
         {
             return $this->data[$key] ?? $default;
@@ -23,6 +25,11 @@ namespace Phaseolies\Auth\Security {
         public function forget(string $key): void
         {
             unset($this->data[$key]);
+        }
+
+        public function regenerate(bool $deleteOldSession = true): void
+        {
+            $this->regenerateCallCount++;
         }
     }
 
@@ -162,6 +169,36 @@ namespace Tests\Unit\Auth {
 
             $this->assertSame($user, $auth->user());
             $this->assertFalse($authenticateSessionStore->has('cache_auth_admin'));
+        }
+
+        public function testLoginRegeneratesSessionIdToPreventFixation()
+        {
+            global $authenticateSessionStore;
+
+            $user = new FakeAuthenticatableModel();
+            $user->id = 42;
+
+            $auth = new SessionTrackingAuthenticate('admin');
+
+            $this->assertTrue($auth->login($user));
+            $this->assertSame(1, $authenticateSessionStore->regenerateCallCount);
+        }
+
+        public function testCompleteTwoFactorLoginRegeneratesSessionId()
+        {
+            global $authenticateSessionStore;
+
+            $user = new FakeAuthenticatableModel();
+            $user->id = 7;
+            FakeAuthenticatableModel::$resolvedUser = $user;
+
+            $authenticateSessionStore->put('2fa_admin_user_id', 7);
+            $authenticateSessionStore->put('2fa_admin_remember', false);
+
+            $auth = new SessionTrackingAuthenticate('admin');
+
+            $this->assertTrue($auth->completeTwoFactorLogin());
+            $this->assertSame(1, $authenticateSessionStore->regenerateCallCount);
         }
     }
 }
