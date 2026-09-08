@@ -174,7 +174,9 @@ trait InteractsWithModelQueryProcessing
                 $dirtyAttributes = $this->getDirtyAttributes();
                 $this->pruneNonColumnDirtyAttributes($dirtyAttributes);
                 $dirtyAttributes = $this->getDirtyAttributes();
-                $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+                if (!empty($this->creatable)) {
+                    $dirtyAttributes = array_intersect_key($dirtyAttributes, array_flip($this->creatable));
+                }
 
                 if (empty($dirtyAttributes)) {
                     return true;
