@@ -165,6 +165,8 @@ trait InteractsWithModelQueryProcessing
             $isUpdatable = isset($this->attributes[$this->primaryKey]);
 
             if ($isUpdatable) {
+                $this->assertCreatableIsDefined();
+
                 if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
                     return false;
                 }
@@ -406,11 +408,7 @@ trait InteractsWithModelQueryProcessing
      */
     protected function getCreatableAttributes(): array
     {
-        if (empty($this->creatable)) {
-            throw new \RuntimeException(
-                "Model " . static::class . " has no \$creatable attributes defined."
-            );
-        }
+        $this->assertCreatableIsDefined();
 
         $creatableAttributes = [];
         foreach ($this->creatable as $attribute) {
@@ -420,6 +418,21 @@ trait InteractsWithModelQueryProcessing
         }
 
         return $creatableAttributes;
+    }
+
+    /**
+     * Ensure the model declares a $creatable whitelist before it is persisted.
+     *
+     * @return void
+     * @throws \RuntimeException
+     */
+    protected function assertCreatableIsDefined(): void
+    {
+        if (empty($this->creatable)) {
+            throw new \RuntimeException(
+                "Model " . static::class . " has no \$creatable attributes defined."
+            );
+        }
     }
 
     /**
@@ -463,6 +476,10 @@ trait InteractsWithModelQueryProcessing
             return false;
         }
 
+        $this->assertCreatableIsDefined();
+
+        $attributes = array_intersect_key($attributes, array_flip($this->creatable));
+
         foreach ($attributes as $key => $value) {
             $this->setAttribute($key, $value);
         }
@@ -474,13 +491,10 @@ trait InteractsWithModelQueryProcessing
         $dirty = $this->getDirtyAttributes();
         $this->pruneNonColumnDirtyAttributes($dirty);
         $dirty = $this->getDirtyAttributes();
+        $dirty = array_intersect_key($dirty, array_flip($this->creatable));
 
         if (empty($dirty)) {
             return true;
-        }
-
-        if (!empty($this->creatable)) {
-            $dirty = array_intersect_key($dirty, array_flip($this->creatable));
         }
 
         if ($this->usesTimestamps()) {
