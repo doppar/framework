@@ -7,6 +7,7 @@ use Phaseolies\Http\Response\ResponseHeaderBag;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Controllers\Controller;
 
 class Response implements HttpStatus
 {
@@ -728,15 +729,7 @@ class Response implements HttpStatus
      */
     public function renderView(string $view, array $data = []): string
     {
-        $viewPath = str_replace('.', '/', $view);
-
-        extract($data);
-
-        ob_start();
-
-        include base_path("templates/views/{$viewPath}.odo.php");
-
-        return ob_get_clean();
+        return app(Controller::class)->render($view, $data, true);
     }
 
     /**
