@@ -541,6 +541,67 @@ abstract class EntityModelComplexQueryTest extends ModelQueryDriverTestCase
     }
 
     /**
+     * A model with no $creatable whitelist must refuse to persist an
+     * update via save() rather than silently writing every dirty
+     * attribute (mass-assignment safety must hold on update, not just
+     * on insert).
+     */
+    public function testSaveAsUpdateThrowsWhenCreatableUndeclared(): void
+    {
+        MockAnotherUser::saveMany([
+            ['name' => 'Guarded', 'email' => 'guarded@test.com', 'age' => 30, 'status' => 'active'],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'guarded@test.com')->first();
+        $user->name = 'Changed Without Whitelist';
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('has no $creatable attributes defined');
+
+        $user->save();
+    }
+
+    /**
+     * Same guarantee for the update(array $attributes) entry point,
+     * which is the one most commonly fed request input directly
+     * (e.g. $model->update($request->all())).
+     */
+    public function testUpdateThrowsWhenCreatableUndeclared(): void
+    {
+        MockAnotherUser::saveMany([
+            ['name' => 'Guarded Two', 'email' => 'guarded2@test.com', 'age' => 31, 'status' => 'active'],
+        ]);
+
+        $user = MockAnotherUser::where('email', 'guarded2@test.com')->first();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('has no $creatable attributes defined');
+
+        $user->update(['name' => 'Changed Without Whitelist']);
+    }
+
+    /**
+     * When $creatable IS declared, update() must silently drop any key
+     * outside that whitelist rather than writing it — this is what
+     * stops $model->update($request->all()) from letting a caller set
+     * arbitrary columns (e.g. the primary key) that happen to be
+     * present in the input array.
+     */
+    public function testUpdateIgnoresKeysOutsideCreatableWhitelist(): void
+    {
+        $user = MockUser::find(2);
+        $originalId = $user->id;
+
+        $user->update(['id' => 9999, 'name' => 'Bob Renamed']);
+
+        $this->assertSame($originalId, $user->id);
+        $this->assertSame('Bob Renamed', $user->name);
+
+        $fresh = MockUser::find($originalId);
+        $this->assertSame('Bob Renamed', $fresh->name);
+    }
+
+    /**
      * Empty string assigned to model attribute is preserved as '', not null.
      */
     public function testSanitizeEmptyStringPreservedOnModel(): void
