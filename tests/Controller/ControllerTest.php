@@ -51,6 +51,24 @@ class ControllerTest extends TestCase
         $this->assertEquals('custom' . DIRECTORY_SEPARATOR . 'views', $viewFolderProperty->getValue($this->controller));
     }
 
+    public function testFindRegularViewPreservesAbsoluteViewFolder(): void
+    {
+        $viewFolder = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'phaseolies_views_' . uniqid();
+        $viewFile = $viewFolder . DIRECTORY_SEPARATOR . 'sample.odo.php';
+        mkdir($viewFolder, 0777, true);
+        file_put_contents($viewFile, 'sample');
+
+        try {
+            $this->controller->setViewFolder($viewFolder);
+            $method = (new \ReflectionClass(Controller::class))->getMethod('findRegularView');
+
+            $this->assertSame($viewFile, $method->invoke($this->controller, 'sample'));
+        } finally {
+            @unlink($viewFile);
+            @rmdir($viewFolder);
+        }
+    }
+
     public function testSetEchoFormat(): void
     {
         $this->controller->setEchoFormat('custom_format(%s)');
