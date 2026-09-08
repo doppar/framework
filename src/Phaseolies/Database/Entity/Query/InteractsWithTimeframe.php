@@ -15,6 +15,8 @@ trait InteractsWithTimeframe
      */
     public function whereDate(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
+        $this->assertValidIdentifier($column);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -60,6 +62,8 @@ trait InteractsWithTimeframe
      */
     public function whereMonth(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
+        $this->assertValidIdentifier($column);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -104,6 +108,8 @@ trait InteractsWithTimeframe
      */
     public function whereYear(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
+        $this->assertValidIdentifier($column);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -148,6 +154,8 @@ trait InteractsWithTimeframe
      */
     public function whereDay(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
+        $this->assertValidIdentifier($column);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -192,6 +200,8 @@ trait InteractsWithTimeframe
      */
     public function whereTime(string $column, $operator, ?string $value = null, string $boolean = 'AND'): self
     {
+        $this->assertValidIdentifier($column);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -312,10 +322,21 @@ trait InteractsWithTimeframe
      */
     public function whereDateBetween(string $column, $start, $end): self
     {
+        $this->assertValidIdentifier($column);
+
         $start = $this->formatDate($start);
         $end = $this->formatDate($end);
 
-        return $this->whereBetween($this->date($column), [$start, $end]);
+        $this->conditions[] = [
+            'AND',
+            $this->date($column),
+            'BETWEEN',
+            $start,
+            $end,
+            'AND'
+        ];
+
+        return $this;
     }
 
     /**

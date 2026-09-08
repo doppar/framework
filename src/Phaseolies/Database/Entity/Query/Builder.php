@@ -127,6 +127,8 @@ class Builder
             return $this->whereNested($field, 'AND');
         }
 
+        $this->assertValidIdentifier($field);
+
         if (func_num_args() === 2) {
             $value = $operator;
             $operator = '=';
@@ -158,6 +160,8 @@ class Builder
         if (is_callable($field)) {
             return $this->whereNested($field, 'OR');
         }
+
+        $this->assertValidIdentifier($field);
 
         if (func_num_args() === 2) {
             $value = $operator;
@@ -202,6 +206,15 @@ class Builder
      */
     public function orderBy(string $field, string $direction = 'ASC'): self
     {
+        $this->assertValidIdentifier($field);
+
+        $direction = strtoupper($direction);
+        if (!in_array($direction, ['ASC', 'DESC'], true)) {
+            throw new \InvalidArgumentException(
+                "Invalid sort direction \"{$direction}\". Use \"ASC\" or \"DESC\"."
+            );
+        }
+
         $this->orderBy[] = [$field, $direction];
         return $this;
     }
@@ -214,6 +227,8 @@ class Builder
      */
     public function groupBy(string $field): self
     {
+        $this->assertValidIdentifier($field);
+
         $this->groupBy[] = $field;
         return $this;
     }
@@ -512,6 +527,8 @@ class Builder
      */
     public function whereIn(string $field, array $values): self
     {
+        $this->assertValidIdentifier($field);
+
         if (empty($values)) {
             return $this->where($field, '=', 'NULL');
         }
@@ -534,6 +551,8 @@ class Builder
      */
     public function orWhereIn(string $field, array $values): self
     {
+        $this->assertValidIdentifier($field);
+
         if (empty($values)) {
             $this->orWhere($field, '=', 'NULL');
             return $this;
@@ -1069,6 +1088,8 @@ class Builder
      */
     public function whereBetween(string $column, array $values, string $boolean = 'AND', bool $not = false): self
     {
+        $this->assertValidIdentifier($column);
+
         // Validate input
         if (count($values) !== 2) {
             throw new \InvalidArgumentException('whereBetween requires an array with exactly 2 values');
@@ -1134,6 +1155,8 @@ class Builder
      */
     public function whereNull(string $column, string $boolean = 'AND', bool $not = false): self
     {
+        $this->assertValidIdentifier($column);
+
         $this->conditions[] = [
             $boolean,
             $column,

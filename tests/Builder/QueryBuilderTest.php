@@ -1088,6 +1088,82 @@ class QueryBuilderTest extends TestCase
         $this->assertLessThan(0.5, $queryTime); // Should complete within 0.5 seconds
     }
 
+    // ==================== IDENTIFIER VALIDATION (SQL INJECTION) TESTS ====================
+
+    public function testWhereRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->where('status = 1; DROP TABLE users; --', 'active');
+    }
+
+    public function testOrderByRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->orderBy('name; DROP TABLE users; --');
+    }
+
+    public function testOrderByRejectsInjectedDirection(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->orderBy('name', 'ASC; DROP TABLE users; --');
+    }
+
+    public function testGroupByRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->groupBy('department; DROP TABLE users; --');
+    }
+
+    public function testWhereInRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->whereIn('status = 1) UNION SELECT * FROM users --', ['active']);
+    }
+
+    public function testWhereBetweenRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->whereBetween('age) OR (1=1', [20, 30]);
+    }
+
+    public function testWhereNullRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->whereNull('department) OR (1=1');
+    }
+
+    public function testWhereLikeRejectsInjectedColumnIdentifier(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->whereLike('name) OR (1=1) --', 'John');
+    }
+
+    public function testWhereAcceptsPlainAndTableQualifiedColumns(): void
+    {
+        $users = $this->builder->where('status', 'active')->get();
+        $this->assertGreaterThan(0, $users->count());
+
+        $users = $this->builder->where('users.status', 'active')->get();
+        $this->assertGreaterThan(0, $users->count());
+    }
+
+    public function testOrderByNormalizesDirectionCaseInsensitively(): void
+    {
+        $users = $this->builder->orderBy('name', 'asc')->get();
+        $this->assertGreaterThan(0, $users->count());
+
+        $users = $this->builder->orderBy('name', 'desc')->get();
+        $this->assertGreaterThan(0, $users->count());
+    }
+
     protected function tearDown(): void
     {
         $this->pdo = null;
