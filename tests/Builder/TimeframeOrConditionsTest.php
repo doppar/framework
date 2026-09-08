@@ -312,4 +312,43 @@ class TimeframeOrConditionsTest extends TestCase
 
         $this->builder()->formatDateTime(99999);
     }
+
+    // ==================== IDENTIFIER VALIDATION (SQL INJECTION) TESTS ====================
+
+    public function testWhereDateRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereDate('created_at) OR (1=1', '2024-06-15');
+    }
+
+    public function testWhereMonthRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereMonth('created_at); DROP TABLE users; --', 6);
+    }
+
+    public function testWhereYearRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereYear('created_at) OR (1=1', 2024);
+    }
+
+    public function testWhereDateBetweenRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereDateBetween('created_at) OR (1=1', '2024-01-01', '2024-12-31');
+    }
+
+    public function testWhereDateBetweenStillWorksWithPlainColumn()
+    {
+        $sql = $this->builder()
+            ->whereDateBetween('created_at', '2024-01-01', '2024-12-31')
+            ->toSql();
+
+        $this->assertStringContainsString('DATE(created_at) BETWEEN ? AND ?', $sql);
+    }
 }

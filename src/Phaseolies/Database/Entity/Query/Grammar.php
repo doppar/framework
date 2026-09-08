@@ -5,6 +5,30 @@ namespace Phaseolies\Database\Entity\Query;
 trait Grammar
 {
     /**
+     * Matches a plain column name or a table-qualified column name
+     *
+     * @var string
+     */
+    private const VALID_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$/';
+
+    /**
+     * Ensure a value used as a column identifier is a safe
+     *
+     * @param string $identifier
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidIdentifier(string $identifier): void
+    {
+        if (!preg_match(self::VALID_IDENTIFIER_PATTERN, $identifier)) {
+            throw new \InvalidArgumentException(
+                "Invalid column identifier \"{$identifier}\". " .
+                "Use whereRaw()/orderByRaw()/groupByRaw() to build conditions from raw SQL expressions."
+            );
+        }
+    }
+
+    /**
      * Get the current driver
      *
      * @return string
@@ -598,6 +622,8 @@ trait Grammar
      */
     protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean): self
     {
+        $this->assertValidIdentifier($field);
+
         // Intentionally avoiding $caseSensitive search
         $driver = $this->getDriver();
         $likeValue = $this->prepareLikeValue($value);
