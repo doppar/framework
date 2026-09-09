@@ -1592,7 +1592,10 @@ class Router extends Kernel
         $dto = $app->make($dtoClass);
         $request = $app->make('request');
         $attributeInstance = $mapAttributes[0]->newInstance();
-        $instance = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
+        $strict = (bool) ($attributeInstance->strict ?? true);
+        $instance = $attributeInstance->validate
+            ? $request->validateDto($dto, $strict)
+            : $request->bindTo($dto, $strict);
 
         return ['handled' => true, 'instance' => $instance];
     }

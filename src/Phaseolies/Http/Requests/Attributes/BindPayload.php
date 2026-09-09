@@ -7,5 +7,6 @@ final class BindPayload
 {
     public function __construct(
         public bool $strict = false,
+        public bool $validate = false,
     ) {}
 }

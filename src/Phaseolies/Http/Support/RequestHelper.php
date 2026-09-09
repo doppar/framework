@@ -4,6 +4,8 @@ namespace Phaseolies\Http\Support;
 
 use InvalidArgumentException;
 use Phaseolies\Database\Entity\Model;
+use Phaseolies\Validation\DtoValidator;
+use Phaseolies\Validation\MessageResolver;
 
 trait RequestHelper
 {
@@ -71,6 +73,23 @@ trait RequestHelper
         $exclude = array_flip($excludeKeys);
 
         return array_diff_key($this->passedData, $exclude);
+    }
+
+    /**
+     * Validates and hydrates a DTO using property constraints.
+     */
+    public function validateDto(object $dto, bool $strict = true): object
+    {
+        $validator = new DtoValidator(
+            new MessageResolver(app('translator')),
+        );
+        $errors = $validator->errors($dto, $this->all());
+
+        if ($errors !== []) {
+            $this->failValidation($errors);
+        }
+
+        return $this->bindData($dto, $validator->normalize($dto, $this->all()), $strict);
     }
 
     /**
