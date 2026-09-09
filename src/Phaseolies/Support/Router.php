@@ -1590,6 +1590,7 @@ class Router extends Kernel
         }
 
         $dto = $app->make($dtoClass);
+        /** @var Request $request */
         $request = $app->make('request');
         $attributeInstance = $mapAttributes[0]->newInstance();
         $strict = (bool) ($attributeInstance->strict ?? true);
