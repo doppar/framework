@@ -77,6 +77,10 @@ trait RequestHelper
 
     /**
      * Validates and hydrates a DTO using property constraints.
+     *
+     * @param object $dto
+     * @param bool $strict
+     * @return object
      */
     public function validateDto(object $dto, bool $strict = true): object
     {

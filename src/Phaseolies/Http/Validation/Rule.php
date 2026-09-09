@@ -15,6 +15,8 @@ trait Rule
 
     /**
      * Converts validation errors into the response expected by the request type.
+     *
+     * @param array<string, mixed> $errors
      */
     protected function failValidation(array $errors): never
     {

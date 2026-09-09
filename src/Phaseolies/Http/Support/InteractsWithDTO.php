@@ -19,7 +19,10 @@ trait InteractsWithDTO
     /**
      * Binds the given data to an object.
      *
+     * @param object $object
      * @param array<string, mixed> $data
+     * @param bool $strict
+     * @return object
      */
     public function bindData(object $object, array $data, bool $strict = true): object
     {

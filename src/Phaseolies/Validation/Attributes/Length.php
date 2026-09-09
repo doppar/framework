@@ -9,12 +9,26 @@ use Phaseolies\Validation\ConstraintViolation;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 final class Length implements Constraint
 {
+    /**
+     * Creates a length constraint.
+     *
+     * @param int|null $min
+     * @param int|null $max
+     */
     public function __construct(
         private readonly ?int $min = null,
         private readonly ?int $max = null,
     ) {
     }
 
+    /**
+     * Validates the length of a string value.
+     *
+     * @param mixed $value
+     * @param string $property
+     * @param array<string, mixed> $payload
+     * @return ConstraintViolation|null
+     */
     public function validate(mixed $value, string $property, array $payload): ?ConstraintViolation
     {
         if ($value === null || !is_string($value)) {

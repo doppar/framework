@@ -11,6 +11,12 @@ final class MessageResolver
     ) {
     }
 
+    /**
+     * Resolves a constraint violation into a translated message.
+     *
+     * @param ConstraintViolation $violation
+     * @return string
+     */
     public function resolve(ConstraintViolation $violation): string
     {
         $attribute = $this->translator->get(

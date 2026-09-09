@@ -13,6 +13,13 @@ final class DtoValidator
     ) {
     }
 
+    /**
+     * Returns validation errors for a DTO payload.
+     *
+     * @param object $dto
+     * @param array<string, mixed> $payload
+     * @return array<string, list<string>>
+     */
     public function errors(object $dto, array $payload): array
     {
         $errors = [];
@@ -38,6 +45,13 @@ final class DtoValidator
         return $errors;
     }
 
+    /**
+     * Normalizes built-in DTO property values in a payload.
+     *
+     * @param object $dto
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
     public function normalize(object $dto, array $payload): array
     {
         $normalized = $payload;
@@ -55,6 +69,13 @@ final class DtoValidator
         return $normalized;
     }
 
+    /**
+     * Normalizes a value according to a reflected property type.
+     *
+     * @param ReflectionProperty $property
+     * @param mixed $value
+     * @return mixed
+     */
     private function normalizeValue(ReflectionProperty $property, mixed $value): mixed
     {
         $type = $property->getType();
