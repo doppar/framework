@@ -363,7 +363,9 @@ class Controller extends View
     protected function findRegularView(string $view): string
     {
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
-        $basePath = base_path($this->viewFolder);
+        $basePath = $this->isAbsolutePath($this->viewFolder)
+            ? rtrim($this->viewFolder, DIRECTORY_SEPARATOR)
+            : base_path($this->viewFolder);
 
         $possiblePaths = [
             $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension
@@ -380,6 +382,21 @@ class Controller extends View
         throw new NotFoundHttpException(
             "View [{$view}] not found. Attempted paths:\n  - {$attemptedPaths}"
         );
+    }
+
+    /**
+     * Determine if the given path is an absolute filesystem path
+     *
+     * @param string $path
+     * @return bool
+     */
+    protected function isAbsolutePath(string $path): bool
+    {
+        $normalizedPath = str_replace('\\', '/', $path);
+
+        return DIRECTORY_SEPARATOR === '\\'
+            ? preg_match('/^(?:[A-Za-z]:[\\\\\\/]|[\\\\]{2})/', $path) === 1
+            : str_starts_with($normalizedPath, '/');
     }
 
     /**

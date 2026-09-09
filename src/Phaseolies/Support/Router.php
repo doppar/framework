@@ -298,7 +298,7 @@ class Router extends Kernel
         $controllers = [];
         $composerLoader = $this->getComposerClassLoader();
 
-        $prefixes = $composerLoader->getPrefixesPsr4();
+        $prefixes = $composerLoader?->getPrefixesPsr4() ?? [];
 
         foreach ($prefixes as $namespace => $paths) {
             if (
