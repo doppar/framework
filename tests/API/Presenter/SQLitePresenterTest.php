@@ -26,6 +26,7 @@ class SQLitePresenterTest extends TestCase
         $container = new Container();
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => UrlGenerator::class);
+        $container->bind('db', fn() => new Database('default'));
 
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

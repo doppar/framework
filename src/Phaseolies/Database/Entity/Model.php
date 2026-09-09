@@ -1008,96 +1008,88 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function __get($name)
     {
-        try {
-            if (array_key_exists($name, $this->attributes)) {
-                return $this->castForGet($name, $this->attributes[$name]);
-            }
-
-            if (array_key_exists($name, $this->relations)) {
-                return $this->relations[$name];
-            }
-
-            if ($this->isComputed($name)) {
-                return $this->resolveComputed($name);
-            }
-
-            if (method_exists($this, $name)) {
-                $relation = $this->$name();
-
-                if ($relation instanceof Builder) {
-                    $relationType = $this->getLastRelationType();
-
-                    switch ($relationType) {
-                        case 'linkOne':
-                            $result = $relation->first();
-                            $this->setRelation($name, $result);
-                            return $result;
-
-                        case 'bindTo':
-                            $result = $relation->first();
-                            $this->setRelation($name, $result);
-                            return $result;
-
-                        case 'linkMany':
-                            $results = $relation->get();
-                            $this->setRelation($name, $results);
-                            return $results;
-
-                        case 'bindToMany':
-                            $relatedModel = app($this->getLastRelatedModel());
-                            $relatedModelClass = get_class($relatedModel);
-                            $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
-                            $pivotTable = $this->getLastPivotTable();
-                            $pivotSelects = array_map(function ($column) use ($pivotTable) {
-                                return "{$pivotTable}.{$column} as pivot_{$column}";
-                            }, $pivotColumns);
-
-                            $query = $relatedModel->query()
-                                ->select(array_merge(
-                                    ["{$relatedModel->getTable()}.*"],
-                                    $pivotSelects
-                                ))
-                                ->join(
-                                    $this->getLastPivotTable(),
-                                    "{$this->getLastPivotTable()}.{$this->getLastRelatedKey()}",
-                                    '=',
-                                    "{$relatedModel->getTable()}.{$relatedModel->getKeyName()}"
-                                )
-                                ->where("{$this->getLastPivotTable()}.{$this->getLastForeignKey()}", '=', $this->getKey());
-
-                            $results = $query->get();
-                            $grouped = [];
-                            foreach ($results as $result) {
-                                $pivot = [];
-                                foreach ($pivotColumns as $column) {
-                                    $pivot[$column] = $result["pivot_{$column}"];
-                                    unset($result["pivot_{$column}"]);
-                                }
-                                $pivotObj = (object) $pivot;
-                                $result->pivot = $pivotObj;
-                                $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
-                            }
-
-                            $this->setRelation(
-                                $name,
-                                new Collection($relatedModelClass, $grouped[$this->getKey()] ?? [])
-                            );
-
-                            return $results;
-                    }
-                }
-
-                return $relation;
-            }
-
-            if (!isset($this->attributes[$name])) {
-                throw new \Exception("Property or relation '$name' does not exist on " . static::class);
-            }
-
-            return $this->attributes[$name];
-        } catch (\Throwable) {
-            return;
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->castForGet($name, $this->attributes[$name]);
         }
+
+        if (array_key_exists($name, $this->relations)) {
+            return $this->relations[$name];
+        }
+
+        if ($this->isComputed($name)) {
+            return $this->resolveComputed($name);
+        }
+
+        if (method_exists($this, $name)) {
+            $relation = $this->$name();
+
+            if ($relation instanceof Builder) {
+                $relationType = $this->getLastRelationType();
+
+                switch ($relationType) {
+                    case 'linkOne':
+                        $result = $relation->first();
+                        $this->setRelation($name, $result);
+                        return $result;
+
+                    case 'bindTo':
+                        $result = $relation->first();
+                        $this->setRelation($name, $result);
+                        return $result;
+
+                    case 'linkMany':
+                        $results = $relation->get();
+                        $this->setRelation($name, $results);
+                        return $results;
+
+                    case 'bindToMany':
+                        $relatedModel = app($this->getLastRelatedModel());
+                        $relatedModelClass = get_class($relatedModel);
+                        $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
+                        $pivotTable = $this->getLastPivotTable();
+                        $pivotSelects = array_map(function ($column) use ($pivotTable) {
+                            return "{$pivotTable}.{$column} as pivot_{$column}";
+                        }, $pivotColumns);
+
+                        $query = $relatedModel->query()
+                            ->select(array_merge(
+                                ["{$relatedModel->getTable()}.*"],
+                                $pivotSelects
+                            ))
+                            ->join(
+                                $this->getLastPivotTable(),
+                                "{$this->getLastPivotTable()}.{$this->getLastRelatedKey()}",
+                                '=',
+                                "{$relatedModel->getTable()}.{$relatedModel->getKeyName()}"
+                            )
+                            ->where("{$this->getLastPivotTable()}.{$this->getLastForeignKey()}", '=', $this->getKey());
+
+                        $results = $query->get();
+                        $grouped = [];
+                        foreach ($results as $result) {
+                            $pivot = [];
+                            foreach ($pivotColumns as $column) {
+                                $pivot[$column] = $result["pivot_{$column}"];
+                                unset($result["pivot_{$column}"]);
+                            }
+                            $pivotObj = (object) $pivot;
+                            $result->pivot = $pivotObj;
+                            $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
+                        }
+
+                        $this->setRelation(
+                            $name,
+                            new Collection($relatedModelClass, $grouped[$this->getKey()] ?? [])
+                        );
+
+                        return $results;
+                }
+            }
+
+            return $relation;
+        }
+
+        return null;
     }
 
     /**
