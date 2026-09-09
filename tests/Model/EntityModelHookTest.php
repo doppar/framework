@@ -85,11 +85,20 @@ class EntityModelHookTest extends TestCase
     public function testAfterCreatedHook(): void
     {
         MockHook::$wasCalledAfterCreated = false;
+        MockHook::$capturedKeyAtAfterCreated = null;
 
         // Creating a new record should trigger the [after_created] hook
-        MockHook::create(['name' => 'Hook Test']);
+        $created = MockHook::create(['name' => 'Hook Test']);
 
         $this->assertTrue(MockHook::$wasCalledAfterCreated, 'after_created hook should have fired');
+
+        // The primary key must already be set on the model by the time
+        // after_created hooks run, not just after they return.
+        $this->assertNotNull(
+            MockHook::$capturedKeyAtAfterCreated,
+            'getKey() should be populated inside the after_created hook'
+        );
+        $this->assertSame((string) $created->getKey(), MockHook::$capturedKeyAtAfterCreated);
     }
 
     public function testAfterUpdatedHook(): void

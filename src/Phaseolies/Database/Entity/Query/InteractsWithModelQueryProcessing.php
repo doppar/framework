@@ -214,16 +214,20 @@ trait InteractsWithModelQueryProcessing
 
             $id = $this->newQuery()->insert($attributes);
 
-            if ($id && self::$isHookShouldBeCalled) {
+            if (!$id) {
+                return false;
+            }
+
+            // Set the primary key before firing after_created hooks so
+            // that hooks (e.g. Temporal snapshots) see a fully-formed
+            // model via getKey() instead of null.
+            $this->attributes[$this->primaryKey] = $id;
+
+            if (self::$isHookShouldBeCalled) {
                 $this->fireAfterHooks('created');
             }
 
-            if ($id) {
-                $this->attributes[$this->primaryKey] = $id;
-                return true;
-            }
-
-            return false;
+            return true;
         } finally {
             self::$isHookShouldBeCalled = true;
         }
