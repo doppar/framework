@@ -27,6 +27,46 @@ class FileSystem
     }
 
     /**
+     * Resolve a caller-supplied relative path against the storage root,
+     * rejecting any path that would escape outside the root
+     *
+     * @param string $relativePath
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    protected function resolvePath(string $relativePath): string
+    {
+        foreach (preg_split('#[/\\\\]#', $relativePath) as $segment) {
+            if ($segment === '..' || $segment === '.') {
+                throw new \InvalidArgumentException(
+                    "Invalid path \"{$relativePath}\": path traversal is not allowed."
+                );
+            }
+        }
+
+        $root = rtrim($this->filePath, '/\\');
+        $fullPath = $root . '/' . ltrim($relativePath, '/\\');
+
+        $resolvedTarget = realpath($fullPath);
+
+        if ($resolvedTarget !== false) {
+            $resolvedRoot = realpath($root);
+            $withinRoot = $resolvedRoot !== false && (
+                $resolvedTarget === $resolvedRoot ||
+                str_starts_with($resolvedTarget, $resolvedRoot . DIRECTORY_SEPARATOR)
+            );
+
+            if (!$withinRoot) {
+                throw new \InvalidArgumentException(
+                    "Invalid path \"{$relativePath}\": resolves outside the storage root."
+                );
+            }
+        }
+
+        return $fullPath;
+    }
+
+    /**
      * move file in local file system
      *
      * @param string $path
@@ -117,10 +157,10 @@ class FileSystem
      */
     public function isDirectoryExists(string $path): string
     {
-        $realPath = $this->storeageBasePath();
+        $fullPath = $this->resolvePath($path);
 
-        if (! $this->isDirectory($realPath . '/' . trim($path, '/'))) {
-            $this->makeDirectory($realPath . '/' . $path, 0755, true);
+        if (! $this->isDirectory($fullPath)) {
+            $this->makeDirectory($fullPath, 0755, true);
         }
         return $path;
     }
@@ -140,11 +180,12 @@ class FileSystem
      * create the destination full path according in os
      *
      * @param string $path
+     * @param string $fileName
      * @return string
      */
     public function destinationFile(string $path, $fileName): string
     {
-        return $this->filePath . '/' . $path . '/' . $fileName;
+        return $this->resolvePath($path . '/' . $fileName);
     }
 
     /**

@@ -195,4 +195,45 @@ class LocalFileSystemTest extends TestCase
             $this->assertStringContainsString($this->tmpDir . '/' . $missing, $e->getMessage());
         }
     }
+
+    // ==================== PATH TRAVERSAL TESTS ====================
+
+    public function testGetRejectsPathTraversal()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->get('../../etc/passwd');
+    }
+
+    public function testContentRejectsPathTraversal()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->content('../../etc/passwd');
+    }
+
+    public function testDeleteRejectsPathTraversal()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->delete('../../etc/passwd');
+    }
+
+    public function testDeleteRejectsPathTraversalInAnyArrayEntry()
+    {
+        $this->createTempFile('legit.txt');
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->delete(['legit.txt', '../../etc/passwd']);
+    }
+
+    public function testGetCannotEscapeRootViaAbsoluteLookingPath()
+    {
+        $result = $this->fs->get('/etc/passwd');
+
+        // Treated as a subpath of the storage root, not an absolute
+        // filesystem path, so it does not resolve to the real /etc/passwd.
+        $this->assertNull($result);
+    }
 }
