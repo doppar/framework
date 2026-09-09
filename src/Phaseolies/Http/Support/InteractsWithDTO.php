@@ -13,8 +13,19 @@ trait InteractsWithDTO
      */
     public function bindTo(object $object, bool $strict = true): object
     {
-        $data = $this->all();
+        return $this->bindData($object, $this->all(), $strict);
+    }
 
+    /**
+     * Binds the given data to an object.
+     *
+     * @param object $object
+     * @param array<string, mixed> $data
+     * @param bool $strict
+     * @return object
+     */
+    public function bindData(object $object, array $data, bool $strict = true): object
+    {
         foreach ($data as $key => $value) {
             if ($strict && !property_exists($object, $key)) {
                 continue;
