@@ -216,4 +216,63 @@ class FileSystemTest extends TestCase
         $this->assertTrue($customFs->put('uploads', $file));
         $this->assertFileExists($this->tmpDir . '/uploads/avatar.jpeg');
     }
+
+    // ==================== PATH TRAVERSAL TESTS ====================
+
+    public function testDestinationFileRejectsPathTraversalInPath()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('../../etc', 'passwd');
+    }
+
+    public function testDestinationFileRejectsPathTraversalInFileName()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('uploads', '../../etc/passwd');
+    }
+
+    public function testIsDirectoryExistsRejectsPathTraversal()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->isDirectoryExists('../outside');
+    }
+
+    public function testDestinationFileRejectsBackslashPathTraversal()
+    {
+        // Windows-style separators must be caught too, not just "/".
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('uploads', '..\\..\\windows\\win.ini');
+    }
+
+    public function testDestinationFileHandlesRootConfiguredWithTrailingBackslash()
+    {
+        // Simulates a Windows-style config value like "C:\storage\".
+        $winStyleFs = new FileSystem(rtrim($this->tmpDir, '/') . '\\');
+
+        $result = $winStyleFs->destinationFile('uploads', 'image.jpg');
+
+        $this->assertEquals($this->tmpDir . '/uploads/image.jpg', $result);
+    }
+
+    public function testResolvePathRejectsSymlinkEscapingRoot()
+    {
+        $outside = sys_get_temp_dir() . '/doppar_fs_outside_' . uniqid();
+        mkdir($outside, 0755, true);
+        file_put_contents($outside . '/secret.txt', 'top secret');
+
+        symlink($outside, $this->tmpDir . '/escape');
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            $this->fs->destinationFile('escape', 'secret.txt');
+        } finally {
+            unlink($this->tmpDir . '/escape');
+            unlink($outside . '/secret.txt');
+            rmdir($outside);
+        }
+    }
 }

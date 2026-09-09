@@ -82,4 +82,27 @@ class PublicFileSystemTest extends TestCase
 
         $this->assertFalse($result);
     }
+
+    // ==================== PATH TRAVERSAL TESTS ====================
+
+    public function testGetRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->get('../../etc/passwd');
+    }
+
+    public function testContentRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->content('../../etc/passwd');
+    }
+
+    public function testDeleteRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->delete('../../etc/passwd');
+    }
 }

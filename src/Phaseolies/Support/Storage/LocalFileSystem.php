@@ -37,7 +37,7 @@ class LocalFileSystem extends FileSystem implements IFileSystem
      */
     public function get(string $path): ?string
     {
-        $fullPath = $this->filePath . '/' . $path;
+        $fullPath = $this->resolvePath($path);
 
         if ($this->isFile($fullPath)) {
             return $fullPath;
@@ -55,7 +55,7 @@ class LocalFileSystem extends FileSystem implements IFileSystem
      */
     public function content($path)
     {
-        $fullPath = $this->filePath . '/' . $path;
+        $fullPath = $this->resolvePath($path);
 
         if ($this->isFile($fullPath)) {
             $file = new \SplFileObject($fullPath, 'r');
@@ -80,7 +80,7 @@ class LocalFileSystem extends FileSystem implements IFileSystem
         $success = true;
 
         foreach ((array) $path as $filePath) {
-            $fullPath = $this->filePath . '/' . $filePath;
+            $fullPath = $this->resolvePath($filePath);
 
             if (file_exists($fullPath)) {
                 if (!unlink($fullPath)) {
