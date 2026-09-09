@@ -427,16 +427,7 @@ if (!function_exists('base_path')) {
             return $basePath;
         }
 
-        $normalizedPath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
-        $isAbsolutePath = DIRECTORY_SEPARATOR === '\\'
-            ? preg_match('/^(?:[A-Za-z]:[\\\\\\/]|[\\\\]{2})/', $path) === 1
-            : str_starts_with($normalizedPath, '/');
-
-        if ($isAbsolutePath) {
-            return $normalizedPath;
-        }
-
-        $normalizedPath = trim($normalizedPath, DIRECTORY_SEPARATOR);
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
 
         return $normalizedPath === ''
             ? $basePath

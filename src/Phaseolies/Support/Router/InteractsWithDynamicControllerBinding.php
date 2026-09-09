@@ -11,7 +11,7 @@ trait InteractsWithDynamicControllerBinding
      */
     protected function getComposerClassLoader(): ?object
     {
-        $vendorDir = base_path('/vendor');
+        $vendorDir = base_path('vendor');
         $autoloadFile = $vendorDir . '/autoload.php';
 
         if (!file_exists($autoloadFile)) {
