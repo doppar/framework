@@ -29,6 +29,10 @@ class MockHook extends Model
     public static bool $wasCalledAfterUpdated = false;
     public static bool $wasCalledAfterDeleted = false;
 
+    // Captures getKey() as observed from inside the after_created hook,
+    // to verify the primary key is populated before the hook fires.
+    public static ?string $capturedKeyAtAfterCreated = null;
+
     /**
      * Define the model’s lifecycle hooks.
      *
@@ -97,6 +101,7 @@ class MockHook extends Model
     public static function shouldBeCalledAfterAnItemCreated(Model $model): void
     {
         self::$wasCalledAfterCreated = true;
+        self::$capturedKeyAtAfterCreated = $model->getKey();
     }
 
     /**
