@@ -46,7 +46,7 @@ class Schema
      */
     public function table(string $table, callable $callback): void
     {
-        $blueprint = new Blueprint($table);
+        $blueprint = new Blueprint($table, null, false);
 
         $callback($blueprint);
 

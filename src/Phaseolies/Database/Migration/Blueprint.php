@@ -25,15 +25,25 @@ class Blueprint
     protected Grammar $grammar;
 
     /**
+     * Whether this blueprint is creating a new table (true) or
+     * modifying an existing one (false)
+     *
+     * @var bool
+     */
+    protected bool $creating;
+
+    /**
      * Create a new table blueprint instance.
      *
      * @param string $table
      * @param string|null $driver
+     * @param bool $creating
      */
-    public function __construct(string $table, ?string $driver = null)
+    public function __construct(string $table, ?string $driver = null, bool $creating = true)
     {
         $this->table = $table;
         $this->grammar = GrammarFactory::make($driver ?? $this->getDefaultDriver());
+        $this->creating = $creating;
     }
 
     /**
@@ -763,11 +773,7 @@ class Blueprint
             throw new \RuntimeException("No columns defined for table {$this->table}");
         }
 
-        $hasColumnOrdering = !empty(array_filter($columns, function ($col) {
-            return isset($col->attributes['after']);
-        }));
-
-        if (!$hasColumnOrdering || !$this->grammar->supportsColumnOrdering()) {
+        if ($this->creating) {
             // Create table with all columns
             $columnDefinitions = [];
             $primaryKeys = [];
@@ -793,8 +799,12 @@ class Blueprint
                 $this->handleIndexAndUniqueColumn($column, $statements);
             }
         } else {
-            // Handle ALTER TABLE for adding columns with ordering
+            // Modifying an existing table:
             foreach ($columns as $column) {
+                // Only MySQL supports positioning an added column with
+                // AFTER, and only in this ALTER TABLE context.
+                $column->attributes['altering'] = true;
+
                 $columnSql = $column->toSql();
 
                 // Skip if this is a primary key column and the grammar doesn't support adding it with ALTER
@@ -834,8 +844,16 @@ class Blueprint
 
         if (isset($column->attributes['unique']) && $column->attributes['unique']) {
             $sql = $this->grammar->compileCreateUnique($this->table, $column->name);
+
             if (!empty($sql)) {
                 $statements[] = $sql;
+            } elseif (!$this->creating) {
+                throw new \RuntimeException(
+                    "Cannot add a UNIQUE constraint to column \"{$column->name}\" on table " .
+                    "\"{$this->table}\" via ALTER TABLE on this database driver. " .
+                    "Declare the column as unique in the table's original CREATE TABLE " .
+                    "migration instead."
+                );
             }
         }
     }

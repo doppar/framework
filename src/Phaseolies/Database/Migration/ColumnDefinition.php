@@ -123,8 +123,12 @@ class ColumnDefinition
             $sql .= ' PRIMARY KEY';
         }
 
-        // Add UNIQUE constraint if grammar requires it in column definition
-        if (!empty($this->attributes['unique']) && $grammar->shouldAddUniqueInColumnDefinition()) {
+        // Add UNIQUE constraint if grammar requires it in column definition.
+        if (
+            !empty($this->attributes['unique']) &&
+            $grammar->shouldAddUniqueInColumnDefinition() &&
+            empty($this->attributes['altering'])
+        ) {
             $sql .= ' UNIQUE';
         }
 
@@ -150,10 +154,12 @@ class ColumnDefinition
             $sql .= " DEFAULT {$default}";
         }
 
-        if ($this->getDriver() !== 'pgsql') {
-            if (isset($this->attributes['after'])) {
-                $sql .= " AFTER {$this->attributes['after']}";
-            }
+        if (
+            $this->getDriver() === 'mysql' &&
+            !empty($this->attributes['altering']) &&
+            isset($this->attributes['after'])
+        ) {
+            $sql .= " AFTER {$this->attributes['after']}";
         }
 
         return $sql;
