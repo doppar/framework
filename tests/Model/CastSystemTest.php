@@ -603,10 +603,20 @@ class CastSystemTest extends TestCase
 
     public function testInvalidEnumValueThrows(): void
     {
-        // __get swallows all Throwables, so test the handler directly
         $this->expectException(\ValueError::class);
 
         CastManager::resolve(CastTestColor::class)->get('Purple');
+    }
+
+    public function testInvalidEnumValuePropagatesThroughModelGetter(): void
+    {
+        // Model::__get() must let real errors (not just "property missing")
+        // propagate, instead of silently returning null.
+        $model = new MockEnumCastModel(['color' => 'Purple']);
+
+        $this->expectException(\ValueError::class);
+
+        $model->color;
     }
     public function testCustomCastGetUppercases(): void
     {
