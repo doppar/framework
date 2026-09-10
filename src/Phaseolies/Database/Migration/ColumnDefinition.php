@@ -177,22 +177,6 @@ class ColumnDefinition
     }
 
     /**
-     * Get formatted enum values for ENUM/SET types.
-     *
-     * @return string
-     */
-    protected function getEnumValues(): string
-    {
-        if (!isset($this->attributes['values']) || !is_array($this->attributes['values'])) {
-            return '';
-        }
-
-        return implode(',', array_map(function ($value) {
-            return "'" . addslashes($value) . "'";
-        }, $this->attributes['values']));
-    }
-
-    /**
      * Get the current PDO driver
      *
      * @return string
