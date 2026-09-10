@@ -4,7 +4,7 @@ namespace Tests\Application\Mock;
 
 use Tests\Application\Mock\Interfaces\TestInterface;
 
-class ConcreteImplementation implements TestInterface
+class AnotherImplementation implements TestInterface
 {
     //
 }
