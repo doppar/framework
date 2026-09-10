@@ -1143,15 +1143,9 @@ class Application extends Container
                 $resolved = true;
             }
 
-            if (!$resolved && $parameter->isDefaultValueAvailable()) {
-                $arguments[] = $parameter->getDefaultValue();
-                $resolved = true;
-            }
-
             if (!$resolved) {
-                throw new \RuntimeException(
-                    "Unresolvable terminating callback parameter '\${$parameter->getName()}'."
-                );
+                $primitives = $namedContext;
+                $arguments[] = $this->resolveDependency($parameter, $primitives);
             }
         }
 
