@@ -50,7 +50,7 @@ class ApplicationBuilder
 
         $handler = $this->processMiddlewareStack($middlewareStack);
 
-        $this->app->router->handle($this->request, $handler);
+        $this->app->router->getGateway()->handle($this->request, $handler);
 
         return $this;
     }
@@ -62,10 +62,12 @@ class ApplicationBuilder
      */
     protected function buildMiddlewareStack(): array
     {
-        $middlewareStack = $this->app->router->middleware ?? [];
+        $gateway = $this->app->router->getGateway();
+
+        $middlewareStack = $gateway->getGlobalMiddleware();
 
         $groupKey = $this->request->isApiRequest() ? 'api' : 'web';
-        $groupMiddleware = $this->app->router->middlewareGroups[$groupKey] ?? [];
+        $groupMiddleware = $gateway->getMiddlewareGroups()[$groupKey] ?? [];
 
         return array_merge($middlewareStack, $groupMiddleware);
     }

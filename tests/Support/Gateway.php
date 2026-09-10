@@ -2,7 +2,10 @@
 
 namespace Tests\Support;
 
-class Kernel
+use Phaseolies\Http\Contracts\GatewayInterface;
+use Phaseolies\Middleware\Middleware;
+
+class Gateway extends Middleware implements GatewayInterface
 {
     /**
      * The application's global HTTP middleware stack.
@@ -42,4 +45,28 @@ class Kernel
             'http.cache.headers' => \Phaseolies\Middleware\CacheHeaders::class,
         ]
     ];
+
+    /**
+     * @return array
+     */
+    public function getGlobalMiddleware(): array
+    {
+        return $this->middleware;
+    }
+
+    /**
+     * @return array<string, array<int, class-string|string>>
+     */
+    public function getMiddlewareGroups(): array
+    {
+        return $this->middlewareGroups;
+    }
+
+    /**
+     * @return array<string, array<string, class-string|string>>
+     */
+    public function getRouteMiddleware(): array
+    {
+        return $this->routeMiddleware;
+    }
 }

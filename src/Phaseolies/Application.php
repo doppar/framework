@@ -9,6 +9,7 @@ use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
@@ -763,6 +764,8 @@ class Application extends Container
         $this->bindApplicationNecessaryPath();
         $this->singleton('request', Request::class);
 
+        $this->bindHttpGateway();
+
         $this->singleton('route', Router::class);
         $this->router = app('route');
 
@@ -784,6 +787,18 @@ class Application extends Container
                 schema_path('migrations')
             )
         );
+    }
+
+    /**
+     * Bind the application's HTTP middleware gateway
+     *
+     * @return void
+     */
+    protected function bindHttpGateway(): void
+    {
+        if (!$this->has(GatewayInterface::class) && class_exists(\App\Http\Gateway::class)) {
+            $this->singleton(GatewayInterface::class, \App\Http\Gateway::class);
+        }
     }
 
     /**

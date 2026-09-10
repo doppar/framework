@@ -3,7 +3,7 @@
 namespace Tests\Unit\Application;
 
 use ReflectionClass;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\DI\Container;
@@ -22,8 +22,8 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 function base_path($path = '')

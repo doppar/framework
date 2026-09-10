@@ -19,11 +19,11 @@ use Phaseolies\Support\Session;
 use Phaseolies\Translation\FileLoader;
 use Phaseolies\Translation\Translator;
 use PHPUnit\Framework\TestCase;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Tests\Support\MockContainer;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class LifecycleRouteRequestStub extends Request
@@ -137,7 +137,7 @@ PHP);
     {
         $payload = ['framework' => 'Doppar', 'version' => 3];
         $app = $this->createStub(Application::class);
-        $router = new LifecycleTestableRouter($app);
+        $router = new LifecycleTestableRouter(new Gateway());
 
         $router->get('/payload', fn() => $payload);
 
@@ -159,7 +159,7 @@ PHP);
     {
         $payload = ['framework' => 'Doppar'];
         $app = $this->createStub(Application::class);
-        $router = new LifecycleTestableRouter($app);
+        $router = new LifecycleTestableRouter(new Gateway());
 
         $router->get('/payload', fn() => $payload);
 
