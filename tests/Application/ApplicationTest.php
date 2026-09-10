@@ -561,6 +561,24 @@ final class ApplicationTest extends TestCase
         $this->assertSame($exception, $captured['exception']);
     }
 
+    public function testTerminatingCallbackCanTypeHintAnArbitraryContainerService(): void
+    {
+        // Beyond request/response/exception, a terminating callback
+        // parameter that doesn't match the lifecycle context by type
+        // or name should be resolved from the container like any
+        // other injected dependency, not just default-valued or
+        // rejected outright.
+        $captured = null;
+
+        $this->app->terminating(function (StringService $strings) use (&$captured): void {
+            $captured = $strings;
+        });
+
+        $this->app->terminate(new Request(), new Response('ok'));
+
+        $this->assertInstanceOf(StringService::class, $captured);
+    }
+
     public function testTerminateCleansRequestScopedServicesAfterCallbacks(): void
     {
         $_SESSION = [];
