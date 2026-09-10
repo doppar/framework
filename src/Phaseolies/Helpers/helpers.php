@@ -411,27 +411,7 @@ if (!function_exists('base_path')) {
      */
     function base_path(string $path = ''): string
     {
-        static $basePath = null;
-
-        if ($basePath === null) {
-            if (app()->runningInConsole()) {
-                $basePath = rtrim(getcwd(), DIRECTORY_SEPARATOR);
-            } elseif (defined('BASE_PATH')) {
-                $basePath = rtrim(BASE_PATH, DIRECTORY_SEPARATOR);
-            } else {
-                $basePath = rtrim(dirname($_SERVER['SCRIPT_FILENAME'] ?? ''), DIRECTORY_SEPARATOR);
-            }
-        }
-
-        if ($path === '') {
-            return $basePath;
-        }
-
-        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
-
-        return $normalizedPath === ''
-            ? $basePath
-            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
+        return app()->basePath($path);
     }
 }
 

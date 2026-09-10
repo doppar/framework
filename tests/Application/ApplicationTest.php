@@ -87,13 +87,12 @@ final class ApplicationTest extends TestCase
         $this->app->method('withConfiguration')->willReturnSelf();
         $this->app->method('withExceptionHandler')->willReturnSelf();
 
-        // Now call the parent constructor manually without the problematic initialization
+        // Now call the parent constructor manually without the problematic initialization.
+        // The constructor itself calls withBasePath() (not stubbed above), which sets the
+        // base path for testing as a side effect.
         $reflection = new ReflectionClass(Application::class);
         $constructor = $reflection->getConstructor();
-        $constructor->invoke($this->app);
-
-        // Set base path for testing
-        $this->app->withBasePath($this->tempBasePath);
+        $constructor->invoke($this->app, $this->tempBasePath);
     }
 
     protected function tearDown(): void
