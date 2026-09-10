@@ -14,7 +14,14 @@ class PostgreSQLGrammar extends Grammar
      */
     public function getTypeDefinition(ColumnDefinition $column): string
     {
-        return $this->mapType($column->type, $column->attributes);
+        $type = $this->mapType($column->type, $column->attributes);
+
+        if ($column->type === 'enum') {
+            $values = $this->getEnumAllowedValues($column->attributes);
+            $type .= ' ' . $this->compileEnumCheckClause($column->name, $values);
+        }
+
+        return $type;
     }
 
     /**
@@ -202,65 +209,16 @@ class PostgreSQLGrammar extends Grammar
     }
 
     /**
-     * Create an ENUM type definition for PostgreSQL
+     * Create an ENUM type definition for 
      *
      * @param array $attributes
      * @return string
      */
     protected function createEnumType(array $attributes): string
     {
-        $values = $attributes['allowed'] ?? $attributes['values'] ?? null;
-
-        if (!$values || !is_array($values)) {
-            throw new \InvalidArgumentException('Enum type requires an array of allowed values');
-        }
+        $this->getEnumAllowedValues($attributes);
 
         return 'TEXT';
-    }
-
-    /**
-     * Compile a CHECK constraint for an enum column
-     *
-     * @param string $table
-     * @param string $column
-     * @param array $values
-     * @return string
-     */
-    public function compileAddEnumCheckConstraint(string $table, string $column, array $values): string
-    {
-        $constraintName = "chk_{$table}_{$column}_enum";
-        $quotedValues = array_map(function ($value) {
-            return "'" . str_replace("'", "''", $value) . "'";
-        }, $values);
-
-        return "ALTER TABLE \"{$table}\" ADD CONSTRAINT \"{$constraintName}\" CHECK (\"{$column}\" IN (" . implode(', ', $quotedValues) . "))";
-    }
-
-    /**
-     * Compile a statement to create an enum type (alternative approach)
-     *
-     * @param string $typeName
-     * @param array $values
-     * @return string
-     */
-    public function compileCreateEnumType(string $typeName, array $values): string
-    {
-        $quotedValues = array_map(function ($value) {
-            return "'" . str_replace("'", "''", $value) . "'";
-        }, $values);
-
-        return "CREATE TYPE {$typeName} AS ENUM (" . implode(', ', $quotedValues) . ")";
-    }
-
-    /**
-     * Compile a statement to drop an enum type
-     *
-     * @param string $typeName
-     * @return string
-     */
-    public function compileDropEnumType(string $typeName): string
-    {
-        return "DROP TYPE IF EXISTS {$typeName}";
     }
 
     /**

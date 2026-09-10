@@ -14,7 +14,14 @@ class SQLiteGrammar extends Grammar
      */
     public function getTypeDefinition(ColumnDefinition $column): string
     {
-        return $this->mapType($column->type, $column->attributes);
+        $type = $this->mapType($column->type, $column->attributes);
+
+        if ($column->type === 'enum') {
+            $values = $this->getEnumAllowedValues($column->attributes);
+            $type .= ' ' . $this->compileEnumCheckClause($column->name, $values);
+        }
+
+        return $type;
     }
 
     /**

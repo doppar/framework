@@ -238,12 +238,13 @@ class MySQLGrammar extends Grammar
      */
     protected function getEnumValues(array $attributes): string
     {
-        $values = $attributes['allowed'] ?? $attributes['values'] ?? null;
+        $values = $this->getEnumAllowedValues($attributes);
 
-        if (!$values || !is_array($values)) {
-            throw new \InvalidArgumentException('Enum type requires an array of allowed values');
-        }
+        $quoted = array_map(
+            fn($value) => "'" . str_replace("'", "''", (string) $value) . "'",
+            $values
+        );
 
-        return "'" . implode("','", $values) . "'";
+        return implode(',', $quoted);
     }
 }

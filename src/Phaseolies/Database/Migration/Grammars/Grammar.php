@@ -80,4 +80,42 @@ abstract class Grammar
     {
         return false;
     }
+
+    /**
+     * Extract and validate the allowed values for an enum/set column.
+     *
+     * @param array $attributes
+     * @return array
+     * @throws \InvalidArgumentException
+     */
+    protected function getEnumAllowedValues(array $attributes): array
+    {
+        $values = $attributes['allowed'] ?? $attributes['values'] ?? null;
+
+        if (!$values || !is_array($values)) {
+            throw new \InvalidArgumentException('Enum type requires an array of allowed values');
+        }
+
+        return $values;
+    }
+
+    /**
+     * Build an inline CHECK constraint clause restricting a column to
+     * a fixed set of values, for drivers with no native ENUM type.
+     * Appended directly to the column's type definition, so it applies
+     * the same way in both CREATE TABLE and ALTER TABLE ADD COLUMN.
+     *
+     * @param string $column
+     * @param array $values
+     * @return string
+     */
+    protected function compileEnumCheckClause(string $column, array $values): string
+    {
+        $quoted = array_map(
+            fn($value) => "'" . str_replace("'", "''", (string) $value) . "'",
+            $values
+        );
+
+        return "CHECK ({$column} IN (" . implode(', ', $quoted) . '))';
+    }
 }
