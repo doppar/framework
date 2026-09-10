@@ -178,12 +178,6 @@ class Container implements ArrayAccess
                 return self::$instances[$abstract];
             }
 
-            foreach (self::$instances as $instance) {
-                if ($instance instanceof $abstract) {
-                    return $instance;
-                }
-            }
-
             if (isset(self::$bindings[$abstract])) {
                 $binding = self::$bindings[$abstract];
                 $resolved = $this->resolveBinding($abstract, $binding, $parameters);
@@ -193,6 +187,13 @@ class Container implements ArrayAccess
                 }
 
                 return $resolved;
+            }
+
+            // Fallback only: no exact instance and no explicit binding for $abstract.
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof $abstract) {
+                    return $instance;
+                }
             }
 
             if (class_exists($abstract) || interface_exists($abstract)) {

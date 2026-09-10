@@ -42,6 +42,7 @@ use Tests\Application\Mock\ClassWithVariadic;
 use Tests\Application\Mock\ComplexConstructorClass;
 use Tests\Application\Mock\ComplexDependencyGraph;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\AnotherImplementation;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\Controllers\ControllerClass;
 use Tests\Application\Mock\Counter;
@@ -256,6 +257,23 @@ class ContainerTest extends TestCase
 
         $resolved = $this->container->get(TestInterface::class);
         $this->assertSame($instance, $resolved);
+    }
+
+    public function testExplicitBindingIsNotShadowedByUnrelatedSingleton()
+    {
+        // An unrelated singleton, registered under its own class name,
+        // that happens to implement the same interface as an explicit
+        // binding must not shadow that binding.
+        $unrelated = new AnotherImplementation();
+        $this->container->instance(AnotherImplementation::class, $unrelated);
+
+        $expected = new ConcreteImplementation();
+        $this->container->bind(TestInterface::class, fn() => $expected);
+
+        $resolved = $this->container->get(TestInterface::class);
+
+        $this->assertSame($expected, $resolved);
+        $this->assertNotSame($unrelated, $resolved);
     }
 
     public function testMultipleInstanceBindings()
