@@ -2,14 +2,14 @@
 
 namespace Tests\Unit\Traits;
 
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class RequestParserTraitTest extends TestCase

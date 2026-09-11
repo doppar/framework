@@ -9,6 +9,7 @@ use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
@@ -215,15 +216,19 @@ class Application extends Container
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
+     * - Recording the base path and deriving every other framework
+     *   path from it, before anything below can ask for one.
      * - Loading environment variables from .env before anything else.
      * - Setting up exception handling.
      * - Loading configuration.
-     * - Defining necessary folder paths.
      * - Registering and booting core service providers.
+     *
+     * @param string $basePath
      */
-    public function __construct()
+    public function __construct(string $basePath)
     {
         parent::setInstance($this);
+        $this->withBasePath($basePath);
         $this->loadEnvironmentVariables();
         $this->withExceptionHandler();
         $this->withConfiguration();
@@ -263,7 +268,7 @@ class Application extends Container
      */
     public function withBasePath(string $basePath): self
     {
-        $this->basePath = $basePath;
+        $this->basePath = rtrim($basePath, '\/');
 
         $this->setNecessaryFolderPath();
 
@@ -450,7 +455,6 @@ class Application extends Container
      */
     protected function setNecessaryFolderPath(): void
     {
-        $this->basePath = $this->basePath();
         $this->configPath = $this->configPath();
         $this->appPath = $this->appPath();
         $this->bootstrapPath = $this->bootstrapPath();
@@ -574,11 +578,18 @@ class Application extends Container
     /**
      * Gets the base path of the application.
      *
+     * @param string $path
      * @return string
      */
-    public function basePath(): string
+    public function basePath(string $path = ''): string
     {
-        return $this->basePath = base_path();
+        if ($path === '') {
+            return $this->basePath;
+        }
+
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return rtrim($this->basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**
@@ -763,6 +774,8 @@ class Application extends Container
         $this->bindApplicationNecessaryPath();
         $this->singleton('request', Request::class);
 
+        $this->bindHttpGateway();
+
         $this->singleton('route', Router::class);
         $this->router = app('route');
 
@@ -784,6 +797,18 @@ class Application extends Container
                 schema_path('migrations')
             )
         );
+    }
+
+    /**
+     * Bind the application's HTTP middleware gateway
+     *
+     * @return void
+     */
+    protected function bindHttpGateway(): void
+    {
+        if (!$this->has(GatewayInterface::class) && class_exists(\App\Http\Gateway::class)) {
+            $this->singleton(GatewayInterface::class, \App\Http\Gateway::class);
+        }
     }
 
     /**

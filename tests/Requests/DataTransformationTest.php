@@ -3,7 +3,6 @@
 namespace Tests\Unit\Requests;
 
 use Tests\Support\MockContainer;
-use Tests\Support\Kernel;
 use Phaseolies\Support\StringService;
 use Phaseolies\Http\Request;
 use Phaseolies\DI\Container;

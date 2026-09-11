@@ -5,7 +5,5 @@ parameters:
     level: 5
     paths:
         - src
-    scanFiles:
-        - .phpstan/stubs/AppHttpKernel.php
     tmpDir: .phpstan.cache
     reportUnmatchedIgnoredErrors: false

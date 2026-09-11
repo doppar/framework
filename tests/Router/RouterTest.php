@@ -3,7 +3,7 @@
 namespace Tests\Unit\Router;
 
 use Tests\Support\MockContainer;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
@@ -14,8 +14,8 @@ use Phaseolies\Application;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class TestRequestStub extends Request
@@ -84,7 +84,7 @@ class RouterTest extends TestCase
         $this->request = new Request();
 
         $this->app = $this->createMock(Application::class);
-        $this->router = new Router($this->app);
+        $this->router = new Router(new Gateway());
 
         // Clear static properties before each test
         $reflection = new \ReflectionClass(Router::class);
@@ -426,7 +426,7 @@ class RouterTest extends TestCase
 
     public function testResolveUsesFreshResponseForScalarRouteResults(): void
     {
-        $freshRouter = new TestableRouter($this->app);
+        $freshRouter = new TestableRouter(new Gateway());
         $sharedResponse = new Response('stale body', 202, ['X-Leaked' => 'yes']);
 
         Container::getInstance()->instance('response', $sharedResponse);

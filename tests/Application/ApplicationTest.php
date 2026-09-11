@@ -3,7 +3,7 @@
 namespace Tests\Unit\Application;
 
 use ReflectionClass;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\DI\Container;
@@ -22,8 +22,8 @@ use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 function base_path($path = '')
@@ -87,13 +87,12 @@ final class ApplicationTest extends TestCase
         $this->app->method('withConfiguration')->willReturnSelf();
         $this->app->method('withExceptionHandler')->willReturnSelf();
 
-        // Now call the parent constructor manually without the problematic initialization
+        // Now call the parent constructor manually without the problematic initialization.
+        // The constructor itself calls withBasePath() (not stubbed above), which sets the
+        // base path for testing as a side effect.
         $reflection = new ReflectionClass(Application::class);
         $constructor = $reflection->getConstructor();
-        $constructor->invoke($this->app);
-
-        // Set base path for testing
-        $this->app->withBasePath($this->tempBasePath);
+        $constructor->invoke($this->app, $this->tempBasePath);
     }
 
     protected function tearDown(): void

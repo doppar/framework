@@ -17,11 +17,38 @@ use Phaseolies\Http\Request;
 use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
-use App\Http\Kernel;
+use Phaseolies\Http\Contracts\GatewayInterface;
 
-class Router extends Kernel
+class Router
 {
     use InteractsWithBundleRouter, InteractsWithCurrentRouter, InteractsWithDynamicControllerBinding;
+
+    /**
+     * The application's HTTP middleware gateway
+     *
+     * @var GatewayInterface
+     */
+    protected GatewayInterface $gateway;
+
+    /**
+     * Create a new router instance.
+     *
+     * @param GatewayInterface $gateway
+     */
+    public function __construct(GatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
+    /**
+     * Get the application's HTTP middleware gateway.
+     *
+     * @return GatewayInterface
+     */
+    public function getGateway(): GatewayInterface
+    {
+        return $this->gateway;
+    }
 
     /**
      * Holds the registered routes.
@@ -947,21 +974,23 @@ class Router extends Kernel
      */
     private function applyRouteMiddleware($request, $app, $currentMiddleware): void
     {
+        $routeMiddleware = $this->gateway->getRouteMiddleware();
+
         foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
             if (!$request->isApiRequest()) {
-                if (!isset($this->routeMiddleware['web'][$name])) {
+                if (!isset($routeMiddleware['web'][$name])) {
                     throw new \Exception("Undefined middleware [$name]");
                 }
 
-                $middlewareClass = $this->routeMiddleware['web'][$name];
+                $middlewareClass = $routeMiddleware['web'][$name];
             } else {
-                if (!isset($this->routeMiddleware['api'][$name])) {
+                if (!isset($routeMiddleware['api'][$name])) {
                     throw new \Exception("Undefined middleware [$name]");
                 }
 
-                $middlewareClass = $this->routeMiddleware['api'][$name];
+                $middlewareClass = $routeMiddleware['api'][$name];
             }
 
             $middlewareInstance = $app->make($middlewareClass);
@@ -969,7 +998,7 @@ class Router extends Kernel
                 throw new \Exception("Unresolved dependency $middlewareClass", 1);
             }
 
-            $this->applyMiddleware($middlewareInstance, $params);
+            $this->gateway->applyMiddleware($middlewareInstance, $params);
         }
     }
 
@@ -1008,7 +1037,7 @@ class Router extends Kernel
             return $result;
         };
 
-        $response = $this->handle($request, $handler);
+        $response = $this->gateway->handle($request, $handler);
 
         return $response;
     }
@@ -1374,18 +1403,19 @@ class Router extends Kernel
     public function processAttributesMiddlewares(array $middlewareAttributes): void
     {
         $middlewareToApply = [];
+        $routeMiddleware = $this->gateway->getRouteMiddleware();
 
         foreach ($middlewareAttributes as $attribute) {
             $middleware = $attribute->newInstance();
             foreach ($middleware->getMiddlewareClasses() as $middlewareItem) {
                 if (
-                    isset($this->routeMiddleware['web'][$middlewareItem]) ||
-                    isset($this->routeMiddleware['api'][$middlewareItem])
+                    isset($routeMiddleware['web'][$middlewareItem]) ||
+                    isset($routeMiddleware['api'][$middlewareItem])
                 ) {
                     $middlewareToApply[] = $middlewareItem;
                 } elseif (class_exists($middlewareItem)) {
-                    $key = array_search($middlewareItem, $this->routeMiddleware['web'], true) ?:
-                        array_search($middlewareItem, $this->routeMiddleware['api'], true);
+                    $key = array_search($middlewareItem, $routeMiddleware['web'], true) ?:
+                        array_search($middlewareItem, $routeMiddleware['api'], true);
                     if ($key !== false) {
                         $middlewareToApply[] = $key;
                     } else {

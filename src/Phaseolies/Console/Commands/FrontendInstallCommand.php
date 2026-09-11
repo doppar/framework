@@ -293,9 +293,7 @@ class FrontendInstallCommand extends Command
      */
     protected function projectPath(string $path = ''): string
     {
-        $basePath = defined('BASE_PATH')
-            ? rtrim(BASE_PATH, DIRECTORY_SEPARATOR)
-            : rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
+        $basePath = rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
 
         $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
 
