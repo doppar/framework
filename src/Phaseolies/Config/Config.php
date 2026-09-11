@@ -87,7 +87,7 @@ final class Config
                 $hashes[] = md5_file($file) . '|' . filemtime($file);
             }
 
-            $envFile = base_path('.env');
+            $envFile = base_path('env.toml');
             if (file_exists($envFile)) {
                 $hashes[] = md5_file($envFile) . '|' . filemtime($envFile);
             }

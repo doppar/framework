@@ -248,7 +248,7 @@ class Router
      */
     public function shouldCacheRoutes(): bool
     {
-        return env('APP_ROUTE_CACHE', false) === 'true';
+        return env('APP_ROUTE_CACHE', false);
     }
 
     /**

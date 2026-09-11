@@ -208,7 +208,7 @@ final class ApplicationTest extends TestCase
 
     public function testEnvironmentFileManagement(): void
     {
-        $this->assertSame('.env', $this->app->environmentFile());
+        $this->assertSame('env.toml', $this->app->environmentFile());
 
         $result = $this->app->loadEnvironmentFrom('.env.testing');
         $this->assertSame($this->app, $result);

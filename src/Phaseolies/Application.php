@@ -15,7 +15,8 @@ use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\ApplicationBuilder;
-use Dotenv\Dotenv;
+use Devium\Toml\Toml;
+use RuntimeException;
 
 class Application extends Container
 {
@@ -106,7 +107,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $environmentFile = '.env';
+    protected $environmentFile = 'env.toml';
 
     /**
      * The environment name.
@@ -288,7 +289,7 @@ class Application extends Container
     }
 
     /**
-     * Load environment variables from .env file
+     * Load environment variables from env.toml
      *
      * @return void
      */
@@ -298,8 +299,39 @@ class Application extends Container
             return;
         }
 
-        $dotenv = Dotenv::createImmutable(base_path());
-        $dotenv->safeLoad();
+        $tomlFile = $this->basePath('env.toml');
+
+        if (is_file($tomlFile)) {
+            $this->loadTomlEnvironment($tomlFile);
+        }
+    }
+
+    /**
+     * Load environment variables from a flat env.toml file.
+     *
+     * @param string $file
+     * @return void
+     *
+     * @throws RuntimeException
+     */
+    protected function loadTomlEnvironment(string $file): void
+    {
+        $values = Toml::decode(file_get_contents($file), asArray: true);
+
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                throw new RuntimeException(
+                    "env.toml key \"{$key}\" must be a scalar value — nested tables and arrays are not supported."
+                );
+            }
+
+            if (getenv($key) !== false) {
+                continue;
+            }
+
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
     }
 
     /**

@@ -45,7 +45,15 @@ if (!function_exists('dopparEnv')) {
      */
     function dopparEnv(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
     {
-        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        if (array_key_exists($key, $_ENV)) {
+            return $_ENV[$key];
+        }
+
+        if (array_key_exists($key, $_SERVER)) {
+            return $_SERVER[$key];
+        }
+
+        $value = getenv($key);
 
         return $value !== false ? $value : $default;
     }
@@ -480,7 +488,7 @@ if (!function_exists('detect_scheme')) {
     function detect_scheme(): string
     {
         // Force HTTPS via environment variable
-        if (getenv('FORCE_HTTPS') === 'true') {
+        if (env('FORCE_HTTPS') === true || env('FORCE_HTTPS') === 'true') {
             return 'https';
         }
 
