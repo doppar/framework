@@ -21,6 +21,7 @@
   "require": {
     "php": "^8.5",
     "chillerlan/php-qrcode": "^6.0",
+    "devium/toml": "^1.1",
     "dragonmantank/cron-expression": "^3.6",
     "monolog/monolog": "^3.10",
     "nesbot/carbon": "^3.13",
@@ -33,8 +34,7 @@
     "symfony/console": "^8.1",
     "symfony/mailer": "^8.1",
     "symfony/process": "^8.1",
-    "symfony/var-dumper": "^8.1",
-    "vlucas/phpdotenv": "^5.7"
+    "symfony/var-dumper": "^8.1"
   },
   "require-dev": {
     "mockery/mockery": "^1.6",

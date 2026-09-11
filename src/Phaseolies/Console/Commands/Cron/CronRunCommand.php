@@ -4,6 +4,7 @@ namespace Phaseolies\Console\Commands\Cron;
 
 use App\Schedule\Schedule;
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Console\Schedule\SchedulePool;
 use Symfony\Component\Process\Process;
 use React\EventLoop\Loop;
 
@@ -259,7 +260,7 @@ class CronRunCommand extends Command
     protected function executeCommand($command, bool $isSecondBased = false): void
     {
         try {
-            $env = array_merge(getenv(), [
+            $env = SchedulePool::buildEnv([
                 'APP_RUNNING_IN_CONSOLE' => true,
                 'APP_SCHEDULE_RUNNING' => true,
                 'APP_SECOND_SCHEDULE' => $isSecondBased ? 'true' : 'false'

@@ -372,14 +372,14 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $envFile = Env::path('.env');
-        file_put_contents($envFile, "APP_NAME=Doppar\nAPP_KEY=base64:old-key\n");
+        $envFile = Env::path('env.toml');
+        file_put_contents($envFile, "APP_NAME = \"Doppar\"\nAPP_KEY = \"base64:old-key\"\n");
 
         $result = $command->handle();
         $contents = (string) file_get_contents($envFile);
 
         $this->assertSame(0, $result);
-        $this->assertMatchesRegularExpression('/APP_KEY=base64:[A-Za-z0-9+\/=]+/', $contents);
+        $this->assertMatchesRegularExpression('/APP_KEY = "base64:[A-Za-z0-9+\/=]+"/', $contents);
         $this->assertContains('Application key set successfully', $command->capturedSuccesses);
     }
 

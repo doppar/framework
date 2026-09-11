@@ -15,6 +15,29 @@ class SchedulePool
     protected static $runningProcesses = [];
 
     /**
+     * Build a subprocess environment from the current $_SERVER/$_ENV state
+     *
+     * @param array $overrides
+     * @return array<string, string>
+     */
+    public static function buildEnv(array $overrides = []): array
+    {
+        $env = [];
+
+        foreach (array_merge($_SERVER, $_ENV, $overrides) as $key => $value) {
+            // $_SERVER carries non-scalar entries (e.g. 'argv') that have
+            // no meaningful string form as an env var — skip them.
+            if ($value === null || !is_scalar($value)) {
+                continue;
+            }
+
+            $env[$key] = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+        }
+
+        return $env;
+    }
+
+    /**
      * Call a command through the pool
      *
      * @param string $command
@@ -31,7 +54,7 @@ class SchedulePool
         $process = new Process(
             $commandArray,
             base_path(),
-            array_merge($_SERVER, $_ENV, [
+            self::buildEnv([
                 'APP_RUNNING_IN_CONSOLE' => true,
                 'APP_SCHEDULE_RUNNING' => true
             ]),
