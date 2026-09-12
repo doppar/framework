@@ -50,24 +50,6 @@ code {
     max-width: 980px;
 }
 
-.doppar-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0 4px 18px;
-}
-
-.doppar-brand img {
-    width: 24px;
-    height: auto;
-}
-
-.doppar-brand span {
-    font-family: "Space Grotesk", sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-}
-
 .doppar-card {
     display: grid;
     grid-template-columns: 1.05fr 0.95fr;
@@ -209,9 +191,19 @@ code {
 
 .doppar-meta {
     margin-top: 30px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
     font-family: "JetBrains Mono", monospace;
     font-size: 12px;
     color: #9ca3af;
+}
+
+.doppar-meta img {
+    height: 14px;
+    width: auto;
+    margin-right: 6px;
 }
 
 .doppar-meta a {

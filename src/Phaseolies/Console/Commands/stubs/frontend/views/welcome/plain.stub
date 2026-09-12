@@ -4,11 +4,6 @@
 #endsection
 #section('content')
 <div class="doppar-welcome">
-    <div class="doppar-brand">
-        <img src="[[ enqueue('logo.png') ]]" alt="Doppar" />
-        <span>Doppar</span>
-    </div>
-
     <div class="doppar-card">
         <div class="doppar-panel">
             <div class="doppar-eyebrow"><span class="doppar-dot"></span> Application ready</div>
@@ -33,11 +28,12 @@
                 </div>
             </div>
 
-            <a href="https://doppar.com/versions/4.x/installation" class="doppar-cta">Get Started</a>
+            <a href="https://www.youtube.com/@doppar-3x" class="doppar-cta">Learn</a>
 
             <div class="doppar-meta">
+                <img src="[[ enqueue('logo.png') ]]" alt="Doppar" />
                 v[[ Application::VERSION ]] &middot; PHP [[ phpversion() ]] &middot;
-                <a href="https://doppar.com/versions/4.x/releases" target="_blank" rel="noopener">View release notes &#8599;</a>
+                <a href="https://blog.doppar.com" target="_blank" rel="noopener">Doppar News &#8599;</a>
             </div>
         </div>
 

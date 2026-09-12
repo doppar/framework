@@ -9,11 +9,6 @@ const runtime = (window as Window & { __DOPPAR_FRONTEND__?: DopparRuntime }).__D
 export default function App() {
     return (
         <div className="doppar-welcome">
-            <div className="doppar-brand">
-                <img src={runtime.logoUrl ?? '/logo.png'} alt="Doppar" />
-                <span>Doppar</span>
-            </div>
-
             <div className="doppar-card">
                 <div className="doppar-panel">
                     <div className="doppar-eyebrow"><span className="doppar-dot"></span> Application ready</div>
@@ -38,12 +33,13 @@ export default function App() {
                         </div>
                     </div>
 
-                    <a href="https://doppar.com/versions/4.x/installation" className="doppar-cta">Get Started</a>
+                    <a href="https://www.youtube.com/@doppar-3x" className="doppar-cta">Learn</a>
 
                     <div className="doppar-meta">
+                        <img src={runtime.logoUrl ?? '/logo.png'} alt="Doppar" />
                         {runtime.version ?? 'Doppar'} &middot; {runtime.phpVersion ?? ''} &middot;
                         {' '}
-                        <a href="https://doppar.com/versions/4.x/releases" target="_blank" rel="noopener">View release notes &#8599;</a>
+                        <a href="https://blog.doppar.com" target="_blank" rel="noopener">Doppar News &#8599;</a>
                     </div>
                 </div>
 
