@@ -28,7 +28,7 @@ class FrontendInstallCommandTest extends TestCase
 
         $this->assertStringContainsString("#extends('layouts.app')", $welcome);
         $this->assertStringContainsString('#section(\'content\')', $welcome);
-        $this->assertStringContainsString('<h2 class="doppar-welcome-title">Welcome to Doppar</h2>', $welcome);
+        $this->assertStringContainsString('<h1 class="doppar-heading">Let\'s build something.</h1>', $welcome);
         $this->assertStringNotContainsString('<!DOCTYPE html>', $welcome);
     }
 
