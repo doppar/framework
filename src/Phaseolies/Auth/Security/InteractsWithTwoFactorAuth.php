@@ -4,6 +4,8 @@ namespace Phaseolies\Auth\Security;
 
 use chillerlan\QRCode\QROptions;
 use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\Output\QRMarkupSVG;
+use chillerlan\QRCode\Common\EccLevel;
 use Symfony\Component\Clock\NativeClock;
 use Psr\Clock\ClockInterface;
 use Phaseolies\Support\Facades\Crypt;
@@ -224,10 +226,10 @@ trait InteractsWithTwoFactorAuth
     public function generateTwoFactorQrCode(string $qrCodeUrl): string
     {
         $options = new QROptions([
-            'version'      => 10,
-            'outputType'   => QRCode::OUTPUT_MARKUP_SVG,
-            'eccLevel'     => QRCode::ECC_M,
-            'addQuietzone' => true,
+            'version'         => 10,
+            'outputInterface' => QRMarkupSVG::class,
+            'eccLevel'        => EccLevel::M,
+            'addQuietzone'    => true,
         ]);
 
         return (new QRCode($options))->render($qrCodeUrl);
