@@ -8,38 +8,92 @@ const runtime = (window as Window & { __DOPPAR_FRONTEND__?: DopparRuntime }).__D
 
 export default function App() {
     return (
-        <main className="doppar-welcome-shell">
-            <header className="doppar-welcome-header">
-                <img className="doppar-welcome-logo" src={runtime.logoUrl ?? '/logo.png'} alt="Logo" />
-                <h2>Welcome to Doppar</h2>
-            </header>
-            <section className="doppar-cta-box">
-                <h3>{runtime.version ?? 'Doppar'}</h3>
-                <p>Craft Fast-Loading PHP Application</p>
-            </section>
-            <section className="doppar-grid">
-                <a href="https://doppar.com/versions/3.x/starter-kits" className="doppar-card">
-                    <h3>Starter kits</h3>
-                    <p>To give you a head start building your new Doppar application, we are happy to offer application starter kits.</p>
-                </a>
-                <a href="https://doppar.com/versions/3.x/architecture-concept" className="doppar-card">
-                    <h3>System Architecture</h3>
-                    <p>Doppar follows the Model-View-Controller (MVC) architectural pattern, a widely accepted standard in web application development.</p>
-                </a>
-                <a href="https://doppar.com/versions/3.x/routing" className="doppar-card">
-                    <h3>Routing</h3>
-                    <p>With support for route prefix grouping, named routes, throttle route, middleware assignment, and RESTful resource routing, Doppar gives developers full control over how requests are handled.</p>
-                </a>
-                <a href="https://doppar.com/versions/3.x/authentication" className="doppar-card">
-                    <h3>Authentication</h3>
-                    <p>Doppar simplifies this process by providing built-in tools and scaffolding to help you implement user authentication quickly and securely.</p>
-                </a>
-            </section>
-            <div className="doppar-btn-group">
-                <a href="https://github.com/doppar" className="doppar-btn">GitHub</a>
-                <a href="https://doppar.com" className="doppar-btn">Website</a>
+        <div className="doppar-welcome">
+            <div className="doppar-brand">
+                <img src={runtime.logoUrl ?? '/logo.png'} alt="Doppar" />
+                <span>Doppar</span>
             </div>
-            <div className="doppar-footer">{runtime.phpVersion ?? ''}</div>
-        </main>
+
+            <div className="doppar-card">
+                <div className="doppar-panel">
+                    <div className="doppar-eyebrow"><span className="doppar-dot"></span> Application ready</div>
+
+                    <h1 className="doppar-heading">Let's build something.</h1>
+
+                    <div className="doppar-steps">
+                        <div className="doppar-step">
+                            <span className="doppar-step-marker"></span>
+                            <div className="doppar-step-label">01 &middot; Learn</div>
+                            <a href="https://doppar.com/versions/4.x/installation" target="_blank" rel="noopener">Read the documentation <span className="doppar-arrow">&#8599;</span></a>
+                        </div>
+                        <div className="doppar-step">
+                            <span className="doppar-step-marker"></span>
+                            <div className="doppar-step-label">02 &middot; Explore</div>
+                            <a href="https://doppar.com/versions/4.x/releases" target="_blank" rel="noopener">See what's new in 4.x <span className="doppar-arrow">&#8599;</span></a>
+                        </div>
+                        <div className="doppar-step">
+                            <span className="doppar-step-marker"></span>
+                            <div className="doppar-step-label">03 &middot; Connect</div>
+                            <a href="https://github.com/doppar" target="_blank" rel="noopener">Star the project on GitHub <span className="doppar-arrow">&#8599;</span></a>
+                        </div>
+                    </div>
+
+                    <a href="https://doppar.com/versions/4.x/installation" className="doppar-cta">Get Started</a>
+
+                    <div className="doppar-meta">
+                        {runtime.version ?? 'Doppar'} &middot; {runtime.phpVersion ?? ''} &middot;
+                        {' '}
+                        <a href="https://doppar.com/versions/4.x/releases" target="_blank" rel="noopener">View release notes &#8599;</a>
+                    </div>
+                </div>
+
+                <div className="doppar-art">
+                    <svg viewBox="0 0 480 620" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor="#34d399" />
+                                <stop offset="100%" stopColor="#10b981" />
+                            </linearGradient>
+                            <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0%" stopColor="#fb923c" />
+                                <stop offset="100%" stopColor="#f97316" />
+                            </linearGradient>
+                            <linearGradient id="g3" x1="0" y1="1" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#807dfc" />
+                                <stop offset="100%" stopColor="#a78bfa" />
+                            </linearGradient>
+                            <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+                                <circle cx="1.3" cy="1.3" r="1.3" fill="rgba(255,255,255,0.06)" />
+                            </pattern>
+                        </defs>
+
+                        <rect width="480" height="620" fill="#0a0a0a" />
+                        <rect width="480" height="620" fill="url(#dots)" />
+
+                        <text x="500" y="470" textAnchor="end" fontFamily="'Space Grotesk', sans-serif" fontWeight="700" fontSize="480" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2">4</text>
+
+                        <g opacity="0.95">
+                            <rect x="0" y="0" width="150" height="150" rx="22" fill="url(#g1)" transform="translate(60 90) rotate(45)" />
+                            <rect x="0" y="0" width="92" height="92" rx="16" fill="url(#g2)" opacity="0.92" transform="translate(300 60) rotate(45)" />
+                            <rect x="0" y="0" width="64" height="64" rx="12" fill="url(#g3)" opacity="0.85" transform="translate(120 330) rotate(45)" />
+                            <rect x="0" y="0" width="118" height="118" rx="18" fill="none" stroke="url(#g1)" strokeWidth="2.5" opacity="0.7" transform="translate(270 400) rotate(45)" />
+                            <rect x="0" y="0" width="46" height="46" rx="10" fill="url(#g2)" opacity="0.9" transform="translate(60 500) rotate(45)" />
+                        </g>
+
+                        <g stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" fill="none">
+                            <path d="M90 165 L90 260 L190 260" />
+                            <path d="M300 145 L300 220 L230 220" />
+                        </g>
+                        <circle cx="90" cy="260" r="3.5" fill="#34d399" />
+                        <circle cx="190" cy="260" r="3.5" fill="#fb923c" />
+                        <circle cx="230" cy="220" r="3.5" fill="#a78bfa" />
+
+                        <g fontFamily="'JetBrains Mono', monospace" fontSize="12" fontWeight="600" letterSpacing="2" fill="rgba(255,255,255,0.5)">
+                            <text x="34" y="580">DOPPAR/4.X</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
     );
 }
