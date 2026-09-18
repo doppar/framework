@@ -43,12 +43,10 @@ class StorageFileService
      * Return Storage Base Path
      *
      * @param string $disk
-     * @return string
+     * @return string|null
      */
-    public function getDiskPath(string $disk): string
+    public function getDiskPath(string $disk): ?string
     {
-        $path = config("filesystem.disks.{$disk}.root");
-
-        return $path;
+        return config("filesystem.disks.{$disk}.root");
     }
 }
