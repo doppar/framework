@@ -26,7 +26,7 @@ class AllRequestInputTest extends TestCase
         $container = new Container();
         $container->bind('request', fn() => Request::class);
         $container = new Container();
-        $this->request = new Request();
+        $this->request = Request::createFromGlobals();
         $container->bind('str', StringService::class);
 
         $this->defaultServerData = [
@@ -46,7 +46,7 @@ class AllRequestInputTest extends TestCase
 
         $this->resetGlobals();
         $_SERVER = $this->defaultServerData;
-        $this->request = new Request();
+        $this->request = Request::createFromGlobals();
     }
 
     protected function tearDown(): void
@@ -70,7 +70,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['existing' => 'value1'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $request->merge(['new' => 'value2', 'another' => 'value3']);
 
         $this->assertEquals('value1', $request->input('existing'));
@@ -95,7 +95,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['username' => 'john_doe'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('john_doe', $request->username);
         $this->assertNull($request->nonexistent);
@@ -103,12 +103,12 @@ class AllRequestInputTest extends TestCase
 
     public function testItChecksIfRequestIsEmpty()
     {
-        $emptyRequest = new Request();
+        $emptyRequest = Request::createFromGlobals();
 
         $this->assertTrue($emptyRequest->isEmpty());
 
         $_POST = ['key' => 'value'];
-        $filledRequest = new Request();
+        $filledRequest = Request::createFromGlobals();
 
         $this->assertFalse($filledRequest->isEmpty());
     }
@@ -118,7 +118,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['QUERY_STRING'] = 'page=1&limit=10&sort=name';
         $_GET = ['page' => '1', 'limit' => '10', 'sort' => 'name'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('1', $request->query('page'));
         $this->assertEquals('10', $request->query('limit'));
@@ -131,7 +131,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['QUERY_STRING'] = 'page=1&limit=10&sort=name';
         $_GET = ['page' => '1', 'limit' => '10'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $query = $request->query();
 
@@ -144,7 +144,7 @@ class AllRequestInputTest extends TestCase
     {
         $_COOKIE = ['session_id' => 'abc123', 'preferences' => 'dark_mode'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $cookies = $request->cookie();
 
@@ -156,7 +156,7 @@ class AllRequestInputTest extends TestCase
     {
         $_COOKIE = ['session_id' => 'abc123'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->hasCookie('session_id'));
         $this->assertFalse($request->hasCookie('nonexistent'));
@@ -174,7 +174,7 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->hasFile('avatar'));
 
@@ -194,7 +194,7 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->hasFile('documents'));
 
@@ -216,14 +216,14 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertFalse($request->hasFile('failed'));
     }
 
     public function testItChecksIfAnyFilesUploaded()
     {
-        $requestWithoutFiles = new Request();
+        $requestWithoutFiles = Request::createFromGlobals();
         $this->assertFalse($requestWithoutFiles->hasFiles());
 
         $_FILES = [
@@ -236,13 +236,13 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $requestWithFiles = new Request();
+        $requestWithFiles = Request::createFromGlobals();
         $this->assertTrue($requestWithFiles->hasFiles());
     }
 
     public function testItReturnsNullForNonexistentFile()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertNull($request->file('nonexistent'));
     }
@@ -253,7 +253,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['HTTP_USER_AGENT'] = 'TestAgent/1.0';
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer token123';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $headers = $request->headers();
 
@@ -266,7 +266,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('application/json', $request->header('Accept'));
         $this->assertNull($request->header('NonExistent'));
@@ -276,7 +276,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->hasHeader('Accept'));
         $this->assertFalse($request->hasHeader('NonExistent'));
@@ -286,14 +286,14 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9', $request->bearerToken());
     }
 
     public function testItReturnsNullForMissingBearerToken()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertNull($request->bearerToken());
     }
@@ -302,7 +302,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_AUTHORIZATION'] = 'Basic dXNlcjpwYXNz';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertNull($request->bearerToken());
     }
@@ -311,7 +311,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_IF_NONE_MATCH'] = '"abc123", "def456", "ghi789"';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $etags = $request->getETags();
 
@@ -323,7 +323,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json, text/html;q=0.9, */*;q=0.8';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $types = $request->getAcceptableContentTypes();
 
@@ -335,7 +335,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->acceptsJson());
         $this->assertTrue($request->accepts('application/json'));
@@ -345,7 +345,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'text/html';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->acceptsHtml());
         $this->assertTrue($request->accepts('text/html'));
@@ -355,7 +355,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = '*/*';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->acceptsAnyContentType());
     }
@@ -364,7 +364,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json;q=0.9, text/html;q=1.0';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $preferred = $request->prefers(['application/json', 'text/html']);
 
@@ -375,7 +375,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['CONTENT_TYPE'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isJson());
     }
@@ -385,7 +385,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->expectsJson());
     }
@@ -394,7 +394,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/json';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->wantsJson());
     }
@@ -403,7 +403,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_ACCEPT'] = 'application/xml';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('xml', $request->format());
     }
@@ -419,14 +419,14 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isAjax());
     }
 
     public function testItDetectsNonAjaxRequests()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertFalse($request->isAjax());
     }
@@ -435,7 +435,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_X_PJAX'] = 'true';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isPjax());
     }
@@ -444,7 +444,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTPS'] = 'on';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isSecure());
         $this->assertEquals('https', $request->scheme());
@@ -455,7 +455,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTPS'] = 'off';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertFalse($request->isSecure());
         $this->assertEquals('http', $request->scheme());
@@ -463,7 +463,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItSetsAndGetsRouteParameters()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $params = ['id' => 123, 'slug' => 'test-post'];
         $request->setRouteParams($params);
@@ -473,7 +473,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItGetsServerInformation()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $server = $request->server();
 
@@ -485,7 +485,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Custom Agent)';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('Mozilla/5.0 (Custom Agent)', $request->userAgent());
     }
@@ -494,7 +494,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_REFERER'] = 'https://google.com';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('https://google.com', $request->referer());
     }
@@ -503,7 +503,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['CONTENT_TYPE'] = 'application/json; charset=utf-8';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertStringContainsString('application/json', $request->contentType());
     }
@@ -512,7 +512,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_CONTENT_LENGTH'] = '1024';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals(1024, $request->contentLength());
     }
@@ -521,7 +521,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['SERVER_PROTOCOL'] = 'HTTP/2.0';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('HTTP/2.0', $request->getProtocolVersion());
     }
@@ -530,14 +530,14 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['SCRIPT_NAME'] = '/public/index.php';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('/public/index.php', $request->getScriptName());
     }
 
     public function testItGetsSessionInstance()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $session = $request->session();
 
@@ -552,7 +552,7 @@ class AllRequestInputTest extends TestCase
     //     $_SERVER['HTTP_HOST'] = 'example.com';
     //     $_COOKIE = ['session' => 'abc123'];
 
-    //     $request = new Request();
+    //     $request = Request::createFromGlobals();
 
     //     $string = (string) $request;
 
@@ -570,7 +570,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItStoresAndRetrievesPassedValidationData()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $passedData = ['name' => 'John', 'email' => 'john@example.com', 'csrf_token' => 'token'];
         $request->setPassedData($passedData);
@@ -584,7 +584,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItStoresAndRetrievesValidationErrors()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $errors = ['email' => 'Invalid email', 'name' => 'Required'];
         $request->setErrors($errors);
@@ -598,7 +598,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['QUERY_STRING'] = 'invalid&=&key=value&&&';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $normalized = $request->getQueryString();
 
@@ -610,7 +610,7 @@ class AllRequestInputTest extends TestCase
         $longValue = str_repeat('a', 8192);
         $_SERVER['HTTP_X_CUSTOM_HEADER'] = $longValue;
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals($longValue, $request->header('X-Custom-Header'));
     }
@@ -624,7 +624,7 @@ class AllRequestInputTest extends TestCase
             'arabic' => 'العربية'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('日本語', $request->input('name'));
         $this->assertEquals('🚀', $request->input('emoji'));
@@ -646,7 +646,7 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $input = $request->input('level1');
         $this->assertEquals('deep', $input['level2']['level3']['level4']['value']);
@@ -656,7 +656,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['0' => 'zero', '1' => 'one', '2' => 'two'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('zero', $request->input('0'));
         $this->assertEquals('one', $request->input('1'));
@@ -666,7 +666,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['tags' => [], 'categories' => []];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertIsArray($request->input('tags'));
         $this->assertEmpty($request->input('tags'));
@@ -676,7 +676,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['value' => null];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertNull($request->input('value'));
     }
@@ -685,7 +685,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['active' => true, 'deleted' => false];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->input('active'));
         $this->assertFalse($request->input('deleted'));
@@ -703,7 +703,7 @@ class AllRequestInputTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $mixed = $request->input('mixed');
         $this->assertIsString($mixed['string']);
@@ -721,7 +721,7 @@ class AllRequestInputTest extends TestCase
             'user[email]' => 'john@example.com'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertIsArray($request->input('items'));
         $this->assertEquals('John', $request->input('user[name]'));
@@ -731,7 +731,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/page#section';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         // Fragments are not sent to server, so URI should not contain #
         $this->assertStringNotContainsString('#', $request->getRequestUri());
@@ -741,7 +741,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/api//users///123';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('/api//users///123', $request->getPath());
     }
@@ -750,7 +750,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/search?q=' . urlencode('hello world & stuff');
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertStringContainsString('/search', $request->getPath());
     }
@@ -759,7 +759,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('192.168.1.1', $request->ip());
     }
@@ -768,7 +768,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REMOTE_ADDR'] = '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('2001:0db8:85a3:0000:0000:8a2e:0370:7334', $request->ip());
     }
@@ -777,7 +777,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('127.0.0.1', $request->ip());
     }
@@ -786,7 +786,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REMOTE_ADDR'] = '::1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('::1', $request->ip());
     }
@@ -800,7 +800,7 @@ class AllRequestInputTest extends TestCase
 
         $_POST = $largeArray;
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertCount(1000, $request->all());
         $this->assertEquals('value_500', $request->input('key_500'));
@@ -810,7 +810,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/test/path';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         // First call
         $path1 = $request->getPathInfo();
@@ -824,7 +824,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['code' => '<?php echo "malicious"; ?>'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('<?php echo "malicious"; ?>', $request->input('code'));
     }
@@ -833,7 +833,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['query' => "'; DROP TABLE users; --"];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals("'; DROP TABLE users; --", $request->input('query'));
     }
@@ -842,7 +842,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['comment' => '<script>alert("XSS")</script>'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('<script>alert("XSS")</script>', $request->input('comment'));
     }
@@ -851,7 +851,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['filename' => "test.txt\0.php"];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertStringContainsString("\0", $request->input('filename'));
     }
@@ -860,7 +860,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['path' => '../../../etc/passwd'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('../../../etc/passwd', $request->input('path'));
     }
@@ -869,7 +869,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_X_CUSTOM'] = "value\r\nX-Injected: malicious";
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         // Should preserve the raw value
         $this->assertStringContainsString("\r\n", $request->header('X-Custom'));
@@ -878,10 +878,10 @@ class AllRequestInputTest extends TestCase
     public function testItIsolatesRequestInstances()
     {
         $_POST = ['request1' => 'value1'];
-        $request1 = new Request();
+        $request1 = Request::createFromGlobals();
 
         $_POST = ['request2' => 'value2'];
-        $request2 = new Request();
+        $request2 = Request::createFromGlobals();
 
         // Each request should have its own isolated data
         $this->assertEquals('value1', $request1->input('request1'));
@@ -892,7 +892,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItAssociatesFormatWithMimeTypes()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $request->setFormat('custom', 'application/x-custom');
 
@@ -901,7 +901,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItGetsMimeTypeForFormat()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('application/json', $request->getMimeType('json'));
         $this->assertEquals('text/html', $request->getMimeType('html'));
@@ -910,7 +910,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItSetsAndGetsRequestFormat()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $request->setRequestFormat('json');
         $this->assertEquals('json', $request->getRequestFormat());
@@ -923,14 +923,14 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['CONTENT_TYPE'] = 'application/json; charset=utf-8';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('json', $request->getContentTypeFormat());
     }
 
     public function testItReturnsDefaultFormatWhenNotSet()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('html', $request->getRequestFormat());
         $this->assertEquals('custom', $request->getRequestFormat('custom'));
@@ -941,7 +941,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['SERVER_PORT'] = '80';
         $_SERVER['HTTPS'] = 'off';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals(80, $request->port());
     }
@@ -951,7 +951,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['SERVER_PORT'] = '443';
         $_SERVER['HTTPS'] = 'on';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals(443, $request->port());
     }
@@ -960,7 +960,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['HTTP_HOST'] = 'example.com:8080';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals(8080, $request->port());
     }
@@ -971,7 +971,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['SERVER_PORT'] = '80';
         $_SERVER['HTTPS'] = 'off';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('example.com', $request->host());
     }
@@ -982,7 +982,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['SERVER_PORT'] = '8080';
         $_SERVER['HTTPS'] = 'off';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('example.com', $request->host());
     }
@@ -992,7 +992,7 @@ class AllRequestInputTest extends TestCase
         $_GET['key'] = 'from_query';
         $_POST['key'] = 'from_post';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $request->attributes->set('key', 'from_attributes');
 
         $this->assertEquals('from_attributes', $request->get('key'));
@@ -1003,7 +1003,7 @@ class AllRequestInputTest extends TestCase
         $_GET['key'] = 'from_query';
         $_POST['key'] = 'from_post';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('from_query', $request->get('key'));
     }
@@ -1012,21 +1012,21 @@ class AllRequestInputTest extends TestCase
     {
         $_POST['key'] = 'from_post';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('from_post', $request->get('key'));
     }
 
     public function testItReturnsDefaultWhenParameterNotFound()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('default_value', $request->get('nonexistent', 'default_value'));
     }
 
     public function testItSetsAndGetsLocale()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('en', $request->getLocale());
     }
@@ -1059,7 +1059,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1:8080';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $clientIps = $request->getClientIps();
 
@@ -1073,7 +1073,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '::1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '[2001:db8::1]:8080';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $clientIps = $request->getClientIps();
 
@@ -1095,7 +1095,7 @@ class AllRequestInputTest extends TestCase
             'REMOTE_ADDR' => '203.0.113.1'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isSecure());
         $this->assertTrue($request->isAjax());
@@ -1125,7 +1125,7 @@ class AllRequestInputTest extends TestCase
             '_token' => 'csrf_token_here'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('POST', $request->getMethod());
         $this->assertTrue($request->acceptsHtml());
@@ -1151,7 +1151,7 @@ class AllRequestInputTest extends TestCase
         $this->resetGlobals();
         $_SERVER = ['REQUEST_METHOD' => 'GET'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEmpty($request->all());
         $this->assertEmpty($request->query->all());
@@ -1162,7 +1162,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['name' => 'John', 'email' => 'john@example.com', 'password' => 'secret'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $except = $request->except('password');
 
@@ -1175,7 +1175,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST = ['name' => 'John', 'email' => 'john@example.com', 'password' => 'secret'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $only = $request->only('name', 'email');
 
@@ -1188,7 +1188,7 @@ class AllRequestInputTest extends TestCase
     {
         $_POST['key1'] = 'value1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->hasAny('key1', 'key2'));
         $this->assertTrue($request->hasAny('nonexistent1', 'key1'));
@@ -1202,7 +1202,7 @@ class AllRequestInputTest extends TestCase
         $_POST['whitespace'] = '   ';
         $_POST['zero'] = '0';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->filled('filled'));
         $this->assertFalse($request->filled('empty'));
@@ -1215,7 +1215,7 @@ class AllRequestInputTest extends TestCase
         $_POST['existing'] = 'value';
         $_POST['empty_string'] = '';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->has('existing'));
         $this->assertFalse($request->has('empty_string'));
@@ -1224,7 +1224,7 @@ class AllRequestInputTest extends TestCase
 
     public function testItGetsInputWithDefaultValue()
     {
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('default', $request->input('nonexistent', 'default'));
     }
@@ -1234,7 +1234,7 @@ class AllRequestInputTest extends TestCase
         $_GET['key1'] = 'value1';
         $_POST['key2'] = 'value2';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $all = $request->all();
 
@@ -1247,7 +1247,7 @@ class AllRequestInputTest extends TestCase
         $_GET['from_query'] = 'query_value';
         $_POST['from_body'] = 'body_value';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('query_value', $request->input('from_query'));
         $this->assertEquals('body_value', $request->input('from_body'));
@@ -1257,7 +1257,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/a/b/c/d';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('', $request->getRelativeUriForPath('/a/b/c/d'));
         $this->assertEquals('other', $request->getRelativeUriForPath('/a/b/c/other'));
@@ -1269,7 +1269,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['SCRIPT_NAME'] = '/public/index.php';
         $_SERVER['REQUEST_URI'] = '/public/api/users';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertNotEmpty($request->getBaseUrl());
     }
@@ -1279,7 +1279,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['IIS_WasUrlRewritten'] = '1';
         $_SERVER['UNENCODED_URL'] = '/api/users/test';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertStringContainsString('/api/users', $request->getRequestUri());
     }
@@ -1288,7 +1288,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/api/users?page=1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('/api/users', $request->getRequestUri());
         $this->assertEquals('/api/users', $request->uri());
@@ -1298,7 +1298,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['QUERY_STRING'] = 'page=1&sort=name&filter=active';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('filter=active&page=1&sort=name', $request->getQueryString());
     }
@@ -1314,7 +1314,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/api/users/john%20doe';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('/api/users/john doe', $request->getPath());
     }
@@ -1325,7 +1325,7 @@ class AllRequestInputTest extends TestCase
     //     $_SERVER['REQUEST_URI'] = '/api/users?page=1';
     //     $_SERVER['HTTPS'] = 'on';
 
-    //     $request = new Request();
+    //     $request = Request::createFromGlobals();
 
     //     $this->assertEquals('https://example.com/api/users?page=1', $request->fullUrl());
     // }
@@ -1334,7 +1334,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REQUEST_URI'] = '/api/users/123?sort=name';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('/api/users/123', $request->getPathInfo());
         $this->assertEquals('/api/users/123', $request->getPath());
@@ -1347,7 +1347,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '::1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '2001:db8::1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('2001:db8::1', $request->getClientIp());
     }
@@ -1359,7 +1359,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1, invalid-ip, 198.51.100.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $ips = $request->getClientIps();
 
@@ -1370,7 +1370,7 @@ class AllRequestInputTest extends TestCase
     {
         $_SERVER['REMOTE_ADDR'] = '203.0.113.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('203.0.113.1', $request->getClientIp());
         $this->assertEquals('203.0.113.1', $request->ip());
@@ -1385,7 +1385,7 @@ class AllRequestInputTest extends TestCase
 
         $_SERVER['HTTP_HOST'] = 'malicious.com';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $request->getHost();
     }
 
@@ -1394,7 +1394,7 @@ class AllRequestInputTest extends TestCase
         Request::setTrustedHosts(['^example\.com$', '^.*\.example\.com$']);
 
         $_SERVER['HTTP_HOST'] = 'example.com';
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('example.com', $request->getHost());
     }
@@ -1406,7 +1406,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1, 10.0.0.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $clientIps = $request->getClientIps();
 
@@ -1422,7 +1422,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isValidRequest());
     }
@@ -1434,7 +1434,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_FORWARDED'] = 'for=203.0.113.1;proto=https;host=example.com';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isSecure());
     }
@@ -1447,7 +1447,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['HTTP_X_FORWARDED_PORT'] = '8443';
         $_SERVER['SERVER_PORT'] = '80';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals(8443, $request->port());
     }
@@ -1460,7 +1460,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
         $_SERVER['HTTPS'] = 'off';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isSecure());
         $this->assertEquals('https', $request->getScheme());
@@ -1473,7 +1473,7 @@ class AllRequestInputTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
         $_SERVER['HTTP_X_FORWARDED_HOST'] = 'original-host.com';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertEquals('original-host.com', $request->getHost());
     }
@@ -1483,7 +1483,7 @@ class AllRequestInputTest extends TestCase
         Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_X_FORWARDED_FOR);
 
         $_SERVER['REMOTE_ADDR'] = '192.168.1.2';
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertFalse($request->isFromTrustedProxy());
     }
@@ -1493,7 +1493,7 @@ class AllRequestInputTest extends TestCase
         Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_X_FORWARDED_FOR);
 
         $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $this->assertTrue($request->isFromTrustedProxy());
     }

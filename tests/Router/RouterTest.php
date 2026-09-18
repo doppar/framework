@@ -235,7 +235,7 @@ class RouterTest extends TestCase
 
         $_SERVER['REQUEST_METHOD'] = 'GET';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $container = Container::getInstance();
         $container->instance('request', $request);
 
@@ -308,7 +308,7 @@ class RouterTest extends TestCase
 
         $_SERVER['REQUEST_URI'] = '/admin';
         $_SERVER['REQUEST_METHOD'] = 'GET';
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $middleware = $this->router->getCurrentRouteMiddleware($request);
 

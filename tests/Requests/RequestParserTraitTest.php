@@ -62,7 +62,7 @@ class RequestParserTraitTest extends TestCase
         $_POST = $post;
         $_COOKIE = $cookies;
 
-        return new Request();
+        return Request::createFromGlobals();
     }
 
     // ===========================
