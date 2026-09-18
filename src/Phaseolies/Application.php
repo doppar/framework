@@ -804,7 +804,7 @@ class Application extends Container
     protected function bindSingletonClasses(): void
     {
         $this->bindApplicationNecessaryPath();
-        $this->singleton('request', Request::class);
+        $this->singleton('request', fn() => Request::createFromGlobals());
 
         $this->bindHttpGateway();
 

@@ -18,6 +18,9 @@ use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class Request
 {
     use RequestParser, RequestHelper, Rule, InteractsWithContentTypes;
@@ -131,19 +134,34 @@ class Request
     protected array $routeParams = [];
 
     /**
-     * Constructor: Initializes request data from PHP superglobals.
+     * Creates a Request from explicit parameter values.
+     *
+     * @param array $query
+     * @param array $request
+     * @param array $attributes
+     * @param array $cookies
+     * @param array $files
+     * @param array $server
+     * @param string|resource|null $content
      */
-    public function __construct()
-    {
-        $this->server = new ServerBag($_SERVER);
+    public function __construct(
+        array $query = [],
+        array $request = [],
+        array $attributes = [],
+        array $cookies = [],
+        array $files = [],
+        array $server = [],
+        mixed $content = null
+    ) {
+        $this->server = new ServerBag($server);
         $this->headers = new HeaderBag($this->server->getHeaders());
-        $this->request = new InputBag($this->createFromGlobals());
-        $this->query = new InputBag($_GET);
-        $this->attributes = new ParameterBag($_SERVER);
-        $this->cookies = new InputBag($_COOKIE);
+        $this->request = new InputBag($request);
+        $this->query = new InputBag($query);
+        $this->attributes = new ParameterBag($attributes);
+        $this->cookies = new InputBag($cookies);
         $this->session = new Session();
-        $this->files = $_FILES;
-        $this->content = $this->content();
+        $this->files = $files;
+        $this->content = $content;
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
         $this->method = $this->method();
@@ -180,13 +198,13 @@ class Request
     }
 
     /**
-     * Creates request data from PHP superglobals.
+     * Resolves the final request payload
      *
      * @return array
      */
-    public function createFromGlobals(): array
+    protected function parseRequestBody(): array
     {
-        $request = $_POST + $_GET;
+        $request = $this->request->all() + $this->query->all();
 
         $contentType = $this->server->get("CONTENT_TYPE", "");
         $requestMethod = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
@@ -1673,13 +1691,37 @@ class Request
     }
 
     /**
-     * @return Request
+     * Creates a Request from the current PHP superglobals
+     *
+     * @return static
      */
-    public static function capture()
+    public static function createFromGlobals(): static
+    {
+        $request = new static($_GET, $_POST, [], $_COOKIE, $_FILES, $_SERVER);
+
+        $request->request = new InputBag($request->parseRequestBody());
+
+        return $request;
+    }
+
+    /**
+     * Captures the current request as a Request instance.
+     *
+     * @return static
+     */
+    public static function capture(): static
     {
         static::enableHttpMethodParameterOverride();
 
-        return app(Request::class);
+        if (app()->hasInstance('request')) {
+            $existing = app('request');
+
+            if ($existing instanceof static) {
+                return $existing;
+            }
+        }
+
+        return static::createFromGlobals();
     }
 
     /**

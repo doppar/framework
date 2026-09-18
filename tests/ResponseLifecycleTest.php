@@ -169,7 +169,7 @@ PHP);
 
         $_SERVER['REQUEST_METHOD'] = 'HEAD';
         $_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
-        $headRequest = new Request();
+        $headRequest = Request::createFromGlobals();
 
         $routeResponse->prepare($headRequest);
         $helperResponse->prepare($headRequest);
@@ -212,7 +212,7 @@ PHP);
         $_SERVER['HTTP_REFERER'] = '/form';
         $_POST = [];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $this->container->instance('request', $request);
 
         try {
