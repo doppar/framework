@@ -4,7 +4,7 @@ namespace Phaseolies\Support\Facades;
 
 /**
  * @method static \Phaseolies\Support\Storage\StorageFileService disk(?string $name = null)
- * @method static \Phaseolies\Support\Storage\StorageFileService getDiskPath(string $disk)
+ * @method static string|null getDiskPath(string $disk)
  * @see \Phaseolies\Support\Storage\StorageFileService
  */
 

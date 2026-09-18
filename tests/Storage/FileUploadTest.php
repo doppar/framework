@@ -5,6 +5,11 @@ namespace Phaseolies\Support {
     {
         return \Tests\Unit\Storage\Support\UploadTestHooks::moveUploadedFile($from, $to);
     }
+
+    function is_uploaded_file(string $filename): bool
+    {
+        return \Tests\Unit\Storage\Support\UploadTestHooks::isUploadedFile($filename);
+    }
 }
 
 namespace Phaseolies\Support\Storage {
@@ -73,6 +78,8 @@ namespace Tests\Unit\Storage\Support {
     {
         public static bool $shouldSucceed = true;
 
+        public static bool $isUploadedFile = true;
+
         /**
          * @var array<int, array{from: string, to: string}>
          */
@@ -81,6 +88,7 @@ namespace Tests\Unit\Storage\Support {
         public static function reset(): void
         {
             self::$shouldSucceed = true;
+            self::$isUploadedFile = true;
             self::$calls = [];
         }
 
@@ -104,6 +112,11 @@ namespace Tests\Unit\Storage\Support {
 
             return $copied;
         }
+
+        public static function isUploadedFile(string $filename): bool
+        {
+            return self::$isUploadedFile;
+        }
     }
 }
 
@@ -115,6 +128,7 @@ namespace Tests\Unit\Storage {
     use Phaseolies\Support\Storage\LocalFileSystem;
     use Phaseolies\Support\Storage\PublicFileSystem;
     use Phaseolies\Support\Storage\StorageFileService;
+    use PHPUnit\Framework\Attributes\DataProvider;
     use PHPUnit\Framework\TestCase;
     use Tests\Unit\Storage\Support\UploadTestConfig;
     use Tests\Unit\Storage\Support\UploadTestHooks;
@@ -234,6 +248,202 @@ namespace Tests\Unit\Storage {
             $this->assertSame([], UploadTestHooks::$calls);
         }
 
+        /**
+         * @return array<string, array{0: int}>
+         */
+        public static function uploadErrorCodeProvider(): array
+        {
+            return [
+                'ini size exceeded' => [UPLOAD_ERR_INI_SIZE],
+                'form max size exceeded' => [UPLOAD_ERR_FORM_SIZE],
+                'partial upload' => [UPLOAD_ERR_PARTIAL],
+                'no tmp dir' => [UPLOAD_ERR_NO_TMP_DIR],
+                'cant write' => [UPLOAD_ERR_CANT_WRITE],
+                'extension blocked' => [UPLOAD_ERR_EXTENSION],
+            ];
+        }
+
+        #[DataProvider('uploadErrorCodeProvider')]
+        public function testStoreAndStoreAsRejectEveryUploadErrorCodeWithoutTouchingDisk(int $errorCode): void
+        {
+            $file = $this->makeUploadedStyleFile('report.csv', 'a,b,c', 'text/csv', $errorCode);
+
+            $this->assertFalse($file->isValid());
+            $this->assertFalse($file->store('reports'));
+            $this->assertFalse($file->storeAs('reports', 'report.csv', 'local'));
+            $this->assertFalse($file->move($this->tmpDir . '/moved'));
+            $this->assertSame([], UploadTestHooks::$calls);
+            $this->assertSame([], glob($this->publicRoot . '/reports/*') ?: []);
+        }
+
+        public function testGenerateUniqueNameStripsPathTraversalFromClientFileName(): void
+        {
+            $file = $this->makeUploadedStyleFile('../../../../etc/passwd', 'payload', 'text/plain');
+
+            $unique = $file->generateUniqueName();
+
+            $this->assertStringNotContainsString('/', $unique);
+            $this->assertStringNotContainsString('..', $unique);
+            $this->assertMatchesRegularExpression('/^\d+_passwd$/', $unique);
+        }
+
+        public function testStoreContainsUploadEvenWhenClientFileNameAttemptsTraversal(): void
+        {
+            $file = $this->makeUploadedStyleFile('../../../../etc/passwd', 'malicious payload', 'text/plain');
+
+            $this->assertTrue($file->store('uploads'));
+
+            $storedFiles = glob($this->publicRoot . '/uploads/*') ?: [];
+            $this->assertCount(1, $storedFiles);
+            $this->assertStringStartsWith($this->publicRoot . '/uploads/', $storedFiles[0]);
+            $this->assertStringNotContainsString('..', basename($storedFiles[0]));
+        }
+
+        public function testStoreAsContainsUploadEvenWhenExplicitFileNameAttemptsTraversal(): void
+        {
+            $file = $this->makeUploadedStyleFile('note.txt', 'malicious payload', 'text/plain');
+
+            $storedPath = $file->storeAs('uploads', '../../../../evil.php', 'local');
+
+            $this->assertNotFalse($storedPath);
+            $this->assertFileExists($this->localRoot . '/uploads/evil.php');
+            $this->assertFileDoesNotExist(dirname($this->tmpDir) . '/evil.php');
+        }
+
+        public function testStoreAsSanitizesWindowsStyleBackslashPathInFileName(): void
+        {
+            $file = $this->makeUploadedStyleFile('note.txt', 'payload', 'text/plain');
+
+            $storedPath = $file->storeAs('uploads', '..\\..\\..\\evil.txt', 'local');
+
+            $this->assertSame('uploads/evil.txt', $storedPath);
+            $this->assertFileExists($this->localRoot . '/uploads/evil.txt');
+        }
+
+        public function testGenerateUniqueNameStripsNullBytesAndControlCharacters(): void
+        {
+            $file = $this->makeUploadedStyleFile("evil\0.php\x01\x02.txt", 'payload', 'text/plain');
+
+            $unique = $file->generateUniqueName();
+
+            $this->assertStringNotContainsString("\0", $unique);
+            $this->assertStringNotContainsString("\x01", $unique);
+        }
+
+        public function testStoreAsAvoidsWindowsReservedDeviceNames(): void
+        {
+            $file = $this->makeUploadedStyleFile('payload.txt', 'payload', 'text/plain');
+
+            $storedPath = $file->storeAs('uploads', 'CON.txt', 'local');
+
+            $this->assertSame('uploads/_CON.txt', $storedPath);
+            $this->assertFileExists($this->localRoot . '/uploads/_CON.txt');
+        }
+
+        public function testGenerateUniqueNameTruncatesExcessivelyLongClientFileName(): void
+        {
+            $longName = str_repeat('a', 500) . '.txt';
+            $file = $this->makeUploadedStyleFile($longName, 'payload', 'text/plain');
+
+            $unique = $file->generateUniqueName();
+
+            $this->assertLessThan(200, strlen($unique));
+            $this->assertStringEndsWith('.txt', $unique);
+        }
+
+        public function testIsImageReturnsFalseForSpoofedContentType(): void
+        {
+            $file = $this->makeUploadedStyleFile('avatar.jpg', 'this is not really an image', 'image/jpeg');
+
+            $this->assertFalse($file->isImage());
+            $this->assertFalse($file->isMimeType('image/jpeg'));
+        }
+
+        public function testIsImageReturnsTrueForRealImageContentRegardlessOfClaimedType(): void
+        {
+            $pngBytes = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+            $file = $this->makeUploadedStyleFile('photo.png', $pngBytes, 'application/octet-stream');
+
+            $this->assertTrue($file->isImage());
+            $this->assertTrue($file->isMimeType('image/png'));
+        }
+
+        public function testIsDocumentDetectsRealPdfContent(): void
+        {
+            $pdfBytes = "%PDF-1.4\n%\xE2\xE3\xCF\xD3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF";
+            $file = $this->makeUploadedStyleFile('contract.pdf', $pdfBytes, 'application/pdf');
+
+            $this->assertTrue($file->isDocument());
+        }
+
+        public function testFileControllerStyleImageGateRejectsScriptDisguisedAsImage(): void
+        {
+            $file = $this->makeUploadedStyleFile('avatar.jpg', '<?php system($_GET["c"]); ?>', 'image/jpeg');
+
+            $storedPath = $file->storeAs('avatars', 'avatar.jpg', 'public', static fn(File $f) => $f->isImage());
+
+            $this->assertFalse($storedPath);
+            $this->assertFileDoesNotExist($this->publicRoot . '/avatars/avatar.jpg');
+        }
+
+        public function testMoveUsesMoveUploadedFileForAGenuineUpload(): void
+        {
+            $file = $this->makeUploadedStyleFile('genuine.txt', 'genuine payload', 'text/plain');
+            $destination = $this->tmpDir . '/moved';
+
+            UploadTestHooks::$isUploadedFile = true;
+
+            $this->assertTrue($file->move($destination));
+            $this->assertFileExists($destination . '/genuine.txt');
+            $this->assertCount(1, UploadTestHooks::$calls);
+        }
+
+        public function testMoveFallsBackToRenameWhenSourceIsNotAGenuineUpload(): void
+        {
+            $file = $this->makeUploadedStyleFile('existing.txt', 'existing payload', 'text/plain');
+            $destination = $this->tmpDir . '/moved';
+
+            UploadTestHooks::$isUploadedFile = false;
+
+            $this->assertTrue($file->move($destination));
+            $this->assertFileExists($destination . '/existing.txt');
+            $this->assertSame([], UploadTestHooks::$calls);
+        }
+
+        public function testMoveSanitizesDefaultAndExplicitFileNames(): void
+        {
+            $file = $this->makeUploadedStyleFile('../../evil.sh', 'payload', 'text/plain');
+            $destination = $this->tmpDir . '/moved';
+
+            $this->assertTrue($file->move($destination));
+            $this->assertFileExists($destination . '/evil.sh');
+            $this->assertFileDoesNotExist(dirname($this->tmpDir) . '/evil.sh');
+        }
+
+        public function testStoreAsReturnsFalseForUnconfiguredDisk(): void
+        {
+            $file = $this->makeUploadedStyleFile('note.txt', 'payload', 'text/plain');
+
+            $storedPath = $file->storeAs('uploads', 'note.txt', 'missing-disk');
+
+            $this->assertFalse($storedPath);
+            $this->assertSame([], UploadTestHooks::$calls);
+        }
+
+        public function testMultipleFilesStoreIndependentlyWithoutSharedState(): void
+        {
+            $first = $this->makeUploadedStyleFile('one.txt', 'first payload', 'text/plain');
+            $second = $this->makeUploadedStyleFile('two.txt', 'second payload', 'text/plain');
+
+            $firstPath = $first->storeAs('multi', 'one.txt', 'local');
+            $secondPath = $second->storeAs('multi', 'two.txt', 'local');
+
+            $this->assertSame('multi/one.txt', $firstPath);
+            $this->assertSame('multi/two.txt', $secondPath);
+            $this->assertSame('first payload', (string) file_get_contents($this->localRoot . '/multi/one.txt'));
+            $this->assertSame('second payload', (string) file_get_contents($this->localRoot . '/multi/two.txt'));
+        }
+
         private function makeUploadedStyleFile(
             string $name,
             string $contents,
@@ -245,7 +455,10 @@ namespace Tests\Unit\Storage {
                 mkdir($directory, 0755, true);
             }
 
-            $path = $directory . '/' . uniqid('', true) . '_' . $name;
+            // A real upload's tmp_name is always a random OS-assigned path,
+            // unrelated to the client-supplied name, so build it that way
+            // here too rather than embedding (possibly malicious) $name.
+            $path = $directory . '/' . bin2hex(random_bytes(8));
             file_put_contents($path, $contents);
 
             return new File([
