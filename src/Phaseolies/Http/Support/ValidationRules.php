@@ -3,6 +3,7 @@
 namespace Phaseolies\Http\Support;
 
 use Phaseolies\Translation\Translator;
+use Symfony\Component\Mime\MimeTypes;
 
 trait ValidationRules
 {
@@ -691,9 +692,7 @@ trait ValidationRules
                 break;
 
             case 'mimes':
-                $allowedTypes = explode(',', $ruleValue);
-                $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                if (!in_array($fileExtension, $allowedTypes)) {
+                if (!$this->fileMatchesAllowedExtensions($file['tmp_name'], $ruleValue)) {
                     return $this->getErrorMessage('file.mimes', $fieldName, [
                         ':values' => $ruleValue,
                         'values' => $ruleValue
@@ -748,6 +747,40 @@ trait ValidationRules
         }
 
         return null;
+    }
+
+    /**
+     * Checks whether a file's real content matches one of the extensions allowed by a "mimes" rule.
+     *
+     * @param string $tmpPath
+     * @param string $allowedExtensionsList
+     * @return bool
+     */
+    protected function fileMatchesAllowedExtensions(string $tmpPath, string $allowedExtensionsList): bool
+    {
+        $mimeTypes = MimeTypes::getDefault();
+
+        try {
+            $detectedMime = $mimeTypes->guessMimeType($tmpPath);
+        } catch (\LogicException) {
+            // No MIME guesser available (e.g. the fileinfo extension is
+            // missing): fail closed rather than trust unverified input.
+            return false;
+        }
+
+        if ($detectedMime === null) {
+            return false;
+        }
+
+        foreach (explode(',', $allowedExtensionsList) as $extension) {
+            $expectedMimes = $mimeTypes->getMimeTypes(strtolower(trim($extension)));
+
+            if (in_array($detectedMime, $expectedMimes, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
