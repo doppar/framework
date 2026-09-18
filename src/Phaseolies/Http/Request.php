@@ -18,6 +18,9 @@ use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
 
+/**
+ * @phpstan-consistent-constructor
+ */
 class Request
 {
     use RequestParser, RequestHelper, Rule, InteractsWithContentTypes;
@@ -1702,13 +1705,21 @@ class Request
     }
 
     /**
-     * Captures the current PHP request as a Request instance.
+     * Captures the current request as a Request instance.
      *
      * @return static
      */
     public static function capture(): static
     {
         static::enableHttpMethodParameterOverride();
+
+        if (app()->hasInstance('request')) {
+            $existing = app('request');
+
+            if ($existing instanceof static) {
+                return $existing;
+            }
+        }
 
         return static::createFromGlobals();
     }
