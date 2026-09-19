@@ -1,5 +1,46 @@
 # Release Notes
 
+## v4.0.0 - 2026-09-19
+
+* merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/290
+* merged with master (#290) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/291
+* Introduce Doppar 4.x Application Skeleton by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/289
+* Rename ServiceProvider to ServiceLauncher by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/292
+* Redesign Error Page for 4.x Version by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/293
+* Remove CastToDate for 4.x by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/294
+* Relocate Framework Attributes for 4.x by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/295
+* Prompt for launcher selection in vendor:publish by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/297
+* Migrate Mailer from PHPMailer to Symfony Mailer (Doppar 4.x) by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/298
+* session regenerate after successfull login: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/299
+* fix: mass-assignment on update: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/300
+* fix: SQL identifier injection by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/302
+* fix: Route response()->view() through the Odo rendering engine by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/301
+* fix : cross-platform absolute path handling in base_path() by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/303
+* feat: add attribute-based DTO validation by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/304
+* fix: base_path() ambiguity crashes Router::getControllerClasses() on getPrefixesPsr4() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/305
+* Fix #4 done: path traversal in Storage by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/306
+* Fix #5 encryption — APP_KEY decode bug + move to AEAD by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/307
+* Fix #9 after_created hook ordering by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/308
+* Fix Model::__get() swallowing \Throwable by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/309
+* resolve terminating callback dependencies via container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/310
+* fix: enforce enum column values on Postgres and SQLite by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/311
+* fix: Schema::table() generated CREATE TABLE instead of ALTER TABLE on every driver by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/312
+* Fix: DI resolution-order bug by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/313
+* base path is now injected via the constructor, no global BASE_PATH constant by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/315
+* refactor: Router depends on GatewayInterface instead of extending Kernel by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/314
+* Environment configuration switches from .env to env.toml by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/316
+* Fix 2FA QR code generation for chillerlan/php-qrcode v6 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/317
+* Redesign the 4.x welcome page across all frontend install stubs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/318
+* welcome page related change unit test issue fix: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/319
+* finalize the doppar 4.x version welcome page by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/320
+* readme.md updated for 4.x version: by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/321
+* Separate Request::capture() from superglobal reads by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/322
+* fix: Harden Support\File against path traversal and spoofed MIME types by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/323
+* Detect real file content for the mimes validation rule by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/324
+* Bump dev master 3.x to 4.x by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/325
+* readme.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/326
+* README.md updated by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/328
+
 ## v3.26.6 - 2026-07-24
 
 * Add model helpers for clearing and reloading cached relationships by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/288
