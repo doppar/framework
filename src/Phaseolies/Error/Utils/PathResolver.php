@@ -24,18 +24,34 @@ class PathResolver
      */
     public static function toDisplayPath(string $absoluteFile): string
     {
+        $absoluteFile = self::normalizePath($absoluteFile);
         $match = self::matchPsr4Prefix($absoluteFile);
 
         if ($match === null) {
-            return str_replace(base_path() . '/', '', $absoluteFile);
+            $basePath = rtrim(self::normalizePath(base_path()), '/');
+
+            return str_starts_with($absoluteFile, $basePath . '/')
+                ? substr($absoluteFile, strlen($basePath) + 1)
+                : $absoluteFile;
         }
 
         [$prefix, $directory] = $match;
 
         $relative = substr($absoluteFile, strlen($directory));
-        $namespacePath = str_replace('\\', '/', rtrim($prefix, '\\'));
+        $namespacePath = rtrim(self::normalizePath($prefix), '/');
 
         return $namespacePath . '/' . ltrim($relative, '/');
+    }
+
+    /**
+     * Normalize filesystem separators for display-path comparisons.
+     *
+     * @param string $path
+     * @return string
+     */
+    private static function normalizePath(string $path): string
+    {
+        return str_replace('\\', '/', $path);
     }
 
     /**
@@ -51,9 +67,11 @@ class PathResolver
         $bestPrefix = null;
         $bestDirectory = null;
 
+        $absoluteFile = self::normalizePath($absoluteFile);
+
         foreach ($map as $prefix => $directories) {
             foreach ($directories as $directory) {
-                $directory = rtrim($directory, '/') . '/';
+                $directory = rtrim(self::normalizePath($directory), '/') . '/';
 
                 if (
                     str_starts_with($absoluteFile, $directory)
