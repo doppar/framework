@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.0.1 - 2026-09-20
+
+* fix: error page paths on Windows by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/329
+
 ## v4.0.0 - 2026-09-19
 
 * merged with master by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/290
