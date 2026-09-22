@@ -7,22 +7,6 @@ use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
-/**
- * Regression test for a nested-render corruption bug in View::fetch().
- *
- * The Controller/View instance is a singleton for the whole request (see
- * RippleLauncher's `Controller::class` binding), and $parents / the
- * '__current_template__' block used to be flat instance state shared by
- * every fetch() call. A *nested* fetch() — e.g. a pagination widget
- * rendering its own partial view from inside an already in-flight
- * #extends page — would drain the outer call's still-pending parent
- * template (its layout) via the shared $parents queue, then overwrite
- * '__current_template__' with its own result, leaving the outer render
- * with nothing once it returned. In production this showed up as a
- * completely blank page on any view whose layout called
- * paginator(...)->links()/linkWithJumps() while a matching
- * vendor/pagination/*.odo.php template existed.
- */
 class ViewFetchReentrancyTest extends TestCase
 {
     private Controller $controller;
@@ -61,6 +45,14 @@ class ViewFetchReentrancyTest extends TestCase
         rmdir($this->viewDir);
 
         parent::tearDown();
+    }
+
+    private function normalize(string $html): string
+    {
+        // Collapse the newlines left around #section/#endsection content
+        // when it's substituted into the layout's #yield, so we can compare
+        // against the flat pipe-delimited expectation.
+        return trim(preg_replace('/\R+/', '', $html));
     }
 
     private function putView(string $name, string $contents): void
@@ -112,6 +104,6 @@ class ViewFetchReentrancyTest extends TestCase
 
         $html = $this->controller->render('page', [], true);
 
-        $this->assertSame('L[P1A1NESTEDA2P2BP3]L', trim($html));
+        $this->assertSame('L[P1A1NESTEDA2P2BP3]L', $this->normalize($html));
     }
 }
