@@ -21,13 +21,15 @@ class AllRequestInputTest extends TestCase
 
     protected function setUp(): void
     {
-        $container = new Container();
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+        // Bind onto the single container instance we activate — bindings
+        // are per-instance now (see [[ArchNotes]] in DI/Container.php), so
+        // reassigning $container to a new Container() (as this setUp used
+        // to do) silently discarded every earlier bind() call.
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('request', fn() => Request::class);
-        $container = new Container();
-        $this->request = Request::createFromGlobals();
         $container->bind('str', StringService::class);
+        $this->request = Request::createFromGlobals();
 
         $this->defaultServerData = [
             'REQUEST_METHOD' => 'GET',
@@ -54,6 +56,7 @@ class AllRequestInputTest extends TestCase
         $this->resetGlobals();
         Request::setTrustedProxies([], -1);
         Request::setTrustedHosts([]);
+        Container::forgetInstance();
     }
 
     protected function resetGlobals(): void

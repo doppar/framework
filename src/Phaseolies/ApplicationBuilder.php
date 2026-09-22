@@ -3,24 +3,13 @@
 namespace Phaseolies;
 
 use Phaseolies\Support\TimezoneHandler;
-use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
 
 class ApplicationBuilder
 {
     /**
-     * Holds the current HTTP request instance
-     *
-     * @var \Phaseolies\Http\Request<string>
-     */
-    protected $request;
-
-    /**
      * @param Application $app
      */
-    public function __construct(protected Application $app)
-    {
-        $this->request = $this->app->make('request');
-    }
+    public function __construct(protected Application $app) {}
 
     /**
      * Set the application timezone
@@ -39,68 +28,7 @@ class ApplicationBuilder
     }
 
     /**
-     * Configures the application with middleware stack handling
-     *
-     * @return self
-     * @throws \Exception
-     */
-    public function withMiddlewareStack(): self
-    {
-        $middlewareStack = $this->buildMiddlewareStack();
-
-        $handler = $this->processMiddlewareStack($middlewareStack);
-
-        $this->app->router->getGateway()->handle($this->request, $handler);
-
-        return $this;
-    }
-
-    /**
-     * Constructs the middleware stack based on request type
-     *
-     * @return array
-     */
-    protected function buildMiddlewareStack(): array
-    {
-        $gateway = $this->app->router->getGateway();
-
-        $middlewareStack = $gateway->getGlobalMiddleware();
-
-        $groupKey = $this->request->isApiRequest() ? 'api' : 'web';
-        $groupMiddleware = $gateway->getMiddlewareGroups()[$groupKey] ?? [];
-
-        return array_merge($middlewareStack, $groupMiddleware);
-    }
-
-    /**
-     * Processes the middleware stack into a handler pipeline.
-     *
-     * @param array $middlewareStack
-     * @return callable
-     * @throws \Exception
-     */
-    protected function processMiddlewareStack(array $middlewareStack): callable
-    {
-        $response = fn() => $this->app->make('response');
-
-        foreach ($middlewareStack as $middlewareClass) {
-            $middlewareInstance = $this->app->make($middlewareClass);
-            if (!$middlewareInstance instanceof ContractsMiddleware) {
-                throw new \Exception(
-                    "Failed to register middleware {$middlewareClass}: it must implement " . ContractsMiddleware::class . "."
-                );
-            }
-
-            $response = function ($request) use ($middlewareInstance, $response) {
-                return $middlewareInstance($request, $response);
-            };
-        }
-
-        return $response;
-    }
-
-    /**
-     * Finalizes the builder process and returns the configured application.
+     * Finalizes the builder process and returns the configured application
      *
      * @return Application
      */

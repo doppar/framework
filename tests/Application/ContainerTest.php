@@ -87,16 +87,11 @@ class ContainerTest extends TestCase
 
     protected function resetContainer(): void
     {
-        $reflection = new \ReflectionClass(Container::class);
-
-        $bindings = $reflection->getProperty('bindings');
-        $bindings->setValue(null, []);
-
-        $instances = $reflection->getProperty('instances');
-        $instances->setValue(null, []);
-
-        $instance = $reflection->getProperty('instance');
-        $instance->setValue(null, null);
+        // $bindings/$instances are per-instance now (see [[ArchNotes]]), so a
+        // fresh Container() already starts empty — no reflection needed for
+        // those. Only the static "active instance" pointer still needs
+        // clearing between tests.
+        Container::forgetInstance();
     }
 
     protected function tearDown(): void
@@ -2281,7 +2276,6 @@ class ContainerTest extends TestCase
         $this->assertEquals('value', $result);
     }
 
-    // has issue
     public function testMultipleContainerInstances()
     {
         $container1 = new Container();
@@ -2290,9 +2284,13 @@ class ContainerTest extends TestCase
         $container1->bind('service', fn() => 'container1');
         $container2->bind('service', fn() => 'container2');
 
-        // creating multiple instances of Container is meaningless
-        // every instance is just a handle to the same static state.
-        $this->assertEquals('container2', $container1->get('service'));
+        // $bindings/$instances are per-instance (see [[ArchNotes]] on the
+        // property declarations), so each Container is its own isolated
+        // registry — required for per-request isolation under a persistent
+        // worker runtime (Swoole/FrankenPHP/RoadRunner), where a fresh
+        // Container/Application per request must not see another request's
+        // bindings.
+        $this->assertEquals('container1', $container1->get('service'));
         $this->assertEquals('container2', $container2->get('service'));
     }
 
@@ -2301,8 +2299,12 @@ class ContainerTest extends TestCase
         Container::setInstance($this->container);
         $this->container->bind('service', fn() => 'value');
 
+        // Container::$instance is still a static "currently active container"
+        // pointer (intentional — it's what lets `app()`/facades resolve
+        // without a reference in hand), but a *new* Container() no longer
+        // inherits its bindings: storage itself is per-instance now.
         $newContainer = new Container();
-        $this->assertTrue($newContainer->has('service'));
+        $this->assertFalse($newContainer->has('service'));
     }
 
     public function testBindingPriorityOverAutoResolution()

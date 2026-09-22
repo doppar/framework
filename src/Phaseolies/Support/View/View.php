@@ -103,6 +103,11 @@ class View extends Factory
 
         $this->renderStack[] = $name;
 
+        $savedParents = $this->parents;
+        $hadCurrentBlock = array_key_exists('__current_template__', $this->blocks);
+        $savedCurrentBlock = $this->blocks['__current_template__'] ?? null;
+        $this->parents = [];
+
         try {
             $this->parents[] = $name;
             extract($data, EXTR_SKIP);
@@ -117,6 +122,14 @@ class View extends Factory
 
             return self::$cache[$cacheKey] = $result;
         } finally {
+            $this->parents = $savedParents;
+
+            if ($hadCurrentBlock) {
+                $this->blocks['__current_template__'] = $savedCurrentBlock;
+            } else {
+                unset($this->blocks['__current_template__']);
+            }
+
             if (!empty($this->renderStack)) {
                 array_pop($this->renderStack);
             }

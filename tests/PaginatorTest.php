@@ -22,11 +22,20 @@ class PaginatorTest extends TestCase
     protected function setUp(): void
     {
         $_SESSION = [];
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $container = new Container;
+        Container::setInstance($container);
 
         $container->singleton('request', Request::class);
 
         $this->paginator = new Paginator($this->testData);
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     public function testHasPages()

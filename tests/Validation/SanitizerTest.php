@@ -20,8 +20,10 @@ class SanitizerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('translator', function () {
             // Mock the FileLoader dependency
             $loader = $this->createMock(FileLoader::class);
@@ -66,6 +68,12 @@ class SanitizerTest extends TestCase
                 return $container[$abstract] ?? null;
             }
         }
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
+        parent::tearDown();
     }
 
     public function testConstructorAndRequestMethod(): void

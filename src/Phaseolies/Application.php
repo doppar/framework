@@ -256,9 +256,7 @@ class Application extends Container
      */
     public function configure(Application $app): ApplicationBuilder
     {
-        return (new ApplicationBuilder($app))
-            ->withTimezone()
-            ->withMiddlewareStack();
+        return (new ApplicationBuilder($app))->withTimezone();
     }
 
     /**
@@ -1149,6 +1147,13 @@ class Application extends Container
         foreach (['session', 'request', 'response', 'redirect'] as $abstract) {
             $this->forgetResolved($abstract);
         }
+
+        // re-resolves fresh instance instead of reusing it.
+        $this->forgetRequestScopedInstances();
+
+        // Undo any config() mutation made while handling
+        // this request, so it doesn't leak into the next one.
+        Config::resetRuntimeOverrides();
     }
 
     /**
@@ -1276,6 +1281,8 @@ class Application extends Container
      */
     public function dispatch($request): DispatchResult
     {
+        $this->snapshotBootBindings();
+
         try {
             $this->instance('request', $request);
 

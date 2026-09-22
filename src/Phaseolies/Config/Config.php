@@ -49,6 +49,13 @@ final class Config
     protected static ?array $configFiles = null;
 
     /**
+     * A snapshot of `$config` exactly as it stood right after boot
+     *
+     * @var array<string, mixed>
+     */
+    protected static array $bootSnapshot = [];
+
+    /**
      * Initialize the configuration system.
      *
      * @return void
@@ -58,7 +65,18 @@ final class Config
         if (self::$cacheFile === null) {
             self::$cacheFile = storage_path('framework/cache/config.php');
             self::loadFromCache();
+            self::$bootSnapshot = self::$config;
         }
+    }
+
+    /**
+     * Undo any runtime mutation made by `set()` since boot
+     *
+     * @return void
+     */
+    public static function resetRuntimeOverrides(): void
+    {
+        self::$config = self::$bootSnapshot;
     }
 
     /**
@@ -243,9 +261,6 @@ final class Config
         } else {
             $current = $value;
         }
-
-        self::$configModified = true;
-        self::cacheConfig();
     }
 
     /**
@@ -278,7 +293,9 @@ final class Config
      */
     public static function clearCache(): void
     {
-        if (file_exists(self::$cacheFile)) @unlink(self::$cacheFile);
+        if (self::$cacheFile !== null && file_exists(self::$cacheFile)) {
+            @unlink(self::$cacheFile);
+        }
 
         self::$config = [];
         self::$fileHashes = [];

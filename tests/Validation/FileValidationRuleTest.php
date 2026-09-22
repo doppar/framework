@@ -21,8 +21,10 @@ class FileValidationRuleTest extends TestCase
     {
         parent::setUp();
 
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('translator', function () {
             $loader = $this->createMock(FileLoader::class);
             return new Translator($loader, 'en');
@@ -43,6 +45,7 @@ class FileValidationRuleTest extends TestCase
         }
         rmdir($this->tmpDir);
 
+        Container::forgetInstance();
         parent::tearDown();
     }
 

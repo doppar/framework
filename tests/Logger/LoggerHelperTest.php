@@ -13,11 +13,20 @@ class LoggerHelperTest extends TestCase
 
     protected function setUp(): void
     {
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // Log facade's Container::getInstance() fallback to see it.
         $container = new Container();
+        Container::setInstance($container);
         $this->logger = new FakeLogger();
 
         $container->instance('log', $this->logger);
         Log::setFacadeApplication(null);
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     #[DataProvider('helperProvider')]

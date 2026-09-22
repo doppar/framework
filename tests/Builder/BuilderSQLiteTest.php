@@ -20,7 +20,11 @@ class BuilderSQLiteTest extends TestCase
 
     protected function setUp(): void
     {
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must also be activated for
+        // the global app()/request() helpers under test to see it.
         $container = new Container();
+        Container::setInstance($container);
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => new UrlGenerator());
 
@@ -2204,6 +2208,7 @@ class BuilderSQLiteTest extends TestCase
         // Clean up
         $this->pdo = null;
         $this->builder = null;
+        Container::forgetInstance();
     }
 }
 

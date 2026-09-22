@@ -11,6 +11,7 @@ use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Support\Router\InteractsWithDynamicControllerBinding;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Phaseolies\Middleware\Middleware as MiddlewareChain;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
@@ -969,10 +970,11 @@ class Router
      * @param Request $request
      * @param Application $app
      * @param array $currentMiddleware
+     * @param MiddlewareChain $chain The request-local chain to apply onto.
      * @return void
      * @throws \Exception
      */
-    private function applyRouteMiddleware($request, $app, $currentMiddleware): void
+    private function applyRouteMiddleware($request, $app, $currentMiddleware, MiddlewareChain $chain): void
     {
         $routeMiddleware = $this->gateway->getRouteMiddleware();
 
@@ -993,13 +995,27 @@ class Router
                 $middlewareClass = $routeMiddleware['api'][$name];
             }
 
-            $middlewareInstance = $app->make($middlewareClass);
-            if (!$middlewareInstance instanceof ContractsMiddleware) {
-                throw new \Exception("Unresolved dependency $middlewareClass", 1);
-            }
-
-            $this->gateway->applyMiddleware($middlewareInstance, $params);
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass), $params);
         }
+    }
+
+    /**
+     * Resolve a middleware class name to an instance, validating its contract.
+     *
+     * @param Application $app
+     * @param string $middlewareClass
+     * @return ContractsMiddleware
+     * @throws \Exception
+     */
+    private function makeGatewayMiddleware($app, string $middlewareClass): ContractsMiddleware
+    {
+        $middlewareInstance = $app->make($middlewareClass);
+
+        if (!$middlewareInstance instanceof ContractsMiddleware) {
+            throw new \Exception("Unresolved dependency $middlewareClass", 1);
+        }
+
+        return $middlewareInstance;
     }
 
     /**
@@ -1023,10 +1039,6 @@ class Router
             }
         }
 
-        if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
-            $this->applyRouteMiddleware($request, $app, $currentMiddleware);
-        }
-
         $routeParams = $request->getRouteParams();
 
         $handler = function ($request) use ($callback, $app, $routeParams) {
@@ -1037,9 +1049,22 @@ class Router
             return $result;
         };
 
-        $response = $this->gateway->handle($request, $handler);
+        $chain = new MiddlewareChain();
 
-        return $response;
+        if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
+            $this->applyRouteMiddleware($request, $app, $currentMiddleware, $chain);
+        }
+
+        $groupKey = $request->isApiRequest() ? 'api' : 'web';
+        foreach ($this->gateway->getMiddlewareGroups()[$groupKey] ?? [] as $middlewareClass) {
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
+        }
+
+        foreach ($this->gateway->getGlobalMiddleware() as $middlewareClass) {
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
+        }
+
+        return $chain->handle($request, $handler);
     }
 
     /**

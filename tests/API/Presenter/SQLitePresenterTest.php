@@ -22,8 +22,10 @@ class SQLitePresenterTest extends TestCase
 
     protected function setUp(): void
     {
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => UrlGenerator::class);
         $container->bind('db', fn() => new Database('default'));
@@ -39,6 +41,7 @@ class SQLitePresenterTest extends TestCase
     {
         $this->pdo = null;
         $this->tearDownDatabaseConnections();
+        Container::forgetInstance();
     }
 
     private function createTestTables(): void
