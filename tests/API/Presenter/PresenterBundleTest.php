@@ -17,8 +17,17 @@ class PresenterBundleTest extends TestCase
     {
         parent::setUp();
         $_SESSION = [];
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $this->container = new Container();
+        Container::setInstance($this->container);
         $this->container->bind('request', fn() => new Request());
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     protected function createTestPresenterClass()

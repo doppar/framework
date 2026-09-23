@@ -100,6 +100,16 @@ final class ApplicationTest extends TestCase
         GhostableTestProvider::resetState();
         $this->app->flush();
         Container::forgetInstance();
+
+        // Config::$configFiles is memoized process-wide and never
+        // invalidated on its own; a couple of tests in this class touch
+        // the real Config class against $this->tempBasePath (see
+        // testTerminateResetsRuntimeConfigOverrides), and without this,
+        // that memoized file list would dangle once tempBasePath is
+        // deleted below — corrupting Config for whichever test runs next
+        // in this same PHPUnit process.
+        Config::clearCache();
+
         $this->deleteDirectory($this->tempBasePath);
     }
 
@@ -648,4 +658,94 @@ final class ApplicationTest extends TestCase
         $this->assertFalse($this->app->hasInstance('session'));
         $this->assertFalse($this->app->hasInstance('redirect'));
     }
+
+    /**
+     * Worker-mode regression: a class bound *while handling a request*
+     * (mirroring what Router::resolveFormRequestValidationClass() and
+     * #[Bind]/#[Resolver] attributes do mid-dispatch for FormRequest
+     * classes and route dependencies) must not silently turn into a
+     * permanent cross-request singleton. Under a persistent worker
+     * (Swoole/FrankenPHP/RoadRunner) reusing one Application across many
+     * requests, the second request must get its own fresh instance rather
+     * than the first request's — see Container::snapshotBootBindings()
+     * and Application::cleanupRequestScopedServices().
+     */
+    public function testDynamicRequestScopedBindingIsNotReusedAcrossDispatches(): void
+    {
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+        $response->method('prepare')->willReturnSelf();
+        $response->method('send')->willReturnSelf();
+
+        $seenInstances = [];
+
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willReturnCallback(function () use ($response, &$seenInstances) {
+            if (!$this->app->has(WorkerModeDummyFormRequest::class)) {
+                $this->app->singleton(WorkerModeDummyFormRequest::class, fn() => new WorkerModeDummyFormRequest());
+            }
+
+            $seenInstances[] = $this->app->make(WorkerModeDummyFormRequest::class);
+
+            return $response;
+        });
+        $this->app->router = $router;
+
+        $this->app->dispatch(new Request());
+        $this->app->terminate(new Request(), $response);
+
+        $this->app->dispatch(new Request());
+        $this->app->terminate(new Request(), $response);
+
+        $this->assertCount(2, $seenInstances);
+        $this->assertNotSame(
+            $seenInstances[0],
+            $seenInstances[1],
+            'A binding registered while handling one request must not be reused by the next request under a persistent worker.'
+        );
+
+        // The binding definition itself is fine to keep (cheap, and lets
+        // the next request resolve fresh) — only the *resolved instance*
+        // must not survive.
+        $this->assertTrue($this->app->has(WorkerModeDummyFormRequest::class));
+    }
+
+    /**
+     * Worker-mode regression: Config::set()/Application::setLocale() calls
+     * made while handling one request (e.g. from middleware) must not
+     * leak into whichever request the same persistent worker serves next.
+     */
+    public function testTerminateResetsRuntimeConfigOverrides(): void
+    {
+        // Establish a known baseline via the same reset path terminate()
+        // uses, regardless of what state earlier tests in this process
+        // left Config in. Config::get() ensures initialize() has run
+        // (Config::all() alone does not, and will warn on a null cache
+        // file path if called first in a fresh process).
+        Config::get('app.locale');
+        Config::resetRuntimeOverrides();
+        $bootState = Config::all();
+
+        Config::set('app.locale', '__worker_leak_probe__');
+        $this->assertSame('__worker_leak_probe__', Config::get('app.locale'));
+
+        $this->app->terminate(new Request(), new Response('ok'));
+
+        $this->assertSame(
+            $bootState,
+            Config::all(),
+            'A config mutation made while handling one request must not leak into the next request a persistent worker serves.'
+        );
+    }
+}
+
+/**
+ * A minimal stand-in for a FormRequest/route-dependency class that the
+ * router binds the first time a route needs it — see
+ * testDynamicRequestScopedBindingIsNotReusedAcrossDispatches().
+ */
+class WorkerModeDummyFormRequest
+{
 }

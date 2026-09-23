@@ -16,12 +16,24 @@ class ValidationRulesExtendedTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php), so a
+        // binding registered on a throwaway, never-activated Container()
+        // is no longer visible to the global app()/trans() helpers this
+        // suite exercises.
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('translator', function () {
             $loader = $this->createMock(FileLoader::class);
             return new Translator($loader, 'en');
         });
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
+        parent::tearDown();
     }
 
     private function passes(array $data, array $rules): bool

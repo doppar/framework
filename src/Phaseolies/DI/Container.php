@@ -12,14 +12,14 @@ class Container implements ArrayAccess
      *
      * @var array<string, mixed>
      */
-    private static array $bindings = [];
+    private array $bindings = [];
 
     /**
      * Array to hold singleton instances.
      *
      * @var array<string, mixed>
      */
-    private static array $instances = [];
+    private array $instances = [];
 
     /**
      * Array to track currently resolving classes (for circular dependency detection)
@@ -34,6 +34,21 @@ class Container implements ArrayAccess
      * @var self|null
      */
     private static ?self $instance = null;
+
+    /**
+     * The set of binding keys that existed the moment boot finished — see
+     * {@see snapshotBootBindings()}.
+     *
+     * @var array<string, true>
+     */
+    private array $bootBindingKeys = [];
+
+    /**
+     * Whether {@see snapshotBootBindings()} has run yet.
+     *
+     * @var bool
+     */
+    private bool $bootBindingsSnapshotted = false;
 
     public function __construct()
     {
@@ -92,7 +107,7 @@ class Container implements ArrayAccess
      */
     public function offsetUnset($offset): void
     {
-        unset(self::$bindings[$offset], self::$instances[$offset]);
+        unset($this->bindings[$offset], $this->instances[$offset]);
     }
 
     /**
@@ -109,13 +124,13 @@ class Container implements ArrayAccess
             $concrete = $abstract;
         }
 
-        self::$bindings[$abstract] = [
+        $this->bindings[$abstract] = [
             'concrete' => $concrete,
             'singleton' => $singleton
         ];
 
         if ($singleton) {
-            self::$instances[$abstract] = null;
+            $this->instances[$abstract] = null;
         }
     }
 
@@ -140,9 +155,9 @@ class Container implements ArrayAccess
      */
     public function instance(string $abstract, mixed $instance): void
     {
-        self::$instances[$abstract] = $instance;
+        $this->instances[$abstract] = $instance;
 
-        self::$bindings[$abstract] = [
+        $this->bindings[$abstract] = [
             'concrete' => fn() => $instance,
             'singleton' => true
         ];
@@ -164,8 +179,8 @@ class Container implements ArrayAccess
         }
 
         if (
-            !isset(self::$bindings[$abstract]) &&
-            !array_key_exists($abstract, self::$instances) &&
+            !isset($this->bindings[$abstract]) &&
+            !array_key_exists($abstract, $this->instances) &&
             method_exists($this, 'loadGhostProvider')
         ) {
             $this->loadGhostProvider($abstract);
@@ -174,23 +189,23 @@ class Container implements ArrayAccess
         $this->resolving[$abstract] = true;
 
         try {
-            if (isset(self::$instances[$abstract]) && self::$instances[$abstract] !== null) {
-                return self::$instances[$abstract];
+            if (isset($this->instances[$abstract]) && $this->instances[$abstract] !== null) {
+                return $this->instances[$abstract];
             }
 
-            if (isset(self::$bindings[$abstract])) {
-                $binding = self::$bindings[$abstract];
+            if (isset($this->bindings[$abstract])) {
+                $binding = $this->bindings[$abstract];
                 $resolved = $this->resolveBinding($abstract, $binding, $parameters);
 
                 if ($binding['singleton']) {
-                    self::$instances[$abstract] = $resolved;
+                    $this->instances[$abstract] = $resolved;
                 }
 
                 return $resolved;
             }
 
             // Fallback only: no exact instance and no explicit binding for $abstract.
-            foreach (self::$instances as $instance) {
+            foreach ($this->instances as $instance) {
                 if ($instance instanceof $abstract) {
                     return $instance;
                 }
@@ -393,7 +408,7 @@ class Container implements ArrayAccess
      */
     public function has(string $key): bool
     {
-        return isset(self::$bindings[$key]) || class_exists($key);
+        return isset($this->bindings[$key]) || class_exists($key);
     }
 
     /**
@@ -404,7 +419,7 @@ class Container implements ArrayAccess
      */
     public function hasInstance(string $key): bool
     {
-        return isset(self::$instances[$key]) && self::$instances[$key] !== null;
+        return isset($this->instances[$key]) && $this->instances[$key] !== null;
     }
 
     /**
@@ -415,7 +430,42 @@ class Container implements ArrayAccess
      */
     public function forgetResolved(string $abstract): void
     {
-        unset(self::$instances[$abstract]);
+        unset($this->instances[$abstract]);
+    }
+
+    /**
+     * Freeze the current set of binding keys as "boot-time".
+     * {@see forgetRequestScopedInstances()}, which sweeps exactly this set.
+     *
+     * @return void
+     */
+    public function snapshotBootBindings(): void
+    {
+        if ($this->bootBindingsSnapshotted) {
+            return;
+        }
+
+        $this->bootBindingKeys = array_fill_keys(array_keys($this->bindings), true);
+        $this->bootBindingsSnapshotted = true;
+    }
+
+    /**
+     * Forget the resolved instance of every singleton bound *after* boot
+     * finished
+     *
+     * @return void
+     */
+    public function forgetRequestScopedInstances(): void
+    {
+        if (!$this->bootBindingsSnapshotted) {
+            return;
+        }
+
+        foreach (array_keys($this->bindings) as $abstract) {
+            if (!isset($this->bootBindingKeys[$abstract])) {
+                unset($this->instances[$abstract]);
+            }
+        }
     }
 
     /**
@@ -425,9 +475,11 @@ class Container implements ArrayAccess
      */
     public function flush(): void
     {
-        self::$bindings = [];
-        self::$instances = [];
+        $this->bindings = [];
+        $this->instances = [];
         $this->resolving = [];
+        $this->bootBindingKeys = [];
+        $this->bootBindingsSnapshotted = false;
     }
 
     /**
@@ -437,7 +489,7 @@ class Container implements ArrayAccess
      */
     public function getBindings(): array
     {
-        return self::$bindings;
+        return $this->bindings;
     }
 
     /**
@@ -447,7 +499,7 @@ class Container implements ArrayAccess
      */
     public function getInstances(): array
     {
-        return self::$instances;
+        return $this->instances;
     }
 
     /**
@@ -510,9 +562,9 @@ class Container implements ArrayAccess
             throw new \RuntimeException("Cannot extend unbound abstract [{$abstract}]");
         }
 
-        $previous = self::$bindings[$abstract];
+        $previous = $this->bindings[$abstract];
 
-        self::$bindings[$abstract] = [
+        $this->bindings[$abstract] = [
             'concrete' => fn(Container $container, array $parameters = []) => $extender($container->resolveBinding($abstract, $previous, $parameters), $container),
             'singleton' => $previous['singleton']
         ];
@@ -527,7 +579,7 @@ class Container implements ArrayAccess
      */
     public function alias(string $abstract, string $alias): void
     {
-        self::$bindings[$alias] = [
+        $this->bindings[$alias] = [
             'concrete' => fn(Container $container) => $container->get($abstract),
             'singleton' => false
         ];
@@ -618,7 +670,7 @@ class Container implements ArrayAccess
      */
     public function isSingleton(string $abstract): bool
     {
-        return isset(self::$bindings[$abstract]) && self::$bindings[$abstract]['singleton'];
+        return isset($this->bindings[$abstract]) && $this->bindings[$abstract]['singleton'];
     }
 
     /**
@@ -628,7 +680,7 @@ class Container implements ArrayAccess
      */
     public function getAliases(): array
     {
-        return array_filter(self::$bindings, function ($binding) {
+        return array_filter($this->bindings, function ($binding) {
             $concrete = $binding['concrete'];
             return is_callable($concrete) && !(is_string($concrete) && class_exists($concrete));
         });
@@ -700,8 +752,8 @@ class Container implements ArrayAccess
     public function resolved(string $abstract): bool
     {
         return $this->hasInstance($abstract) ||
-            (isset(self::$bindings[$abstract]) &&
-                self::$bindings[$abstract]['singleton'] &&
+            (isset($this->bindings[$abstract]) &&
+                $this->bindings[$abstract]['singleton'] &&
                 $this->hasInstance($abstract));
     }
 }

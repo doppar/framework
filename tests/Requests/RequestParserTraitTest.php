@@ -21,7 +21,11 @@ class RequestParserTraitTest extends TestCase
     {
         parent::setUp();
 
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $this->container = new Container();
+        Container::setInstance($this->container);
         $this->request = new Request();
         $this->container->singleton('request', fn() => $this->request);
         $this->container->singleton('route', Router::class);
@@ -41,6 +45,7 @@ class RequestParserTraitTest extends TestCase
         $_POST = [];
         $_COOKIE = [];
         $_FILES = [];
+        Container::forgetInstance();
         parent::tearDown();
     }
 

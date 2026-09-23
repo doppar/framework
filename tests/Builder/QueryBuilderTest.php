@@ -19,6 +19,11 @@ class QueryBuilderTest extends TestCase
 
     protected function setUp(): void
     {
+        $container = new Container();
+        Container::setInstance($container);
+        $container->bind('request', fn() => new Request());
+        $container->bind('url', fn() => new UrlGenerator());
+
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -1168,5 +1173,6 @@ class QueryBuilderTest extends TestCase
     {
         $this->pdo = null;
         $this->builder = null;
+        Container::forgetInstance();
     }
 }

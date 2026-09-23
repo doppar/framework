@@ -14,10 +14,18 @@ class ControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $container = new Container();
-        Container::setInstance(new MockContainer());
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('view', \Phaseolies\Support\View\Factory::class);
         $this->controller = new Controller();
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
+        parent::tearDown();
     }
 
     public function testConstructorInitialization(): void

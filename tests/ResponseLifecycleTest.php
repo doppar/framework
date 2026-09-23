@@ -50,6 +50,16 @@ class LifecycleRouteRequestStub extends Request
         return $this->testPath;
     }
 
+    public function getRequestUri(): string
+    {
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php) and needs a working
+        // uri()/isApiRequest(), which the real Request derives from
+        // $this->server — never initialized here since this stub skips
+        // Request::__construct().
+        return $this->testPath;
+    }
+
     public function getHost(): string
     {
         return $this->testHost;
@@ -142,6 +152,16 @@ PHP);
         $router->get('/payload', fn() => $payload);
 
         $request = new LifecycleRouteRequestStub('GET', '/payload', 'localhost');
+        $this->container->instance('request', $request);
+
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php), so $app->make() needs
+        // to actually build the 'web' group's CsrfTokenMiddleware, which
+        // in turn needs the Str facade's 'str' binding.
+        $this->container->instance('str', new \Phaseolies\Support\StringService());
+        $app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => $this->container->make($abstract, $parameters)
+        );
 
         $routeResponse = $router->resolve($app, $request);
         $helperResponse = response($payload);
@@ -164,6 +184,17 @@ PHP);
         $router->get('/payload', fn() => $payload);
 
         $routeRequest = new LifecycleRouteRequestStub('GET', '/payload', 'localhost');
+        $this->container->instance('request', $routeRequest);
+
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php), so $app->make() needs
+        // to actually build the 'web' group's CsrfTokenMiddleware, which
+        // in turn needs the Str facade's 'str' binding.
+        $this->container->instance('str', new \Phaseolies\Support\StringService());
+        $app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => $this->container->make($abstract, $parameters)
+        );
+
         $routeResponse = $router->resolve($app, $routeRequest);
         $helperResponse = response($payload);
 

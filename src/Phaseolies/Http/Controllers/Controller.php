@@ -413,7 +413,7 @@ class Controller extends View
             $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
 
             // stronger hash to avoid collisions
-            $hash = hash('xxh128', $viewKey);
+            $hash = hash('xxh128', $viewKey . '|' . $actual);
             $cache = base_path($this->cacheFolder) . DIRECTORY_SEPARATOR . $viewKey . '__' . $hash . '.php';
 
             $needsRecompile = $this->needsRecompilation($cache, $actual);
