@@ -4,7 +4,7 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Database\Entity\Model;
+use Phaseolies\Auth\Contracts\Authenticatable;
 
 trait InteractsWithRememberCookie
 {
@@ -30,10 +30,10 @@ trait InteractsWithRememberCookie
     /**
      * Set the remember token for the user.
      *
-     * @param Model $user
+     * @param Authenticatable $user
      * @return void
      */
-    private function setRememberToken(Model $user): void
+    private function setRememberToken(Authenticatable $user): void
     {
         $token = bin2hex(random_bytes(32));
         $user->remember_token = Hash::make($token);

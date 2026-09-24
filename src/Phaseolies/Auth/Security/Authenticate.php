@@ -5,6 +5,7 @@ namespace Phaseolies\Auth\Security;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Database\Entity\Model;
+use Phaseolies\Auth\Contracts\Authenticatable;
 
 class Authenticate
 {
@@ -32,16 +33,16 @@ class Authenticate
     /**
      * The current stateless user (for onceUsingId).
      *
-     * @var Model|null
+     * @var Authenticatable|null
      */
     private $statelessUser = null;
 
     /**
      * Per-instance resolved user cache
      *
-     * @var Model|null
+     * @var Authenticatable|null
      */
-    private ?Model $resolvedUser = null;
+    private ?Authenticatable $resolvedUser = null;
 
     /**
      * Create a new actor instance.
@@ -157,12 +158,12 @@ class Authenticate
     /**
      * Log in a user instance.
      *
-     * @param Model $user
+     * @param Authenticatable $user
      * @param bool $remember
      * @return bool
      * @throws \InvalidArgumentException
      */
-    public function login($user, bool $remember = false): bool
+    public function login(Authenticatable $user, bool $remember = false): bool
     {
         $authModel = $this->getModel();
         $modelClass = $authModel::class;
@@ -194,9 +195,9 @@ class Authenticate
      *
      * @param int $id
      * @param bool $remember
-     * @return Model|null
+     * @return Authenticatable|null
      */
-    public function loginUsingId(int $id, bool $remember = false): ?Model
+    public function loginUsingId(int $id, bool $remember = false): ?Authenticatable
     {
         $authModel = $this->getModel();
 
@@ -213,9 +214,9 @@ class Authenticate
      * Log in a user by their ID for a single request (no session/cookie).
      *
      * @param int $id
-     * @return Model|null
+     * @return Authenticatable|null
      */
-    public function onceUsingId(int $id): ?Model
+    public function onceUsingId(int $id): ?Authenticatable
     {
         $authModel = $this->getModel();
 
@@ -233,9 +234,9 @@ class Authenticate
     /**
      * Get the currently authenticated user.
      *
-     * @return Model|null
+     * @return Authenticatable|null
      */
-    public function user(): ?Model
+    public function user(): ?Authenticatable
     {
         if ($this->resolvedUser !== null) {
             return $this->resolvedUser;
@@ -370,9 +371,9 @@ class Authenticate
     /**
      * Set the authenticated user in the session.
      *
-     * @param Model $user
+     * @param Authenticatable $user
      */
-    private function setUser(Model $user): void
+    private function setUser(Authenticatable $user): void
     {
         session()->regenerate();
 

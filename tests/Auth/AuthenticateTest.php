@@ -86,7 +86,7 @@ namespace Tests\Unit\Auth {
     use Phaseolies\Database\Entity\Model;
     use PHPUnit\Framework\TestCase;
 
-    class FakeAuthenticatableModel extends Model
+    class FakeAuthenticatableModel extends Model implements \Phaseolies\Auth\Contracts\Authenticatable
     {
         public static ?self $resolvedUser = null;
 
@@ -106,7 +106,7 @@ namespace Tests\Unit\Auth {
     {
         public function __construct(
             string $actorName,
-            private ?Model $user = null,
+            private ?\Phaseolies\Auth\Contracts\Authenticatable $user = null,
         ) {
             parent::__construct($actorName, [
                 'model'       => FakeAuthenticatableModel::class,
@@ -124,7 +124,7 @@ namespace Tests\Unit\Auth {
             return false;
         }
 
-        public function user(): ?Model
+        public function user(): ?\Phaseolies\Auth\Contracts\Authenticatable
         {
             return $this->user ?? parent::user();
         }
@@ -199,6 +199,18 @@ namespace Tests\Unit\Auth {
 
             $this->assertTrue($auth->completeTwoFactorLogin());
             $this->assertSame(1, $authenticateSessionStore->regenerateCallCount);
+        }
+
+        public function testLoginAcceptsAuthenticatableContract()
+        {
+            $user = new FakeAuthenticatableModel();
+            $user->id = 99;
+
+            $auth = new SessionTrackingAuthenticate('admin');
+
+            $this->assertTrue($auth->login($user));
+            $this->assertSame(99, $auth->id());
+            $this->assertInstanceOf(\Phaseolies\Auth\Contracts\Authenticatable::class, $auth->user());
         }
     }
 }
