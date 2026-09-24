@@ -2,13 +2,14 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Support\Encryption encrypt(mixed $payload): string
- * @method static \Phaseolies\Support\Encryption decrypt(string $payload): string
- * @see \Phaseolies\Support\Encryption
- */
 use Phaseolies\Facade\BaseFacade;
 
+/**
+ * @method static string encrypt(mixed $payload)
+ * @method static mixed decrypt(string $payload)
+ *
+ * @see \Phaseolies\Support\Encryption
+ */
 class Crypt extends BaseFacade
 {
     protected static function getFacadeAccessor()

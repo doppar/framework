@@ -2,15 +2,16 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Config\Config set(string $key, mixed $value): void
- * @method static \Phaseolies\Config\Config get(string $key, mixed $default = null): mixed
- * @method static \Phaseolies\Config\Config all(): array
- * @method static \Phaseolies\Config\Config clearCache(): void
- * @see \Phaseolies\Config\Config
- */
 use Phaseolies\Facade\BaseFacade;
 
+/**
+ * @method static void set(string $key, mixed $value)
+ * @method static mixed get(string $key, mixed $default = null)
+ * @method static array all()
+ * @method static void clearCache()
+ *
+ * @see \Phaseolies\Config\Config
+ */
 class Config extends BaseFacade
 {
     protected static function getFacadeAccessor()
