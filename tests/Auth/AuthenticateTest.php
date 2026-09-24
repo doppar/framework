@@ -81,12 +81,11 @@ namespace Phaseolies\Auth\Security {
 
 namespace Tests\Unit\Auth {
 
-    use Phaseolies\Auth\ActorManager;
+    use Phaseolies\Auth\Authable;
     use Phaseolies\Auth\Security\Authenticate;
-    use Phaseolies\Database\Entity\Model;
     use PHPUnit\Framework\TestCase;
 
-    class FakeAuthenticatableModel extends Model
+    class FakeAuthableModel extends Authable
     {
         public static ?self $resolvedUser = null;
 
@@ -106,25 +105,25 @@ namespace Tests\Unit\Auth {
     {
         public function __construct(
             string $actorName,
-            private ?Model $user = null,
+            private ?Authable $user = null,
         ) {
             parent::__construct($actorName, [
-                'model'       => FakeAuthenticatableModel::class,
+                'model'       => FakeAuthableModel::class,
                 'session_key' => $actorName . '_session',
             ]);
         }
 
-        protected function getModel(): Model
+        protected function getModel(): Authable
         {
-            return new FakeAuthenticatableModel();
+            return new FakeAuthableModel();
         }
 
-        public function hasTwoFactorEnabled(Model $user): bool
+        public function hasTwoFactorEnabled(Authable $user): bool
         {
             return false;
         }
 
-        public function user(): ?Model
+        public function user(): ?Authable
         {
             return $this->user ?? parent::user();
         }
@@ -137,14 +136,21 @@ namespace Tests\Unit\Auth {
             global $authenticateSessionStore;
 
             $authenticateSessionStore = new \Phaseolies\Auth\Security\TestSessionStore();
-            FakeAuthenticatableModel::$resolvedUser = null;
+            FakeAuthableModel::$resolvedUser = null;
+        }
+
+        public function testAuthableGetAuthKeyNameDefaultsToEmail()
+        {
+            $user = new FakeAuthableModel();
+
+            $this->assertSame('email', $user->getAuthKeyName());
         }
 
         public function testLoginDoesNotStoreFullUserPayloadInSessionCache()
         {
             global $authenticateSessionStore;
 
-            $user = new FakeAuthenticatableModel();
+            $user = new FakeAuthableModel();
             $user->id = 42;
             $user->updated_at = '2026-04-29 10:00:00';
 
@@ -158,11 +164,11 @@ namespace Tests\Unit\Auth {
         {
             global $authenticateSessionStore;
 
-            $user = new FakeAuthenticatableModel();
+            $user = new FakeAuthableModel();
             $user->id = 42;
             $user->updated_at = '2026-04-29 10:00:00';
 
-            FakeAuthenticatableModel::$resolvedUser = $user;
+            FakeAuthableModel::$resolvedUser = $user;
             $authenticateSessionStore->put('admin_session', 42);
 
             $auth = new SessionTrackingAuthenticate('admin');
@@ -175,7 +181,7 @@ namespace Tests\Unit\Auth {
         {
             global $authenticateSessionStore;
 
-            $user = new FakeAuthenticatableModel();
+            $user = new FakeAuthableModel();
             $user->id = 42;
 
             $auth = new SessionTrackingAuthenticate('admin');
@@ -188,9 +194,9 @@ namespace Tests\Unit\Auth {
         {
             global $authenticateSessionStore;
 
-            $user = new FakeAuthenticatableModel();
+            $user = new FakeAuthableModel();
             $user->id = 7;
-            FakeAuthenticatableModel::$resolvedUser = $user;
+            FakeAuthableModel::$resolvedUser = $user;
 
             $authenticateSessionStore->put('2fa_admin_user_id', 7);
             $authenticateSessionStore->put('2fa_admin_remember', false);
@@ -199,6 +205,18 @@ namespace Tests\Unit\Auth {
 
             $this->assertTrue($auth->completeTwoFactorLogin());
             $this->assertSame(1, $authenticateSessionStore->regenerateCallCount);
+        }
+
+        public function testLoginAcceptsAuthable()
+        {
+            $user = new FakeAuthableModel();
+            $user->id = 99;
+
+            $auth = new SessionTrackingAuthenticate('admin');
+
+            $this->assertTrue($auth->login($user));
+            $this->assertSame(99, $auth->id());
+            $this->assertInstanceOf(Authable::class, $auth->user());
         }
     }
 }

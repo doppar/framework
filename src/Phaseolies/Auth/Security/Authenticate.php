@@ -4,7 +4,7 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Database\Entity\Model;
+use Phaseolies\Auth\Authable;
 
 class Authenticate
 {
@@ -32,16 +32,16 @@ class Authenticate
     /**
      * The current stateless user (for onceUsingId).
      *
-     * @var Model|null
+     * @var Authable|null
      */
     private $statelessUser = null;
 
     /**
      * Per-instance resolved user cache
      *
-     * @var Model|null
+     * @var Authable|null
      */
-    private ?Model $resolvedUser = null;
+    private ?Authable $resolvedUser = null;
 
     /**
      * Create a new actor instance.
@@ -80,11 +80,20 @@ class Authenticate
     /**
      * Resolve a fresh instance of the configured auth model.
      *
-     * @return Model
+     * @return Authable
+     * @throws \InvalidArgumentException
      */
-    protected function getModel(): Model
+    protected function getModel(): Authable
     {
-        return app($this->config['model']);
+        $model = app($this->config['model']);
+
+        if (!$model instanceof Authable) {
+            throw new \InvalidArgumentException(
+                'Auth model must extend ' . Authable::class . ', ' . get_debug_type($model) . ' given'
+            );
+        }
+
+        return $model;
     }
 
     /**
@@ -145,7 +154,7 @@ class Authenticate
 
         $user = $authModel::where($customAuthKey, $authKeyValue)->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (!$user || !Hash::check($password, $user->getAuthPassword())) {
             return false;
         }
 
@@ -157,24 +166,24 @@ class Authenticate
     /**
      * Log in a user instance.
      *
-     * @param Model $user
+     * @param Authable $user
      * @param bool $remember
      * @return bool
      * @throws \InvalidArgumentException
      */
-    public function login($user, bool $remember = false): bool
+    public function login(Authable $user, bool $remember = false): bool
     {
         $authModel = $this->getModel();
         $modelClass = $authModel::class;
 
         if (!$user instanceof $modelClass) {
             throw new \InvalidArgumentException(
-                "Argument #1 ($user) must be an instance of $modelClass " . gettype($user) . ' given'
+                'Argument #1 ($user) must be an instance of ' . $modelClass . ', ' . get_debug_type($user) . ' given'
             );
         }
 
         if ($this->hasTwoFactorEnabled($user) && !$this->isApiRequest()) {
-            session()->put($this->getTwoFactorUserKey(), $user->id);
+            session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
             session()->put($this->getTwoFactorRememberKey(), $remember);
 
             return true;
@@ -194,9 +203,9 @@ class Authenticate
      *
      * @param int $id
      * @param bool $remember
-     * @return Model|null
+     * @return Authable|null
      */
-    public function loginUsingId(int $id, bool $remember = false): ?Model
+    public function loginUsingId(int $id, bool $remember = false): ?Authable
     {
         $authModel = $this->getModel();
 
@@ -213,9 +222,9 @@ class Authenticate
      * Log in a user by their ID for a single request (no session/cookie).
      *
      * @param int $id
-     * @return Model|null
+     * @return Authable|null
      */
-    public function onceUsingId(int $id): ?Model
+    public function onceUsingId(int $id): ?Authable
     {
         $authModel = $this->getModel();
 
@@ -233,9 +242,9 @@ class Authenticate
     /**
      * Get the currently authenticated user.
      *
-     * @return Model|null
+     * @return Authable|null
      */
-    public function user(): ?Model
+    public function user(): ?Authable
     {
         if ($this->resolvedUser !== null) {
             return $this->resolvedUser;
@@ -299,14 +308,14 @@ class Authenticate
 
             $user = $authModel::find($id);
 
-            if (!$user || !$user->remember_token) {
+            if (!$user || !$user->getRememberToken()) {
                 $this->expireRememberCookie();
                 return null;
             }
 
-            if (Hash::check($token, $user->remember_token)) {
+            if (Hash::check($token, $user->getRememberToken())) {
                 if ($this->hasTwoFactorEnabled($user)) {
-                    session()->put($this->getTwoFactorUserKey(), $user->id);
+                    session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
                     session()->put($this->getTwoFactorRememberKey(), true);
                 }
 
@@ -317,7 +326,7 @@ class Authenticate
 
             // Token didn't match - possible theft attempt
             $this->expireRememberCookie();
-            $user->remember_token = null;
+            $user->setRememberToken(null);
             $user->save();
         }
 
@@ -343,9 +352,9 @@ class Authenticate
     {
         $user = $this->user();
 
-        if ($user && $user?->remember_token) {
-            $user->remember_token = null;
-            $user->withoutHook();
+        if ($user && $user->getRememberToken()) {
+            $user->setRememberToken(null);
+            $user::withoutHook();
             $user->save();
         }
 
@@ -370,13 +379,13 @@ class Authenticate
     /**
      * Set the authenticated user in the session.
      *
-     * @param Model $user
+     * @param Authable $user
      */
-    private function setUser(Model $user): void
+    private function setUser(Authable $user): void
     {
         session()->regenerate();
 
-        session()->put($this->getSessionKey(), $user->id);
+        session()->put($this->getSessionKey(), $user->getAuthIdentifier());
 
         $this->resolvedUser = $user;
     }
@@ -395,11 +404,11 @@ class Authenticate
     /**
      * Get the authenticated user id
      *
-     * @return int|null
+     * @return int|string|null
      */
-    public function id(): ?int
+    public function id(): int|string|null
     {
-        return $this->user()?->id ?? null;
+        return $this->user()?->getAuthIdentifier();
     }
 
     /**

@@ -2,29 +2,29 @@
 
 namespace Phaseolies\Support\Facades;
 
+use Phaseolies\Facade\BaseFacade;
+use Phaseolies\Auth\Authable;
+
 /**
- * @method static try(array $credentials = [], bool $remember = false): bool
- * @method static login(User $user, bool $remember = false): void
- * @method static loginUsingId(int $id, bool $remember = false): ?User
- * @method static onceUsingId(int $id): ?User
- * @method static user(): ?User
- * @method static check(): bool
- * @method static logout()
- * @method static id(): ?int
- * @method static enableTwoFactorAuth(): array
- * @method static disableTwoFactorAuth(): bool
- * @method static verifyTwoFactorCode(string $code): bool
- * @method static verifyRecoveryCode(Model $user, string $code): bool
- * @method static generateNewRecoveryCodes(): array
- * @method static hasTwoFactorEnabled(Model $user): bool
- * @method static completeTwoFactorLogin(): bool
- * @method static generateTwoFactorQrCode(string $qrCodeUrl): string
+ * @method static bool try(array $credentials = [], bool $remember = false)
+ * @method static void login(Authable $user, bool $remember = false)
+ * @method static Authable|null loginUsingId(int $id, bool $remember = false)
+ * @method static Authable|null onceUsingId(int $id)
+ * @method static Authable|null user()
+ * @method static bool check()
+ * @method static void logout()
+ * @method static int|string|null id()
+ * @method static array enableTwoFactorAuth()
+ * @method static bool disableTwoFactorAuth()
+ * @method static bool verifyTwoFactorCode(string $code)
+ * @method static bool verifyRecoveryCode(Authable $user, string $code)
+ * @method static array generateNewRecoveryCodes()
+ * @method static bool hasTwoFactorEnabled(Authable $user)
+ * @method static bool completeTwoFactorLogin()
+ * @method static string generateTwoFactorQrCode(string $qrCodeUrl)
  *
  * @see \Phaseolies\Auth\Security\Authenticate
  */
-
-use Phaseolies\Facade\BaseFacade;
-
 class Auth extends BaseFacade
 {
     protected static function getFacadeAccessor()
