@@ -1657,12 +1657,6 @@ parameters:
 			path: src/Phaseolies/Support/Collection.php
 
 		-
-			message: '#^Comparison operation "\<" between int\<80500, 80599\> and 70300 is always false\.$#'
-			identifier: smaller.alwaysFalse
-			count: 1
-			path: src/Phaseolies/Support/CookieJar.php
-
-		-
 			message: '#^PHPDoc tag @return with type void is incompatible with native type bool\.$#'
 			identifier: return.phpDocType
 			count: 1

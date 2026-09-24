@@ -2,36 +2,39 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Cache\CacheStore get($key, $default = null): mixed
- * @method static \Phaseolies\Cache\CacheStore set($key, $value, $ttl = null): bool
- * @method static \Phaseolies\Cache\CacheStore delete($key): bool
- * @method static \Phaseolies\Cache\CacheStore clear(): bool
- * @method static \Phaseolies\Cache\CacheStore getMultiple($keys, $default = null): iterable
- * @method static \Phaseolies\Cache\CacheStore setMultiple($values, $ttl = null): bool
- * @method static \Phaseolies\Cache\CacheStore deleteMultiple($keys): bool
- * @method static \Phaseolies\Cache\CacheStore has($key): bool
- * @method static \Phaseolies\Cache\CacheStore increment($key, $value = 1): int|bool
- * @method static \Phaseolies\Cache\CacheStore decrement($key, $value = 1): int|bool
- * @method static \Phaseolies\Cache\CacheStore forever($key, $value): bool
- * @method static \Phaseolies\Cache\CacheStore forget($key)
- * @method static \Phaseolies\Cache\CacheStore stash(string $key, $ttl, Closure $callback): mixed
- * @method static \Phaseolies\Cache\CacheStore stashForever(string $key, Closure $callback): mixed
- * @method static \Phaseolies\Cache\CacheStore stashWhen(string $key, Closure $callback, bool $condition, $ttl = null): mixed
- * @method static locked(string $name, int $seconds = 10, ?string $owner = null): AtomicLock
- * @method static restoreLock(string $name, string $owner): AtomicLock
- * @method static \Phaseolies\Cache\Lock\AtomicLock get(): bool
- * @method static \Phaseolies\Cache\Lock\AtomicLock block(int $seconds): bool
- * @method static \Phaseolies\Cache\Lock\AtomicLock release(): bool
- * @method static \Phaseolies\Cache\Lock\AtomicLock owner(): string
- * @method static \Phaseolies\Cache\Lock\AtomicLock isOwnedByCurrentProcess(): bool
- * @method static \Phaseolies\Cache\Lock\AtomicLock getOwner(): string
- * @method static \Phaseolies\Cache\Lock\AtomicLock getName(): string
- * @see \Phaseolies\Cache\CacheStore
- */
-
+use Closure;
 use Phaseolies\Facade\BaseFacade;
+use Phaseolies\Cache\Lock\AtomicLock;
 
+/**
+ * @method static mixed get($key, $default = null)
+ * @method static bool set($key, $value, $ttl = null)
+ * @method static bool delete($key)
+ * @method static bool clear()
+ * @method static iterable getMultiple($keys, $default = null)
+ * @method static bool setMultiple($values, $ttl = null)
+ * @method static bool deleteMultiple($keys)
+ * @method static bool has($key)
+ * @method static int|bool increment($key, $value = 1)
+ * @method static int|bool decrement($key, $value = 1)
+ * @method static bool forever($key, $value)
+ * @method static bool forget($key)
+ * @method static mixed stash(string $key, $ttl, Closure $callback)
+ * @method static mixed stashForever(string $key, Closure $callback)
+ * @method static mixed stashWhen(string $key, Closure $callback, bool $condition, $ttl = null)
+ * @method static AtomicLock locked(string $name, int $seconds = 10, ?string $owner = null)
+ * @method static AtomicLock restoreLock(string $name, string $owner)
+ * @method static bool get()
+ * @method static bool block(int $seconds)
+ * @method static bool release()
+ * @method static string owner()
+ * @method static bool isOwnedByCurrentProcess()
+ * @method static string getOwner()
+ * @method static string getName()
+ *
+ * @see \Phaseolies\Cache\CacheStore
+ * @see \Phaseolies\Cache\Lock\AtomicLock
+ */
 class Cache extends BaseFacade
 {
     protected static function getFacadeAccessor()
