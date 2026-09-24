@@ -4,8 +4,7 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Database\Entity\Model;
-use Phaseolies\Auth\Contracts\Authable;
+use Phaseolies\Auth\Authable;
 
 class Authenticate
 {
@@ -81,11 +80,20 @@ class Authenticate
     /**
      * Resolve a fresh instance of the configured auth model.
      *
-     * @return Model
+     * @return Authable
+     * @throws \InvalidArgumentException
      */
-    protected function getModel(): Model
+    protected function getModel(): Authable
     {
-        return app($this->config['model']);
+        $model = app($this->config['model']);
+
+        if (!$model instanceof Authable) {
+            throw new \InvalidArgumentException(
+                'Auth model must extend ' . Authable::class . ', ' . get_debug_type($model) . ' given'
+            );
+        }
+
+        return $model;
     }
 
     /**
@@ -146,7 +154,7 @@ class Authenticate
 
         $user = $authModel::where($customAuthKey, $authKeyValue)->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (!$user || !Hash::check($password, $user->getAuthPassword())) {
             return false;
         }
 
@@ -175,7 +183,7 @@ class Authenticate
         }
 
         if ($this->hasTwoFactorEnabled($user) && !$this->isApiRequest()) {
-            session()->put($this->getTwoFactorUserKey(), $user->id);
+            session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
             session()->put($this->getTwoFactorRememberKey(), $remember);
 
             return true;
@@ -300,14 +308,14 @@ class Authenticate
 
             $user = $authModel::find($id);
 
-            if (!$user || !$user->remember_token) {
+            if (!$user || !$user->getRememberToken()) {
                 $this->expireRememberCookie();
                 return null;
             }
 
-            if (Hash::check($token, $user->remember_token)) {
+            if (Hash::check($token, $user->getRememberToken())) {
                 if ($this->hasTwoFactorEnabled($user)) {
-                    session()->put($this->getTwoFactorUserKey(), $user->id);
+                    session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
                     session()->put($this->getTwoFactorRememberKey(), true);
                 }
 
@@ -318,7 +326,7 @@ class Authenticate
 
             // Token didn't match - possible theft attempt
             $this->expireRememberCookie();
-            $user->remember_token = null;
+            $user->setRememberToken(null);
             $user->save();
         }
 
@@ -344,11 +352,9 @@ class Authenticate
     {
         $user = $this->user();
 
-        if ($user && $user->remember_token) {
-            $user->remember_token = null;
-            if ($user instanceof Model) {
-                $user::withoutHook();
-            }
+        if ($user && $user->getRememberToken()) {
+            $user->setRememberToken(null);
+            $user::withoutHook();
             $user->save();
         }
 
@@ -379,7 +385,7 @@ class Authenticate
     {
         session()->regenerate();
 
-        session()->put($this->getSessionKey(), $user->id);
+        session()->put($this->getSessionKey(), $user->getAuthIdentifier());
 
         $this->resolvedUser = $user;
     }
@@ -398,11 +404,11 @@ class Authenticate
     /**
      * Get the authenticated user id
      *
-     * @return int|null
+     * @return int|string|null
      */
-    public function id(): ?int
+    public function id(): int|string|null
     {
-        return $this->user()?->id ?? null;
+        return $this->user()?->getAuthIdentifier();
     }
 
     /**

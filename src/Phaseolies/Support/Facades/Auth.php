@@ -3,8 +3,7 @@
 namespace Phaseolies\Support\Facades;
 
 use Phaseolies\Facade\BaseFacade;
-use Phaseolies\Auth\Contracts\Authable;
-use Phaseolies\Database\Entity\Model;
+use Phaseolies\Auth\Authable;
 
 /**
  * @method static bool try(array $credentials = [], bool $remember = false)
@@ -14,13 +13,13 @@ use Phaseolies\Database\Entity\Model;
  * @method static Authable|null user()
  * @method static bool check()
  * @method static void logout()
- * @method static int|null id()
+ * @method static int|string|null id()
  * @method static array enableTwoFactorAuth()
  * @method static bool disableTwoFactorAuth()
  * @method static bool verifyTwoFactorCode(string $code)
- * @method static bool verifyRecoveryCode(Model $user, string $code)
+ * @method static bool verifyRecoveryCode(Authable $user, string $code)
  * @method static array generateNewRecoveryCodes()
- * @method static bool hasTwoFactorEnabled(Model $user)
+ * @method static bool hasTwoFactorEnabled(Authable $user)
  * @method static bool completeTwoFactorLogin()
  * @method static string generateTwoFactorQrCode(string $qrCodeUrl)
  *

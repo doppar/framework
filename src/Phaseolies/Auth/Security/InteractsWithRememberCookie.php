@@ -4,7 +4,7 @@ namespace Phaseolies\Auth\Security;
 
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Auth\Contracts\Authable;
+use Phaseolies\Auth\Authable;
 
 trait InteractsWithRememberCookie
 {
@@ -36,10 +36,11 @@ trait InteractsWithRememberCookie
     private function setRememberToken(Authable $user): void
     {
         $token = bin2hex(random_bytes(32));
-        $user->remember_token = Hash::make($token);
+        $user->setRememberToken(Hash::make($token));
         $user->save();
 
-        $cookieValue = $user->id . '|' . $token . '|' . Hash::make($user->id . $token);
+        $id = $user->getAuthIdentifier();
+        $cookieValue = $id . '|' . $token . '|' . Hash::make($id . $token);
 
         session()->put($this->getViaRememberKey(), true);
 

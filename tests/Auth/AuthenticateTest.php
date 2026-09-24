@@ -81,12 +81,11 @@ namespace Phaseolies\Auth\Security {
 
 namespace Tests\Unit\Auth {
 
-    use Phaseolies\Auth\ActorManager;
+    use Phaseolies\Auth\Authable;
     use Phaseolies\Auth\Security\Authenticate;
-    use Phaseolies\Database\Entity\Model;
     use PHPUnit\Framework\TestCase;
 
-    class FakeAuthableModel extends Model implements \Phaseolies\Auth\Contracts\Authable
+    class FakeAuthableModel extends Authable
     {
         public static ?self $resolvedUser = null;
 
@@ -106,7 +105,7 @@ namespace Tests\Unit\Auth {
     {
         public function __construct(
             string $actorName,
-            private ?\Phaseolies\Auth\Contracts\Authable $user = null,
+            private ?Authable $user = null,
         ) {
             parent::__construct($actorName, [
                 'model'       => FakeAuthableModel::class,
@@ -114,17 +113,17 @@ namespace Tests\Unit\Auth {
             ]);
         }
 
-        protected function getModel(): Model
+        protected function getModel(): Authable
         {
             return new FakeAuthableModel();
         }
 
-        public function hasTwoFactorEnabled(Model $user): bool
+        public function hasTwoFactorEnabled(Authable $user): bool
         {
             return false;
         }
 
-        public function user(): ?\Phaseolies\Auth\Contracts\Authable
+        public function user(): ?Authable
         {
             return $this->user ?? parent::user();
         }
@@ -138,6 +137,13 @@ namespace Tests\Unit\Auth {
 
             $authenticateSessionStore = new \Phaseolies\Auth\Security\TestSessionStore();
             FakeAuthableModel::$resolvedUser = null;
+        }
+
+        public function testAuthableGetAuthKeyNameDefaultsToEmail()
+        {
+            $user = new FakeAuthableModel();
+
+            $this->assertSame('email', $user->getAuthKeyName());
         }
 
         public function testLoginDoesNotStoreFullUserPayloadInSessionCache()
@@ -201,7 +207,7 @@ namespace Tests\Unit\Auth {
             $this->assertSame(1, $authenticateSessionStore->regenerateCallCount);
         }
 
-        public function testLoginAcceptsAuthableContract()
+        public function testLoginAcceptsAuthable()
         {
             $user = new FakeAuthableModel();
             $user->id = 99;
@@ -210,7 +216,7 @@ namespace Tests\Unit\Auth {
 
             $this->assertTrue($auth->login($user));
             $this->assertSame(99, $auth->id());
-            $this->assertInstanceOf(\Phaseolies\Auth\Contracts\Authable::class, $auth->user());
+            $this->assertInstanceOf(Authable::class, $auth->user());
         }
     }
 }

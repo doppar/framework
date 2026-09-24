@@ -9,7 +9,7 @@ use chillerlan\QRCode\Common\EccLevel;
 use Symfony\Component\Clock\NativeClock;
 use Psr\Clock\ClockInterface;
 use Phaseolies\Support\Facades\Crypt;
-use Phaseolies\Database\Entity\Model;
+use Phaseolies\Auth\Authable;
 use ParagonIE\ConstantTime\Base32;
 use OTPHP\TOTP;
 
@@ -34,7 +34,7 @@ trait InteractsWithTwoFactorAuth
     {
         $user = $this->user();
 
-        if (!is_null($user->two_factor_secret)) {
+        if (!is_null($user->getTwoFactorSecret())) {
             throw new \Exception("2FA Already enabled");
         }
 
@@ -57,8 +57,8 @@ trait InteractsWithTwoFactorAuth
 
         $recoveryCodes = $this->generateRecoveryCodes();
 
-        $user->two_factor_secret         = Crypt::encrypt($secret);
-        $user->two_factor_recovery_codes = Crypt::encrypt(json_encode($recoveryCodes));
+        $user->setTwoFactorSecret(Crypt::encrypt($secret));
+        $user->setTwoFactorRecoveryCodes(Crypt::encrypt(json_encode($recoveryCodes)));
         $user->save();
 
         return [
@@ -77,8 +77,8 @@ trait InteractsWithTwoFactorAuth
     {
         $user = $this->user();
 
-        $user->two_factor_secret         = null;
-        $user->two_factor_recovery_codes = null;
+        $user->setTwoFactorSecret(null);
+        $user->setTwoFactorRecoveryCodes(null);
 
         return $user->save();
     }
@@ -109,12 +109,12 @@ trait InteractsWithTwoFactorAuth
         $authModel = $this->getModel();
         $user      = $authModel::find(session($this->getTwoFactorUserKey()));
 
-        if (is_null($user->two_factor_secret)) {
+        if (is_null($user->getTwoFactorSecret())) {
             return false;
         }
 
         try {
-            $secret = Crypt::decrypt($user->two_factor_secret);
+            $secret = Crypt::decrypt($user->getTwoFactorSecret());
 
             $totp = TOTP::create(
                 $secret,
@@ -134,26 +134,26 @@ trait InteractsWithTwoFactorAuth
     /**
      * Verify a recovery code
      *
-     * @param Model $user
+     * @param Authable $user
      * @param string $code
      * @return bool
      */
-    public function verifyRecoveryCode(Model $user, string $code): bool
+    public function verifyRecoveryCode(Authable $user, string $code): bool
     {
-        if (is_null($user->two_factor_recovery_codes)) {
+        if (is_null($user->getTwoFactorRecoveryCodes())) {
             return false;
         }
 
-        $codes = Crypt::decrypt($user->two_factor_recovery_codes);
+        $codes = Crypt::decrypt($user->getTwoFactorRecoveryCodes());
 
         foreach ($codes as $key => $recoveryCode) {
             if (strtoupper(trim($code)) === $recoveryCode) {
                 unset($codes[$key]);
 
                 if (!empty($codes)) {
-                    $user->two_factor_recovery_codes = Crypt::encrypt(json_encode($codes));
+                    $user->setTwoFactorRecoveryCodes(Crypt::encrypt(json_encode($codes)));
                 } else {
-                    $user->two_factor_recovery_codes = null;
+                    $user->setTwoFactorRecoveryCodes(null);
                 }
 
                 $user->save();
@@ -174,7 +174,7 @@ trait InteractsWithTwoFactorAuth
         $recoveryCodes = $this->generateRecoveryCodes();
 
         $user = $this->user();
-        $user->two_factor_recovery_codes = Crypt::encrypt(json_encode($recoveryCodes));
+        $user->setTwoFactorRecoveryCodes(Crypt::encrypt(json_encode($recoveryCodes)));
         $user->save();
 
         return $recoveryCodes;
@@ -183,12 +183,12 @@ trait InteractsWithTwoFactorAuth
     /**
      * Check if user has 2FA enabled
      *
-     * @param Model $user
+     * @param Authable $user
      * @return bool
      */
-    public function hasTwoFactorEnabled(Model $user): bool
+    public function hasTwoFactorEnabled(Authable $user): bool
     {
-        return !is_null($user->two_factor_secret);
+        return !is_null($user->getTwoFactorSecret());
     }
 
     /**

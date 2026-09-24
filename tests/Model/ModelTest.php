@@ -254,12 +254,6 @@ class ModelTest extends TestCase
         $this->assertEquals('id', $model->getRouteKeyName());
     }
 
-    public function testAuthKeyName()
-    {
-        $model = new TestModel();
-        $this->assertEquals('email', $model->getAuthKeyName());
-    }
-
     public function testTimestampsUsage()
     {
         $model = new TestModel();

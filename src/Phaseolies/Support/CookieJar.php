@@ -148,27 +148,6 @@ class CookieJar
             $options['partitioned'] = true;
         }
 
-        if (PHP_VERSION_ID < 70300) {
-            // For PHP < 7.3
-            $path = $options['path'];
-            if (isset($options['samesite'])) {
-                $path .= '; samesite=' . $options['samesite'];
-            }
-            if (isset($options['partitioned'])) {
-                $path .= '; partitioned';
-            }
-            return setcookie(
-                $name,
-                $value,
-                $options['expires'],
-                $path,
-                $options['domain'],
-                $options['secure'],
-                $options['httponly']
-            );
-        }
-
-        // For PHP >= 7.3
         return setcookie($name, $value, $options);
     }
 

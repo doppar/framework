@@ -1138,16 +1138,6 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
-     * Get the authentication key name used for identifying the user.
-     *
-     * @return string
-     */
-    public function getAuthKeyName(): string
-    {
-        return "email";
-    }
-
-    /**
      * Check is the model usage timestamps
      *
      * @return bool
