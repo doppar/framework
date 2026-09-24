@@ -170,7 +170,7 @@ class Authenticate
 
         if (!$user instanceof $modelClass) {
             throw new \InvalidArgumentException(
-                "Argument #1 ($user) must be an instance of $modelClass " . gettype($user) . ' given'
+                'Argument #1 ($user) must be an instance of ' . $modelClass . ', ' . get_debug_type($user) . ' given'
             );
         }
 
@@ -344,9 +344,11 @@ class Authenticate
     {
         $user = $this->user();
 
-        if ($user && $user?->remember_token) {
+        if ($user && $user->remember_token) {
             $user->remember_token = null;
-            $user->withoutHook();
+            if ($user instanceof Model) {
+                $user::withoutHook();
+            }
             $user->save();
         }
 

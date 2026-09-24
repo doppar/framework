@@ -3,24 +3,26 @@
 namespace Phaseolies\Support\Facades;
 
 use Phaseolies\Facade\BaseFacade;
+use Phaseolies\Auth\Contracts\Authenticatable;
+use Phaseolies\Database\Entity\Model;
 
 /**
- * @method static try(array $credentials = [], bool $remember = false): bool
- * @method static login(\Phaseolies\Auth\Contracts\Authenticatable $user, bool $remember = false): void
- * @method static loginUsingId(int $id, bool $remember = false): ?\Phaseolies\Auth\Contracts\Authenticatable
- * @method static onceUsingId(int $id): ?\Phaseolies\Auth\Contracts\Authenticatable
- * @method static user(): ?\Phaseolies\Auth\Contracts\Authenticatable
- * @method static check(): bool
- * @method static logout()
- * @method static id(): ?int
- * @method static enableTwoFactorAuth(): array
- * @method static disableTwoFactorAuth(): bool
- * @method static verifyTwoFactorCode(string $code): bool
- * @method static verifyRecoveryCode(\Phaseolies\Database\Entity\Model $user, string $code): bool
- * @method static generateNewRecoveryCodes(): array
- * @method static hasTwoFactorEnabled(\Phaseolies\Database\Entity\Model $user): bool
- * @method static completeTwoFactorLogin(): bool
- * @method static generateTwoFactorQrCode(string $qrCodeUrl): string
+ * @method static bool try(array $credentials = [], bool $remember = false)
+ * @method static void login(Authenticatable $user, bool $remember = false)
+ * @method static Authenticatable|null loginUsingId(int $id, bool $remember = false)
+ * @method static Authenticatable|null onceUsingId(int $id)
+ * @method static Authenticatable|null user()
+ * @method static bool check()
+ * @method static void logout()
+ * @method static int|null id()
+ * @method static array enableTwoFactorAuth()
+ * @method static bool disableTwoFactorAuth()
+ * @method static bool verifyTwoFactorCode(string $code)
+ * @method static bool verifyRecoveryCode(Model $user, string $code)
+ * @method static array generateNewRecoveryCodes()
+ * @method static bool hasTwoFactorEnabled(Model $user)
+ * @method static bool completeTwoFactorLogin()
+ * @method static string generateTwoFactorQrCode(string $qrCodeUrl)
  *
  * @see \Phaseolies\Auth\Security\Authenticate
  */
