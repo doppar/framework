@@ -3,15 +3,15 @@
 namespace Phaseolies\Support\Facades;
 
 use Phaseolies\Facade\BaseFacade;
-use Phaseolies\Auth\Contracts\Authenticatable;
+use Phaseolies\Auth\Contracts\Authable;
 use Phaseolies\Database\Entity\Model;
 
 /**
  * @method static bool try(array $credentials = [], bool $remember = false)
- * @method static void login(Authenticatable $user, bool $remember = false)
- * @method static Authenticatable|null loginUsingId(int $id, bool $remember = false)
- * @method static Authenticatable|null onceUsingId(int $id)
- * @method static Authenticatable|null user()
+ * @method static void login(Authable $user, bool $remember = false)
+ * @method static Authable|null loginUsingId(int $id, bool $remember = false)
+ * @method static Authable|null onceUsingId(int $id)
+ * @method static Authable|null user()
  * @method static bool check()
  * @method static void logout()
  * @method static int|null id()

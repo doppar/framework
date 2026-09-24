@@ -5,7 +5,7 @@ namespace Phaseolies\Auth\Security;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Database\Entity\Model;
-use Phaseolies\Auth\Contracts\Authenticatable;
+use Phaseolies\Auth\Contracts\Authable;
 
 class Authenticate
 {
@@ -33,16 +33,16 @@ class Authenticate
     /**
      * The current stateless user (for onceUsingId).
      *
-     * @var Authenticatable|null
+     * @var Authable|null
      */
     private $statelessUser = null;
 
     /**
      * Per-instance resolved user cache
      *
-     * @var Authenticatable|null
+     * @var Authable|null
      */
-    private ?Authenticatable $resolvedUser = null;
+    private ?Authable $resolvedUser = null;
 
     /**
      * Create a new actor instance.
@@ -158,12 +158,12 @@ class Authenticate
     /**
      * Log in a user instance.
      *
-     * @param Authenticatable $user
+     * @param Authable $user
      * @param bool $remember
      * @return bool
      * @throws \InvalidArgumentException
      */
-    public function login(Authenticatable $user, bool $remember = false): bool
+    public function login(Authable $user, bool $remember = false): bool
     {
         $authModel = $this->getModel();
         $modelClass = $authModel::class;
@@ -195,9 +195,9 @@ class Authenticate
      *
      * @param int $id
      * @param bool $remember
-     * @return Authenticatable|null
+     * @return Authable|null
      */
-    public function loginUsingId(int $id, bool $remember = false): ?Authenticatable
+    public function loginUsingId(int $id, bool $remember = false): ?Authable
     {
         $authModel = $this->getModel();
 
@@ -214,9 +214,9 @@ class Authenticate
      * Log in a user by their ID for a single request (no session/cookie).
      *
      * @param int $id
-     * @return Authenticatable|null
+     * @return Authable|null
      */
-    public function onceUsingId(int $id): ?Authenticatable
+    public function onceUsingId(int $id): ?Authable
     {
         $authModel = $this->getModel();
 
@@ -234,9 +234,9 @@ class Authenticate
     /**
      * Get the currently authenticated user.
      *
-     * @return Authenticatable|null
+     * @return Authable|null
      */
-    public function user(): ?Authenticatable
+    public function user(): ?Authable
     {
         if ($this->resolvedUser !== null) {
             return $this->resolvedUser;
@@ -373,9 +373,9 @@ class Authenticate
     /**
      * Set the authenticated user in the session.
      *
-     * @param Authenticatable $user
+     * @param Authable $user
      */
-    private function setUser(Authenticatable $user): void
+    private function setUser(Authable $user): void
     {
         session()->regenerate();
 

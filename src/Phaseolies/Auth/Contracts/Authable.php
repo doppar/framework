@@ -5,7 +5,7 @@ namespace Phaseolies\Auth\Contracts;
 use Phaseolies\Database\Entity\Model;
 
 /**
- * Contract for models that can be authenticated.
+ * Contract for models that can authenticate.
  *
  * Application auth models (e.g. User) should implement this so Auth
  * is not locked to a single concrete class.
@@ -17,7 +17,7 @@ use Phaseolies\Database\Entity\Model;
  * @property string|null $two_factor_recovery_codes
  * @phpstan-require-extends Model
  */
-interface Authenticatable
+interface Authable
 {
     /**
      * Get the authentication key name used for identifying the user.
