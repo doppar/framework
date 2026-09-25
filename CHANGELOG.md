@@ -1,5 +1,11 @@
 # Release Notes
 
+## v4.1.0 - 2026-09-25
+
+* Fix: Request State Isolation in Persistent Workers by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/330
+* fix: correct facade [@method](https://github.com/method) docblocks so PHPStan passes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/334
+* Extract auth into Authable base class by [@sanzgrapher](https://github.com/sanzgrapher) in https://github.com/doppar/framework/pull/333
+
 ## v4.0.1 - 2026-09-20
 
 * fix: error page paths on Windows by [@rrr63](https://github.com/rrr63) in https://github.com/doppar/framework/pull/329
