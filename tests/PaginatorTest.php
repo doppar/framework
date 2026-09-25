@@ -98,6 +98,15 @@ class PaginatorTest extends TestCase
         $this->assertNull($lastPagePaginator->nextPageUrl());
     }
 
+    public function testPreviousAndNextUrlsIgnoreMergedRequestInput()
+    {
+        // Input merged in code is server-side data, not part of the query string
+        request()->merge(['global_merge_testing_data' => 'doppar']);
+
+        $this->assertEquals('http://example.com?page=4', $this->paginator->previousPageUrl());
+        $this->assertEquals('http://example.com?page=6', $this->paginator->nextPageUrl());
+    }
+
     public function testCurrentPage()
     {
         $this->assertEquals(5, $this->paginator->currentPage());

@@ -62,7 +62,8 @@ class Paginator
             return null;
         }
 
-        $queryParams = request()->except('page');
+        $queryParams = request()->query();
+        unset($queryParams['page']);
 
         return $this->appendQueryParameters($this->data['previous_page_url'], $queryParams);
     }
@@ -78,7 +79,8 @@ class Paginator
             return null;
         }
 
-        $queryParams = request()->except('page');
+        $queryParams = request()->query();
+        unset($queryParams['page']);
 
         return $this->appendQueryParameters($this->data['next_page_url'], $queryParams);
     }
@@ -106,7 +108,7 @@ class Paginator
     /**
      * Generate an array of page numbers with ellipsis for gaps
      *
-     * @return string|null
+     * @return array
      */
     public function jump(): array
     {
