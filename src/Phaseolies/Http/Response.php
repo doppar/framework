@@ -1626,6 +1626,11 @@ class Response implements HttpStatus
             http_response_code($status);
         }
 
+        // Track application 404 errors
+        if (class_exists($class = \Doppar\Insight\Support\ErrorHistoryRecorder::class)) {
+            app($class)->record($exception);
+        }
+
         return $this;
     }
 }
