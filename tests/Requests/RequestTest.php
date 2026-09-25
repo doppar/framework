@@ -231,6 +231,18 @@ class RequestTest extends TestCase
         $this->assertSame('/products/item%2Fone?filter[status]=active', $request->getRequestUri());
     }
 
+    public function testPrepareRequestUriExtractsProxyPathAndRawSpaceQuery(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'http://proxy.example/search?q=hello world',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('/search?q=hello world', $request->getRequestUri());
+    }
+
     public function testPrepareRequestUriRetainsInvalidProxyUri(): void
     {
         $request = new Request([], [], [], [], [], [
