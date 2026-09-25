@@ -280,9 +280,20 @@ class RedirectResponseTest extends TestCase
         );
     }
 
+    public function testSecureTrueStillUpgradesUrlsWithBracketsAndSpaces(): void
+    {
+        $this->redirect->to('http://example.com/a?x[]=1', 302, [], true);
+
+        $this->assertSame('https://example.com/a?x[]=1', $this->redirect->headers->get('Location'));
+
+        $this->redirect->to('http://example.com/a b', 302, [], true);
+
+        $this->assertSame('https://example.com/a b', $this->redirect->headers->get('Location'));
+    }
+
     public function testToMethodPreservesInvalidAbsoluteUrlWhenForcingScheme(): void
     {
-        $url = 'http://[invalid';
+        $url = 'http://[invalid]:99999';
 
         $this->redirect->to($url, 302, [], true);
 

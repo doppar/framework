@@ -3,7 +3,6 @@
 namespace Phaseolies\Launchers;
 
 use Phaseolies\Support\Facades\Route;
-use Uri\Rfc3986\Uri;
 
 class RouteLauncher extends ServiceLauncher
 {
@@ -14,8 +13,7 @@ class RouteLauncher extends ServiceLauncher
      */
     public function register()
     {
-        $uri = Uri::parse(request()->server->get("REQUEST_URI", "/"));
-        $path = urldecode($uri?->getRawPath() ?? '/');
+        $path = request()->getPath();
 
         if ($path !== '/' && str_ends_with(request()->server->get('REQUEST_URI'), '/')) {
             header('Location: ' . rtrim(request()->server->get('REQUEST_URI'), '/'), true, 301);

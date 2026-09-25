@@ -74,7 +74,7 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
         $dsn = $config['connection'] ?? 'redis://127.0.0.1:6379';
         $parsed = Uri::parse($dsn);
 
-        $host = $parsed?->getHost() ?? '127.0.0.1';
+        $host = $parsed?->getHost() ?: '127.0.0.1';
         $port = $parsed?->getPort() ?? 6379;
         $password = $parsed?->getPassword();
         $path = $parsed?->getRawPath() ?? '';

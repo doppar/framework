@@ -630,9 +630,9 @@ class Request
      */
     public function getPath(): string
     {
-        $uri = Uri::parse($this->server->get("REQUEST_URI", "/"));
+        $path = parse_url($this->server->get("REQUEST_URI", "/"), PHP_URL_PATH);
 
-        return urldecode($uri?->getRawPath() ?? '/');
+        return urldecode(is_string($path) ? $path : '/');
     }
 
     /**
@@ -1180,6 +1180,9 @@ class Request
                     if ($uriComponents->getRawQuery() !== null) {
                         $requestUri .= '?' . $uriComponents->getRawQuery();
                     }
+                } elseif (($uriComponents = parse_url($requestUri)) !== false) {
+                    $requestUri = ($uriComponents['path'] ?? '')
+                        . (isset($uriComponents['query']) ? '?' . $uriComponents['query'] : '');
                 }
             }
         } elseif ($this->server->has('ORIG_PATH_INFO')) {

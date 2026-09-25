@@ -141,10 +141,12 @@ class RedirectResponse extends Response
         // If the URL is already absolute (contains ://), parse it
         if (strpos($url, '://') !== false) {
             $parsedUrl = Uri::parse($url);
+            $scheme = $secure ? 'https' : 'http';
 
             if ($parsedUrl !== null) {
-                $scheme = $secure ? 'https' : 'http';
                 $url = $parsedUrl->withScheme($scheme)->toRawString();
+            } elseif (parse_url($url) !== false) {
+                $url = preg_replace('#^[a-z][a-z0-9+.\\-]*://#i', $scheme . '://', $url, 1) ?? $url;
             }
         } else {
             // For relative URLs, prepend the current host and scheme

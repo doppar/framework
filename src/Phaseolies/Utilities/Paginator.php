@@ -339,31 +339,43 @@ class Paginator
      */
     protected function appendQueryParameters(?string $url, array $queryParams): string
     {
-        if (!$url) {
+        if ($url === null || $url === '') {
             return '';
         }
 
         $parsedUrl = Uri::parse($url);
 
-        if ($parsedUrl === null) {
-            $separator = str_contains($url, '?') ? '&' : '?';
+        if ($parsedUrl !== null) {
+            $scheme = $parsedUrl->getRawScheme() !== null ? $parsedUrl->getRawScheme() . '://' : '';
+            $host = $parsedUrl->getRawHost() ?? '';
+            $port = $parsedUrl->getPort() !== null ? ':' . $parsedUrl->getPort() : '';
+            $path = $parsedUrl->getRawPath();
+            $rawQuery = $parsedUrl->getRawQuery();
+        } else {
+            $parsedUrl = parse_url($url);
 
-            return $url . $separator . http_build_query($queryParams);
+            if ($parsedUrl === false) {
+                $separator = str_contains($url, '?') ? '&' : '?';
+
+                return $url . $separator . http_build_query($queryParams);
+            }
+
+            $scheme = isset($parsedUrl['scheme']) ? $parsedUrl['scheme'] . '://' : '';
+            $host = $parsedUrl['host'] ?? '';
+            $port = isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '';
+            $path = $parsedUrl['path'] ?? '';
+            $rawQuery = $parsedUrl['query'] ?? null;
         }
 
         $existingParams = [];
 
-        if ($parsedUrl->getRawQuery() !== null) {
-            parse_str($parsedUrl->getRawQuery(), $existingParams);
+        if ($rawQuery !== null) {
+            parse_str($rawQuery, $existingParams);
         }
 
-        // New ones take precedence
+        // Existing parameters take precedence over newly added parameters.
         $mergedParams = array_merge($queryParams, $existingParams);
         $query = http_build_query($mergedParams);
-        $scheme = $parsedUrl->getRawScheme() !== null ? $parsedUrl->getRawScheme() . '://' : '';
-        $host = $parsedUrl->getRawHost() ?? '';
-        $port = $parsedUrl->getPort() !== null ? ':' . $parsedUrl->getPort() : '';
-        $path = $parsedUrl->getRawPath();
 
         return $scheme . $host . $port . $path . '?' . $query;
     }
