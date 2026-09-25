@@ -887,6 +887,35 @@ class RouterTest extends TestCase
         $this->assertEquals('User 123: John', $result);
     }
 
+    public function testPushGlobalMiddlewareIsAppendedAfterGatewayList(): void
+    {
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+
+        $global = $this->router->getGlobalMiddleware();
+
+        $this->assertSame(
+            (new Gateway())->getGlobalMiddleware(),
+            array_slice($global, 0, count($global) - 1)
+        );
+        $this->assertSame('Pushed\\Middleware', end($global));
+    }
+
+    public function testPushGlobalMiddlewareIsNotDuplicated(): void
+    {
+        $existing = (new Gateway())->getGlobalMiddleware()[0] ?? null;
+
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+
+        if ($existing !== null) {
+            $this->router->pushGlobalMiddleware($existing);
+        }
+
+        $global = $this->router->getGlobalMiddleware();
+
+        $this->assertSame($global, array_values(array_unique($global)));
+    }
+
     public function testProcessRateLimitAnnotation(): void
     {
         $controller = new class {
