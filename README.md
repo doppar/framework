@@ -16,7 +16,7 @@ Doppar isn't one package pretending to be a framework. It's a core plus a set of
 | [Oauthic](https://github.com/doppar/oauthic) | Social login (OAuth) as a first-party package, not a community patchwork. |
 | [Orion](https://github.com/doppar/orion) | External process orchestration — run shell commands individually, in concurrency-limited pools, or piped into pipelines. |
 | [Airbend](https://github.com/doppar/airbend) | Real-time broadcasting. |
-| [doppar/bloom](https://github.com/doppar/bloom) | Bloom filter implementations for probabilistic set membership testing. |
+| [Bloom](https://github.com/doppar/bloom) | Bloom filter implementations for probabilistic set membership testing. |
 | [Axios](https://github.com/doppar/axios) | A modern HTTP client for outbound requests. |
 | [Notifier](https://github.com/doppar/notifier) | Notification delivery across channels. |
 | [Insight](https://github.com/doppar/insight) | A profiling and debugging toolbar for local development. |
