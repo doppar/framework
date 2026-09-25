@@ -3,6 +3,7 @@
 namespace Phaseolies\Support;
 
 use RuntimeException;
+use Uri\Rfc3986\Uri;
 
 class ViteManager
 {
@@ -128,15 +129,15 @@ class ViteManager
      */
     protected function hotServerIsReachable(string $url): bool
     {
-        $parts = parse_url($url);
+        $parts = Uri::parse($url);
+        $host = $parts?->getHost();
 
-        if (!is_array($parts) || empty($parts['host'])) {
+        if ($host === null || $host === '') {
             return false;
         }
 
-        $scheme = strtolower($parts['scheme'] ?? 'http');
-        $host = $parts['host'];
-        $port = (int) ($parts['port'] ?? ($scheme === 'https' ? 443 : 80));
+        $scheme = strtolower($parts->getScheme() ?? 'http');
+        $port = $parts->getPort() ?? ($scheme === 'https' ? 443 : 80);
         $transport = $scheme === 'https' ? 'ssl' : 'tcp';
 
         $connection = @stream_socket_client(

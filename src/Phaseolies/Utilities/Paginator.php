@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Utilities;
 
+use Uri\Rfc3986\Uri;
+
 class Paginator
 {
     /**
@@ -341,26 +343,27 @@ class Paginator
             return '';
         }
 
-        // Parse the URL to get its components
-        $parsedUrl = parse_url($url);
+        $parsedUrl = Uri::parse($url);
+
+        if ($parsedUrl === null) {
+            $separator = str_contains($url, '?') ? '&' : '?';
+
+            return $url . $separator . http_build_query($queryParams);
+        }
 
         $existingParams = [];
 
-        // Get existing query parameters from the URL
-        if (isset($parsedUrl['query'])) {
-            parse_str($parsedUrl['query'], $existingParams);
+        if ($parsedUrl->getRawQuery() !== null) {
+            parse_str($parsedUrl->getRawQuery(), $existingParams);
         }
 
-        // Merge with new parameters
         // New ones take precedence
         $mergedParams = array_merge($queryParams, $existingParams);
-
-        // Rebuild the URL without modifying the base URL
-        $scheme = isset($parsedUrl['scheme']) ? $parsedUrl['scheme'] . '://' : '';
-        $host = $parsedUrl['host'] ?? '';
-        $port = isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '';
-        $path = $parsedUrl['path'] ?? '';
         $query = http_build_query($mergedParams);
+        $scheme = $parsedUrl->getRawScheme() !== null ? $parsedUrl->getRawScheme() . '://' : '';
+        $host = $parsedUrl->getRawHost() ?? '';
+        $port = $parsedUrl->getPort() !== null ? ':' . $parsedUrl->getPort() : '';
+        $path = $parsedUrl->getRawPath();
 
         return $scheme . $host . $port . $path . '?' . $query;
     }

@@ -6,6 +6,7 @@ use Phaseolies\Support\Router;
 use Phaseolies\Session\MessageBag;
 use Phaseolies\Http\Response;
 use Phaseolies\Support\Facades\Str;
+use Uri\Rfc3986\Uri;
 
 class RedirectResponse extends Response
 {
@@ -139,35 +140,11 @@ class RedirectResponse extends Response
     {
         // If the URL is already absolute (contains ://), parse it
         if (strpos($url, '://') !== false) {
-            $parsedUrl = parse_url($url);
+            $parsedUrl = Uri::parse($url);
 
-            // Rebuild the URL with the new scheme
-            $scheme = $secure ? 'https' : 'http';
-            $url = $scheme . '://';
-
-            // Add the host if it exists
-            if (isset($parsedUrl['host'])) {
-                $url .= $parsedUrl['host'];
-            }
-
-            // Add the port if it exists
-            if (isset($parsedUrl['port'])) {
-                $url .= ':' . $parsedUrl['port'];
-            }
-
-            // Add the path if it exists
-            if (isset($parsedUrl['path'])) {
-                $url .= $parsedUrl['path'];
-            }
-
-            // Add the query string if it exists
-            if (isset($parsedUrl['query'])) {
-                $url .= '?' . $parsedUrl['query'];
-            }
-
-            // Add the fragment if it exists
-            if (isset($parsedUrl['fragment'])) {
-                $url .= '#' . $parsedUrl['fragment'];
+            if ($parsedUrl !== null) {
+                $scheme = $secure ? 'https' : 'http';
+                $url = $parsedUrl->withScheme($scheme)->toRawString();
             }
         } else {
             // For relative URLs, prepend the current host and scheme

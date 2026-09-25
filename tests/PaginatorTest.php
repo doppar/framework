@@ -113,6 +113,28 @@ class PaginatorTest extends TestCase
         $this->assertEquals('http://example.com?page=3', $this->paginator->url(3));
     }
 
+    public function testAppendQueryParametersPreservesExistingUriComponents(): void
+    {
+        $method = new \ReflectionMethod($this->paginator, 'appendQueryParameters');
+
+        $result = $method->invoke(
+            $this->paginator,
+            'https://example.com/items?filter=old&sort=asc',
+            ['page' => 3, 'filter' => 'new']
+        );
+
+        $this->assertSame('https://example.com/items?page=3&filter=old&sort=asc', $result);
+    }
+
+    public function testAppendQueryParametersFallsBackForInvalidUri(): void
+    {
+        $method = new \ReflectionMethod($this->paginator, 'appendQueryParameters');
+
+        $result = $method->invoke($this->paginator, 'http://[invalid', ['page' => 2]);
+
+        $this->assertSame('http://[invalid?page=2', $result);
+    }
+
     public function testJumpMethod()
     {
         $expected = [1, '...', 3, 4, 5, 6, 7, '...', 10];

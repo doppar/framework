@@ -195,6 +195,37 @@ class RequestTest extends TestCase
         $this->assertEquals('/test', $this->request->getPath());
     }
 
+    public function testGetPathPreservesPathAndIgnoresQuery(): void
+    {
+        $this->request->server->set('REQUEST_URI', '/products/item%20one?filter=active');
+
+        $this->assertSame('/products/item one', $this->request->getPath());
+    }
+
+    public function testPrepareRequestUriExtractsProxyPathAndQuery(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'https://proxy.example/products/item%2Fone?filter=active#section',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('/products/item%2Fone?filter=active', $request->getRequestUri());
+    }
+
+    public function testPrepareRequestUriRetainsInvalidProxyUri(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'not a valid uri',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('not a valid uri', $request->getRequestUri());
+    }
+
     public function testGetMethod()
     {
         $this->assertEquals('GET', $this->request->getMethod());

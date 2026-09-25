@@ -268,6 +268,27 @@ class RedirectResponseTest extends TestCase
         $this->assertEquals('http://example.com/profile', $location);
     }
 
+    public function testToMethodWithSecureTruePreservesEncodedComponents(): void
+    {
+        $url = 'http://example.com/path%2Fitem?token=a%2Fb#section%2Fone';
+
+        $this->redirect->to($url, 302, [], true);
+
+        $this->assertSame(
+            'https://example.com/path%2Fitem?token=a%2Fb#section%2Fone',
+            $this->redirect->headers->get('Location')
+        );
+    }
+
+    public function testToMethodPreservesInvalidAbsoluteUrlWhenForcingScheme(): void
+    {
+        $url = 'http://[invalid';
+
+        $this->redirect->to($url, 302, [], true);
+
+        $this->assertSame($url, $this->redirect->headers->get('Location'));
+    }
+
     public function testBackMethodWithReferer()
     {
         $referer = 'https://example.com/previous';

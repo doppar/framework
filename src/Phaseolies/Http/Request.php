@@ -17,6 +17,7 @@ use Phaseolies\Http\Response\AcceptHeader;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
+use Uri\Rfc3986\Uri;
 
 /**
  * @phpstan-consistent-constructor
@@ -629,9 +630,9 @@ class Request
      */
     public function getPath(): string
     {
-        return urldecode(
-            parse_url($this->server->get("REQUEST_URI", "/"), PHP_URL_PATH)
-        );
+        $uri = Uri::parse($this->server->get("REQUEST_URI", "/"));
+
+        return urldecode($uri?->getRawPath() ?? '/');
     }
 
     /**
@@ -1171,14 +1172,14 @@ class Request
             } else {
                 // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path,
                 // only use URL path.
-                $uriComponents = parse_url($requestUri);
+                $uriComponents = Uri::parse($requestUri);
 
-                if (isset($uriComponents['path'])) {
-                    $requestUri = $uriComponents['path'];
-                }
+                if ($uriComponents !== null) {
+                    $requestUri = $uriComponents->getRawPath();
 
-                if (isset($uriComponents['query'])) {
-                    $requestUri .= '?' . $uriComponents['query'];
+                    if ($uriComponents->getRawQuery() !== null) {
+                        $requestUri .= '?' . $uriComponents->getRawQuery();
+                    }
                 }
             }
         } elseif ($this->server->has('ORIG_PATH_INFO')) {
