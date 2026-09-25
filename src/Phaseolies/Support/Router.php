@@ -52,6 +52,44 @@ class Router
     }
 
     /**
+     * Global middleware pushed at runtime by launchers (e.g. packages)
+     *
+     * @var array<int, class-string>
+     */
+    protected array $pushedGlobalMiddleware = [];
+
+    /**
+     * Push a middleware onto the global chain from a launcher
+     *
+     * @param class-string $middleware
+     * @return void
+     */
+    public function pushGlobalMiddleware(string $middleware): void
+    {
+        if (!in_array($middleware, $this->pushedGlobalMiddleware, true)) {
+            $this->pushedGlobalMiddleware[] = $middleware;
+        }
+    }
+
+    /**
+     * Get the global middleware: the gateway's list followed by any pushed ones.
+     *
+     * @return array<int, class-string|string>
+     */
+    public function getGlobalMiddleware(): array
+    {
+        $global = $this->gateway->getGlobalMiddleware();
+
+        foreach ($this->pushedGlobalMiddleware as $middleware) {
+            if (!in_array($middleware, $global, true)) {
+                $global[] = $middleware;
+            }
+        }
+
+        return $global;
+    }
+
+    /**
      * Holds the registered routes.
      *
      * @var array
@@ -1060,7 +1098,7 @@ class Router
             $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
         }
 
-        foreach ($this->gateway->getGlobalMiddleware() as $middlewareClass) {
+        foreach ($this->getGlobalMiddleware() as $middlewareClass) {
             $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
         }
 
