@@ -3,18 +3,12 @@
 namespace Tests\Unit\Console;
 
 use Phaseolies\Console\Schedule\SchedulePool;
-use PHPUnit\Framework\Attributes\PreserveGlobalState;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 use Tests\Console\Support\ScratchApp;
 
 /**
- * SchedulePool helpers that touch real processes and the real base path. Each
- * test runs in its own process so the namespaced stubs that ScheduledCommandTest
- * defines (shell_exec, posix_kill...) are not in effect.
+ * SchedulePool helpers that touch real processes and the real base path.
  */
-#[RunTestsInSeparateProcesses]
-#[PreserveGlobalState(false)]
 class SchedulePoolProcessTest extends TestCase
 {
     private ScratchApp $app;
@@ -72,7 +66,8 @@ class SchedulePoolProcessTest extends TestCase
         $this->assertLessThan(1.0, $elapsed, 'must not wait for the two second command');
         $this->assertTrue(SchedulePool::isProcessRunning($pid));
 
-        posix_kill($pid, SIGKILL);
+        // SIGKILL (9); the constant needs pcntl and posix may be absent, so use kill.
+        exec('kill -9 ' . (int) $pid);
     }
 
     public function testANonNumericResultIsNotAPid(): void

@@ -6,8 +6,6 @@ use Phaseolies\Console\Commands\Cron\CronFinishCommand;
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Console\Schedule\ScheduledCommand;
 use Phaseolies\Console\Schedule\SchedulePool;
-use PHPUnit\Framework\Attributes\PreserveGlobalState;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
@@ -18,27 +16,30 @@ use Tests\Console\Support\ScratchCronRunCommand;
 
 /**
  * Runs the real CronRunCommand against a scratch application whose "pool" is a
- * stub, using real child processes and real shell commands. Each test runs in
- * its own PHP process because ScheduledCommandTest defines namespaced stubs
- * (shell_exec, time, posix_kill...) that would otherwise stay active.
+ * stub, using real child processes and real shell commands.
  */
-#[RunTestsInSeparateProcesses]
-#[PreserveGlobalState(false)]
 class CronRunProcessTest extends TestCase
 {
     private ScratchApp $app;
 
     private string $originalCwd;
 
+    private string|false $originalPath;
+
     protected function setUp(): void
     {
         $this->originalCwd = getcwd();
+        $this->originalPath = getenv('PATH');
         $this->app = new ScratchApp();
     }
 
     protected function tearDown(): void
     {
         chdir($this->originalCwd);
+
+        // The PATH decoy test changes the process environment.
+        putenv('PATH=' . $this->originalPath);
+        $_SERVER['PATH'] = $_ENV['PATH'] = (string) $this->originalPath;
 
         // Let background jobs finish before their directory disappears.
         ScratchApp::waitUntil(fn() => !$this->anyJobRunning(), 8);

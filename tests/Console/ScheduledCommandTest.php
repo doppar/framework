@@ -6,6 +6,14 @@ use Carbon\Carbon;
 
 final class ScheduledCommandTestEnvironment
 {
+    /**
+     * The function stubs below replace real functions for the whole PHPUnit
+     * process once this file is loaded. They only act while a test of this class
+     * is running; otherwise they call the real function, so tests elsewhere
+     * (real processes, real time, real posix_kill) are not affected.
+     */
+    public static bool $active = false;
+
     public static Carbon $now;
 
     public static string $timezone = 'UTC';
@@ -22,6 +30,7 @@ final class ScheduledCommandTestEnvironment
 
     public static function reset(): void
     {
+        self::$active = true;
         self::$storageRoot = sys_get_temp_dir() . '/doppar-schedule-tests';
         self::purgeDirectory(self::$storageRoot);
 
@@ -39,6 +48,7 @@ final class ScheduledCommandTestEnvironment
 
     public static function cleanup(): void
     {
+        self::$active = false;
         Carbon::setTestNow();
         self::purgeDirectory(self::$storageRoot);
         self::$execQueue = [];
@@ -125,34 +135,58 @@ final class ScheduledCommandTestEnvironment
 
 function config($key = null, $default = null)
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \config($key, $default);
+    }
+
     return $key === 'app.timezone' ? ScheduledCommandTestEnvironment::$timezone : $default;
 }
 
 function now($timezone = null)
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \now($timezone);
+    }
+
     return ScheduledCommandTestEnvironment::now($timezone);
 }
 
 function storage_path($path = '')
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \storage_path($path);
+    }
+
     return ScheduledCommandTestEnvironment::storagePath($path);
 }
 
 function time()
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \time();
+    }
+
     return ScheduledCommandTestEnvironment::timestamp();
 }
 
 function sleep(int $seconds)
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \sleep($seconds);
+    }
+
     ScheduledCommandTestEnvironment::$sleepCalls[] = $seconds;
     ScheduledCommandTestEnvironment::advanceSeconds($seconds);
 
     return 0;
 }
 
-function shell_exec(string $command): string
+function shell_exec(string $command): ?string
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \shell_exec($command);
+    }
+
     if (preg_match('/ps -p (\d+) -o pid=/', $command, $matches)) {
         $pid = (int) $matches[1];
 
@@ -166,17 +200,29 @@ function shell_exec(string $command): string
 
 function posix_kill(int $process_id, int $signal): bool
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \posix_kill($process_id, $signal);
+    }
+
     return in_array($process_id, ScheduledCommandTestEnvironment::$runningPids, true);
 }
 
 function posix_get_last_error(): int
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \posix_get_last_error();
+    }
+
     // ESRCH: no such process
     return 3;
 }
 
-function exec(string $command, &$output = null, &$returnVar = null): ?string
+function exec(string $command, &$output = null, &$returnVar = null): string|false|null
 {
+    if (!ScheduledCommandTestEnvironment::$active) {
+        return \exec($command, $output, $returnVar);
+    }
+
     ScheduledCommandTestEnvironment::$execCalls[] = $command;
 
     $response = array_shift(ScheduledCommandTestEnvironment::$execQueue) ?? [
