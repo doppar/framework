@@ -164,6 +164,17 @@ function shell_exec(string $command): string
     return '';
 }
 
+function posix_kill(int $process_id, int $signal): bool
+{
+    return in_array($process_id, ScheduledCommandTestEnvironment::$runningPids, true);
+}
+
+function posix_get_last_error(): int
+{
+    // ESRCH: no such process
+    return 3;
+}
+
 function exec(string $command, &$output = null, &$returnVar = null): ?string
 {
     ScheduledCommandTestEnvironment::$execCalls[] = $command;
@@ -664,12 +675,12 @@ class ScheduledCommandTest extends TestCase
 
     private function lastRunFile(string $command): string
     {
-        return sys_get_temp_dir() . '/doppar_cron_' . md5($command);
+        return Env::storagePath('schedule') . '/doppar_cron_' . md5($command);
     }
 
     private function lockFile(string $command): string
     {
-        return sys_get_temp_dir() . '/doppar_cron_lock_' . md5($command);
+        return Env::storagePath('schedule') . '/doppar_cron_lock_' . md5($command);
     }
 
     private function throttleFile(string $command): string
