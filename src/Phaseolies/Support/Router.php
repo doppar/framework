@@ -32,64 +32,6 @@ class Router
     protected GatewayInterface $gateway;
 
     /**
-     * Create a new router instance.
-     *
-     * @param GatewayInterface $gateway
-     */
-    public function __construct(GatewayInterface $gateway)
-    {
-        $this->gateway = $gateway;
-    }
-
-    /**
-     * Get the application's HTTP middleware gateway.
-     *
-     * @return GatewayInterface
-     */
-    public function getGateway(): GatewayInterface
-    {
-        return $this->gateway;
-    }
-
-    /**
-     * Global middleware pushed at runtime by launchers (e.g. packages)
-     *
-     * @var array<int, class-string>
-     */
-    protected array $pushedGlobalMiddleware = [];
-
-    /**
-     * Push a middleware onto the global chain from a launcher
-     *
-     * @param class-string $middleware
-     * @return void
-     */
-    public function pushGlobalMiddleware(string $middleware): void
-    {
-        if (!in_array($middleware, $this->pushedGlobalMiddleware, true)) {
-            $this->pushedGlobalMiddleware[] = $middleware;
-        }
-    }
-
-    /**
-     * Get the global middleware: the gateway's list followed by any pushed ones.
-     *
-     * @return array<int, class-string|string>
-     */
-    public function getGlobalMiddleware(): array
-    {
-        $global = $this->gateway->getGlobalMiddleware();
-
-        foreach ($this->pushedGlobalMiddleware as $middleware) {
-            if (!in_array($middleware, $global, true)) {
-                $global[] = $middleware;
-            }
-        }
-
-        return $global;
-    }
-
-    /**
      * Holds the registered routes.
      *
      * @var array
@@ -160,6 +102,64 @@ class Router
      * @var bool
      */
     protected static bool $cacheLoaded = false;
+
+    /**
+     * Global middleware pushed at runtime by launchers (e.g. packages)
+     *
+     * @var array<int, class-string>
+     */
+    protected array $pushedGlobalMiddleware = [];
+
+    /**
+     * Create a new router instance.
+     *
+     * @param GatewayInterface $gateway
+     */
+    public function __construct(GatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
+    /**
+     * Get the application's HTTP middleware gateway.
+     *
+     * @return GatewayInterface
+     */
+    public function getGateway(): GatewayInterface
+    {
+        return $this->gateway;
+    }
+
+    /**
+     * Push a middleware onto the global chain from a launcher
+     *
+     * @param class-string $middleware
+     * @return void
+     */
+    public function pushGlobalMiddleware(string $middleware): void
+    {
+        if (!in_array($middleware, $this->pushedGlobalMiddleware, true)) {
+            $this->pushedGlobalMiddleware[] = $middleware;
+        }
+    }
+
+    /**
+     * Get the global middleware: the gateway's list followed by any pushed ones.
+     *
+     * @return array<int, class-string|string>
+     */
+    public function getGlobalMiddleware(): array
+    {
+        $global = $this->gateway->getGlobalMiddleware();
+
+        foreach ($this->pushedGlobalMiddleware as $middleware) {
+            if (!in_array($middleware, $global, true)) {
+                $global[] = $middleware;
+            }
+        }
+
+        return $global;
+    }
 
     /**
      * Initialize the cache path
