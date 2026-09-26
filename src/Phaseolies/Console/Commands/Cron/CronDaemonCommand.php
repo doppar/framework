@@ -3,6 +3,7 @@
 namespace Phaseolies\Console\Commands\Cron;
 
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Console\Schedule\SchedulePool;
 
 class CronDaemonCommand extends Command
 {
@@ -267,17 +268,7 @@ class CronDaemonCommand extends Command
      */
     protected function isProcessRunning(int $pid): bool
     {
-        if ($pid <= 0) {
-            return false;
-        }
-
-        if (function_exists('posix_kill')) {
-            return posix_kill($pid, 0);
-        }
-
-        // Fallback
-        $output = shell_exec(sprintf("ps -p %d -o pid=", $pid));
-        return !empty(trim($output));
+        return SchedulePool::isProcessRunning($pid);
     }
 
     /**

@@ -2,14 +2,22 @@
 
 namespace Phaseolies\Console\Commands\Cron;
 
-use App\Schedule\Schedule;
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Console\Schedule\SchedulePool;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Process\Process;
 use React\EventLoop\Loop;
 
 class CronRunCommand extends Command
 {
+    /**
+     * The application class that registers the scheduled commands
+     *
+     * @var string
+     */
+    protected const SCHEDULE_CLASS = 'App\\Schedule\\Schedule';
+
     /**
      * The name and signature of the console command.
      *
@@ -30,6 +38,20 @@ class CronRunCommand extends Command
      * @var array
      */
     protected $lastExecution = [];
+
+    /**
+     * Number of scheduled commands that failed to start or exited with an error
+     *
+     * @var int
+     */
+    protected int $failedCommands = 0;
+
+    /**
+     * Handle of the lock file the daemon holds for as long as it runs
+     *
+     * @var resource|null
+     */
+    protected $daemonLock = null;
 
     /**
      * Execute the console command.
@@ -55,8 +77,11 @@ class CronRunCommand extends Command
     protected function runStandardMode(): int
     {
         return $this->executeWithTiming(function () {
-            $schedule = new Schedule();
-            $schedule->schedule($schedule);
+            $schedule = $this->makeSchedule();
+
+            if ($schedule === null) {
+                return Command::FAILURE;
+            }
 
             $allCommands = $schedule->getCommands();
 
@@ -97,8 +122,37 @@ class CronRunCommand extends Command
                 $this->displayInfo('No scheduled commands are ready to run.');
             }
 
+            // A task that could not run must not look like a clean run to cron
+            // monitors, or to anyone reading the exit status.
+            if ($this->failedCommands > 0) {
+                $this->displayError($this->failedCommands . ' scheduled command(s) failed.');
+
+                return Command::FAILURE;
+            }
+
             return Command::SUCCESS;
         });
+    }
+
+    /**
+     * Build the application's schedule
+     *
+     * @return object|null
+     */
+    protected function makeSchedule(): ?object
+    {
+        $class = self::SCHEDULE_CLASS;
+
+        if (!class_exists($class)) {
+            $this->displayError("The schedule class {$class} was not found. Create it, or remove cron:run from your crontab.");
+
+            return null;
+        }
+
+        $schedule = new $class();
+        $schedule->schedule($schedule);
+
+        return $schedule;
     }
 
     /**
@@ -108,6 +162,16 @@ class CronRunCommand extends Command
      */
     protected function runDaemonMode(): int
     {
+        // Only one daemon may run. The lock is held for the daemon's whole life
+        // and is released by the OS if it dies, so it can never go stale, and
+        // two starts at the same instant cannot both win. This makes it safe to
+        // keep `cron:run --daemon` in the crontab.
+        if (!$this->acquireDaemonLock()) {
+            $this->displayInfo('The cron daemon is already running; nothing to do.');
+
+            return Command::SUCCESS;
+        }
+
         $this->displayInfo('Starting doppar cron daemon...');
         $this->displayInfo('Monitoring for second-based schedules...');
         $this->displayInfo('Press Ctrl+C to stop');
@@ -140,8 +204,11 @@ class CronRunCommand extends Command
         // Check every second for due commands
         Loop::addPeriodicTimer(1.0, function () {
             try {
-                $schedule = new Schedule();
-                $schedule->schedule($schedule);
+                $schedule = $this->makeSchedule();
+
+                if ($schedule === null) {
+                    return;
+                }
 
                 $allCommands = $schedule->getCommands();
 
@@ -275,9 +342,42 @@ class CronRunCommand extends Command
             } else {
                 $this->runInForeground($command, $env);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            $this->failedCommands++;
             $this->displayError('Error executing command: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Take the exclusive daemon lock without waiting
+     *
+     * @return bool
+     */
+    protected function acquireDaemonLock(): bool
+    {
+        $file = dirname($this->getDaemonPidFile()) . '/cron_daemon.lock';
+        $dir = dirname($file);
+
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
+        $handle = @fopen($file, 'c');
+
+        if ($handle === false) {
+            // Storage is not writable; the PID file check below is the best we can do.
+            return !$this->isDaemonRunning();
+        }
+
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+
+            return false;
+        }
+
+        $this->daemonLock = $handle;
+
+        return true;
     }
 
     /**
@@ -293,21 +393,10 @@ class CronRunCommand extends Command
             return false;
         }
 
-        $data = @json_decode(file_get_contents($pidFile), true);
-        $pid = $data['pid'] ?? 0;
+        $data = @json_decode((string) @file_get_contents($pidFile), true);
+        $pid = (int) ($data['pid'] ?? 0);
 
-        if ($pid <= 0) {
-            return false;
-        }
-
-        // Check if process is actually running
-        if (function_exists('posix_kill')) {
-            return posix_kill($pid, 0);
-        }
-
-        // Fallback for systems without posix_kill
-        $output = shell_exec(sprintf("ps -p %d -o pid=", $pid));
-        return !empty(trim($output));
+        return SchedulePool::isProcessRunning($pid);
     }
 
     /**
@@ -344,7 +433,13 @@ class CronRunCommand extends Command
         $pidFile = $this->getDaemonPidFile();
 
         if (file_exists($pidFile)) {
-            unlink($pidFile);
+            @unlink($pidFile);
+        }
+
+        if ($this->daemonLock !== null) {
+            flock($this->daemonLock, LOCK_UN);
+            fclose($this->daemonLock);
+            $this->daemonLock = null;
         }
     }
 
@@ -358,10 +453,78 @@ class CronRunCommand extends Command
         return storage_path('schedule/cron_daemon.pid');
     }
 
+    /**
+     * Build the shell command that runs a task detached from this process
+     *
+     * @param string $command
+     * @param string $logFile
+     * @param string $finishId
+     * @param bool $releaseLock
+     * @param array<string, string> $env
+     * @return string
+     */
+    protected function buildBackgroundCommand(
+        string $command,
+        string $logFile,
+        string $finishId,
+        bool $releaseLock,
+        array $env = []
+    ): string {
+        $php = escapeshellarg(SchedulePool::phpBinary());
+        $pool = escapeshellarg(SchedulePool::poolScript());
+        $log = escapeshellarg($logFile);
+        $arguments = implode(' ', array_map('escapeshellarg', SchedulePool::splitCommand($command)));
+
+        $assignments = '';
+
+        foreach ($env as $name => $value) {
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', (string) $name)) {
+                $assignments .= $name . '=' . escapeshellarg((string) $value) . ' ';
+            }
+        }
+
+        return sprintf(
+            '(cd %s && %s%s %s %s >> %s 2>&1 ; %s %s cron:finish %s %d $? >> %s 2>&1) > /dev/null 2>&1 < /dev/null & echo $!',
+            escapeshellarg(base_path()),
+            $assignments,
+            $php,
+            $pool,
+            $arguments,
+            $log,
+            $php,
+            $pool,
+            escapeshellarg($finishId),
+            $releaseLock ? 1 : 0,
+            $log
+        );
+    }
+
+    /**
+     * Start a shell command that detaches itself, and return its PID
+     *
+     * @param string $shellCommand
+     * @return int|null
+     */
+    protected function startDetached(string $shellCommand): ?int
+    {
+        return SchedulePool::startDetached($shellCommand);
+    }
+
+    /**
+     * Start a command in the background and return immediately
+     *
+     * @param mixed $command
+     * @param array $env
+     * @return void
+     */
     protected function runInBackground($command, $env): void
     {
-        $phpBinary = PHP_BINARY;
-        $poolScript = 'pool';
+        if (SchedulePool::isWindows()) {
+            $this->displayWarning('Background execution is not supported on Windows; running in the foreground: ' . $command->getCommand());
+            $this->runInForeground($command, $env);
+
+            return;
+        }
 
         $finishId = uniqid('cron_finish_', true);
 
@@ -385,25 +548,34 @@ class CronRunCommand extends Command
             mkdir($lockDir, 0755, true);
         }
 
-        $commandParts = implode(' ', array_map('escapeshellarg', preg_split('/\s+/', trim($command->getCommand()))));
+        $flags = array_intersect_key($env, array_flip([
+            'APP_RUNNING_IN_CONSOLE',
+            'APP_SCHEDULE_RUNNING',
+            'APP_SECOND_SCHEDULE',
+        ]));
 
-        $commandString = sprintf(
-            '(%s %s %s >> %s 2>&1 ; %s %s cron:finish %s %d $? >> %s 2>&1) & echo $!',
-            escapeshellarg($phpBinary),
-            escapeshellarg($poolScript),
-            $commandParts,
-            escapeshellarg($logFile),
-            escapeshellarg($phpBinary),
-            escapeshellarg($poolScript),
-            escapeshellarg($finishId),
-            $command->withoutOverlapping ? 1 : 0,
-            escapeshellarg($logFile)
+        $commandString = $this->buildBackgroundCommand(
+            $command->getCommand(),
+            $logFile,
+            $finishId,
+            (bool) $command->withoutOverlapping,
+            $flags
         );
 
-        $pid = (int) shell_exec($commandString);
+        $pid = $this->startDetached($commandString);
 
-        if (empty($pid)) {
-            throw new \RuntimeException('Failed to start background process');
+        if ($pid === null) {
+            // shell_exec, exec and proc_open are all unavailable (or the shell
+            // returned no PID). Do not lose the task: run it here instead.
+            $this->displayWarning('Could not start a background process; running in the foreground: ' . $command->getCommand());
+
+            if ($command->withoutOverlapping) {
+                $command->releaseLock();
+            }
+
+            $this->runInForeground($command, $env);
+
+            return;
         }
 
         $processInfo = [
@@ -443,7 +615,9 @@ class CronRunCommand extends Command
             }
         }
 
-        file_put_contents(
+        // Best effort: the log path can be unwritable, and that must not turn a
+        // started job into a failed run.
+        @file_put_contents(
             $logFile,
             sprintf(
                 "[%s] Process started (PID: %d)\nCommand: %s\nProcess Info: %s\n\n",
@@ -456,28 +630,93 @@ class CronRunCommand extends Command
         );
     }
 
+    /**
+     * Run a command to completion and record whether it succeeded
+     *
+     * @param mixed $command
+     * @param array $env
+     * @return void
+     */
     protected function runInForeground($command, $env): void
     {
         if ($command->withoutOverlapping) {
             $command->lock();
         }
 
-        $process = new Process(array_merge(['php', 'pool'], preg_split('/\s+/', trim($command->getCommand()))), base_path(), $env);
-        $process->setTimeout(null);
-        $process->run();
+        try {
+            $result = $this->runToCompletion($command->getCommand(), $env);
 
-        if ($process->isSuccessful()) {
-            // Only show success for non-second-based
-            if (!$command->isSecondSchedule()) {
-                $this->info('Success: ' . $command->getCommand());
+            if ($result['code'] === 0) {
+                // Only show success for non-second-based
+                if (!$command->isSecondSchedule()) {
+                    $this->info('Success: ' . $command->getCommand());
+                }
+            } else {
+                $this->failedCommands++;
+                $this->displayError('Error: ' . $command->getCommand() . ' (exit code ' . $result['code'] . ')');
+                $this->displayError('Output: ' . ($result['stderr'] !== '' ? $result['stderr'] : $result['stdout']));
             }
-        } else {
-            $this->displayError('Error: ' . $command->getCommand());
-            $this->displayError('Output: ' . $process->getErrorOutput());
+        } finally {
+            if ($command->withoutOverlapping) {
+                $command->releaseLock();
+            }
+        }
+    }
+
+    /**
+     * Run a pool command and wait for it.
+     *
+     * @param string $command
+     * @param array $env
+     * @return array{code: int, stdout: string, stderr: string}
+     */
+    protected function runToCompletion(string $command, array $env): array
+    {
+        if (SchedulePool::isFunctionEnabled('proc_open')) {
+            $process = new Process(SchedulePool::buildProcessArguments($command), base_path(), $env);
+            $process->setTimeout(null);
+            $process->run();
+
+            return [
+                'code' => (int) $process->getExitCode(),
+                'stdout' => $process->getOutput(),
+                'stderr' => $process->getErrorOutput(),
+            ];
         }
 
-        if ($command->withoutOverlapping) {
-            $command->releaseLock();
+        if (SchedulePool::isFunctionEnabled('exec')) {
+            $arguments = implode(' ', array_map('escapeshellarg', SchedulePool::buildProcessArguments($command)));
+            $lines = [];
+            $code = 0;
+
+            exec(sprintf('cd %s && %s 2>&1', escapeshellarg(base_path()), $arguments), $lines, $code);
+
+            return ['code' => $code, 'stdout' => implode("\n", $lines), 'stderr' => ''];
         }
+
+        return $this->runInProcess($command);
+    }
+
+    /**
+     * Run a pool command through the console application in this process
+     *
+     * @param string $command
+     * @return array{code: int, stdout: string, stderr: string}
+     */
+    protected function runInProcess(string $command): array
+    {
+        $application = $this->getApplication();
+        $tokens = SchedulePool::splitCommand($command);
+
+        if ($application === null || $tokens === []) {
+            throw new \RuntimeException(
+                'Cannot run scheduled commands: proc_open, exec and shell_exec are disabled on this host.'
+            );
+        }
+
+        $output = new BufferedOutput();
+        $code = $application->find($tokens[0])->run(new ArgvInput(array_merge(['pool'], $tokens)), $output);
+
+        return ['code' => $code, 'stdout' => $output->fetch(), 'stderr' => ''];
     }
 }

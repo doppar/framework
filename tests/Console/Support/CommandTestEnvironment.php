@@ -4,6 +4,15 @@ namespace Tests\Unit\Console\Support {
 
     final class CommandTestEnvironment
     {
+        /**
+         * Some stubs below live in namespaces that production scheduler code also
+         * uses (Phaseolies\Console\Schedule, Phaseolies\Console\Commands\Cron).
+         * They stay defined for the whole PHPUnit process, so they only act while a
+         * test has called reset() and not yet cleanup(); otherwise they defer to the
+         * real helper and other tests are not affected.
+         */
+        public static bool $active = false;
+
         public static string $root;
 
         public static array $config = [];
@@ -16,6 +25,7 @@ namespace Tests\Unit\Console\Support {
 
         public static function reset(): void
         {
+            self::$active = true;
             self::$root = rtrim(sys_get_temp_dir(), '/\\')
                 . DIRECTORY_SEPARATOR
                 . 'doppar-command-tests-'
@@ -36,6 +46,8 @@ namespace Tests\Unit\Console\Support {
 
         public static function cleanup(): void
         {
+            self::$active = false;
+
             if (!isset(self::$root) || !is_dir(self::$root)) {
                 return;
             }
@@ -388,6 +400,10 @@ namespace Phaseolies\Console\Schedule {
     if (!function_exists(__NAMESPACE__ . '\base_path')) {
         function base_path(string $path = ''): string
         {
+            if (!CommandTestEnvironment::$active) {
+                return \base_path($path);
+            }
+
             return CommandTestEnvironment::path($path);
         }
     }
@@ -400,6 +416,10 @@ namespace Phaseolies\Console\Commands\Cron {
     if (!function_exists(__NAMESPACE__ . '\storage_path')) {
         function storage_path(string $path = ''): string
         {
+            if (!CommandTestEnvironment::$active) {
+                return \storage_path($path);
+            }
+
             return CommandTestEnvironment::path('storage/' . ltrim($path, '/'));
         }
     }
@@ -407,6 +427,12 @@ namespace Phaseolies\Console\Commands\Cron {
     if (!function_exists(__NAMESPACE__ . '\error')) {
         function error(string $message): void
         {
+            if (!CommandTestEnvironment::$active) {
+                \error($message);
+
+                return;
+            }
+
             CommandTestEnvironment::recordError($message);
         }
     }
