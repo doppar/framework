@@ -60,6 +60,33 @@ class CronRunProcessTest extends TestCase
         return false;
     }
 
+    /**
+     * The overlap probe's answer (RUN or SKIP) from its stdout, ignoring any other
+     * text such as deprecation notices printed by third-party packages.
+     */
+    /**
+     * Background execution, the lock guard and the daemon are POSIX features: they
+     * rely on /bin/sh, flock semantics and files that may be deleted while open.
+     * Windows runs background tasks in the foreground (see the docs).
+     */
+    private function requirePosix(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Needs a POSIX shell; background tasks and the daemon are not supported on Windows.');
+        }
+    }
+
+    private function probeAnswer(string $output): string
+    {
+        foreach (array_map('trim', explode("\n", $output)) as $line) {
+            if ($line === 'RUN' || $line === 'SKIP') {
+                return $line;
+            }
+        }
+
+        return '';
+    }
+
     private function task(string $command): ScheduledCommand
     {
         return (new ScheduledCommand($command))->everyMinute()->timezone('UTC');
@@ -79,6 +106,8 @@ class CronRunProcessTest extends TestCase
 
     public function testABackgroundTaskDoesNotMakeTheSchedulerWaitForIt(): void
     {
+        $this->requirePosix();
+
         $log = $this->app->path('job.log');
         $runner = $this->runner($this->task('slow 3')->inBackground()->sendOutputTo($log));
 
@@ -97,6 +126,8 @@ class CronRunProcessTest extends TestCase
 
     public function testTheFinishCallbackReceivesTheJobsExitCode(): void
     {
+        $this->requirePosix();
+
         $log = $this->app->path('job.log');
         $runner = $this->runner($this->task('fail')->inBackground()->sendOutputTo($log));
 
@@ -112,6 +143,8 @@ class CronRunProcessTest extends TestCase
 
     public function testABackgroundTaskRunsFromTheAppRootWhateverDirectoryCronStartedIn(): void
     {
+        $this->requirePosix();
+
         // cPanel starts cron jobs in the account's home directory.
         chdir('/');
 
@@ -125,6 +158,8 @@ class CronRunProcessTest extends TestCase
 
     public function testBackgroundTasksReceiveTheScheduleEnvironmentFlag(): void
     {
+        $this->requirePosix();
+
         $runner = $this->runner($this->task('echo hi')->inBackground()->sendOutputTo($this->app->path('job.log')));
         $runner->handle();
 
@@ -134,6 +169,8 @@ class CronRunProcessTest extends TestCase
 
     public function testAProtectedBackgroundTaskIsNotStartedASecondTimeWhileItRuns(): void
     {
+        $this->requirePosix();
+
         $log = $this->app->path('job.log');
 
         $first = $this->runner($this->task('slow 3')->inBackground()->noOverlap()->sendOutputTo($log));
@@ -162,6 +199,8 @@ class CronRunProcessTest extends TestCase
 
     public function testTheLockIsReleasedWhenTheJobFinishesSoTheTaskCanRunAgain(): void
     {
+        $this->requirePosix();
+
         $log = $this->app->path('job.log');
         $first = $this->runner($this->task('echo hi')->inBackground()->noOverlap()->sendOutputTo($log));
         $first->handle();
@@ -211,6 +250,8 @@ class CronRunProcessTest extends TestCase
 
     public function testForegroundTasksRunWithThePhpBinaryThatIsRunningTheScheduler(): void
     {
+        $this->requirePosix();
+
         // A different "php" comes first on PATH, as on a host with several PHP versions.
         $decoyDir = $this->app->path('decoy');
         mkdir($decoyDir);
@@ -239,6 +280,8 @@ class CronRunProcessTest extends TestCase
 
     public function testQuotedArgumentsSurviveTheBackgroundShellToo(): void
     {
+        $this->requirePosix();
+
         $runner = $this->runner(
             $this->task('echo --message="hello world" --note="it\'s fine"')->inBackground()->sendOutputTo($this->app->path('job.log'))
         );
@@ -315,6 +358,8 @@ class CronRunProcessTest extends TestCase
 
     public function testOnlyOneOfManySimultaneousSchedulerRunsMayStartAProtectedTask(): void
     {
+        $this->requirePosix();
+
         $processes = [];
         $startAt = microtime(true) + 1.0;
 
@@ -330,8 +375,10 @@ class CronRunProcessTest extends TestCase
         $answers = [];
 
         foreach ($processes as [$process, $pipes]) {
-            $answers[] = trim((string) stream_get_contents($pipes[1]));
-            $this->assertSame('', trim((string) stream_get_contents($pipes[2])));
+            $answers[] = $this->probeAnswer((string) stream_get_contents($pipes[1]));
+            // stderr is not checked: it can carry unrelated deprecation notices printed by
+            // third-party packages when the autoloader loads (e.g. an old Mockery on PHP 8.5).
+            stream_get_contents($pipes[2]);
             fclose($pipes[1]);
             fclose($pipes[2]);
             proc_close($process);
@@ -343,6 +390,8 @@ class CronRunProcessTest extends TestCase
 
     public function testCheckingForARunningCopyWaitsForWhoeverIsCurrentlyTakingTheLock(): void
     {
+        $this->requirePosix();
+
         // Hold the guard, as a scheduler run in the middle of its check-and-lock would.
         $guard = fopen((new ScheduledCommand('slow 1'))->getLockFile() . '.guard', 'c');
         $this->assertTrue(flock($guard, LOCK_EX));
@@ -355,13 +404,13 @@ class CronRunProcessTest extends TestCase
         stream_set_blocking($pipes[1], false);
 
         usleep(1_200_000);
-        $this->assertSame('', trim((string) fgets($pipes[1])), 'the probe must be waiting for the guard, not deciding on its own');
+        $this->assertSame('', $this->probeAnswer((string) stream_get_contents($pipes[1])), 'the probe must be waiting for the guard, not deciding on its own');
 
         flock($guard, LOCK_UN);
         fclose($guard);
 
         stream_set_blocking($pipes[1], true);
-        $this->assertSame('RUN', trim((string) fgets($pipes[1])), 'once the guard is free it can take the lock');
+        $this->assertSame('RUN', $this->probeAnswer((string) stream_get_contents($pipes[1])), 'once the guard is free it can take the lock');
 
         fclose($pipes[1]);
         fclose($pipes[2]);
@@ -370,6 +419,8 @@ class CronRunProcessTest extends TestCase
 
     public function testARunThatSkipsAProtectedTaskLeavesTheRunningTasksLockAlone(): void
     {
+        $this->requirePosix();
+
         $running = $this->task('slow 1')->noOverlap();
         $this->assertTrue($running->isDue(), 'the first run takes the lock');
 
@@ -392,6 +443,8 @@ class CronRunProcessTest extends TestCase
 
     public function testTheDaemonRefusesToStartWhileAnotherHoldsTheDaemonLock(): void
     {
+        $this->requirePosix();
+
         $lock = fopen($this->app->path('storage/schedule/cron_daemon.lock'), 'c');
         $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB), 'the test holds the lock, as a running daemon would');
 
@@ -407,6 +460,8 @@ class CronRunProcessTest extends TestCase
 
     public function testTheDaemonLockIsFreeWhenNoDaemonRunsAndTakenOnlyOnce(): void
     {
+        $this->requirePosix();
+
         $first = new ScratchCronRunCommand();
         $second = new ScratchCronRunCommand();
 
@@ -422,6 +477,8 @@ class CronRunProcessTest extends TestCase
 
     public function testTheBackgroundShellCommandIsFullyDetachedAndUsesAbsolutePaths(): void
     {
+        $this->requirePosix();
+
         $runner = new ScratchCronRunCommand();
 
         $shell = $runner->buildBackground('queue:run --queue=mail', '/tmp/job.log', 'cron_finish_1', true, [
@@ -440,6 +497,8 @@ class CronRunProcessTest extends TestCase
 
     public function testShellSpecialCharactersInArgumentsCannotBreakOutOfTheCommand(): void
     {
+        $this->requirePosix();
+
         $runner = new ScratchCronRunCommand();
 
         $shell = $runner->buildBackground('demo --x="a; touch /tmp/pwned" $(id) `id`', '/tmp/job.log', 'id', false);

@@ -195,6 +195,15 @@ function shell_exec(string $command): ?string
             : '';
     }
 
+    // Windows: SchedulePool::isProcessRunning() asks tasklist instead of ps.
+    if (preg_match('/tasklist \/FI "PID eq (\d+)"/', $command, $matches)) {
+        $pid = (int) $matches[1];
+
+        return in_array($pid, ScheduledCommandTestEnvironment::$runningPids, true)
+            ? 'php.exe                      ' . $pid . ' Console                    1     20,000 K' . PHP_EOL
+            : 'INFO: No tasks are running which match the specified criteria.' . PHP_EOL;
+    }
+
     return '';
 }
 

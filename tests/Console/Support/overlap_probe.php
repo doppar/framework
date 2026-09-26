@@ -7,6 +7,10 @@
  * Usage: php overlap_probe.php <app root> <start_at microtime>
  */
 
+// Third-party packages can print deprecation notices when the autoloader loads
+// them; they are noise for this probe, whose only output is RUN or SKIP.
+error_reporting(E_ALL & ~E_DEPRECATED);
+
 require __DIR__ . '/../../../vendor/autoload.php';
 
 use Phaseolies\Console\Schedule\ScheduledCommand;

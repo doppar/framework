@@ -58,6 +58,10 @@ class SchedulePoolProcessTest extends TestCase
 
     public function testADetachedCommandReturnsItsPidWithoutWaitingForIt(): void
     {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('Uses POSIX shell syntax (background & and $!).');
+        }
+
         $started = microtime(true);
         $pid = SchedulePool::startDetached('(sleep 2) > /dev/null 2>&1 < /dev/null & echo $!');
         $elapsed = microtime(true) - $started;
