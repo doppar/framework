@@ -1,5 +1,13 @@
 # Release Notes
 
+## v4.1.1 - 2026-09-26
+
+* Pull request template file change and use latest version in action file by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/336
+* Add Router::pushGlobalMiddleware() so launchers can register global middleware by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/337
+* remove ErrorHistoryRecorder class from skeleton by adding it in framework by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/338
+* Fix Paginator prev/next links leaking merged request input into URLs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/339
+* Fix cron:run and the scheduler: non-blocking background tasks by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/340
+
 ## v4.1.0 - 2026-09-25
 
 * Fix: Request State Isolation in Persistent Workers by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/330
