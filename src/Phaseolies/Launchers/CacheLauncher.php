@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Launchers;
 
+use Uri\Rfc3986\Uri;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -71,12 +72,13 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
         $redis = new \Redis();
 
         $dsn = $config['connection'] ?? 'redis://127.0.0.1:6379';
-        $parsed = parse_url($dsn);
+        $parsed = Uri::parse($dsn);
 
-        $host = $parsed['host'] ?? '127.0.0.1';
-        $port = $parsed['port'] ?? 6379;
-        $password = $parsed['pass'] ?? null;
-        $database = isset($parsed['path']) ? (int) substr($parsed['path'], 1) : 0;
+        $host = $parsed?->getHost() ?: '127.0.0.1';
+        $port = $parsed?->getPort() ?? 6379;
+        $password = $parsed?->getPassword();
+        $path = $parsed?->getRawPath() ?? '';
+        $database = $path !== '' ? (int) substr($path, 1) : 0;
 
         if (!$redis->connect($host, $port, 2.5)) {
             throw new \RuntimeException("Could not connect to Redis at {$host}:{$port}");

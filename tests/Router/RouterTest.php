@@ -149,6 +149,22 @@ class RouterTest extends TestCase
     // HTTP Method Registration Tests
     // =========================================================================
 
+    public function testRoutesLenientRequestTargetWithBracketQueryToItsPath(): void
+    {
+        $this->router->get('/', fn() => 'home');
+        $this->router->get('/users', fn() => 'users');
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/users?filter[status]=x',
+            'HTTP_HOST' => 'example.com',
+        ]);
+
+        $callback = $this->router->getCallback($request);
+
+        $this->assertIsCallable($callback);
+        $this->assertSame('users', $callback($request));
+    }
+
     public function testGetMethodRegistersRoute(): void
     {
         $callback = fn() => 'test response';
