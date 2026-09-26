@@ -75,7 +75,7 @@ class ActionPlanRouterTest extends TestCase
 
     private function plansFile(): string
     {
-        return $this->dir . '/actions.php';
+        return $this->dir . DIRECTORY_SEPARATOR . 'actions.php';
     }
 
     /**
