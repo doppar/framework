@@ -1,0 +1,1019 @@
+{
+    "plain action": {
+        "result": [
+            "plain"
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "route params typed and defaulted": {
+        "result": [
+            {
+                "value": 7
+            },
+            {
+                "value": "x"
+            },
+            {
+                "value": null
+            }
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "route params all supplied": {
+        "result": [
+            {
+                "value": 9
+            },
+            {
+                "value": "abc"
+            },
+            {
+                "value": "z"
+            }
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "no params": {
+        "result": [],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "required param missing": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Cannot resolve parameter 'id'"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "unmatched route param": {
+        "result": null,
+        "exception": [
+            "InvalidArgumentException",
+            "Route provides parameter(s) [id, extra] but not accepted by method Tests\\Router\\ActionPlan\\Fixtures\\ParamsController::none()."
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "class level resolver": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "method level resolvers repeatable": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "bind",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "class and method resolvers": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "bind",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "bind",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "service already bound": {
+        "result": [
+            {
+                "value": 1
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            },
+            {
+                "value": "B"
+            },
+            {
+                "value": 3
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "service not bound is auto registered": {
+        "result": [
+            {
+                "value": 1
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            },
+            {
+                "value": "given"
+            },
+            {
+                "value": 3
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "bind attribute": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            },
+            {
+                "value": 4
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "bind",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "bind attribute default": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            },
+            {
+                "value": 0
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ],
+            [
+                "bind",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\OtherAudit"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "bind on builtin type": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Parameter 'value' must be a class-typed when using Bind"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "bind on untyped param": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Parameter 'value' must be a class-typed when using Bind"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "payload loose": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            ],
+            [
+                "make",
+                "request"
+            ],
+            [
+                "request.bindTo",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto",
+                false
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "payload strict": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            ],
+            [
+                "make",
+                "request"
+            ],
+            [
+                "request.bindTo",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto",
+                true
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "payload validated": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            ],
+            [
+                "make",
+                "request"
+            ],
+            [
+                "request.validateDto",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto",
+                true
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "payload on builtin": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Parameter 'dto' must be a class-typed DTO when using Payload"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "payload class missing": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Cannot resolve DTO class 'Tests\\Router\\ActionPlan\\Fixtures\\DoesNotExistDto' for parameter 'dto'"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model by route key": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ]
+        ],
+        "models": [
+            [
+                "where",
+                "slug",
+                "my-slug"
+            ],
+            [
+                "first"
+            ]
+        ],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model by custom column": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ]
+        ],
+        "models": [
+            [
+                "where",
+                "email",
+                "a@b.c"
+            ],
+            [
+                "first"
+            ]
+        ],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model by primary key": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ]
+        ],
+        "models": [
+            [
+                "find",
+                12
+            ]
+        ],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model not found aborts": {
+        "result": null,
+        "exception": [
+            "RuntimeException",
+            "aborted 404: Tests\\Router\\ActionPlan\\Fixtures\\FakeModel not found with slug = gone"
+        ],
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ],
+            [
+                "get",
+                "abort"
+            ]
+        ],
+        "models": [
+            [
+                "where",
+                "slug",
+                "gone"
+            ],
+            [
+                "first"
+            ]
+        ],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model not found without exception passes null": {
+        "result": [
+            {
+                "value": null
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ]
+        ],
+        "models": [
+            [
+                "where",
+                "email",
+                "x"
+            ],
+            [
+                "first"
+            ]
+        ],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model param missing from url": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Route parameter '$model' not found in URL for model binding"
+        ],
+        "calls": [
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeModel"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "model on builtin type": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Parameter '$model' must have a class type hint when using #[Model] attribute"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "constructor dependencies": {
+        "result": {
+            "ctor": [
+                {
+                    "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+                },
+                {
+                    "value": 5
+                }
+            ],
+            "args": []
+        },
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "invokable controller": {
+        "result": [
+            {
+                "value": 3
+            }
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "transaction with options": {
+        "result": [
+            {
+                "value": 2
+            }
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": [
+            [
+                "tracked",
+                "analytics",
+                3
+            ]
+        ]
+    },
+    "transaction defaults": {
+        "result": [],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": [
+            [
+                "defaults",
+                null,
+                1
+            ]
+        ]
+    },
+    "form request": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm",
+                "Closure"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "get",
+                "request"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 1,
+        "transactions": []
+    },
+    "form request already bound": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 1,
+        "transactions": []
+    },
+    "unresolvable class": {
+        "result": null,
+        "exception": [
+            "InvalidArgumentException",
+            "Tests\\Router\\ActionPlan\\Fixtures\\UnresolvableController::run(): Argument #1 ($service) cannot be resolved. 'Tests\\Router\\ActionPlan\\Fixtures\\DoesNotExistService' is not bound in the container. "
+        ],
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\DoesNotExistService"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "defaults of every kind": {
+        "result": [
+            {
+                "value": {
+                    "a": 1,
+                    "b": [
+                        true,
+                        null
+                    ]
+                }
+            },
+            {
+                "value": 8
+            },
+            {
+                "value": "label"
+            },
+            {
+                "value": 0.5
+            },
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "defaults that need reflection": {
+        "result": [
+            "Fast",
+            "Slow"
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "nullable class param": {
+        "result": [
+            {
+                "object": "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            }
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "missing method": {
+        "result": null,
+        "exception": [
+            "BadMethodCallException",
+            "Method Tests\\Router\\ActionPlan\\Fixtures\\PlainController::nope() does not exist"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "missing class": {
+        "result": null,
+        "exception": [
+            "ReflectionException",
+            "Class \"Tests\\Router\\ActionPlan\\Fixtures\\NoSuchController\" does not exist"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with route params": {
+        "result": [
+            5,
+            "n"
+        ],
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with service": {
+        "result": [
+            "Tests\\Router\\ActionPlan\\Fixtures\\Audit",
+            1
+        ],
+        "exception": null,
+        "calls": [
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Audit"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with default": {
+        "result": 2,
+        "exception": null,
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure unresolvable": {
+        "result": null,
+        "exception": [
+            "Exception",
+            "Cannot resolve parameter 'id' for closure"
+        ],
+        "calls": [],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with bind": {
+        "result": "Tests\\Router\\ActionPlan\\Fixtures\\Greeter",
+        "exception": null,
+        "calls": [
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Greeter"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\GreeterContract"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with payload": {
+        "result": "Tests\\Router\\ActionPlan\\Fixtures\\Dto",
+        "exception": null,
+        "calls": [
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto"
+            ],
+            [
+                "make",
+                "request"
+            ],
+            [
+                "request.bindTo",
+                "Tests\\Router\\ActionPlan\\Fixtures\\Dto",
+                true
+            ]
+        ],
+        "models": [],
+        "formsValidated": 0,
+        "transactions": []
+    },
+    "closure with form request": {
+        "result": "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm",
+        "exception": null,
+        "calls": [
+            [
+                "has",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "singleton",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm",
+                "Closure"
+            ],
+            [
+                "get",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "get",
+                "request"
+            ],
+            [
+                "make",
+                "Tests\\Router\\ActionPlan\\Fixtures\\FakeForm"
+            ],
+            [
+                "get",
+                "request"
+            ]
+        ],
+        "models": [],
+        "formsValidated": 1,
+        "transactions": []
+    }
+}
