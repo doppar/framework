@@ -178,7 +178,86 @@ class PresenterBundleTest extends TestCase
         $this->assertEquals(10, $meta['total']);
         $this->assertEquals(5, $meta['last_page']);
         $this->assertNotNull($meta['next_page_url']);
-        $this->assertNotNull($meta['prev_page_url']);
+        $this->assertNotNull($meta['previous_page_url']);
+    }
+
+    public function testPaginatedBundleIsReadyToReturnDirectly(): void
+    {
+        $data = [
+            'data' => [['id' => 1]],
+            'current_page' => 1,
+            'per_page' => 1,
+            'total' => 2,
+            'last_page' => 2,
+            'path' => '/users',
+        ];
+
+        $result = $this->createTestPresenterBundle($data)->only('id')->jsonSerialize();
+
+        $this->assertSame([['id' => 1]], $result['data']);
+        $this->assertSame(1, $result['meta']['current_page']);
+    }
+
+    public function testNestedPaginationMetadataAndProvidedUrlsArePreserved(): void
+    {
+        $data = [
+            'data' => [['id' => 1]],
+            'meta' => [
+                'current_page' => 2,
+                'per_page' => 1,
+                'total' => 3,
+                'last_page' => 3,
+                'path' => '/users?filter=active',
+                'first_page_url' => '/users?filter=active&page=1',
+                'last_page_url' => '/users?filter=active&page=3',
+                'next_page_url' => '/users?filter=active&page=3',
+                'previous_page_url' => '/users?filter=active&page=1',
+            ],
+        ];
+
+        $meta = $this->createTestPresenterBundle($data)->paginate()['meta'];
+
+        $this->assertSame(2, $meta['current_page']);
+        $this->assertSame('/users?filter=active&page=1', $meta['first_page_url']);
+        $this->assertSame('/users?filter=active&page=3', $meta['next_page_url']);
+        $this->assertSame('/users?filter=active&page=1', $meta['previous_page_url']);
+    }
+
+    public function testPaginationCanBeSerializedWithoutAnHttpRequest(): void
+    {
+        Container::forgetInstance();
+
+        $bundle = new PresenterBundle([
+            'data' => [['id' => 1]],
+            'current_page' => 1,
+            'per_page' => 1,
+            'total' => 2,
+            'last_page' => 2,
+            'path' => '/users',
+        ], get_class($this->createTestPresenterClass()));
+
+        $meta = $bundle->paginate()['meta'];
+
+        $this->assertSame('/users?page=2', $meta['next_page_url']);
+        $this->assertNull($meta['previous_page_url']);
+    }
+
+    public function testToIterableYieldsTransformedResources(): void
+    {
+        $bundle = $this->createTestPresenterBundle([['id' => 1], ['id' => 2]])
+            ->only('id');
+
+        $iterable = $bundle->toIterable();
+
+        $this->assertInstanceOf(\Generator::class, $iterable);
+        $this->assertSame([['id' => 1], ['id' => 2]], iterator_to_array($iterable));
+    }
+
+    public function testInvalidPresenterClassThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new PresenterBundle([], \stdClass::class);
     }
 
     public function testInvalidCollectionTypeThrowsException()

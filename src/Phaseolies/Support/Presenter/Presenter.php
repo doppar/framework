@@ -2,8 +2,9 @@
 
 namespace Phaseolies\Support\Presenter;
 
-use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
+use Phaseolies\Database\Entity\Model;
+use Phaseolies\Support\Collection;
 use JsonSerializable;
 
 abstract class Presenter implements JsonSerializable
@@ -55,7 +56,15 @@ abstract class Presenter implements JsonSerializable
      */
     public function __get(string $key)
     {
-        return $this->presenter->{$key};
+        if (is_array($this->presenter)) {
+            return $this->presenter[$key] ?? null;
+        }
+
+        if (is_object($this->presenter)) {
+            return $this->presenter->{$key};
+        }
+
+        return null;
     }
 
     /**
@@ -130,26 +139,32 @@ abstract class Presenter implements JsonSerializable
      * @param mixed $value
      * @return mixed
      */
-    protected function processValue($value)
+    protected function processValue(mixed $value): mixed
     {
-        if ($value instanceof \Phaseolies\Support\Collection) {
-            return $value->toArray();
+        if ($value instanceof Collection) {
+            return $this->processValue($value->all());
         }
 
-        if ($value instanceof \Phaseolies\Database\Entity\Builder) {
-            return $value->get()->toArray();
+        if ($value instanceof Builder) {
+            return $this->processValue($value->get());
         }
 
-        if ($value instanceof \Phaseolies\Database\Entity\Model) {
-            return $value->toArray();
+        if ($value instanceof Model) {
+            return $this->processValue($value->toArray());
         }
 
-        if ($value instanceof self || $value instanceof \JsonSerializable) {
-            return $value->jsonSerialize();
+        if ($value instanceof self || $value instanceof JsonSerializable) {
+            return $this->processValue($value->jsonSerialize());
         }
 
         if ($value instanceof \stdClass || $value instanceof \ArrayObject) {
-            return (array) $value;
+            return $this->processValue((array) $value);
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = $this->processValue($item);
+            }
         }
 
         return $value;
