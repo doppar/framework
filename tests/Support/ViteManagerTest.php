@@ -194,6 +194,15 @@ class ViteManagerTest extends TestCase
         );
     }
 
+    public function testHotServerIsNotReachableForInvalidUri(): void
+    {
+        $manager = new ViteManager();
+        $method = new \ReflectionMethod($manager, 'hotServerIsReachable');
+
+        $this->assertFalse($method->invoke($manager, 'http://[invalid'));
+        $this->assertFalse($method->invoke($manager, '/relative/path'));
+    }
+
     private function deleteDirectory(string $directory): void
     {
         if (!is_dir($directory)) {

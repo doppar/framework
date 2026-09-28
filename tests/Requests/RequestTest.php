@@ -8,6 +8,7 @@ use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\HeaderBag;
 use Phaseolies\Http\ServerBag;
 use Phaseolies\Http\InputBag;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class RequestTest extends TestCase
@@ -193,6 +194,65 @@ class RequestTest extends TestCase
     public function testGetPath()
     {
         $this->assertEquals('/test', $this->request->getPath());
+    }
+
+    #[DataProvider('lenientRequestTargets')]
+    public function testGetPathToleratesLenientRequestTargets(string $uri, string $expected): void
+    {
+        $this->request->server->set('REQUEST_URI', $uri);
+
+        $this->assertSame($expected, $this->request->getPath());
+    }
+
+    public static function lenientRequestTargets(): array
+    {
+        return [
+            'bracket array query' => ['/users?a[]=1&b=2', '/users'],
+            'bracket nested query' => ['/users?filter[status]=active', '/users'],
+            'raw space in query' => ['/search?q=hello world', '/search'],
+            'raw utf-8 path' => ['/café?x=1', '/café'],
+            'braces in query' => ['/users?x={1}', '/users'],
+            'pipe in path' => ['/a|b', '/a|b'],
+            'authority form' => ['//evil.com/x', '/x'],
+            'query only' => ['?a=1', '/'],
+            'malformed request target' => ['http://[invalid]:99999', '/'],
+        ];
+    }
+
+    public function testPrepareRequestUriExtractsProxyPathAndQuery(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'https://proxy.example/products/item%2Fone?filter[status]=active#section',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('/products/item%2Fone?filter[status]=active', $request->getRequestUri());
+    }
+
+    public function testPrepareRequestUriExtractsProxyPathAndRawSpaceQuery(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'http://proxy.example/search?q=hello world',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('/search?q=hello world', $request->getRequestUri());
+    }
+
+    public function testPrepareRequestUriRetainsInvalidProxyUri(): void
+    {
+        $request = new Request([], [], [], [], [], [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => 'http://[invalid]:99999',
+        ]);
+        $property = new \ReflectionProperty(Request::class, 'requestUri');
+        $property->setValue($request, null);
+
+        $this->assertSame('http://[invalid]:99999', $request->getRequestUri());
     }
 
     public function testGetMethod()

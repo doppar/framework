@@ -12,6 +12,7 @@ use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Auth\Authable;
 use ParagonIE\ConstantTime\Base32;
 use OTPHP\TOTP;
+use Uri\Rfc3986\Uri;
 
 trait InteractsWithTwoFactorAuth
 {
@@ -49,7 +50,8 @@ trait InteractsWithTwoFactorAuth
             $this->getClock()
         );
 
-        $host   = parse_url(config('app.url'), PHP_URL_HOST);
+        $appUri = Uri::parse((string) config('app.url'));
+        $host   = $appUri?->getHost() ?? '';
         $issuer = preg_replace('/[^a-zA-Z0-9.\-_]/', '', $host);
 
         $totp->setLabel(strtolower(trim(config('app.name'))));

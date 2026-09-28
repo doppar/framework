@@ -13,9 +13,7 @@ class RouteLauncher extends ServiceLauncher
      */
     public function register()
     {
-        $path = urldecode(
-            parse_url(request()->server->get("REQUEST_URI", "/"), PHP_URL_PATH)
-        );
+        $path = request()->getPath();
 
         if ($path !== '/' && str_ends_with(request()->server->get('REQUEST_URI'), '/')) {
             header('Location: ' . rtrim(request()->server->get('REQUEST_URI'), '/'), true, 301);
