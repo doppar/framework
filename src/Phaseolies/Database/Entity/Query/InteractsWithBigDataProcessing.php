@@ -5,6 +5,7 @@ namespace Phaseolies\Database\Entity\Query;
 use PDO;
 use Generator;
 use RuntimeException;
+use InvalidArgumentException;
 use Phaseolies\Support\Collection;
 
 trait InteractsWithBigDataProcessing
@@ -17,66 +18,86 @@ trait InteractsWithBigDataProcessing
      * @param int|null $total
      * @return void
      */
-    public function chunk($chunkSize, callable $processor, ?int $total = null): void
+    public function chunk(int $chunkSize, callable $processor, ?int $total = null): void
     {
-        $offset = 0;
-        $processed = $chunkSize;
+        $processed = 0;
 
-        while (true) {
-            $chunkQuery = clone $this;
-            $results = $chunkQuery->limit($chunkSize)
-                ->offset($offset)
-                ->get();
-
-            if (!count($results)) {
-                break;
-            }
+        foreach ($this->pages($chunkSize) as $results) {
+            $processed += $results->count();
 
             $processor($results, $processed, $total);
 
-            $processed += $results->count();
-            $offset += $chunkSize;
-
-            // prevent memory leaks
-            unset($chunkQuery, $results);
+            unset($results);
         }
     }
 
     /**
-     * Process records using a cursor for maximum memory efficiency
+     * Process records in chunks using keyset pagination (WHERE id > last).
      *
+     * @param int $chunkSize
      * @param callable $processor
+     * @param string|null $column
      * @param int|null $total
      * @return void
      */
-    public function cursor(callable $processor, ?int $total = null): void
+    public function chunkById(int $chunkSize, callable $processor, ?string $column = null, ?int $total = null): void
     {
-        $processed = 1;
-        $sql = $this->toSql();
+        $this->assertChunkSize($chunkSize);
 
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
-            $stmt->execute();
+        $column ??= app($this->modelClass)->getKeyName();
+        $lastId = null;
+        $processed = 0;
 
-            $stmt->setFetchMode(PDO::FETCH_ASSOC);
+        while (true) {
+            $query = clone $this;
+            $query->orderBy = [];
+            $query->offset = null;
 
-            while ($row = $stmt->fetch()) {
-                $model = new $this->modelClass($row);
-                $processor($model, $processed, $total);
-                $processed++;
-
-                unset($model, $row);
-                if (gc_enabled()) {
-                    gc_collect_cycles();
-                }
+            if ($lastId !== null) {
+                $query->where($column, '>', $lastId);
             }
-        } catch (\PDOException $e) {
-            throw new RuntimeException("Database error during cursor operation: " . $e->getMessage());
-        } finally {
-            if (isset($stmt) && $stmt instanceof \PDOStatement) {
-                $stmt->closeCursor();
+
+            $results = $query->orderBy($column)->limit($chunkSize)->get();
+            $count = $results->count();
+
+            if ($count === 0) {
+                break;
             }
+
+            $items = $results->all();
+            $lastId = end($items)->{$column};
+            unset($items);
+
+            $processed += $count;
+
+            $processor($results, $processed, $total);
+
+            unset($query, $results);
+
+            if ($count < $chunkSize) {
+                break;
+            }
+        }
+    }
+
+    /**
+     * Process records one at a time using a forward-only PDO cursor.
+     *
+     * @param callable $processor
+     * @param int|null $total
+     * @param bool $unbuffered
+     * @return void
+     */
+    public function cursor(callable $processor, ?int $total = null, bool $unbuffered = false): void
+    {
+        $processed = 0;
+
+        foreach ($this->openCursor($unbuffered) as $model) {
+            $processed++;
+
+            $processor($model, $processed, $total);
+
+            unset($model);
         }
     }
 
@@ -87,262 +108,145 @@ trait InteractsWithBigDataProcessing
      * @param callable|null $transform
      * @return Generator
      */
-    public function stream($chunkSize, ?callable $transform = null): Generator
+    public function stream(int $chunkSize, ?callable $transform = null): Generator
     {
-        $offset = 0;
-
-        while (true) {
-            $chunkQuery = clone $this;
-            $results = $chunkQuery->limit($chunkSize)
-                ->offset($offset)
-                ->get();
-
-            if (!count($results)) {
-                break;
-            }
-
+        foreach ($this->pages($chunkSize) as $results) {
             foreach ($results as $model) {
                 yield $transform ? $transform($model) : $model;
             }
 
-            $offset += $chunkSize;
-            unset($chunkQuery, $results);
-            if (gc_enabled()) {
-                gc_collect_cycles();
-            }
+            unset($results);
         }
     }
 
     /**
      * Process records with batch operations for efficiency
      *
-     * @param int chunkSize
+     * @param int $chunkSize
      * @param callable $batchProcessor
      * @param int $batchSize
      * @return void
      */
     public function batch(int $chunkSize, callable $batchProcessor, int $batchSize = 1000): void
     {
+        if ($batchSize < 1) {
+            throw new InvalidArgumentException('Batch size must be greater than zero.');
+        }
+
         $batch = [];
-        $offset = 0;
 
-        while (true) {
-            $chunkQuery = clone $this;
-            $results = $chunkQuery->limit($chunkSize)
-                ->offset($offset)
-                ->get();
-
-            // If no more results, flush any remaining batch and exit
-            if (!count($results)) {
-                if (!empty($batch)) {
-                    $batchProcessor(new Collection($this->modelClass, $batch));
-                }
-                break;
-            }
-
+        foreach ($this->pages($chunkSize) as $results) {
             foreach ($results as $model) {
                 $batch[] = $model;
 
-                // If batch limit is reached, process and reset
                 if (count($batch) >= $batchSize) {
                     $batchProcessor(new Collection($this->modelClass, $batch));
                     $batch = [];
                 }
             }
 
-            $offset += $chunkSize;
-            unset($chunkQuery, $results);
-            if (gc_enabled()) {
-                gc_collect_cycles();
-            }
+            unset($results);
+        }
+
+        if (!empty($batch)) {
+            $batchProcessor(new Collection($this->modelClass, $batch));
         }
     }
 
     /**
-     * Parallel chunk processing using Fibers
+     * Yield pages of results, honouring any limit/offset already set on the query.
      *
      * @param int $chunkSize
-     * @param callable $processor
-     * @param int $concurrency
-     * @return void
+     * @return Generator<Collection>
      */
-    public function fchunk(int $chunkSize, callable $processor, int $concurrency = 4): void
+    private function pages(int $chunkSize): Generator
     {
-        $offset = 0;
-        $fibers = [];
-        $running = true;
+        $this->assertChunkSize($chunkSize);
 
-        while ($running) {
-            while (count($fibers) < $concurrency) {
-                $fiberOffset = $offset;
-                $fiber = new \Fiber(function () use ($fiberOffset, $chunkSize, $processor) {
-                    $chunkQuery = clone $this;
-                    $results = $chunkQuery->limit($chunkSize)
-                        ->offset($fiberOffset)
-                        ->get();
+        $offset = $this->offset ?? 0;
+        $remaining = $this->limit;
 
-                    if (!count($results)) {
-                        // Signal completion
-                        return false;
-                    }
+        $base = clone $this;
 
-                    $processor($results, $fiberOffset + $results->count());
-                    // More data available
-                    return true;
-                });
+        // Without a deterministic order OFFSET pages can overlap or skip rows
+        if (empty($base->orderBy) && empty($base->groupBy)) {
+            $base->orderBy(app($this->modelClass)->getKeyName());
+        }
 
-                $fibers[] = $fiber;
-                $fiber->start();
-                $offset += $chunkSize;
+        while ($remaining === null || $remaining > 0) {
+            $size = $remaining === null ? $chunkSize : min($chunkSize, $remaining);
+
+            $results = (clone $base)->limit($size)->offset($offset)->get();
+            $count = $results->count();
+
+            if ($count === 0) {
+                return;
             }
 
-            // Check fiber status
-            $activeFibers = [];
-            foreach ($fibers as $fiber) {
-                if ($fiber->isTerminated()) {
-                    if ($fiber->getReturn() === false) {
-                        $running = false;
-                        break;
-                    }
-                } else {
-                    $activeFibers[] = $fiber;
-                }
+            yield $results;
+
+            // A short page means there is nothing left, so skip the empty query
+            if ($count < $size) {
+                return;
             }
 
-            $fibers = $activeFibers;
+            $offset += $count;
 
-            // Clean up memory
-            unset($chunkQuery, $results);
-            if (gc_enabled()) {
-                gc_collect_cycles();
-            }
-
-            // Exit if no more data
-            if (!$running) {
-                $running = false;
+            if ($remaining !== null) {
+                $remaining -= $count;
             }
         }
     }
 
     /**
-     * Fiber-based streaming with backpressure control
+     * Stream hydrated models from a PDO cursor.
      *
-     * @param int $chunkSize
-     * @param callable|null $transform
-     * @param int $bufferSize
+     * @param bool $unbuffered
      * @return Generator
      */
-    public function fstream(int $chunkSize, ?callable $transform = null, int $bufferSize = 1000): Generator
+    private function openCursor(bool $unbuffered): Generator
     {
-        $offset = 0;
-        $buffer = [];
-        $fiber = null;
+        $restore = null;
+        $attribute = match (true) {
+            defined('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY') => constant('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY'),
+            defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY') => constant('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY'),
+            default => null,
+        };
 
-        while (true) {
-            // Create a new fiber if none exists or previous completed
-            if (!$fiber || $fiber->isTerminated()) {
-                $currentOffset = $offset;
-                $fiber = new \Fiber(function () use ($currentOffset, $chunkSize, $transform) {
-                    $chunkQuery = clone $this;
-                    $results = $chunkQuery->limit($chunkSize)
-                        ->offset($currentOffset)
-                        ->get();
-
-                    if (!count($results)) {
-                        return false; // No more data
-                    }
-
-                    foreach ($results as $model) {
-                        \Fiber::suspend($transform ? $transform($model) : $model);
-                    }
-
-                    return true; // More data available
-                });
-
-                $fiber->start();
-                $offset += $chunkSize;
+        try {
+            if (
+                $unbuffered
+                && $attribute !== null
+                && $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+            ) {
+                $restore = (bool) $this->pdo->getAttribute($attribute);
+                $this->pdo->setAttribute($attribute, false);
             }
 
-            // Get next item from fiber
-            if (!$fiber->isTerminated()) {
-                $buffer[] = $fiber->resume();
-            }
-
-            // Yield buffered items when buffer is full or fiber completed
-            if (count($buffer) >= $bufferSize || $fiber->isTerminated()) {
-                foreach ($buffer as $item) {
-                    yield $item;
-                }
-                $buffer = [];
-            }
-
-            // Exit if no more data
-            if ($fiber->isTerminated() && $fiber->getReturn() === false) {
-                break;
-            }
-
-            // Clean up memory
-            unset($chunkQuery, $results);
-            if (gc_enabled()) {
-                gc_collect_cycles();
+            yield from $this->fetchLazy();
+        } catch (\PDOException $e) {
+            throw new RuntimeException(
+                "Database error during cursor operation: " . $e->getMessage(),
+                0,
+                $e
+            );
+        } finally {
+            if ($restore !== null) {
+                $this->pdo->setAttribute($attribute, $restore);
             }
         }
     }
 
     /**
-     * Hybrid fiber/cursor processing for maximum efficiency
+     * Ensure the chunk size is usable.
      *
-     * @param callable $processor
-     * @param int $bufferSize
+     * @param int $chunkSize
      * @return void
      */
-    public function fcursor(callable $processor, int $bufferSize = 1000): void
+    private function assertChunkSize(int $chunkSize): void
     {
-        $buffer = [];
-        $sql = $this->toSql();
-
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $this->bindValues($stmt);
-            $stmt->execute();
-            $stmt->setFetchMode(PDO::FETCH_ASSOC);
-
-            $fiber = new \Fiber(function () use ($stmt, &$buffer, $bufferSize) {
-                while ($row = $stmt->fetch()) {
-                    $model = new $this->modelClass($row);
-                    $buffer[] = $model;
-
-                    if (count($buffer) >= $bufferSize) {
-                        \Fiber::suspend($buffer);
-                        $buffer = [];
-                    }
-
-                    unset($model, $row);
-                }
-
-                return $buffer; // Return remaining items
-            });
-
-            $fiber->start();
-
-            while (!$fiber->isTerminated()) {
-                $chunk = $fiber->resume();
-                foreach ($chunk as $model) {
-                    $processor($model);
-                }
-            }
-
-            // Process remaining items
-            $remaining = $fiber->getReturn();
-            foreach ($remaining as $model) {
-                $processor($model);
-            }
-        } catch (\PDOException $e) {
-            throw new RuntimeException("Database error during fiber cursor operation: " . $e->getMessage());
-        } finally {
-            if (isset($stmt) && $stmt instanceof \PDOStatement) {
-                $stmt->closeCursor();
-            }
+        if ($chunkSize < 1) {
+            throw new InvalidArgumentException('Chunk size must be greater than zero.');
         }
     }
 }

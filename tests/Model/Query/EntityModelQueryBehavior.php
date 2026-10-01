@@ -1467,23 +1467,6 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         //     ->chunk(1, function (Collection $users) use ($mock) {
         //         $mock->handle($users);
         //     });
-
-        // Fibar based chunk with concurrency
-        $processed = collect();
-
-        MockUser::query()
-            ->fchunk(
-                chunkSize: 100,
-                processor: function (Collection $users) use (&$processed) {
-                    foreach ($users as $user) {
-                        $processed->push($user->id);
-                    }
-                },
-                concurrency: 4
-            );
-
-        // We have 3 users
-        $this->assertCount(3, $processed);
     }
 
     public function testCursor(): void
@@ -1492,17 +1475,6 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
 
         MockUser::query()
             ->cursor(function ($user) use (&$processed) {
-                $processed->push($user->id);
-            });
-
-        // Assert that all 3 users were processed
-        $this->assertCount(3, $processed);
-
-        // Fibar based cursor
-        $processed = collect();
-
-        MockUser::query()
-            ->fcursor(function ($user) use (&$processed) {
                 $processed->push($user->id);
             });
 
@@ -1523,17 +1495,14 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
 
         $this->assertCount(3, $processed);
 
-        // Fibar based stream
-        $processed = collect();
-        foreach (
-            MockUser::query()
-                ->fstream(3, fn($user) => strtoupper($user->name))
-            as $userName
-        ) {
-            $processed->push($user->id);
+        // Transformed stream
+        $names = [];
+        foreach (MockUser::query()->stream(3, fn($user) => strtoupper($user->name)) as $userName) {
+            $names[] = $userName;
         }
 
-        $this->assertCount(3, $processed);
+        $this->assertCount(3, $names);
+        $this->assertNotContains(null, $names);
     }
 
     public function testBatch(): void
