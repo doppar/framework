@@ -8,6 +8,11 @@ namespace Phaseolies\Database\Migration;
 
 abstract class Migration
 {
+    // Run up() and down() inside a transaction on drivers that can roll back schema
+    // changes (PostgreSQL, SQLite). Set to false for statements that cannot run in a
+    // transaction, such as PostgreSQL's CREATE INDEX CONCURRENTLY.
+    public bool $withinTransaction = true;
+
     // The 'up' method should contain the logic to apply the migration.
     // For example, creating tables, adding columns, or modifying indexes.
     abstract public function up(): void;

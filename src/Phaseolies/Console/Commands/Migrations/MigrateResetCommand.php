@@ -6,7 +6,7 @@ use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Console\Support\InteractsWithMigrations;
 use Phaseolies\Database\Migration\Migrator;
 
-class MigrateCommand extends Command
+class MigrateResetCommand extends Command
 {
     use InteractsWithMigrations;
 
@@ -15,14 +15,14 @@ class MigrateCommand extends Command
      *
      * @var string
      */
-    protected $name = 'migrate {--path=} {--connection=} {--step} {--pretend} {--force} {--seed}';
+    protected $name = 'migrate:reset {--connection=} {--pretend} {--force}';
 
     /**
      * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Run the database migrations';
+    protected $description = 'Roll back all database migrations';
 
     /**
      * The migrator instance.
@@ -51,16 +51,15 @@ class MigrateCommand extends Command
             $connection = $this->resolveConnection();
             $pretend = (bool) $this->option('pretend');
 
-            if (!$this->confirmToProceed('Running migrations in production')) {
+            if (!$this->confirmToProceed("This will roll back every migration on connection: {$connection}", true)) {
                 return Command::FAILURE;
             }
 
-            $this->line("<fg=yellow>🔁 " . ($pretend ? 'Previewing' : 'Running') . " migrations on connection: {$connection}</>");
+            $this->line("<fg=yellow>⏪ " . ($pretend ? 'Previewing reset' : 'Resetting migrations') . " on connection: {$connection}</>");
             $this->newLine();
 
             try {
-                $migrations = $this->migrator->run($connection, $this->option('path') ?: null, [
-                    'step' => (bool) $this->option('step'),
+                $rolledBack = $this->migrator->reset($connection, [
                     'pretend' => $pretend,
                     'progress' => $this->progressReporter(),
                 ]);
@@ -71,15 +70,11 @@ class MigrateCommand extends Command
                 return Command::FAILURE;
             }
 
-            if (empty($migrations)) {
-                $this->displayInfo('Nothing to migrate');
+            if (empty($rolledBack)) {
+                $this->displayInfo('Nothing to roll back');
             } elseif (!$pretend) {
                 $this->newLine();
-                $this->displaySuccess(count($migrations) . ' ' . (count($migrations) === 1 ? 'migration' : 'migrations') . ' executed');
-            }
-
-            if ($this->option('seed') && !$pretend) {
-                return $this->runSeeders();
+                $this->displaySuccess(count($rolledBack) . ' ' . (count($rolledBack) === 1 ? 'migration' : 'migrations') . ' rolled back');
             }
 
             return Command::SUCCESS;

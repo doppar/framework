@@ -42,6 +42,13 @@ class Database
     protected static $drivers = [];
 
     /**
+     * Statements captured while pretending, or null when running for real
+     *
+     * @var array<int, array{sql: string, bindings: array}>|null
+     */
+    protected static ?array $pretendLog = null;
+
+    /**
      * The connection name for this instance
      */
     protected ?string $connection;
@@ -454,6 +461,12 @@ class Database
      */
     public function execute(string $sql, array $params = []): int
     {
+        if (static::$pretendLog !== null) {
+            static::$pretendLog[] = ['sql' => $sql, 'bindings' => $params];
+
+            return 0;
+        }
+
         $pdo = $this->getPdo();
         $driver = $this->getDriver();
 
@@ -477,6 +490,36 @@ class Database
         $stmt->execute($params);
 
         return $stmt->rowCount();
+    }
+
+    /**
+     * Run the callback without executing any write statements, instead capturing them for inspection.
+     *
+     * @param \Closure $callback
+     * @return array<int, array{sql: string, bindings: array}>
+     */
+    public static function pretend(\Closure $callback): array
+    {
+        $previous = static::$pretendLog;
+        static::$pretendLog = [];
+
+        try {
+            $callback();
+
+            return static::$pretendLog;
+        } finally {
+            static::$pretendLog = $previous;
+        }
+    }
+
+    /**
+     * Determine if statements are currently being captured instead of run
+     *
+     * @return bool
+     */
+    public static function isPretending(): bool
+    {
+        return static::$pretendLog !== null;
     }
 
     /**
