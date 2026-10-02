@@ -1157,6 +1157,160 @@ if (!function_exists('tap')) {
     }
 }
 
+if (!function_exists('blank')) {
+    /**
+     * Determine if the given value is "blank"
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    function blank(mixed $value): bool
+    {
+        if (is_null($value)) {
+            return true;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+
+        if (is_numeric($value) || is_bool($value)) {
+            return false;
+        }
+
+        if ($value instanceof Countable) {
+            return count($value) === 0;
+        }
+
+        if (is_array($value)) {
+            return $value === [];
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('filled')) {
+    /**
+     * Determine if the given value is not "blank"
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    function filled(mixed $value): bool
+    {
+        return !blank($value);
+    }
+}
+
+if (!function_exists('with')) {
+    /**
+     * Pass a value through a callback and return the result
+     *
+     * @param mixed $value
+     * @param callable|null $callback
+     * @return mixed
+     */
+    function with(mixed $value, ?callable $callback = null): mixed
+    {
+        return is_null($callback) ? $value : $callback($value);
+    }
+}
+
+if (!function_exists('rescue')) {
+    /**
+     * Run a callback and return a default value if it throws
+     *
+     * @param callable $callback
+     * @param mixed $default
+     * @param bool $report
+     * @return mixed
+     */
+    function rescue(callable $callback, mixed $default = null, bool $report = true): mixed
+    {
+        try {
+            return $callback();
+        } catch (Throwable $e) {
+            if ($report) {
+                try {
+                    Log::error($e->getMessage(), ['exception' => $e]);
+                } catch (Throwable) {
+                    // A broken logger must not hide the fallback value
+                }
+            }
+
+            return $default instanceof Closure ? $default($e) : $default;
+        }
+    }
+}
+
+if (!function_exists('retry')) {
+    /**
+     * Run a callback up to $times attempts, retrying when it throws
+     *
+     * @param int $times
+     * @param callable $callback
+     * @param int|Closure $sleepMs
+     * @param callable|null $when
+     * @return mixed
+     * @throws InvalidArgumentException
+     * @throws Throwable
+     */
+    function retry(int $times, callable $callback, int|Closure $sleepMs = 0, ?callable $when = null): mixed
+    {
+        if ($times < 1) {
+            throw new InvalidArgumentException('retry() requires at least one attempt.');
+        }
+
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            try {
+                return $callback($attempt);
+            } catch (Throwable $e) {
+                if ($attempt >= $times || ($when !== null && !$when($e))) {
+                    throw $e;
+                }
+
+                $delay = $sleepMs instanceof Closure ? $sleepMs($attempt) : $sleepMs;
+
+                if ($delay > 0) {
+                    usleep($delay * 1000);
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('benchmark')) {
+    /**
+     * Measure the execution time and memory use of a callback
+     *
+     * @param callable $callback
+     * @return array{result: mixed, time_ms: float, memory_bytes: int, peak_memory_bytes: int}
+     */
+    function benchmark(callable $callback): array
+    {
+        memory_reset_peak_usage();
+
+        $memoryBefore = memory_get_usage();
+        $start = hrtime(true);
+
+        $result = $callback();
+
+        $time = (hrtime(true) - $start) / 1e6;
+
+        return [
+            'result' => $result,
+            'time_ms' => $time,
+            'memory_bytes' => memory_get_usage() - $memoryBefore,
+            'peak_memory_bytes' => max(0, memory_get_peak_usage() - $memoryBefore),
+        ];
+    }
+}
+
 if (!function_exists('ddd')) {
     /**
      * Clean previous buffer and die
