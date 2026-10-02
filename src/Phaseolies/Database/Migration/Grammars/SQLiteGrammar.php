@@ -21,7 +21,18 @@ class SQLiteGrammar extends Grammar
             $type .= ' ' . $this->compileEnumCheckClause($column->name, $values);
         }
 
-        return $type;
+        return $type . $this->compileTypeSuffix($column);
+    }
+
+    /**
+     * Quote an identifier with backticks.
+     *
+     * @param string $name
+     * @return string
+     */
+    public function quoteIdentifier(string $name): string
+    {
+        return '`' . str_replace('`', '``', trim($name, '"`')) . '`';
     }
 
     /**
@@ -48,11 +59,10 @@ class SQLiteGrammar extends Grammar
             // Check if this is a primary key column
             $isPrimaryKey = !empty($column->attributes['primary']) ||
                            in_array($column->name, $primaryKeys) ||
-                           $column->type === 'id' ||
-                           $column->type === 'bigIncrements';
+                           $this->isIncrementing($column->type);
 
             if ($isPrimaryKey) {
-                if (($column->type === 'id' || $column->type === 'bigIncrements')) {
+                if ($this->isIncrementing($column->type)) {
                     $cleanSql = preg_replace('/\s+PRIMARY\s+KEY/i', '', $originalSql);
                     $columnSql = str_replace('INTEGER', 'INTEGER PRIMARY KEY AUTOINCREMENT', $cleanSql);
                     $hasAutoIncrementId = true;
@@ -92,7 +102,7 @@ class SQLiteGrammar extends Grammar
             }
         }
 
-        return "CREATE TABLE `{$table}` (" . implode(', ', $columnDefinitions) . $primaryKeySql . ")";
+        return $this->createTableKeyword() . " `{$table}` (" . implode(', ', $columnDefinitions) . $primaryKeySql . ')';
     }
 
     /**
@@ -112,13 +122,12 @@ class SQLiteGrammar extends Grammar
      *
      * @param string $table
      * @param string $column
+     * @param string|null $name
      * @return string
      */
-    public function compileCreateIndex(string $table, string $column): string
+    public function compileCreateIndex(string $table, string $column, ?string $name = null): string
     {
-        $indexName = "idx_{$table}_{$column}";
-
-        return "CREATE INDEX `{$indexName}` ON `{$table}` (`{$column}`)";
+        return $this->compileCreateIndexSql($table, $name ?? $this->indexName($table, [$column]), [$column]);
     }
 
     /**
@@ -126,12 +135,88 @@ class SQLiteGrammar extends Grammar
      *
      * @param string $table
      * @param string $column
+     * @param string|null $name
      * @return string
      */
-    public function compileCreateUnique(string $table, string $column): string
+    public function compileCreateUnique(string $table, string $column, ?string $name = null): string
     {
         // SQLite does not support adding constraints UNIQUE with ALTER TABLE
         return '';
+    }
+
+    /**
+     * SQLite has no ALTER TABLE ADD CONSTRAINT, but a unique index is
+     * equivalent and can be created at any time.
+     *
+     * @param string $table
+     * @param string $name
+     * @param array $columns
+     * @return string
+     */
+    protected function compileCreateUniqueSql(string $table, string $name, array $columns): string
+    {
+        return "CREATE UNIQUE INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "({$this->quoteColumns($columns)})";
+    }
+
+    protected function compileDropUnique(string $table, string $name): string
+    {
+        return 'DROP INDEX ' . $this->quoteIdentifier($name);
+    }
+
+    public function compileAddPrimary(string $table, array $columns): string
+    {
+        throw new \RuntimeException(
+            'SQLite cannot add a primary key to an existing table. Declare it in the CREATE TABLE migration.'
+        );
+    }
+
+    protected function compileDropPrimary(string $table): string
+    {
+        throw new \RuntimeException('SQLite cannot drop a primary key from an existing table.');
+    }
+
+    protected function compileDropForeign(string $table, string $name): string
+    {
+        throw new \RuntimeException('SQLite cannot drop a foreign key from an existing table.');
+    }
+
+    public function compileChangeColumn(string $table, ColumnDefinition $column): array
+    {
+        throw new \RuntimeException(
+            "SQLite cannot modify column \"{$column->name}\" on table \"{$table}\". "
+            . 'Create a new table, copy the data and drop the old one instead.'
+        );
+    }
+
+    /**
+     * SQLite cannot add a foreign key with ALTER TABLE; it must be part of CREATE TABLE.
+     *
+     * @return bool
+     */
+    public function supportsAddingForeignKey(): bool
+    {
+        return false;
+    }
+
+    /**
+     * SQLite keeps PRIMARY KEY in the column definition.
+     *
+     * @return bool
+     */
+    public function shouldAddPrimaryInColumnDefinition(): bool
+    {
+        return true;
+    }
+
+    public function compileGetColumns(): string
+    {
+        return 'SELECT name FROM pragma_table_info(?)';
+    }
+
+    public function compileGetIndexes(): string
+    {
+        return 'SELECT name FROM pragma_index_list(?)';
     }
 
     /**
@@ -166,6 +251,12 @@ class SQLiteGrammar extends Grammar
         $map = [
             'id' => 'INTEGER',
             'bigIncrements' => 'INTEGER',
+            'increments' => 'INTEGER',
+            'integerIncrements' => 'INTEGER',
+            'tinyIncrements' => 'INTEGER',
+            'smallIncrements' => 'INTEGER',
+            'mediumIncrements' => 'INTEGER',
+            'ulid' => 'TEXT',
             'string' => 'TEXT',
             'char' => 'TEXT',
             'text' => 'TEXT',
