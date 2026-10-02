@@ -3021,6 +3021,95 @@ class ContainerTest extends TestCase
         $this->assertTrue($mailerThrew);
     }
 
+    public function testUsingOverridesForTheCallbackAndRestoresAfterwards()
+    {
+        $this->container->instance('mailer', 'real');
+
+        $inside = $this->container->using(['mailer' => 'fake'], fn(Container $c) => $c->make('mailer'));
+
+        $this->assertSame('fake', $inside);
+        $this->assertSame('real', $this->container->make('mailer'));
+    }
+
+    public function testUsingRemovesBindingsThatDidNotExistBefore()
+    {
+        $this->container->using(['scratch' => 'value'], function (Container $c) {
+            $this->assertTrue($c->hasInstance('scratch'));
+        });
+
+        $this->assertFalse($this->container->hasInstance('scratch'));
+        $this->assertArrayNotHasKey('scratch', $this->container->getBindings());
+        $this->assertArrayNotHasKey('scratch', $this->container->getInstances());
+    }
+
+    public function testUsingRestoresEvenWhenTheCallbackThrows()
+    {
+        $this->container->instance('mailer', 'real');
+
+        try {
+            $this->container->using(['mailer' => 'fake'], function () {
+                throw new RuntimeException('boom');
+            });
+            $this->fail('Expected the exception to propagate');
+        } catch (RuntimeException $e) {
+            $this->assertSame('boom', $e->getMessage());
+        }
+
+        $this->assertSame('real', $this->container->make('mailer'));
+    }
+
+    public function testUsingClosureIsAFactoryCalledOnceForTheScope()
+    {
+        $calls = 0;
+
+        $this->container->using(['token' => function () use (&$calls) {
+            $calls++;
+
+            return new \stdClass();
+        }], function (Container $c) {
+            $this->assertSame($c->make('token'), $c->make('token'));
+        });
+
+        $this->assertSame(1, $calls);
+    }
+
+    public function testUsingBuildsAClassNameOverride()
+    {
+        $this->container->bind(TestInterface::class, AnotherImplementation::class);
+
+        $this->container->using([TestInterface::class => ConcreteImplementation::class], function (Container $c) {
+            $this->assertInstanceOf(ConcreteImplementation::class, $c->make(TestInterface::class));
+        });
+
+        $this->assertInstanceOf(AnotherImplementation::class, $this->container->make(TestInterface::class));
+    }
+
+    public function testUsingRestoresTheSameSingletonInstanceThatWasResolvedBefore()
+    {
+        $this->container->singleton(Counter::class);
+        $before = $this->container->make(Counter::class);
+
+        $this->container->using([Counter::class => new Counter()], function (Container $c) use ($before) {
+            $this->assertNotSame($before, $c->make(Counter::class));
+        });
+
+        $this->assertSame($before, $this->container->make(Counter::class));
+    }
+
+    public function testUsingCanBeNested()
+    {
+        $this->container->instance('level', 'outer');
+
+        $result = $this->container->using(['level' => 'one'], function (Container $c) {
+            $c->using(['level' => 'two'], fn() => $this->assertSame('two', $c->make('level')));
+
+            return $c->make('level');
+        });
+
+        $this->assertSame('one', $result);
+        $this->assertSame('outer', $this->container->make('level'));
+    }
+
     public function testMailerServiceReadsWorkAfterFreeze()
     {
         $mailer = $this->container->make(MockMailerService::class);
