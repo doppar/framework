@@ -21,6 +21,9 @@ class Blueprint
     /** @var string The primary key column name */
     protected string $primaryKey = '';
 
+    /** @var array Table level options (engine, charset, collation, comment, temporary) */
+    protected array $tableOptions = [];
+
     /** @var Grammar The grammar instance for the current database driver */
     protected Grammar $grammar;
 
@@ -232,55 +235,60 @@ class Blueprint
      * Create a DATETIME column (date and time, no timezone)
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function dateTime(string $column): ColumnDefinition
+    public function dateTime(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('dateTime', $column);
+        return $this->addColumn('dateTime', $column, $this->precision($precision));
     }
 
     /**
      * Create a DATETIME column with timezone awareness
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function dateTimeTz(string $column): ColumnDefinition
+    public function dateTimeTz(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('dateTimeTz', $column);
+        return $this->addColumn('dateTimeTz', $column, $this->precision($precision));
     }
 
     /**
      * Create a TIME column (time only, no date)
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function time(string $column): ColumnDefinition
+    public function time(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('time', $column);
+        return $this->addColumn('time', $column, $this->precision($precision));
     }
 
     /**
      * Create a TIME column with timezone awareness
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function timeTz(string $column): ColumnDefinition
+    public function timeTz(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('timeTz', $column);
+        return $this->addColumn('timeTz', $column, $this->precision($precision));
     }
 
     /**
      * Create a TIMESTAMP column with timezone awareness
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function timestampTz(string $column): ColumnDefinition
+    public function timestampTz(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('timestampTz', $column);
+        return $this->addColumn('timestampTz', $column, $this->precision($precision));
     }
 
     /**
@@ -609,43 +617,543 @@ class Blueprint
      * Create a timestamp column.
      *
      * @param string $column
+     * @param int|null $precision Fractional seconds digits (MySQL / PostgreSQL)
      * @return ColumnDefinition
      */
-    public function timestamp(string $column): ColumnDefinition
+    public function timestamp(string $column, ?int $precision = null): ColumnDefinition
     {
-        return $this->addColumn('timestamp', $column);
+        return $this->addColumn('timestamp', $column, $this->precision($precision));
     }
 
     /**
      * Add nullable creation and update timestamps to the table.
      *
+     * @param int|null $precision
      * @return void
      */
-    public function timestamps(): void
+    public function timestamps(?int $precision = null): void
     {
-        $this->timestamp('created_at')->nullable();
-        $this->timestamp('updated_at')->nullable();
+        $this->timestamp('created_at', $precision)->nullable();
+        $this->timestamp('updated_at', $precision)->nullable();
+    }
+
+    /**
+     * Alias of timestamps().
+     *
+     * @param int|null $precision
+     * @return void
+     */
+    public function nullableTimestamps(?int $precision = null): void
+    {
+        $this->timestamps($precision);
     }
 
     /**
      * Add created_at and updated_at with timezone awareness.
      *
+     * @param int|null $precision
      * @return void
      */
-    public function timestampsTz(): void
+    public function timestampsTz(?int $precision = null): void
     {
-        $this->timestampTz('created_at')->nullable();
-        $this->timestampTz('updated_at')->nullable();
+        $this->timestampTz('created_at', $precision)->nullable();
+        $this->timestampTz('updated_at', $precision)->nullable();
     }
 
     /**
      * Add a nullable deletion timestamp to the table.
      *
+     * @param string $column
+     * @param int|null $precision
+     * @return ColumnDefinition
+     */
+    public function softDeletes(string $column = 'deleted_at', ?int $precision = null): ColumnDefinition
+    {
+        return $this->timestamp($column, $precision)->nullable();
+    }
+
+    /**
+     * Add a nullable deletion timestamp with timezone awareness.
+     *
+     * @param string $column
+     * @param int|null $precision
+     * @return ColumnDefinition
+     */
+    public function softDeletesTz(string $column = 'deleted_at', ?int $precision = null): ColumnDefinition
+    {
+        return $this->timestampTz($column, $precision)->nullable();
+    }
+
+    /**
+     * Add a nullable remember_token VARCHAR(100) column.
+     *
+     * @return ColumnDefinition
+     */
+    public function rememberToken(): ColumnDefinition
+    {
+        return $this->string('remember_token', 100)->nullable();
+    }
+
+    /**
+     * Create an auto-incrementing INT UNSIGNED primary key column.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function increments(string $column): ColumnDefinition
+    {
+        return $this->addColumn('increments', $column)->primary();
+    }
+
+    /**
+     * Alias of increments().
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function integerIncrements(string $column): ColumnDefinition
+    {
+        return $this->addColumn('integerIncrements', $column)->primary();
+    }
+
+    /**
+     * Create an auto-incrementing TINYINT UNSIGNED primary key column.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function tinyIncrements(string $column): ColumnDefinition
+    {
+        return $this->addColumn('tinyIncrements', $column)->primary();
+    }
+
+    /**
+     * Create an auto-incrementing SMALLINT UNSIGNED primary key column.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function smallIncrements(string $column): ColumnDefinition
+    {
+        return $this->addColumn('smallIncrements', $column)->primary();
+    }
+
+    /**
+     * Create an auto-incrementing MEDIUMINT UNSIGNED primary key column.
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function mediumIncrements(string $column): ColumnDefinition
+    {
+        return $this->addColumn('mediumIncrements', $column)->primary();
+    }
+
+    /**
+     * Create a ULID column (stored as CHAR(26)).
+     *
+     * @param string $column
+     * @return ColumnDefinition
+     */
+    public function ulid(string $column = 'ulid'): ColumnDefinition
+    {
+        return $this->addColumn('ulid', $column);
+    }
+
+    /**
+     * Create an unsigned BIGINT column that can be constrained to another table:
+     * $table->foreignId('user_id')->constrained()->cascadeOnDelete()
+     *
+     * @param string $column
+     * @return ForeignIdColumnDefinition
+     */
+    public function foreignId(string $column): ForeignIdColumnDefinition
+    {
+        return $this->addForeignIdColumn('unsignedBigInteger', $column);
+    }
+
+    /**
+     * Create a UUID column that can be constrained to another table.
+     *
+     * @param string $column
+     * @return ForeignIdColumnDefinition
+     */
+    public function foreignUuid(string $column): ForeignIdColumnDefinition
+    {
+        return $this->addForeignIdColumn('uuid', $column);
+    }
+
+    /**
+     * Create a ULID column that can be constrained to another table.
+     *
+     * @param string $column
+     * @return ForeignIdColumnDefinition
+     */
+    public function foreignUlid(string $column): ForeignIdColumnDefinition
+    {
+        return $this->addForeignIdColumn('ulid', $column);
+    }
+
+    /**
+     * Add the {name}_type and {name}_id columns of a polymorphic relation
+     * together with a composite index on them.
+     *
+     * @param string $name
+     * @param string|null $indexName
      * @return void
      */
-    public function softDeletes(): void
+    public function morphs(string $name, ?string $indexName = null): void
     {
-        $this->timestamp('deleted_at')->nullable();
+        $this->string("{$name}_type");
+        $this->unsignedBigInteger("{$name}_id");
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Nullable version of morphs().
+     *
+     * @param string $name
+     * @param string|null $indexName
+     * @return void
+     */
+    public function nullableMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type")->nullable();
+        $this->unsignedBigInteger("{$name}_id")->nullable();
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Polymorphic relation whose key is a UUID.
+     *
+     * @param string $name
+     * @param string|null $indexName
+     * @return void
+     */
+    public function uuidMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type");
+        $this->uuid("{$name}_id");
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Polymorphic relation whose key is a ULID.
+     *
+     * @param string $name
+     * @param string|null $indexName
+     * @return void
+     */
+    public function ulidMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->string("{$name}_type");
+        $this->ulid("{$name}_id");
+        $this->index(["{$name}_type", "{$name}_id"], $indexName);
+    }
+
+    /**
+     * Set the storage engine of the table (MySQL only).
+     *
+     * @param string $engine
+     * @return static
+     */
+    public function engine(string $engine): static
+    {
+        $this->tableOptions['engine'] = $engine;
+
+        return $this;
+    }
+
+    /**
+     * Set the default character set of the table (MySQL only).
+     *
+     * @param string $charset
+     * @return static
+     */
+    public function charset(string $charset): static
+    {
+        $this->tableOptions['charset'] = $charset;
+
+        return $this;
+    }
+
+    /**
+     * Set the default collation of the table (MySQL only).
+     *
+     * @param string $collation
+     * @return static
+     */
+    public function collation(string $collation): static
+    {
+        $this->tableOptions['collation'] = $collation;
+
+        return $this;
+    }
+
+    /**
+     * Add a comment to the table (MySQL and PostgreSQL).
+     *
+     * @param string $comment
+     * @return static
+     */
+    public function comment(string $comment): static
+    {
+        $this->tableOptions['comment'] = $comment;
+
+        return $this;
+    }
+
+    /**
+     * Create the table as a TEMPORARY table.
+     *
+     * @return static
+     */
+    public function temporary(): static
+    {
+        $this->tableOptions['temporary'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Add a (composite) index.
+     *
+     * @param string|array $columns
+     * @param string|null $name
+     * @param string|null $algorithm
+     * @return IndexDefinition
+     */
+    public function index(string|array $columns, ?string $name = null, ?string $algorithm = null): IndexDefinition
+    {
+        return $this->addIndexCommand('index', $columns, $name, $algorithm);
+    }
+
+    /**
+     * Add a (composite) unique constraint.
+     *
+     * @param string|array $columns
+     * @param string|null $name
+     * @return IndexDefinition
+     */
+    public function unique(string|array $columns, ?string $name = null): IndexDefinition
+    {
+        return $this->addIndexCommand('unique', $columns, $name);
+    }
+
+    /**
+     * Add a (composite) primary key.
+     *
+     * @param string|array $columns
+     * @return IndexDefinition
+     */
+    public function primary(string|array $columns): IndexDefinition
+    {
+        return $this->addIndexCommand('primary', $columns);
+    }
+
+    /**
+     * Add a full text index.
+     *
+     * @param string|array $columns
+     * @param string|null $name
+     * @return IndexDefinition
+     */
+    public function fullText(string|array $columns, ?string $name = null): IndexDefinition
+    {
+        return $this->addIndexCommand('fulltext', $columns, $name);
+    }
+
+    /**
+     * Add a spatial index.
+     *
+     * @param string|array $columns
+     * @param string|null $name
+     * @return IndexDefinition
+     */
+    public function spatialIndex(string|array $columns, ?string $name = null): IndexDefinition
+    {
+        return $this->addIndexCommand('spatial', $columns, $name);
+    }
+
+    /**
+     * Drop one or more columns.
+     *
+     * @param string|array $columns
+     * @return void
+     */
+    public function dropColumn(string|array $columns): void
+    {
+        $this->commands[] = ['command' => 'dropColumn', 'columns' => (array) $columns];
+    }
+
+    /**
+     * Rename a column.
+     *
+     * @param string $from
+     * @param string $to
+     * @return void
+     */
+    public function renameColumn(string $from, string $to): void
+    {
+        $this->commands[] = ['command' => 'renameColumn', 'from' => $from, 'to' => $to];
+    }
+
+    /**
+     * Drop an index by name, or by the column list it was created with.
+     *
+     * @param string|array $index
+     * @return void
+     */
+    public function dropIndex(string|array $index): void
+    {
+        $this->addDropIndexCommand('index', $index);
+    }
+
+    /**
+     * Drop a unique constraint by name, or by the column list it was created with.
+     *
+     * @param string|array $index
+     * @return void
+     */
+    public function dropUnique(string|array $index): void
+    {
+        $this->addDropIndexCommand('unique', $index);
+    }
+
+    /**
+     * Drop a full text index by name, or by the column list it was created with.
+     *
+     * @param string|array $index
+     * @return void
+     */
+    public function dropFullText(string|array $index): void
+    {
+        $this->addDropIndexCommand('fulltext', $index);
+    }
+
+    /**
+     * Drop a spatial index by name, or by the column list it was created with.
+     *
+     * @param string|array $index
+     * @return void
+     */
+    public function dropSpatialIndex(string|array $index): void
+    {
+        $this->addDropIndexCommand('spatial', $index);
+    }
+
+    /**
+     * Drop the primary key.
+     *
+     * @return void
+     */
+    public function dropPrimary(): void
+    {
+        $this->commands[] = ['command' => 'dropIndex', 'type' => 'primary', 'name' => ''];
+    }
+
+    /**
+     * Drop a foreign key by constraint name, or by the column(s) it was created on.
+     *
+     * @param string|array $index
+     * @return void
+     */
+    public function dropForeign(string|array $index): void
+    {
+        $name = is_array($index) ? 'fk_' . $this->table . '_' . implode('_', $index) : $index;
+
+        $this->commands[] = ['command' => 'dropIndex', 'type' => 'foreign', 'name' => $name];
+    }
+
+    /**
+     * Drop a foreign key column together with its constraint
+     * (the default fk_{table}_{column} constraint name is used).
+     *
+     * @param string $column
+     * @return void
+     */
+    public function dropConstrainedForeignId(string $column): void
+    {
+        $this->dropForeign([$column]);
+        $this->dropColumn($column);
+    }
+
+    /**
+     * Rename an index.
+     *
+     * @param string $from
+     * @param string $to
+     * @return void
+     */
+    public function renameIndex(string $from, string $to): void
+    {
+        $this->commands[] = ['command' => 'renameIndex', 'from' => $from, 'to' => $to];
+    }
+
+    /**
+     * Drop the created_at and updated_at columns.
+     *
+     * @return void
+     */
+    public function dropTimestamps(): void
+    {
+        $this->dropColumn(['created_at', 'updated_at']);
+    }
+
+    /**
+     * Drop the timezone aware created_at and updated_at columns.
+     *
+     * @return void
+     */
+    public function dropTimestampsTz(): void
+    {
+        $this->dropTimestamps();
+    }
+
+    /**
+     * Drop the soft delete column.
+     *
+     * @param string $column
+     * @return void
+     */
+    public function dropSoftDeletes(string $column = 'deleted_at'): void
+    {
+        $this->dropColumn($column);
+    }
+
+    /**
+     * Drop the timezone aware soft delete column.
+     *
+     * @param string $column
+     * @return void
+     */
+    public function dropSoftDeletesTz(string $column = 'deleted_at'): void
+    {
+        $this->dropSoftDeletes($column);
+    }
+
+    /**
+     * Drop the remember_token column.
+     *
+     * @return void
+     */
+    public function dropRememberToken(): void
+    {
+        $this->dropColumn('remember_token');
+    }
+
+    /**
+     * Drop the columns (and composite index) of a polymorphic relation.
+     * Pass the same index name that was given to morphs(), if any.
+     *
+     * @param string $name
+     * @param string|null $indexName
+     * @return void
+     */
+    public function dropMorphs(string $name, ?string $indexName = null): void
+    {
+        $this->dropIndex($indexName ?? ["{$name}_type", "{$name}_id"]);
+        $this->dropColumn(["{$name}_type", "{$name}_id"]);
     }
 
     /**
@@ -681,10 +1189,10 @@ class Blueprint
     /**
      * Create a foreign key constraint on the given column.
      *
-     * @param string $column
+     * @param string|array $column
      * @return ForeignKeyDefinition
      */
-    public function foreign(string $column): ForeignKeyDefinition
+    public function foreign(string|array $column): ForeignKeyDefinition
     {
         $foreign = new ForeignKeyDefinition($this, $column);
         $this->commands[] = $foreign;
@@ -707,6 +1215,64 @@ class Blueprint
         $this->columns[] = $column;
 
         return $column;
+    }
+
+    /**
+     * Add a column that can later be constrained with constrained().
+     *
+     * @param string $type
+     * @param string $name
+     * @return ForeignIdColumnDefinition
+     */
+    protected function addForeignIdColumn(string $type, string $name): ForeignIdColumnDefinition
+    {
+        $column = new ForeignIdColumnDefinition($this, compact('type', 'name'));
+
+        $this->columns[] = $column;
+
+        return $column;
+    }
+
+    /**
+     * Register a table level index command.
+     *
+     * @param string $type
+     * @param string|array $columns
+     * @param string|null $name
+     * @param string|null $algorithm
+     * @return IndexDefinition
+     */
+    protected function addIndexCommand(string $type, string|array $columns, ?string $name = null, ?string $algorithm = null): IndexDefinition
+    {
+        $index = new IndexDefinition($type, (array) $columns, $name, $algorithm);
+        $this->commands[] = $index;
+
+        return $index;
+    }
+
+    /**
+     * Register a DROP INDEX style command.
+     *
+     * @param string $type
+     * @param string|array $index
+     * @return void
+     */
+    protected function addDropIndexCommand(string $type, string|array $index): void
+    {
+        $name = is_array($index) ? $this->grammar->indexName($this->table, $index, $type) : $index;
+
+        $this->commands[] = ['command' => 'dropIndex', 'type' => $type, 'name' => $name];
+    }
+
+    /**
+     * Build the optional precision attribute of temporal columns.
+     *
+     * @param int|null $precision
+     * @return array
+     */
+    protected function precision(?int $precision): array
+    {
+        return $precision === null ? [] : ['precision' => $precision];
     }
 
     /**
@@ -757,76 +1323,218 @@ class Blueprint
     }
 
     /**
-     * Convert the blueprint to SQL statements.
+     * Convert the blueprint to a list of SQL statements, in execution order.
      *
-     * @return string
+     * @return array
      * @throws \RuntimeException
      */
-    public function toSql(): string
+    public function toStatements(): array
     {
         $statements = [];
 
         // Convert all columns to their SQL representations
         $columns = array_values(array_filter($this->columns));
 
-        if (empty($columns)) {
+        if (empty($columns) && ($this->creating || empty($this->commands))) {
             throw new \RuntimeException("No columns defined for table {$this->table}");
         }
 
         if ($this->creating) {
-            // Create table with all columns
-            $columnDefinitions = [];
-            $primaryKeys = [];
-
-            // First pass: collect column definitions and primary keys
-            foreach ($columns as $column) {
-                $columnSql = $column->toSql();
-
-                // If this is a primary key column, note it for later
-                if (isset($column->attributes['primary']) && $column->attributes['primary']) {
-                    $columnName = trim(explode(' ', $column->name)[0], '`');
-                    $primaryKeys[] = $columnName;
-                }
-
-                $columnDefinitions[] = $columnSql;
-            }
-
-            // Let the grammar handle the table creation with primary keys
-            $statements[] = $this->grammar->compileCreateTable($this->table, $columns, $primaryKeys);
-
-            // Add indexes and unique constraints
-            foreach ($columns as $column) {
-                $this->handleIndexAndUniqueColumn($column, $statements);
-            }
+            $this->compileCreate($columns, $statements);
         } else {
-            // Modifying an existing table:
-            foreach ($columns as $column) {
-                // Only MySQL supports positioning an added column with
-                // AFTER, and only in this ALTER TABLE context.
-                $column->attributes['altering'] = true;
+            $this->compileAlter($columns, $statements);
+        }
 
-                $columnSql = $column->toSql();
+        // Add any additional commands (indexes, foreign keys, drops, renames)
+        foreach ($this->commands as $command) {
+            $this->compileCommand($command, $statements);
+        }
 
+        return array_values(array_filter($statements));
+    }
+
+    /**
+     * Convert the blueprint to SQL statements joined into one string.
+     *
+     * @return string
+     * @throws \RuntimeException
+     */
+    public function toSql(): string
+    {
+        return implode(';' . PHP_EOL, $this->toStatements()) . ';';
+    }
+
+    /**
+     * Compile CREATE TABLE and everything that has to follow it.
+     *
+     * @param array $columns
+     * @param array $statements
+     * @return void
+     */
+    protected function compileCreate(array $columns, array &$statements): void
+    {
+        // A table level primary key is the same as flagging its columns
+        foreach ($this->commands as $command) {
+            if ($command instanceof IndexDefinition && $command->type === 'primary') {
+                foreach ($command->columns as $name) {
+                    $this->findColumn($columns, $name)->attributes['primary'] = true;
+                }
+            }
+        }
+
+        $primaryKeys = [];
+
+        foreach ($columns as $column) {
+            // If this is a primary key column, note it for later
+            if (!empty($column->attributes['primary'])) {
+                $primaryKeys[] = trim(explode(' ', $column->name)[0], '`');
+            }
+        }
+
+        $this->grammar->setTableOptions($this->tableOptions);
+
+        $create = $this->grammar->compileCreateTable($this->table, $columns, $primaryKeys);
+
+        // Drivers that cannot ALTER TABLE ADD CONSTRAINT take foreign keys inline
+        if (!$this->grammar->supportsAddingForeignKey()) {
+            $inline = [];
+
+            foreach ($this->commands as $command) {
+                if ($command instanceof ForeignKeyDefinition) {
+                    $inline[] = $command->toConstraintSql();
+                }
+            }
+
+            if ($inline) {
+                $create = $this->grammar->appendTableConstraints($create, $inline);
+            }
+        }
+
+        $statements[] = $create;
+
+        foreach ($this->grammar->compileTableOptionStatements($this->table) as $statement) {
+            $statements[] = $statement;
+        }
+
+        // Add indexes and unique constraints
+        foreach ($columns as $column) {
+            $this->handleIndexAndUniqueColumn($column, $statements);
+
+            foreach ($this->grammar->compileColumnComment($this->table, $column) as $statement) {
+                $statements[] = $statement;
+            }
+        }
+    }
+
+    /**
+     * Compile the statements that add or modify columns of an existing table.
+     *
+     * @param array $columns
+     * @param array $statements
+     * @return void
+     */
+    protected function compileAlter(array $columns, array &$statements): void
+    {
+        foreach ($columns as $column) {
+            // Only MySQL supports positioning an added column with
+            // AFTER, and only in this ALTER TABLE context.
+            $column->attributes['altering'] = true;
+
+            if (!empty($column->attributes['change'])) {
+                foreach ($this->grammar->compileChangeColumn($this->table, $column) as $statement) {
+                    $statements[] = $statement;
+                }
+            } else {
                 // Skip if this is a primary key column and the grammar doesn't support adding it with ALTER
-                if ((isset($column->attributes['primary']) && $column->attributes['primary']) &&
+                if (
+                    !empty($column->attributes['primary']) &&
                     !$this->grammar->supportsAddingPrimaryKey()
                 ) {
                     continue;
                 }
 
-                $statements[] = $this->grammar->compileAddColumn($this->table, $columnSql);
-                $this->handleIndexAndUniqueColumn($column, $statements);
+                $statements[] = $this->grammar->compileAddColumn($this->table, $column->toSql());
+            }
+
+            $this->handleIndexAndUniqueColumn($column, $statements);
+
+            foreach ($this->grammar->compileColumnComment($this->table, $column) as $statement) {
+                $statements[] = $statement;
             }
         }
+    }
 
-        // Add any additional commands (like foreign keys)
-        foreach ($this->commands as $command) {
-            if ($command instanceof ForeignKeyDefinition) {
+    /**
+     * Compile a single table level command.
+     *
+     * @param ForeignKeyDefinition|IndexDefinition|array $command
+     * @param array $statements
+     * @return void
+     */
+    protected function compileCommand(ForeignKeyDefinition|IndexDefinition|array $command, array &$statements): void
+    {
+        if ($command instanceof ForeignKeyDefinition) {
+            if ($this->grammar->supportsAddingForeignKey()) {
                 $statements[] = $command->toSql();
+            } elseif (!$this->creating) {
+                throw new \RuntimeException(
+                    "Cannot add a foreign key to existing table \"{$this->table}\" on this database driver. " .
+                    "Declare it in the table's original CREATE TABLE migration instead."
+                );
+            }
+
+            return;
+        }
+
+        if ($command instanceof IndexDefinition) {
+            if ($command->type === 'primary') {
+                if (!$this->creating) {
+                    $statements[] = $this->grammar->compileAddPrimary($this->table, $command->columns);
+                }
+
+                return;
+            }
+
+            $statements[] = $this->grammar->compileIndex($this->table, $command);
+
+            return;
+        }
+
+        switch ($command['command']) {
+            case 'dropColumn':
+                foreach ($this->grammar->compileDropColumn($this->table, $command['columns']) as $statement) {
+                    $statements[] = $statement;
+                }
+                break;
+            case 'renameColumn':
+                $statements[] = $this->grammar->compileRenameColumn($this->table, $command['from'], $command['to']);
+                break;
+            case 'dropIndex':
+                $statements[] = $this->grammar->compileDropIndex($this->table, $command['name'], $command['type']);
+                break;
+            case 'renameIndex':
+                $statements[] = $this->grammar->compileRenameIndex($this->table, $command['from'], $command['to']);
+                break;
+        }
+    }
+
+    /**
+     * Find a declared column by name.
+     *
+     * @param array $columns
+     * @param string $name
+     * @return ColumnDefinition
+     * @throws \InvalidArgumentException
+     */
+    protected function findColumn(array $columns, string $name): ColumnDefinition
+    {
+        foreach ($columns as $column) {
+            if ($column->name === $name) {
+                return $column;
             }
         }
 
-        return implode(';' . PHP_EOL, $statements) . ';';
+        throw new \InvalidArgumentException("Column [{$name}] is not defined on table [{$this->table}].");
     }
 
     /**
@@ -838,12 +1546,22 @@ class Blueprint
      */
     protected function handleIndexAndUniqueColumn(ColumnDefinition $column, array &$statements): void
     {
-        if (isset($column->attributes['index']) && $column->attributes['index']) {
-            $statements[] = $this->grammar->compileCreateIndex($this->table, $column->name);
+        $attributes = $column->attributes;
+
+        if (!empty($attributes['index'])) {
+            $statements[] = $this->grammar->compileCreateIndex(
+                $this->table,
+                $column->name,
+                is_string($attributes['index']) ? $attributes['index'] : null
+            );
         }
 
-        if (isset($column->attributes['unique']) && $column->attributes['unique']) {
-            $sql = $this->grammar->compileCreateUnique($this->table, $column->name);
+        if (!empty($attributes['unique'])) {
+            $sql = $this->grammar->compileCreateUnique(
+                $this->table,
+                $column->name,
+                is_string($attributes['unique']) ? $attributes['unique'] : null
+            );
 
             if (!empty($sql)) {
                 $statements[] = $sql;
@@ -854,6 +1572,16 @@ class Blueprint
                     "Declare the column as unique in the table's original CREATE TABLE " .
                     "migration instead."
                 );
+            }
+        }
+
+        foreach (['fulltext', 'spatial'] as $type) {
+            if (!empty($attributes[$type])) {
+                $statements[] = $this->grammar->compileIndex($this->table, new IndexDefinition(
+                    $type,
+                    [$column->name],
+                    is_string($attributes[$type]) ? $attributes[$type] : null
+                ));
             }
         }
     }

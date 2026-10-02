@@ -31,11 +31,12 @@ class ColumnDefinition
     /**
      * Set the column as nullable (allowing NULL values).
      *
+     * @param bool $value
      * @return self
      */
-    public function nullable(): self
+    public function nullable(bool $value = true): self
     {
-        $this->attributes['nullable'] = true;
+        $this->attributes['nullable'] = $value;
 
         return $this;
     }
@@ -60,25 +61,53 @@ class ColumnDefinition
     }
 
     /**
-     * Set the column as unique.
+     * Set the column as unique, optionally with a custom constraint name.
      *
+     * @param string|null $name
      * @return self
      */
-    public function unique(): self
+    public function unique(?string $name = null): self
     {
-        $this->attributes['unique'] = true;
+        $this->attributes['unique'] = $name ?? true;
 
         return $this;
     }
 
     /**
-     * Set the column to be indexed.
+     * Set the column to be indexed, optionally with a custom index name.
      *
+     * @param string|null $name
      * @return self
      */
-    public function index(): self
+    public function index(?string $name = null): self
     {
-        $this->attributes['index'] = true;
+        $this->attributes['index'] = $name ?? true;
+
+        return $this;
+    }
+
+    /**
+     * Add a full text index on the column.
+     *
+     * @param string|null $name
+     * @return self
+     */
+    public function fullText(?string $name = null): self
+    {
+        $this->attributes['fulltext'] = $name ?? true;
+
+        return $this;
+    }
+
+    /**
+     * Add a spatial index on the column.
+     *
+     * @param string|null $name
+     * @return self
+     */
+    public function spatialIndex(?string $name = null): self
+    {
+        $this->attributes['spatial'] = $name ?? true;
 
         return $this;
     }
@@ -109,6 +138,178 @@ class ColumnDefinition
     }
 
     /**
+     * Place the column first in the table (MySQL, ALTER TABLE only).
+     *
+     * @return self
+     */
+    public function first(): self
+    {
+        $this->attributes['first'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Add a comment to the column (MySQL and PostgreSQL).
+     *
+     * @param string $comment
+     * @return self
+     */
+    public function comment(string $comment): self
+    {
+        $this->attributes['comment'] = $comment;
+
+        return $this;
+    }
+
+    /**
+     * Mark a numeric column as UNSIGNED (MySQL only, ignored elsewhere).
+     *
+     * @return self
+     */
+    public function unsigned(): self
+    {
+        $this->attributes['unsigned'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Use CURRENT_TIMESTAMP as the column default.
+     *
+     * @return self
+     */
+    public function useCurrent(): self
+    {
+        $this->attributes['default'] = new RawExpression('CURRENT_TIMESTAMP');
+
+        return $this;
+    }
+
+    /**
+     * Refresh the column with CURRENT_TIMESTAMP on every update (MySQL only).
+     *
+     * @return self
+     */
+    public function useCurrentOnUpdate(): self
+    {
+        $this->attributes['useCurrentOnUpdate'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Make an integer column auto-incrementing (it must also be a key in MySQL).
+     *
+     * @return self
+     */
+    public function autoIncrement(): self
+    {
+        $this->attributes['autoIncrement'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Set the character set of the column (MySQL only).
+     *
+     * @param string $charset
+     * @return self
+     */
+    public function charset(string $charset): self
+    {
+        $this->attributes['charset'] = $charset;
+
+        return $this;
+    }
+
+    /**
+     * Set the collation of the column.
+     *
+     * @param string $collation
+     * @return self
+     */
+    public function collation(string $collation): self
+    {
+        $this->attributes['collation'] = $collation;
+
+        return $this;
+    }
+
+    /**
+     * Create a stored generated column from the given SQL expression.
+     *
+     * @param string $expression
+     * @return self
+     */
+    public function storedAs(string $expression): self
+    {
+        $this->attributes['storedAs'] = $expression;
+
+        return $this;
+    }
+
+    /**
+     * Create a virtual generated column from the given SQL expression.
+     *
+     * @param string $expression
+     * @return self
+     */
+    public function virtualAs(string $expression): self
+    {
+        $this->attributes['virtualAs'] = $expression;
+
+        return $this;
+    }
+
+    /**
+     * Hide the column from SELECT * (MySQL 8+ only).
+     *
+     * @return self
+     */
+    public function invisible(): self
+    {
+        $this->attributes['invisible'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Modify the existing column to match this definition (Schema::table only).
+     * Every attribute must be restated: anything not declared, such as
+     * nullable() or default(), is reset to the column default.
+     *
+     * @return self
+     */
+    public function change(): self
+    {
+        $this->attributes['change'] = true;
+
+        return $this;
+    }
+
+    /**
+     * Get the SQL for the DEFAULT value, or null when none is set.
+     *
+     * @return string|null
+     */
+    public function getDefaultSql(): ?string
+    {
+        if (!isset($this->attributes['default'])) {
+            return null;
+        }
+
+        $value = $this->attributes['default'];
+
+        return match (true) {
+            $value instanceof RawExpression => (string) $value->getValue(),
+            is_string($value) => $this->getGrammar()->quoteString($value),
+            is_bool($value) => $value ? '1' : '0',
+            default => (string) $value,
+        };
+    }
+
+    /**
      * Convert the column definition to its SQL representation.
      *
      * @return string
@@ -118,8 +319,13 @@ class ColumnDefinition
         $grammar = $this->getGrammar();
         $sql = $this->name . ' ' . $grammar->getTypeDefinition($this);
 
-        // Add PRIMARY KEY constraint if specified
-        if (isset($this->attributes['primary']) && $this->attributes['primary']) {
+        // Add PRIMARY KEY inline when altering, or when the grammar wants it
+        // there; otherwise the grammar emits a table level PRIMARY KEY clause
+        // (so composite and table level primary keys never conflict with it).
+        if (
+            !empty($this->attributes['primary']) &&
+            ($grammar->shouldAddPrimaryInColumnDefinition() || !empty($this->attributes['altering']))
+        ) {
             $sql .= ' PRIMARY KEY';
         }
 
@@ -139,27 +345,21 @@ class ColumnDefinition
             $sql .= ' NOT NULL';
         }
 
-        // Add DEFAULT value if specified
-        if (isset($this->attributes['default'])) {
-            $defaultValue = $this->attributes['default'];
+        // Add DEFAULT value if specified (generated columns cannot have one)
+        $default = $this->getDefaultSql();
 
-            $default = match (true) {
-                $defaultValue instanceof RawExpression => $defaultValue->getValue(),
-                is_string($defaultValue)              => "'" . addslashes($defaultValue) . "'",
-                is_bool($defaultValue)                => $defaultValue ? '1' : '0',
-                is_null($defaultValue)                => 'NULL',
-                default                               => $defaultValue,
-            };
-
+        if ($default !== null && !isset($this->attributes['storedAs']) && !isset($this->attributes['virtualAs'])) {
             $sql .= " DEFAULT {$default}";
         }
 
-        if (
-            $this->getDriver() === 'mysql' &&
-            !empty($this->attributes['altering']) &&
-            isset($this->attributes['after'])
-        ) {
-            $sql .= " AFTER {$this->attributes['after']}";
+        $sql .= $grammar->compileColumnModifiers($this);
+
+        if ($this->getDriver() === 'mysql' && !empty($this->attributes['altering'])) {
+            if (!empty($this->attributes['first'])) {
+                $sql .= ' FIRST';
+            } elseif (isset($this->attributes['after'])) {
+                $sql .= " AFTER {$this->attributes['after']}";
+            }
         }
 
         return $sql;
