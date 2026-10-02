@@ -21,12 +21,102 @@ class MySQLGrammar extends Grammar
     {
         $type = $this->mapType($column->type, $column->attributes);
 
-        // For auto-incrementing columns, add UNSIGNED for MySQL
-        if ($column->type === 'id' || $column->type === 'bigIncrements') {
-            $type = 'BIGINT UNSIGNED';
+        // Auto-incrementing key columns are always unsigned
+        if ($this->isIncrementing($column->type)) {
+            $type = $this->incrementingType($column->type);
+        } elseif (!empty($column->attributes['unsigned']) && !str_contains($type, 'UNSIGNED')) {
+            if (preg_match('/^(TINYINT|SMALLINT|MEDIUMINT|INT|BIGINT|FLOAT|DOUBLE|DECIMAL)\b(?!\(1\))/', $type)) {
+                $type .= ' UNSIGNED';
+            }
         }
 
-        return $type;
+        return $type . $this->compileTypeSuffix($column);
+    }
+
+    /**
+     * Get the unsigned integer type backing an incrementing column.
+     *
+     * @param string $type
+     * @return string
+     */
+    protected function incrementingType(string $type): string
+    {
+        return match ($type) {
+            'increments', 'integerIncrements' => 'INT UNSIGNED',
+            'tinyIncrements' => 'TINYINT UNSIGNED',
+            'smallIncrements' => 'SMALLINT UNSIGNED',
+            'mediumIncrements' => 'MEDIUMINT UNSIGNED',
+            default => 'BIGINT UNSIGNED',
+        };
+    }
+
+    /**
+     * Quote an identifier with backticks.
+     *
+     * @param string $name
+     * @return string
+     */
+    public function quoteIdentifier(string $name): string
+    {
+        return '`' . str_replace('`', '``', trim($name, '"`')) . '`';
+    }
+
+    /**
+     * Quote a string literal (MySQL treats backslash as an escape character).
+     *
+     * @param string $value
+     * @return string
+     */
+    public function quoteString(string $value): string
+    {
+        return "'" . str_replace(["\\", "'"], ["\\\\", "''"], $value) . "'";
+    }
+
+    /**
+     * Character set and collation are both column level in MySQL.
+     *
+     * @param ColumnDefinition $column
+     * @return string
+     */
+    public function compileTypeSuffix(ColumnDefinition $column): string
+    {
+        $sql = '';
+
+        if (!empty($column->attributes['charset'])) {
+            $sql .= ' CHARACTER SET ' . $this->safeKeyword($column->attributes['charset']);
+        }
+
+        return $sql . parent::compileTypeSuffix($column);
+    }
+
+    /**
+     * MySQL specific column modifiers placed after DEFAULT.
+     *
+     * @param ColumnDefinition $column
+     * @return string
+     */
+    public function compileColumnModifiers(ColumnDefinition $column): string
+    {
+        $attributes = $column->attributes;
+        $sql = '';
+
+        if (!empty($attributes['useCurrentOnUpdate'])) {
+            $sql .= ' ON UPDATE CURRENT_TIMESTAMP';
+        }
+
+        if ($this->isIncrementing($column->type) || !empty($attributes['autoIncrement'])) {
+            $sql .= ' AUTO_INCREMENT';
+        }
+
+        if (!empty($attributes['invisible'])) {
+            $sql .= ' INVISIBLE';
+        }
+
+        if (isset($attributes['comment'])) {
+            $sql .= ' COMMENT ' . $this->quoteString($attributes['comment']);
+        }
+
+        return $sql;
     }
 
 
@@ -46,10 +136,11 @@ class MySQLGrammar extends Grammar
         foreach ($columns as $column) {
             $columnSql = $column->toSql();
 
-            if ($column->type === 'id' || $column->type === 'bigIncrements') {
+            if ($this->isIncrementing($column->type)) {
                 $columnSql = sprintf(
-                    '`%s` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT',
-                    $column->name
+                    '`%s` %s NOT NULL AUTO_INCREMENT',
+                    $column->name,
+                    $this->incrementingType($column->type)
                 );
                 $primaryKeyColumns[] = trim($column->name, '`');
             } elseif ($column->type === 'uuid' && !empty($column->attributes['primary'])) {
@@ -71,7 +162,23 @@ class MySQLGrammar extends Grammar
             $primaryKeySql = ', PRIMARY KEY (`' . implode('`, `', $primaryKeyColumns) . '`)';
         }
 
-        return "CREATE TABLE `{$table}` (" . implode(', ', $columnDefinitions) . $primaryKeySql . ") ENGINE={$this->engine}";
+        $options = $this->tableOptions;
+        $sql = $this->createTableKeyword() . " `{$table}` (" . implode(', ', $columnDefinitions) . $primaryKeySql . ')';
+        $sql .= ' ENGINE=' . $this->safeKeyword($options['engine'] ?? $this->engine);
+
+        if (!empty($options['charset'])) {
+            $sql .= ' DEFAULT CHARSET=' . $this->safeKeyword($options['charset']);
+        }
+
+        if (!empty($options['collation'])) {
+            $sql .= ' COLLATE=' . $this->safeKeyword($options['collation']);
+        }
+
+        if (isset($options['comment'])) {
+            $sql .= ' COMMENT=' . $this->quoteString($options['comment']);
+        }
+
+        return $sql;
     }
 
     /**
@@ -93,11 +200,9 @@ class MySQLGrammar extends Grammar
      * @param string $column
      * @return string
      */
-    public function compileCreateIndex(string $table, string $column): string
+    public function compileCreateIndex(string $table, string $column, ?string $name = null): string
     {
-        $indexName = "idx_{$table}_{$column}";
-
-        return "CREATE INDEX `{$indexName}` ON `{$table}` (`{$column}`)";
+        return $this->compileCreateIndexSql($table, $name ?? $this->indexName($table, [$column]), [$column]);
     }
 
     /**
@@ -107,11 +212,84 @@ class MySQLGrammar extends Grammar
      * @param string $column
      * @return string
      */
-    public function compileCreateUnique(string $table, string $column): string
+    public function compileCreateUnique(string $table, string $column, ?string $name = null): string
     {
-        $constraintName = "{$table}_{$column}_unique";
+        return $this->compileCreateUniqueSql($table, $name ?? $this->indexName($table, [$column], 'unique'), [$column]);
+    }
 
-        return "ALTER TABLE `{$table}` ADD CONSTRAINT `{$constraintName}` UNIQUE (`{$column}`)";
+    /**
+     * MySQL builds hash/btree choice into the index definition.
+     *
+     * @param string $table
+     * @param string $name
+     * @param array $columns
+     * @param string|null $algorithm
+     * @return string
+     */
+    protected function compileCreateIndexSql(string $table, string $name, array $columns, ?string $algorithm = null): string
+    {
+        return "CREATE INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "({$this->quoteColumns($columns)})"
+            . ($algorithm ? ' USING ' . $this->safeKeyword($algorithm) : '');
+    }
+
+    protected function compileFullTextIndex(string $table, string $name, array $columns): string
+    {
+        return "CREATE FULLTEXT INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "({$this->quoteColumns($columns)})";
+    }
+
+    protected function compileSpatialIndex(string $table, string $name, array $columns): string
+    {
+        return "CREATE SPATIAL INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "({$this->quoteColumns($columns)})";
+    }
+
+    public function compileDropIndex(string $table, string $name, string $type = 'index'): string
+    {
+        return match ($type) {
+            'primary' => $this->compileDropPrimary($table),
+            'foreign' => $this->compileDropForeign($table, $name),
+            default => "DROP INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)}",
+        };
+    }
+
+    protected function compileDropPrimary(string $table): string
+    {
+        return "ALTER TABLE {$this->quoteIdentifier($table)} DROP PRIMARY KEY";
+    }
+
+    protected function compileDropForeign(string $table, string $name): string
+    {
+        return "ALTER TABLE {$this->quoteIdentifier($table)} DROP FOREIGN KEY {$this->quoteIdentifier($name)}";
+    }
+
+    public function compileRenameTable(string $from, string $to): string
+    {
+        return "RENAME TABLE {$this->quoteIdentifier($from)} TO {$this->quoteIdentifier($to)}";
+    }
+
+    public function compileRenameIndex(string $table, string $from, string $to): string
+    {
+        return "ALTER TABLE {$this->quoteIdentifier($table)} RENAME INDEX "
+            . "{$this->quoteIdentifier($from)} TO {$this->quoteIdentifier($to)}";
+    }
+
+    public function compileChangeColumn(string $table, ColumnDefinition $column): array
+    {
+        return ["ALTER TABLE {$this->quoteIdentifier($table)} MODIFY COLUMN {$column->toSql()}"];
+    }
+
+    public function compileGetColumns(): string
+    {
+        return 'SELECT COLUMN_NAME FROM information_schema.COLUMNS '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION';
+    }
+
+    public function compileGetIndexes(): string
+    {
+        return 'SELECT DISTINCT INDEX_NAME FROM information_schema.STATISTICS '
+            . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?';
     }
 
     /**
@@ -157,12 +335,27 @@ class MySQLGrammar extends Grammar
                 return 'DECIMAL(' . ($attributes['precision'] ?? 10) . ',' . ($attributes['scale'] ?? 2) . ')';
             case 'double':
                 return 'DOUBLE' . $this->getPrecisionAndScale($attributes);
+            case 'timestamp':
+            case 'timestampTz':
+                return 'TIMESTAMP' . $this->getTimePrecision($attributes);
+            case 'dateTime':
+            case 'dateTimeTz':
+                return 'DATETIME' . $this->getTimePrecision($attributes);
+            case 'time':
+            case 'timeTz':
+                return 'TIME' . $this->getTimePrecision($attributes);
         }
 
         // Standard type mappings
         $map = [
             'id' => 'BIGINT',
             'bigIncrements' => 'BIGINT',
+            'increments' => 'INT',
+            'integerIncrements' => 'INT',
+            'tinyIncrements' => 'TINYINT',
+            'smallIncrements' => 'SMALLINT',
+            'mediumIncrements' => 'MEDIUMINT',
+            'ulid' => 'CHAR(26)',
             'text' => 'TEXT',
             'mediumText' => 'MEDIUMTEXT',
             'longText' => 'LONGTEXT',
@@ -207,6 +400,17 @@ class MySQLGrammar extends Grammar
         ];
 
         return $map[$type] ?? strtoupper($type);
+    }
+
+    /**
+     * Get the fractional seconds precision suffix, e.g. (3).
+     *
+     * @param array $attributes
+     * @return string
+     */
+    protected function getTimePrecision(array $attributes): string
+    {
+        return isset($attributes['precision']) ? '(' . (int) $attributes['precision'] . ')' : '';
     }
 
     /**

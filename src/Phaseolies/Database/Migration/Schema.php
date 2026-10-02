@@ -3,6 +3,10 @@
 namespace Phaseolies\Database\Migration;
 
 use Phaseolies\Support\Facades\DB;
+use Phaseolies\Database\Database;
+use Phaseolies\Database\Migration\Grammars\Grammar;
+use Phaseolies\Database\Migration\Grammars\GrammarFactory;
+use PDO;
 
 class Schema
 {
@@ -35,7 +39,7 @@ class Schema
 
         $callback($blueprint);
 
-        DB::connection($this->connection)->execute($blueprint->toSql());
+        $this->run($blueprint);
     }
 
     /**
@@ -50,9 +54,31 @@ class Schema
 
         $callback($blueprint);
 
-        $statements = $blueprint->toSql();
+        $this->run($blueprint);
+    }
 
-        DB::connection($this->connection)->execute($statements);
+    /**
+     * Execute the blueprint one statement at a time. Not every driver can run
+     * several statements in a single call (SQLite silently runs only the first).
+     *
+     * @param Blueprint $blueprint
+     * @return void
+     */
+    protected function run(Blueprint $blueprint): void
+    {
+        foreach ($blueprint->toStatements() as $statement) {
+            DB::connection($this->connection)->execute($statement);
+        }
+    }
+
+    /**
+     * Drop a table
+     *
+     * @param string $table
+     */
+    public function drop(string $table): void
+    {
+        DB::connection($this->connection)->execute($this->grammar()->compileDropTable($table));
     }
 
     /**
@@ -63,6 +89,107 @@ class Schema
     public function dropIfExists(string $table): void
     {
         DB::connection($this->connection)->execute("DROP TABLE IF EXISTS {$table}");
+    }
+
+    /**
+     * Rename a table
+     *
+     * @param string $from
+     * @param string $to
+     */
+    public function rename(string $from, string $to): void
+    {
+        DB::connection($this->connection)->execute($this->grammar()->compileRenameTable($from, $to));
+    }
+
+    /**
+     * Drop the given columns from a table
+     *
+     * @param string $table
+     * @param string|array $columns
+     */
+    public function dropColumns(string $table, string|array $columns): void
+    {
+        $this->table($table, fn(Blueprint $blueprint) => $blueprint->dropColumn($columns));
+    }
+
+    /**
+     * Rename a column
+     *
+     * @param string $table
+     * @param string $from
+     * @param string $to
+     */
+    public function renameColumn(string $table, string $from, string $to): void
+    {
+        $this->table($table, fn(Blueprint $blueprint) => $blueprint->renameColumn($from, $to));
+    }
+
+    /**
+     * Determine if a table has a column
+     *
+     * @param string $table
+     * @param string $column
+     * @return bool
+     */
+    public function hasColumn(string $table, string $column): bool
+    {
+        return in_array(strtolower($column), array_map('strtolower', $this->getColumnListing($table)), true);
+    }
+
+    /**
+     * Determine if a table has all of the given columns
+     *
+     * @param string $table
+     * @param array $columns
+     * @return bool
+     */
+    public function hasColumns(string $table, array $columns): bool
+    {
+        foreach ($columns as $column) {
+            if (!$this->hasColumn($table, $column)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get the column names of a table
+     *
+     * @param string $table
+     * @return array
+     */
+    public function getColumnListing(string $table): array
+    {
+        return $this->fetchNames($this->grammar()->compileGetColumns(), $table);
+    }
+
+    /**
+     * Determine if a table has an index (or unique constraint) with the given
+     * name, or one that was created on exactly the given column list.
+     *
+     * @param string $table
+     * @param string|array $index
+     * @return bool
+     */
+    public function hasIndex(string $table, string|array $index): bool
+    {
+        $grammar = $this->grammar();
+        $existing = array_map('strtolower', $this->fetchNames($grammar->compileGetIndexes(), $table));
+
+        $names = is_array($index)
+            ? [$grammar->indexName($table, $index), $grammar->indexName($table, $index, 'unique')]
+            : [$index];
+
+        foreach ($names as $name) {
+            if (in_array(strtolower($name), $existing, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -94,6 +221,31 @@ class Schema
     public function enableForeignKeyConstraints(): void
     {
         DB::connection($this->connection)->enableForeignKeyConstraints();
+    }
+
+    /**
+     * Get the grammar of the current connection
+     *
+     * @return Grammar
+     */
+    protected function grammar(): Grammar
+    {
+        return GrammarFactory::make(DB::connection($this->connection)->getDriver());
+    }
+
+    /**
+     * Run an introspection query bound to a table name
+     *
+     * @param string $sql
+     * @param string $table
+     * @return array
+     */
+    protected function fetchNames(string $sql, string $table): array
+    {
+        $statement = Database::getPdoInstance($this->connection)->prepare($sql);
+        $statement->execute([$table]);
+
+        return $statement->fetchAll(PDO::FETCH_COLUMN);
     }
 
     /**

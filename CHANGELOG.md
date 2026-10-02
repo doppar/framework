@@ -1,5 +1,16 @@
 # Release Notes
 
+## v4.3.0 - 2026-10-02
+
+* Refactor big-data processing trait, add chunkById(), remove Fiber variants by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/343
+* (feat) Add blank, filled, with, rescue, retry and benchmark helpers by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/344
+* Migration builder: table-level indexes, column modifiers, drop/rename/change, and fixes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/345
+
+## v4.2.0 - 2026-09-28
+
+* Make PresenterBundle directly returnable as a JSON API resource by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/342
+* (feat) Router: compile controller actions into cached "action plans" instead of using Reflection on every request by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/341
+
 ## v4.1.1 - 2026-09-26
 
 * Pull request template file change and use latest version in action file by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/336

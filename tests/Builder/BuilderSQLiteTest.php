@@ -1407,6 +1407,96 @@ class BuilderSQLiteTest extends TestCase
         $this->assertEquals(6, $totalProcessed);
     }
 
+    public function testChunkReportsRunningProcessedCountAndSkipsExtraQuery()
+    {
+        $calls = [];
+
+        $this->builder->chunk(4, function ($chunk, $processed, $total) use (&$calls) {
+            $calls[] = [$chunk->count(), $processed, $total];
+        }, 6);
+
+        $this->assertSame([[4, 4, 6], [2, 6, 6]], $calls);
+    }
+
+    public function testChunkRespectsExistingLimitAndOffset()
+    {
+        $ids = [];
+
+        $this->builder->limit(3)->offset(1)->chunk(2, function ($chunk) use (&$ids) {
+            foreach ($chunk as $user) {
+                $ids[] = $user->id;
+            }
+        });
+
+        $this->assertSame([2, 3, 4], $ids);
+    }
+
+    public function testChunkUsesStableOrderWhenNoneGiven()
+    {
+        $ids = [];
+
+        $this->builder->chunk(4, function ($chunk) use (&$ids) {
+            foreach ($chunk as $user) {
+                $ids[] = $user->id;
+            }
+        });
+
+        $this->assertSame([1, 2, 3, 4, 5, 6], $ids);
+    }
+
+    public function testChunkRejectsInvalidChunkSize()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder->chunk(0, fn() => null);
+    }
+
+    public function testChunkByIdIsSafeWhenProcessorChangesFilteredRows()
+    {
+        $seen = [];
+
+        $this->builder->where('status', 'active')->chunkById(2, function ($chunk) use (&$seen) {
+            foreach ($chunk as $user) {
+                $seen[] = $user->id;
+                $this->pdo->exec("UPDATE users SET status = 'processed' WHERE id = {$user->id}");
+            }
+        });
+
+        // 4 active users; OFFSET paging would skip every other page here
+        $this->assertSame([1, 2, 4, 5], $seen);
+        $this->assertSame(0, (int) $this->pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active'")->fetchColumn());
+    }
+
+    public function testCursorPassesRunningProcessedCount()
+    {
+        $counts = [];
+
+        $this->builder->cursor(function ($model, $processed, $total) use (&$counts) {
+            $counts[] = [$processed, $total];
+        }, 6);
+
+        $this->assertSame([[1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6]], $counts);
+    }
+
+    public function testStreamAppliesTransform()
+    {
+        $names = iterator_to_array($this->builder->stream(4, fn($u) => strtoupper($u->name)), false);
+
+        $this->assertCount(6, $names);
+        $this->assertSame('JOHN DOE', $names[0]);
+    }
+
+    public function testBatchFlushesRemainder()
+    {
+        $sizes = [];
+
+        $this->builder->batch(4, function ($batch) use (&$sizes) {
+            $sizes[] = $batch->count();
+        }, 4);
+
+        $this->assertSame([4, 2], $sizes);
+    }
+
     public function testStdDevMethod()
     {
         $postsBuilder = new Builder($this->pdo, 'posts', PostModel::class, 15);

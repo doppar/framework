@@ -3,6 +3,7 @@
 namespace Tests\Unit\API\Presenter;
 
 use Phaseolies\Support\Presenter\Presenter;
+use Phaseolies\Support\Collection;
 use PHPUnit\Framework\TestCase;
 
 class PresenterTest extends TestCase
@@ -92,92 +93,101 @@ class PresenterTest extends TestCase
         $this->assertArrayNotHasKey('is_active', $result);
     }
 
-    public function testValueMethod()
+    public function testValueMethod(): void
     {
-        $data = [
-            'id' => 1,
-            'name' => 'Test',
-            'email' => 'test@example.com',
-            'is_active' => true
-        ];
-        $presenter = new TestablePresenter($data);
+        $presenter = new TestablePresenter([]);
 
-        // Test with non-closure value
-        // $this->assertEquals('test', $presenter->value('test'));
-
-        // // Test with closure
-        // $this->assertEquals('closure result', $presenter->value(function () {
-        //     return 'closure result';
-        // }));
+        $this->assertSame('test', $presenter->exposeValue('test'));
+        $this->assertSame('closure result', $presenter->exposeValue(fn() => 'closure result'));
     }
 
-    public function testWhenMethod()
+    public function testWhenMethod(): void
     {
-        $data = [
-            'id' => 1,
-            'name' => 'Test',
-            'email' => 'test@example.com',
-            'is_active' => true
-        ];
-        $presenter = new TestablePresenter($data);
+        $presenter = new TestablePresenter([]);
 
-        // Test when condition is true
-        // $this->assertEquals('yes', $presenter->when(true, 'yes'));
-        // $this->assertEquals('yes', $presenter->when(true, function () {
-        //     return 'yes';
-        // }));
-
-        // Test when condition is false
-        // $this->assertNull($presenter->when(false, 'yes'));
-        // $this->assertEquals('no', $presenter->when(false, 'yes', 'no'));
-
-        // // Test with closure default
-        // $this->assertEquals('no', $presenter->when(false, 'yes', function () {
-        //     return 'no';
-        // }));
+        $this->assertSame('yes', $presenter->exposeWhen(true, 'yes'));
+        $this->assertSame('yes', $presenter->exposeWhen(true, fn() => 'yes'));
+        $this->assertNull($presenter->exposeWhen(false, 'yes'));
+        $this->assertSame('no', $presenter->exposeWhen(false, 'yes', 'no'));
+        $this->assertSame('no', $presenter->exposeWhen(false, 'yes', fn() => 'no'));
     }
 
-    public function testMergeWhenMethod()
+    public function testMergeWhenMethod(): void
     {
-        $data = [
-            'id' => 1,
-            'name' => 'Test',
-            'email' => 'test@example.com',
-            'is_active' => true
-        ];
-        $presenter = new TestablePresenter($data);
+        $presenter = new TestablePresenter([]);
 
-        // Test when condition is true
-        // $this->assertEquals(['key' => 'value'], $presenter->mergeWhen(true, ['key' => 'value']));
-
-        // // Test when condition is false
-        // $this->assertEquals([], $presenter->mergeWhen(false, ['key' => 'value']));
+        $this->assertSame(['key' => 'value'], $presenter->exposeMergeWhen(true, ['key' => 'value']));
+        $this->assertSame([], $presenter->exposeMergeWhen(false, ['key' => 'value']));
     }
 
-    public function testUnlessMethod()
+    public function testUnlessMethod(): void
     {
-        $data = [
-            'id' => 1,
-            'name' => 'Test',
-            'email' => 'test@example.com',
-            'is_active' => true
-        ];
-        $presenter = new TestablePresenter($data);
+        $presenter = new TestablePresenter([]);
 
-        // Test when condition is false (unless true)
-        // $this->assertEquals('yes', $presenter->unless(false, 'yes'));
-        // $this->assertEquals('yes', $presenter->unless(false, function () {
-        //     return 'yes';
-        // }));
+        $this->assertSame('yes', $presenter->exposeUnless(false, 'yes'));
+        $this->assertSame('yes', $presenter->exposeUnless(false, fn() => 'yes'));
+        $this->assertNull($presenter->exposeUnless(true, 'yes'));
+        $this->assertSame('no', $presenter->exposeUnless(true, 'yes', 'no'));
+    }
 
-        // Test when condition is true (unless false)
-        // $this->assertNull($presenter->unless(true, 'yes'));
-        // $this->assertEquals('no', $presenter->unless(true, 'yes', 'no'));
+    public function testArrayBackedPresenterSupportsMagicPropertyAccess(): void
+    {
+        $presenter = new TestablePresenter(['name' => 'Test']);
 
-        // // Test with closure default
-        // $this->assertEquals('no', $presenter->unless(true, 'yes', function () {
-        //     return 'no';
-        // }));
+        $this->assertSame('Test', $presenter->name);
+        $this->assertNull($presenter->missing);
+    }
+
+    public function testConditionalHelpersEvaluateValuesAndDefaults(): void
+    {
+        $presenter = new TestablePresenter([]);
+
+        $this->assertSame('yes', $presenter->exposeWhen(true, fn() => 'yes'));
+        $this->assertSame('no', $presenter->exposeWhen(false, 'yes', fn() => 'no'));
+        $this->assertNull($presenter->exposeWhen(false, 'yes'));
+        $this->assertSame('yes', $presenter->exposeUnless(false, fn() => 'yes'));
+        $this->assertSame(['key' => 'value'], $presenter->exposeMergeWhen(true, ['key' => 'value']));
+        $this->assertSame([], $presenter->exposeMergeWhen(false, ['key' => 'value']));
+    }
+
+    public function testNestedJsonValuesAreNormalizedRecursively(): void
+    {
+        $jsonValue = new class implements \JsonSerializable {
+            public function jsonSerialize(): array
+            {
+                return ['value' => 'nested'];
+            }
+        };
+
+        $presenter = new class([$jsonValue]) extends Presenter {
+            protected function toArray(): array
+            {
+                return [
+                    'object' => $this->presenter[0],
+                    'array' => [$this->presenter[0]],
+                    'collection' => new Collection(static::class, [$this->presenter[0]]),
+                ];
+            }
+        };
+
+        $this->assertSame([
+            'object' => ['value' => 'nested'],
+            'array' => [['value' => 'nested']],
+            'collection' => [['value' => 'nested']],
+        ], $presenter->jsonSerialize());
+    }
+
+    public function testConditionalHelpersDoNotEvaluateUnusedClosures(): void
+    {
+        $presenter = new TestablePresenter([]);
+        $called = false;
+        $closure = function () use (&$called): string {
+            $called = true;
+            return 'unused';
+        };
+
+        $this->assertNull($presenter->exposeWhen(false, $closure));
+        $this->assertFalse($called);
     }
 
     public function testComplexScenario()
@@ -217,6 +227,26 @@ class PresenterTest extends TestCase
 
 class TestablePresenter extends Presenter
 {
+    public function exposeValue($value)
+    {
+        return $this->value($value);
+    }
+
+    public function exposeWhen(bool $condition, $value, $default = null)
+    {
+        return $this->when($condition, $value, $default);
+    }
+
+    public function exposeUnless(bool $condition, $value, $default = null)
+    {
+        return $this->unless($condition, $value, $default);
+    }
+
+    public function exposeMergeWhen(bool $condition, array $value): array
+    {
+        return $this->mergeWhen($condition, $value);
+    }
+
     protected function toArray(): array
     {
         return [
