@@ -14,6 +14,7 @@ final class Route
         public array $middleware = [],
         public ?int $rateLimit = null,
         public ?int $rateLimitDecay = 1,
-        public ?string $domain = null
+        public ?string $domain = null,
+        public array $where = []
     ) {}
 }
