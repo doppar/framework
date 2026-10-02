@@ -83,26 +83,127 @@ abstract class Command extends SymfonyCommand
 
             $definition = trim($definition);
 
-            if (preg_match('/^(\w+)(\?)?$/', $definition, $m)) {
-                $this->addArgument(
-                    $m[1],
-                    !empty($m[2]) ? InputArgument::OPTIONAL : InputArgument::REQUIRED,
-                    $description
-                );
-            } elseif (preg_match('/^(?:-([a-zA-Z])\|)?--([\w-]+)(?:=(.*))?$/', $definition, $m)) {
-                $shortcut = $m[1] ?? null;
-                $name = $m[2];
-                $default = $m[3] ?? null;
-
-                $mode = $default !== null ? InputOption::VALUE_REQUIRED : InputOption::VALUE_NONE;
-
-                $this->addOption($name, $shortcut, $mode, $description, $default);
+            if (str_starts_with($definition, '-')) {
+                $this->addOptionFromDefinition($definition, $description);
+            } else {
+                $this->addArgumentFromDefinition($definition, $description);
             }
         }
 
         if ($this->description) {
             $this->setDescription($this->description);
         }
+    }
+
+    /**
+     * Register an argument from its signature definition:
+     *
+     *  name            required
+     *  name?           optional
+     *  name=guest      optional, with a default
+     *  name*           required, accepts several values
+     *  name?*          optional, accepts several values
+     *
+     * @param string $definition
+     * @param string $description
+     * @return void
+     * @throws \LogicException
+     */
+    protected function addArgumentFromDefinition(string $definition, string $description): void
+    {
+        if (!preg_match('/^(\w+)(\?)?(\*)?(?:=(.*))?$/s', $definition, $m)) {
+            throw $this->invalidDefinition($definition);
+        }
+
+        $name = $m[1];
+        $optional = !empty($m[2]);
+        $array = !empty($m[3]);
+        $hasDefault = isset($m[4]);
+
+        if ($array && $hasDefault) {
+            throw $this->invalidDefinition($definition, 'an array argument cannot have a default');
+        }
+
+        $mode = ($optional || $hasDefault) ? InputArgument::OPTIONAL : InputArgument::REQUIRED;
+
+        if ($array) {
+            $mode |= InputArgument::IS_ARRAY;
+        }
+
+        $this->addArgument($name, $mode, $description, $hasDefault ? $m[4] : null);
+    }
+
+    /**
+     * Register an option from its signature definition:
+     *
+     *  --force         flag
+     *  -f|--force      flag with a shortcut
+     *  --queue=        takes a value
+     *  --queue=default takes a value, with a default
+     *  --tag=*         takes a value and can be repeated: --tag=a --tag=b
+     *  --cache!        negatable: --cache and --no-cache
+     *  --cache!=true   negatable, defaulting to true
+     *
+     * @param string $definition
+     * @param string $description
+     * @return void
+     * @throws \LogicException
+     */
+    protected function addOptionFromDefinition(string $definition, string $description): void
+    {
+        if (!preg_match('/^(?:-([a-zA-Z])\|)?--([\w-]+)(!)?(?:=(.*))?$/s', $definition, $m)) {
+            throw $this->invalidDefinition($definition);
+        }
+
+        $shortcut = $m[1] !== '' ? $m[1] : null;
+        $name = $m[2];
+        $negatable = !empty($m[3]);
+        $default = $m[4] ?? null;
+
+        if ($negatable) {
+            if ($default === null) {
+                $this->addOption($name, $shortcut, InputOption::VALUE_NONE | InputOption::VALUE_NEGATABLE, $description);
+
+                return;
+            }
+
+            if (!in_array($default, ['true', 'false'], true)) {
+                throw $this->invalidDefinition($definition, 'a negatable option can only default to true or false');
+            }
+
+            $this->addOption($name, $shortcut, InputOption::VALUE_NONE | InputOption::VALUE_NEGATABLE, $description, $default === 'true');
+
+            return;
+        }
+
+        if ($default === null) {
+            $this->addOption($name, $shortcut, InputOption::VALUE_NONE, $description);
+
+            return;
+        }
+
+        if ($default === '*') {
+            $this->addOption($name, $shortcut, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, $description, []);
+
+            return;
+        }
+
+        $this->addOption($name, $shortcut, InputOption::VALUE_REQUIRED, $description, $default);
+    }
+
+    /**
+     * @param string $definition
+     * @param string|null $reason
+     * @return \LogicException
+     */
+    private function invalidDefinition(string $definition, ?string $reason = null): \LogicException
+    {
+        return new \LogicException(sprintf(
+            'Invalid definition "{%s}" in the signature of [%s]%s.',
+            $definition,
+            static::class,
+            $reason ? ': ' . $reason : ''
+        ));
     }
 
     /**
@@ -146,8 +247,14 @@ abstract class Command extends SymfonyCommand
 
             return is_int($result) ? $result : self::SUCCESS;
         } catch (\Throwable $e) {
-            Log::error($e);
-            throw new \Exception($e->getMessage());
+            // Logging must never hide the error being logged.
+            try {
+                Log::error($e);
+            } catch (\Throwable) {
+            }
+
+            // Rethrown as is, so the real class, code and origin are reported instead of this line.
+            throw $e;
         }
     }
 
