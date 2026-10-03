@@ -571,6 +571,54 @@ class Container implements ArrayAccess
     }
 
     /**
+     * Run a callback with some bindings temporarily replaced, then put every one
+     * of them back exactly as it was, even when the callback throws
+     *
+     * @param array<string, mixed> $overrides
+     * @param callable(self): mixed $callback
+     * @return mixed
+     */
+    public function using(array $overrides, callable $callback): mixed
+    {
+        $saved = [];
+
+        foreach (array_keys($overrides) as $abstract) {
+            $saved[$abstract] = [
+                'binding' => array_key_exists($abstract, $this->bindings) ? $this->bindings[$abstract] : null,
+                'hasBinding' => array_key_exists($abstract, $this->bindings),
+                'instance' => $this->instances[$abstract] ?? null,
+                'hasInstance' => array_key_exists($abstract, $this->instances),
+            ];
+        }
+
+        try {
+            foreach ($overrides as $abstract => $concrete) {
+                unset($this->instances[$abstract]);
+
+                if ($concrete instanceof \Closure || (is_string($concrete) && class_exists($concrete))) {
+                    $this->bind($abstract, $concrete, true);
+                } else {
+                    $this->instance($abstract, $concrete);
+                }
+            }
+
+            return $callback($this);
+        } finally {
+            foreach ($saved as $abstract => $state) {
+                unset($this->bindings[$abstract], $this->instances[$abstract]);
+
+                if ($state['hasBinding']) {
+                    $this->bindings[$abstract] = $state['binding'];
+                }
+
+                if ($state['hasInstance']) {
+                    $this->instances[$abstract] = $state['instance'];
+                }
+            }
+        }
+    }
+
+    /**
      * Alias a type to a different name
      *
      * @param string $abstract
