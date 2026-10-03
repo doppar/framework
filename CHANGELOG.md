@@ -1,5 +1,15 @@
 # Release Notes
 
+## v4.4.0 - 2026-10-03
+
+* server:start: Doppar banner and per-request log with execution time by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/346
+* (feat) Container: using() for temporary, self-restoring overrides by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/348
+* Migrations: rollback, reset, refresh, status, db:wipe, pretend, locking and transactional runs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/347
+* Collection: bug fixes, dot notation, multi-key sorting, 21 new methods, higher-order proxies by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/352
+* Cache: rate limiting fixes, Redis/prefix safety, Cache::store(), Cache::tags() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/351
+* Pool console: full signature syntax, original exceptions, and resilient command discovery by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/350
+* (feat) Routing: route parameter constraints by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/349
+
 ## v4.3.0 - 2026-10-02
 
 * Refactor big-data processing trait, add chunkById(), remove Fiber variants by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/343
