@@ -40,24 +40,25 @@ class ThrottleRequests implements Middleware
      */
     public function __invoke(Request $request, Closure $next, $maxAttempts = 60, $decayMinutes = 1): Response
     {
-        $response = $next($request);
-
-        $key = $this->resolveRequestSignature($request);
+        $key = $this->resolveRequestSignature($request, $maxAttempts, $decayMinutes);
 
         $maxAttempts = $this->resolveMaxAttempts($request, $maxAttempts);
         $decaySeconds = (int) ($decayMinutes * 60);
 
         if ($this->limiter->tooManyAttempts($key, $maxAttempts)) {
-            return $this->buildResponse($key, $maxAttempts, $next, $request);
+            $this->rejectIfStillLimited($key);
         }
 
         $this->limiter->hit($key, $decaySeconds);
+
+        // The handler only runs for requests that are allowed through.
+        $response = $next($request);
 
         return $this->addHeaders(
             $response,
             $maxAttempts,
             $this->calculateRemainingAttempts($key, $maxAttempts),
-            $this->limiter->availableAt($decaySeconds)
+            $this->limiter->availableAt($this->limiter->availableIn($key) ?: $decaySeconds)
         );
     }
 
@@ -87,13 +88,13 @@ class ThrottleRequests implements Middleware
      * @param \Phaseolies\Http\Request $request
      * @return string
      */
-    protected function resolveRequestSignature(Request $request): string
+    protected function resolveRequestSignature(Request $request, $maxAttempts = 60, $decayMinutes = 1): string
     {
-        if ($request->user()) {
-            return sha1(auth()->id());
-        }
+        $client = $request->user() ? 'user:' . auth()->id() : 'ip:' . $request->ip();
 
-        return sha1($request->ip());
+        // The limit is part of the key, so a strict limit on one route (login: 5 a minute)
+        // is not used up by traffic on a generous one (API: 60 a minute).
+        return sha1($client . '|' . $maxAttempts . '|' . $decayMinutes);
     }
 
     /**
@@ -129,21 +130,21 @@ class ThrottleRequests implements Middleware
     }
 
     /**
-     * Create a 'too many attempts' response.
+     * Stop a client that has used up its attempts, unless its window has ended.
      *
      * @param string $key
-     * @param int $maxAttempts
-     * @param \Closure $next
-     * @param Request $request
-     * @return \Phaseolies\Http\Response
+     * @return void
+     * @throws TooManyRequestsHttpException
      */
-    protected function buildResponse(string $key, int $maxAttempts, \Closure $next, Request $request): Response
+    protected function rejectIfStillLimited(string $key): void
     {
         $retryAfter = $this->limiter->availableIn($key);
 
+        // The window is over, so the client starts again with a fresh count.
         if ($retryAfter <= 0) {
             $this->limiter->clear($key);
-            return $next($request);
+
+            return;
         }
 
         $message = trans('validation.rate_limit.error', ['attribute' => $retryAfter]);

@@ -51,8 +51,6 @@ class RateLimiter
                     $this->cache->set($key, 1, $decaySeconds);
                     $this->cache->set($timerKey, $resetAt, $decaySeconds);
                     $hits = 1;
-                } elseif ($hits <= $maxAttempts) {
-                    $this->cache->set($timerKey, $resetAt, $decaySeconds);
                 }
             }
 
@@ -146,8 +144,6 @@ class RateLimiter
                 $this->cache->set($timerKey, $resetAt, $decaySeconds);
                 return 1;
             }
-
-            $this->cache->set($timerKey, $resetAt, $decaySeconds);
 
             return $hits;
         } catch (InvalidArgumentException $e) {
