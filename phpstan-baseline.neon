@@ -2455,12 +2455,6 @@ parameters:
 			path: src/Phaseolies/Support/StreamCollection.php
 
 		-
-			message: '#^Unsafe usage of new static\(\)\.$#'
-			identifier: new.static
-			count: 10
-			path: src/Phaseolies/Support/StreamCollection.php
-
-		-
 			message: '#^Offset 0 on array\{list\<string\>\} on left side of \?\? always exists and is not nullable\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
