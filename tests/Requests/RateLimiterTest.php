@@ -84,10 +84,9 @@ class RateLimiterTest extends TestCase
             ->with($key)
             ->willReturn(3);
 
-        $this->cache->expects($this->once())
-            ->method('set')
-            ->with($key . '_timer', $now + $decaySeconds, $decaySeconds)
-            ->willReturn(true);
+        // The reset timer belongs to the window that opened with the first hit: it is
+        // not pushed back by later hits, or Retry-After would outlast the counter.
+        $this->cache->expects($this->never())->method('set');
 
         $this->cache->expects($this->once())
             ->method('get')
@@ -242,10 +241,9 @@ class RateLimiterTest extends TestCase
             ->with($key)
             ->willReturn(4);
 
-        $this->cache->expects($this->once())
-            ->method('set')
-            ->with($key . '_timer', $now + $decaySeconds, $decaySeconds)
-            ->willReturn(true);
+        // The reset timer belongs to the window that opened with the first hit: it is
+        // not pushed back by later hits, or Retry-After would outlast the counter.
+        $this->cache->expects($this->never())->method('set');
 
         $this->assertSame(4, $this->limiter->hit($key, $decaySeconds));
     }

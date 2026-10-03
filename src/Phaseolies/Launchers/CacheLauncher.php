@@ -20,18 +20,63 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
     protected array $customAdapters = [];
 
     /**
+     * @var CacheStore[] Stores that have been built, by name
+     */
+    protected array $stores = [];
+
+    /**
      * Register the service provider.
      *
      * @return void
      */
     public function register(): void
     {
-        $adapter = $this->createAdapter(config('caching.default', 'file'));
-        $cacheStore = new CacheStore($adapter, config('caching.prefix'));
+        $default = (string) config('caching.default', 'file');
+        $cacheStore = $this->stores[$default] = $this->createStore($default);
+
         $this->app->singleton(CacheStore::class, fn() => $cacheStore);
         $this->app->singleton(IncrementableCacheInterface::class, fn() => $cacheStore);
         $this->app->singleton(CacheInterface::class, fn() => $cacheStore);
         $this->app->singleton('cache', fn() => $cacheStore);
+    }
+
+    /**
+     * Build the cache store for a name in `caching.stores`. Every store can reach
+     * the others, so `Cache::store('redis')` works from any of them.
+     *
+     * @param string $name
+     * @return CacheStore
+     */
+    public function createStore(string $name): CacheStore
+    {
+        $config = config("caching.stores.{$name}");
+        $config = is_array($config) ? $config : [];
+
+        $store = new CacheStore(
+            $this->createAdapter($name),
+            $this->prefixFor($name),
+            isset($config['ttl']) && (int) $config['ttl'] > 0 ? (int) $config['ttl'] : null
+        );
+
+        return $store->resolveStoresUsing($name, function (string $other) {
+            return $this->stores[$other] ??= $this->createStore($other);
+        });
+    }
+
+    /**
+     * The key prefix of a store. It names the adapter's namespace too, so it is
+     * limited to characters every backend accepts, and it is never empty: with an
+     * empty namespace, clearing the cache would flush the whole Redis database.
+     *
+     * @param string $store
+     * @return string
+     */
+    protected function prefixFor(string $store): string
+    {
+        $prefix = config("caching.stores.{$store}.prefix") ?? config('caching.prefix');
+        $prefix = preg_replace('/[^-+_.A-Za-z0-9]/', '_', (string) $prefix);
+
+        return $prefix === '' ? 'doppar_cache_' : $prefix;
     }
 
     /**
@@ -43,11 +88,15 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
     public function createAdapter(string $store): mixed
     {
         $storeConfig = config("caching.stores.{$store}");
+        $storeConfig = is_array($storeConfig) ? $storeConfig : [];
+        $prefix = $this->prefixFor($store);
 
+        // The default ttl is applied by CacheStore, not by the adapter, so that
+        // forever() really is forever.
         return match ($storeConfig['driver'] ?? null) {
-            'apc' => new ApcuAdapter(config('caching.prefix')),
+            'apc' => new ApcuAdapter($prefix),
             'file' => new FilesystemAdapter(
-                config('caching.prefix'),
+                $prefix,
                 0,
                 $storeConfig['path'] ?? storage_path('framework/cache/data')
             ),
@@ -55,7 +104,7 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
                 0,
                 $storeConfig['serialize'] ?? false
             ),
-            'redis' => $this->createRedisAdapter($storeConfig),
+            'redis' => $this->createRedisAdapter($storeConfig, $prefix),
             default => $this->createCustomAdapter($store, $storeConfig)
         };
     }
@@ -66,24 +115,32 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
      * @param array $config
      * @return RedisAdapter
      */
-    protected function createRedisAdapter(array $config): RedisAdapter
+    protected function createRedisAdapter(array $config, ?string $prefix = null): RedisAdapter
     {
         $redis = new \Redis();
 
         $dsn = $config['connection'] ?? 'redis://127.0.0.1:6379';
         $parsed = parse_url($dsn);
+        $parameters = $config['options']['parameters'] ?? [];
 
         $host = $parsed['host'] ?? '127.0.0.1';
         $port = $parsed['port'] ?? 6379;
-        $password = $parsed['pass'] ?? null;
-        $database = isset($parsed['path']) ? (int) substr($parsed['path'], 1) : 0;
+
+        // The connection string wins; `options.parameters` fills in what it leaves out.
+        $username = isset($parsed['user']) && $parsed['user'] !== '' ? urldecode($parsed['user']) : null;
+        $password = isset($parsed['pass']) && $parsed['pass'] !== ''
+            ? urldecode($parsed['pass'])
+            : (($parameters['password'] ?? '') !== '' ? (string) $parameters['password'] : null);
+
+        $path = trim($parsed['path'] ?? '', '/');
+        $database = $path !== '' ? (int) $path : (int) ($parameters['database'] ?? 0);
 
         if (!$redis->connect($host, $port, 2.5)) {
             throw new \RuntimeException("Could not connect to Redis at {$host}:{$port}");
         }
 
         if ($password !== null) {
-            $redis->auth($password);
+            $redis->auth($username !== null ? [$username, $password] : $password);
         }
 
         if ($database > 0) {
@@ -97,11 +154,7 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
             }
         }
 
-        return new RedisAdapter(
-            $redis,
-            config('caching.prefix'),
-            $config['ttl'] ?? 0
-        );
+        return new RedisAdapter($redis, $prefix ?? $this->prefixFor('redis'), 0);
     }
 
     /**
@@ -136,7 +189,15 @@ class CacheLauncher extends ServiceLauncher implements GhostableLauncher
             return $this->customAdapters[$store]($config);
         }
 
-        throw new \RuntimeException("Cache store [{$store}] is not defined.");
+        if ($config === []) {
+            throw new \RuntimeException("Cache store [{$store}] is not defined.");
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Cache driver [%s] of store [%s] is not supported. Use apc, array, file or redis, or register it with extend().',
+            $config['driver'] ?? 'none',
+            $store
+        ));
     }
 
     /**
