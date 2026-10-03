@@ -1615,12 +1615,6 @@ parameters:
 			path: src/Phaseolies/Support/Collection.php
 
 		-
-			message: '#^Unsafe usage of new static\(\)\.$#'
-			identifier: new.static
-			count: 16
-			path: src/Phaseolies/Support/Collection.php
-
-		-
 			message: '#^PHPDoc tag @return with type void is incompatible with native type bool\.$#'
 			identifier: return.phpDocType
 			count: 1
@@ -2458,12 +2452,6 @@ parameters:
 			message: '#^Unreachable statement \- code above always terminates\.$#'
 			identifier: deadCode.unreachable
 			count: 1
-			path: src/Phaseolies/Support/StreamCollection.php
-
-		-
-			message: '#^Unsafe usage of new static\(\)\.$#'
-			identifier: new.static
-			count: 10
 			path: src/Phaseolies/Support/StreamCollection.php
 
 		-

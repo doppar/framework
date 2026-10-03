@@ -368,7 +368,7 @@ class StreamCollectionTest extends TestCase
         $items = [
             ['id' => 1, 'name' => 'Alice'],
             ['id' => 2, 'name' => 'Bob'],
-            ['id' => 1, 'name' => 'Alice Duplicate'], // This will overwrite the first one
+            ['id' => 1, 'name' => 'Alice Duplicate'], // a later duplicate is dropped, as in Collection::unique()
             ['id' => 3, 'name' => 'Charlie'],
         ];
 
@@ -378,7 +378,7 @@ class StreamCollectionTest extends TestCase
         $uniqueArray = $unique->values()->all();
 
         $this->assertCount(3, $uniqueArray);
-        $this->assertEquals('Alice Duplicate', $uniqueArray[0]['name']); // First item is now the duplicate
+        $this->assertEquals('Alice', $uniqueArray[0]['name']); // the first of each is kept
         $this->assertEquals('Bob', $uniqueArray[1]['name']);
         $this->assertEquals('Charlie', $uniqueArray[2]['name']);
     }
