@@ -2,6 +2,9 @@
 
 namespace Phaseolies\Database\Migration;
 
+use Phaseolies\Database\Database;
+use Phaseolies\Support\Facades\DB;
+
 class Migrator
 {
     /**
@@ -60,14 +63,169 @@ class Migrator
     /**
      * Run all pending migrations
      *
+     * Options:
+     *  - step (bool):      give every migration its own batch so each can be rolled back on its own
+     *  - pretend (bool):   do not run anything, report the SQL each migration would execute
+     *  - progress (callable): fn(string $event, string $migration, array $info) for 'running',
+     *                      'ran' (info: time in ms) and 'pretend' (info: queries)
+     *
      * @param string $connection
-     * @return array
+     * @param string|null $path
+     * @param array $options
+     * @return array The names of the migrations that ran
      */
-    public function run(string $connection, ?string $path = null): array
+    public function run(string $connection, ?string $path = null, array $options = []): array
     {
         $connection = $connection ?? config('database.default');
-        $this->ensureMigrationTableExists($connection);
+        $pretend = (bool) ($options['pretend'] ?? false);
 
+        $execute = function () use ($connection, $path, $options, $pretend) {
+            // Pretending must not touch the database, so the tracking table is left alone.
+            if (!$pretend) {
+                $this->ensureMigrationTableExists($connection);
+            }
+
+            $executed = $this->getPendingMigrations($connection, $path);
+
+            $batch = $this->repository->getNextBatchNumber($connection);
+
+            foreach ($executed as $file) {
+                $this->runMigration($file, $connection, $batch, $options);
+
+                if (!empty($options['step'])) {
+                    $batch++;
+                }
+            }
+
+            return $executed;
+        };
+
+        return $pretend ? $execute() : $this->withLock($connection, $execute);
+    }
+
+    /**
+     * Roll back migrations. By default the most recent batch is reverted.
+     *
+     * Options:
+     *  - step (int):       roll back the last N migrations regardless of batch
+     *  - batch (int):      roll back one specific batch
+     *  - pretend (bool):   report the SQL without running it
+     *  - progress (callable): fn(string $event, string $migration, array $info) for
+     *                      'rolling_back', 'rolled_back' and 'pretend'
+     *
+     * @param string $connection
+     * @param array $options
+     * @return array The names of the migrations that were rolled back
+     * @throws \RuntimeException When a migration to roll back has no file on disk
+     */
+    public function rollback(string $connection, array $options = []): array
+    {
+        $pretend = (bool) ($options['pretend'] ?? false);
+
+        $execute = function () use ($connection, $options) {
+            if (!$this->repository->exists($connection)) {
+                return [];
+            }
+
+            $names = $this->repository->getRollbackCandidates(
+                $connection,
+                isset($options['step']) ? (int) $options['step'] : null,
+                isset($options['batch']) ? (int) $options['batch'] : null
+            );
+
+            // Resolve everything first so a missing file aborts before anything is reverted.
+            $migrations = [];
+            foreach ($names as $name) {
+                $migrations[$name] = $this->resolveMigration($name, $connection, true);
+            }
+
+            foreach ($migrations as $name => $migration) {
+                $this->rollbackMigration($name, $migration, $connection, $options);
+            }
+
+            return $names;
+        };
+
+        return $pretend ? $execute() : $this->withLock($connection, $execute);
+    }
+
+    /**
+     * Roll back every migration that has run
+     *
+     * @param string $connection
+     * @param array $options Same as rollback()
+     * @return array
+     */
+    public function reset(string $connection, array $options = []): array
+    {
+        unset($options['batch']);
+        $options['step'] = PHP_INT_MAX;
+
+        return $this->rollback($connection, $options);
+    }
+
+    /**
+     * Describe every known migration: whether it ran, in which batch, how long
+     * it took, and whether its file changed or disappeared since it ran.
+     *
+     * @param string|null $connection
+     * @return array<int, array{migration: string, ran: bool, batch: ?int, ran_at: ?string, execution_time: ?int, modified: bool, missing: bool}>
+     */
+    public function status(?string $connection = null): array
+    {
+        $connection = $connection ?? config('database.default');
+
+        $files = $this->migrationFiles($connection);
+        $records = $this->repository->getRecords($connection);
+
+        $rows = [];
+
+        foreach ($files as $name => $file) {
+            $record = $records[$name] ?? null;
+
+            $rows[$name] = [
+                'migration' => $name,
+                'ran' => $record !== null,
+                'batch' => $record['batch'] ?? null,
+                'ran_at' => $record['ran_at'] ?? null,
+                'execution_time' => $record['execution_time'] ?? null,
+                'modified' => $record !== null
+                    && $record['checksum'] !== null
+                    && $record['checksum'] !== $this->checksum($file),
+                'missing' => false,
+            ];
+        }
+
+        foreach ($records as $name => $record) {
+            if (isset($rows[$name])) {
+                continue;
+            }
+
+            $rows[$name] = [
+                'migration' => $name,
+                'ran' => true,
+                'batch' => $record['batch'],
+                'ran_at' => $record['ran_at'],
+                'execution_time' => $record['execution_time'],
+                'modified' => false,
+                'missing' => true,
+            ];
+        }
+
+        ksort($rows);
+
+        return array_values($rows);
+    }
+
+    /**
+     * Get the names of the migrations that have not run yet
+     *
+     * @param string $connection
+     * @param string|null $path Restrict to one migration file
+     * @return array
+     */
+    public function getPendingMigrations(string $connection, ?string $path = null): array
+    {
         $files = $this->getMigrationFiles($connection);
         $ran = $this->repository->getRan($connection);
 
@@ -110,16 +268,10 @@ class Migrator
                 throw new \RuntimeException("Migration file not found: {$fullPath}\n\n");
             }
 
-            $this->runMigrationList([$file], $connection);
-
             return [$file];
         }
 
-        if (empty($migrations)) {
-            return [];
-        }
-
-        $executed = [];
+        $pending = [];
         foreach ($migrations as $file) {
             $fullPath = is_file($file) ? $file : $this->migrationPath . DIRECTORY_SEPARATOR . $file;
 
@@ -128,13 +280,11 @@ class Migrator
                 continue;
             }
 
-            $executed[] = basename($fullPath);
+            $pending[] = basename($fullPath);
         }
-        sort($executed);
+        sort($pending);
 
-        $this->runMigrationList($executed, $connection);
-
-        return $executed;
+        return $pending;
     }
 
     /**
@@ -147,7 +297,11 @@ class Migrator
     {
         if (!$this->repository->exists($connection)) {
             $this->repository->create($connection);
+
+            return;
         }
+
+        $this->repository->upgrade($connection);
     }
 
     /**
@@ -224,67 +378,240 @@ class Migrator
     }
 
     /**
-     * Run a list of migration files
+     * Run a single migration file
      *
-     * @param array $migrations
-     * @param string|null $connection
+     * @param string $file
+     * @param string $connection
+     * @param int $batch
+     * @param array $options
+     * @return void
+     * @throws \RuntimeException
      */
-    protected function runMigrationList(array $migrations, ?string $connection = null): void
+    protected function runMigration(string $file, string $connection, int $batch, array $options = []): void
     {
-        foreach ($migrations as $file) {
-            $this->runMigration($file, $connection);
+        $progress = $options['progress'] ?? null;
+        $migration = $this->resolveMigration($file, $connection);
+
+        if (!empty($options['pretend'])) {
+            $queries = Database::pretend(fn() => $migration->up());
+            $progress && $progress('pretend', $file, ['queries' => $queries]);
+
+            return;
+        }
+
+        $progress && $progress('running', $file, []);
+
+        $elapsed = 0;
+
+        try {
+            $this->transactional($connection, $migration, function () use ($migration, $file, $connection, $batch, &$elapsed) {
+                $start = hrtime(true);
+                $migration->up();
+                $elapsed = (int) round((hrtime(true) - $start) / 1e6);
+
+                $this->repository->log($file, $connection, $batch, $this->checksum($this->pathFor($file)), $elapsed);
+            });
+        } catch (\Throwable $e) {
+            throw new \RuntimeException("Migration {$file} failed: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
+
+        $progress && $progress('ran', $file, ['time' => $elapsed]);
+    }
+
+    /**
+     * Revert a single migration and forget its record
+     *
+     * @param string $file
+     * @param Migration $migration
+     * @param string $connection
+     * @param array $options
+     * @return void
+     * @throws \RuntimeException
+     */
+    protected function rollbackMigration(string $file, Migration $migration, string $connection, array $options = []): void
+    {
+        $progress = $options['progress'] ?? null;
+
+        if (!empty($options['pretend'])) {
+            $queries = Database::pretend(fn() => $migration->down());
+            $progress && $progress('pretend', $file, ['queries' => $queries]);
+
+            return;
+        }
+
+        $progress && $progress('rolling_back', $file, []);
+
+        $elapsed = 0;
+
+        try {
+            $this->transactional($connection, $migration, function () use ($migration, $file, $connection, &$elapsed) {
+                $start = hrtime(true);
+                $migration->down();
+                $elapsed = (int) round((hrtime(true) - $start) / 1e6);
+
+                $this->repository->delete($file, $connection);
+            });
+        } catch (\Throwable $e) {
+            throw new \RuntimeException("Rolling back {$file} failed: " . $e->getMessage(), (int) $e->getCode(), $e);
+        }
+
+        $progress && $progress('rolled_back', $file, ['time' => $elapsed]);
+    }
+
+    /**
+     * Run a callback atomically when the driver can roll back schema changes.
+     *
+     * PostgreSQL and SQLite support transactional DDL, so a migration that
+     * fails halfway leaves nothing behind. MySQL commits implicitly on DDL,
+     * so there the callback simply runs. A migration can opt out by setting
+     * `public bool $withinTransaction = false;`.
+     *
+     * @param string $connection
+     * @param Migration $migration
+     * @param \Closure $callback
+     * @return void
+     */
+    protected function transactional(string $connection, Migration $migration, \Closure $callback): void
+    {
+        $db = DB::connection($connection);
+
+        if ($migration->withinTransaction && in_array($db->getDriver(), ['pgsql', 'sqlite'], true)) {
+            $db->transaction($callback);
+
+            return;
+        }
+
+        $callback();
+    }
+
+    /**
+     * Hold a database-wide lock so two deploys cannot migrate at the same time.
+     * MySQL and PostgreSQL use their advisory locks; SQLite has a single writer
+     * already and is not locked.
+     *
+     * @param string $connection
+     * @param \Closure $callback
+     * @return mixed
+     * @throws \RuntimeException When another process holds the lock
+     */
+    protected function withLock(string $connection, \Closure $callback): mixed
+    {
+        $db = DB::connection($connection);
+        $driver = $db->getDriver();
+
+        $key = 'doppar_migrations_' . md5($connection . '|' . config("database.connections.{$connection}.database"));
+        $number = crc32($key);
+
+        $acquired = match ($driver) {
+            'mysql' => (bool) $db->statement('SELECT GET_LOCK(?, 0)', [$key])->fetchColumn(),
+            'pgsql' => (bool) $db->statement('SELECT pg_try_advisory_lock(?)', [$number])->fetchColumn(),
+            default => true,
+        };
+
+        if (!$acquired) {
+            throw new \RuntimeException(
+                "Another migration process is already running on connection [{$connection}]."
+            );
+        }
+
+        try {
+            return $callback();
+        } finally {
+            match ($driver) {
+                'mysql' => $db->statement('SELECT RELEASE_LOCK(?)', [$key])->fetchColumn(),
+                'pgsql' => $db->statement('SELECT pg_advisory_unlock(?)', [$number])->fetchColumn(),
+                default => null,
+            };
         }
     }
 
     /**
-     * Run a single migration file
+     * Map migration name to file path for the given connection
+     *
+     * @param string $connection
+     * @return array<string, string>
+     */
+    protected function migrationFiles(string $connection): array
+    {
+        $files = [];
+
+        foreach ($this->getMigrationFiles($connection) as $file) {
+            $files[basename($file)] = $file;
+        }
+
+        return $files;
+    }
+
+    /**
+     * Locate the file of a migration: the project's copy wins over a package's
      *
      * @param string $file
-     * @param string|null $connection
-     * @return void
-     * @throws \RuntimeException
+     * @return string|null
      */
-    protected function runMigration(string $file, ?string $connection = null): void
+    protected function pathFor(string $file): ?string
     {
-        try {
-            foreach ($this->migrations as $path => $migration) {
-                if (basename($path) === $file) {
-                    $migration->up();
-                    $this->repository->log($file, $connection);
-                    return;
-                }
-            }
+        $local = $this->migrationPath . DIRECTORY_SEPARATOR . $file;
 
-            $path = $this->migrationPath . DIRECTORY_SEPARATOR . $file;
-            if (!file_exists($path)) {
-                throw new \RuntimeException("Migration file not found: {$path}");
-            }
-
-            $migration = require $path;
-
-            $migration->up();
-            $this->repository->log($file, $connection);
-        } catch (\Throwable $e) {
-            throw $e;
+        if (is_file($local)) {
+            return $local;
         }
+
+        foreach ($this->migrationPaths as $path) {
+            if (basename($path) === $file) {
+                return is_file($path) ? $path : base_path($path);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Fingerprint of a migration file, insensitive to line-ending differences
+     *
+     * @param string|null $path
+     * @return string|null
+     */
+    protected function checksum(?string $path): ?string
+    {
+        if ($path === null || !is_file($path)) {
+            return null;
+        }
+
+        return hash('sha256', str_replace("\r\n", "\n", (string) file_get_contents($path)));
     }
 
     /**
      * Resolve a migration file into a Migration instance
      *
      * @param string $file
+     * @param string|null $connection
+     * @param bool $forRollback
      * @return Migration
      * @throws \RuntimeException
      */
-    protected function resolve(string $file): Migration
+    protected function resolveMigration(string $file, ?string $connection = null, bool $forRollback = false): Migration
     {
-        $path = $this->migrationPath . DIRECTORY_SEPARATOR . $file;
+        foreach ($this->migrations as $path => $migration) {
+            if (basename($path) === $file && !is_file($this->migrationPath . DIRECTORY_SEPARATOR . $file)) {
+                return $migration;
+            }
+        }
 
-        if (!file_exists($path)) {
-            throw new \RuntimeException("Migration file not found: {$path}");
+        $path = $this->pathFor($file);
+
+        if ($path === null) {
+            throw new \RuntimeException(
+                $forRollback
+                    ? "Cannot roll back [{$file}]: the migration file no longer exists."
+                    : "Migration file not found: {$this->migrationPath}" . DIRECTORY_SEPARATOR . $file
+            );
         }
 
         $migration = require $path;
+
+        if ($migration instanceof \Closure) {
+            $migration = $migration();
+        }
 
         if (!$migration instanceof Migration) {
             throw new \RuntimeException("Migration {$file} must return an instance of Migration");
