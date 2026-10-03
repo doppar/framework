@@ -58,6 +58,19 @@ class Router
     public static array $namedRoutes = [];
 
     /**
+     * Matches a route parameter, `{id}` or `{id:constraint}`. The constraint may
+     * use braces for quantifiers (`{id:\d{4}}`) but cannot nest them any deeper.
+     */
+    protected const PARAM_PATTERN = '/\{(\w+)(?::((?:[^{}]|\{[^{}]*\})+))?\}/';
+
+    /**
+     * Constraints applied to every route parameter of the given name, see pattern().
+     *
+     * @var array<string, string>
+     */
+    public static array $patterns = [];
+
+    /**
      * The path of the current route being defined.
      *
      * @var string|null
@@ -498,9 +511,15 @@ class Router
         $rateLimit = $route->rateLimit ?? null;
         $rateLimitDecay = $route->rateLimitDecay ?? 1;
         $domain = $route->domain ?? null;
+        $where = $route->where ?? [];
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name, $domain);
+
+            if (!empty($where)) {
+                $this->where($where);
+            }
+
             if (!empty($middleware)) {
                 $this->middleware($middleware);
             }
@@ -716,6 +735,9 @@ class Router
                 : $fullPath;
         }
 
+        $fullPath = $this->applyGlobalPatterns($fullPath);
+        $this->assertValidInlineConstraints($fullPath);
+
         $entry = $domain
             ? ['__callback' => $callback, '__domain' => $domain]
             : $callback;
@@ -809,6 +831,274 @@ class Router
     }
 
     /**
+     * Constrain a parameter of the last registered route to a regular expression.
+     *
+     * @param string|array<string, string> $name
+     * @param string|null $expression
+     * @return self
+     * @throws \LogicException
+     */
+    public function where(string|array $name, ?string $expression = null): self
+    {
+        if ($this->currentRoutePath === null) {
+            return $this;
+        }
+
+        $constraints = is_array($name) ? $name : [$name => $expression];
+        $path = $this->currentRoutePath;
+
+        foreach ($constraints as $param => $pattern) {
+            $this->assertValidConstraint((string) $param, (string) $pattern);
+
+            $matched = 0;
+            $path = preg_replace_callback(
+                self::PARAM_PATTERN,
+                function (array $m) use ($param, $pattern, &$matched) {
+                    if ($m[1] !== (string) $param) {
+                        return $m[0];
+                    }
+
+                    $matched++;
+
+                    return '{' . $param . ':' . $pattern . '}';
+                },
+                $path
+            );
+
+            if ($matched === 0) {
+                throw new \LogicException("Route [{$this->currentRoutePath}] has no {{$param}} parameter to constrain.");
+            }
+        }
+
+        $this->rekeyCurrentRoute($path);
+
+        return $this;
+    }
+
+    /**
+     * Constrain parameters to digits.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereNumber(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-9]+');
+    }
+
+    /**
+     * Constrain parameters to letters.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereAlpha(string|array $params): self
+    {
+        return $this->whereAll($params, '[a-zA-Z]+');
+    }
+
+    /**
+     * Constrain parameters to letters and digits.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereAlphaNumeric(string|array $params): self
+    {
+        return $this->whereAll($params, '[a-zA-Z0-9]+');
+    }
+
+    /**
+     * Constrain parameters to a UUID.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereUuid(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
+    }
+
+    /**
+     * Constrain parameters to a ULID.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereUlid(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}');
+    }
+
+    /**
+     * Constrain a parameter to one of the given values.
+     *
+     * @param string $param
+     * @param array $values
+     * @return self
+     */
+    public function whereIn(string $param, array $values): self
+    {
+        if ($values === []) {
+            throw new \InvalidArgumentException("whereIn() needs at least one value for {{$param}}.");
+        }
+
+        return $this->where($param, implode('|', array_map(fn($v) => preg_quote((string) $v, '@'), $values)));
+    }
+
+    /**
+     * Constrain every route parameter of this name, on routes registered from now on.
+     *
+     * @param string $name
+     * @param string $expression
+     * @return void
+     * @throws \LogicException When the expression is invalid
+     */
+    public function pattern(string $name, string $expression): void
+    {
+        $this->assertValidConstraint($name, $expression);
+
+        self::$patterns[$name] = $expression;
+    }
+
+    /**
+     * @param string|array $params
+     * @param string $expression
+     * @return self
+     */
+    protected function whereAll(string|array $params, string $expression): self
+    {
+        return $this->where(array_fill_keys((array) $params, $expression));
+    }
+
+    /**
+     * Embed the global patterns into the parameters that have no constraint of their own.
+     *
+     * @param string $path
+     * @return string
+     */
+    protected function applyGlobalPatterns(string $path): string
+    {
+        if (self::$patterns === []) {
+            return $path;
+        }
+
+        return preg_replace_callback(self::PARAM_PATTERN, function (array $m) {
+            if (isset($m[2]) || !isset(self::$patterns[$m[1]])) {
+                return $m[0];
+            }
+
+            return '{' . $m[1] . ':' . self::$patterns[$m[1]] . '}';
+        }, $path);
+    }
+
+    /**
+     * Fail at definition time, not on the first request, when a route carries a bad constraint.
+     *
+     * @param string $path
+     * @return void
+     * @throws \LogicException
+     */
+    protected function assertValidInlineConstraints(string $path): void
+    {
+        if (!str_contains($path, ':')) {
+            return;
+        }
+
+        preg_match_all(self::PARAM_PATTERN, $path, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $m) {
+            if (isset($m[2])) {
+                $this->assertValidConstraint($m[1], $m[2]);
+            }
+        }
+    }
+
+    /**
+     * @param string $param
+     * @param string $pattern
+     * @return void
+     * @throws \LogicException
+     */
+    protected function assertValidConstraint(string $param, string $pattern): void
+    {
+        if ($pattern === '') {
+            throw new \LogicException("The constraint for {{$param}} cannot be empty.");
+        }
+
+        // It has to survive being written into the route as {param:pattern} and read back.
+        $token = '{' . $param . ':' . $pattern . '}';
+
+        if (!preg_match(self::PARAM_PATTERN, $token, $m) || $m[0] !== $token || ($m[2] ?? null) !== $pattern) {
+            throw new \LogicException(
+                "The constraint for {{$param}} is not usable: braces are only allowed as quantifiers, such as {4} or {2,5}."
+            );
+        }
+
+        set_error_handler(static fn() => true);
+        $valid = preg_match($this->constraintRegex($pattern, true), '') !== false;
+        restore_error_handler();
+
+        if (!$valid) {
+            throw new \LogicException("The constraint for {{$param}} is not a valid regular expression: {$pattern}");
+        }
+    }
+
+    /**
+     * Wrap a constraint so it can sit inside the router's `@`-delimited expressions.
+     *
+     * @param string $pattern
+     * @param bool $anchored Wrap into a full expression, for validation
+     * @return string
+     */
+    protected function constraintRegex(string $pattern, bool $anchored = false): string
+    {
+        $group = '(?:' . preg_replace('/(?<!\\\\)@/', '\\\\@', $pattern) . ')';
+
+        return $anchored ? '@^' . $group . '$@D' : $group;
+    }
+
+    /**
+     * Move the last registered route to a new path, keeping its place in the
+     * matching order, its middleware and its names.
+     *
+     * @param string $newPath
+     * @return void
+     */
+    protected function rekeyCurrentRoute(string $newPath): void
+    {
+        $old = $this->currentRoutePath;
+
+        if ($old === null || $old === $newPath) {
+            return;
+        }
+
+        $method = $this->getCurrentRequestMethod();
+
+        $routes = [];
+        foreach (self::$routes[$method] ?? [] as $path => $entry) {
+            $routes[$path === $old ? $newPath : $path] = $entry;
+        }
+        self::$routes[$method] = $routes;
+
+        if (isset(self::$routeMiddlewares[$method][$old])) {
+            self::$routeMiddlewares[$method][$newPath] = array_merge(
+                self::$routeMiddlewares[$method][$newPath] ?? [],
+                self::$routeMiddlewares[$method][$old]
+            );
+            unset(self::$routeMiddlewares[$method][$old]);
+        }
+
+        foreach (self::$namedRoutes as $name => $path) {
+            if ($path === $old) {
+                self::$namedRoutes[$name] = $newPath;
+            }
+        }
+
+        $this->currentRoutePath = $newPath;
+    }
+
+    /**
      * Generates a URL for a named route.
      *
      * @param string $name The route name.
@@ -824,7 +1114,7 @@ class Router
         $route = self::$namedRoutes[$name];
 
         if (!is_array($params)) {
-            if (preg_match('/\{(\w+)(:[^}]+)?}/', $route, $matches)) {
+            if (preg_match(self::PARAM_PATTERN, $route, $matches)) {
                 $params = [$matches[1] => $params];
             } else {
                 $params = [$params];
@@ -832,7 +1122,7 @@ class Router
         }
 
         foreach ($params as $key => $value) {
-            $route = preg_replace('/\{' . $key . '(:[^}]+)?}/', $value, $route, 1);
+            $route = preg_replace('/\{' . preg_quote((string) $key, '/') . '(?::(?:[^{}]|\{[^{}]*\})+)?\}/', (string) $value, $route, 1);
         }
 
         return $route;
@@ -972,13 +1262,26 @@ class Router
      */
     protected function convertRouteToRegex(string $route): string
     {
-        $regex = str_replace('/', '\/', $route);
+        // Lift the parameters out first: a constraint can contain `/` and `*`,
+        // which must not be touched by the escaping and wildcard steps below.
+        $params = [];
+        $route = preg_replace_callback(self::PARAM_PATTERN, function (array $m) use (&$params) {
+            $params[] = [$m[1], $m[2] ?? null];
 
-        // Replace {param} with named capture groups
-        $regex = preg_replace('/\{(\w+)(:[^}]+)?}/', '(?P<$1>[^\/]+)', $regex);
+            return "\x00" . (count($params) - 1) . "\x00";
+        }, $route);
+
+        $regex = str_replace('/', '\/', $route);
 
         // Replace * with .* for wildcard matching
         $regex = str_replace('*', '.*', $regex);
+
+        // Put the parameters back as named capture groups
+        $regex = preg_replace_callback('/\x00(\d+)\x00/', function (array $m) use ($params) {
+            [$name, $constraint] = $params[(int) $m[1]];
+
+            return '(?P<' . $name . '>' . ($constraint === null ? '[^\/]+' : $this->constraintRegex($constraint)) . ')';
+        }, $regex);
 
         return '@^' . $regex . '$@D';
     }
@@ -993,7 +1296,7 @@ class Router
     protected function extractRouteParameters(string $route, array $matches): array|false
     {
         // Get all named parameters from the route pattern
-        preg_match_all('/\{(\w+)(:[^}]+)?}/', $route, $paramNames);
+        preg_match_all(self::PARAM_PATTERN, $route, $paramNames);
         $params = [];
 
         foreach ($paramNames[1] as $name) {
@@ -1028,7 +1331,11 @@ class Router
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $callback) {
-            $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '([^/]+)', $route) . "$@";
+            $routeRegex = "@^" . preg_replace_callback(
+                self::PARAM_PATTERN,
+                fn(array $m) => '(' . (isset($m[2]) ? $this->constraintRegex($m[2]) : '[^/]+') . ')',
+                $route
+            ) . "$@";
             if (preg_match($routeRegex, $url)) {
                 return self::$routeMiddlewares[$method][$route] ?? null;
             }
