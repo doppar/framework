@@ -225,7 +225,7 @@ class Builder
      */
     public function where($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'AND');
         }
 
@@ -259,7 +259,7 @@ class Builder
      */
     public function orWhere($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'OR');
         }
 
@@ -744,7 +744,7 @@ class Builder
      */
     public function if($value, callable $callback, ?callable $default = null): self
     {
-        $payload = is_callable($value) ? $value() : $value;
+        $payload = $this->isCallback($value) ? $value() : $value;
 
         if ($payload === true || $this->hasValue($payload)) {
             $callback($this);
@@ -1363,7 +1363,7 @@ class Builder
 
         foreach ($relations as $key => $value) {
             $relation = is_string($key) ? $key : $value;
-            $constraint = is_callable($value) ? $value : $callback;
+            $constraint = $this->isCallback($value) ? $value : $callback;
 
             if (str_contains($relation, '.')) {
                 $this->loadNestedRelations($models, $relation, $constraint);
@@ -1654,7 +1654,7 @@ class Builder
 
         if (is_array($relations)) {
             foreach ($relations as $key => $value) {
-                if (is_callable($value)) {
+                if ($this->isCallback($value)) {
                     $this->eagerLoad["count:{$key}"] = $value;
                 } else {
                     $this->eagerLoad["count:{$value}"] = null;
@@ -1953,7 +1953,7 @@ class Builder
 
         if (is_array($relations)) {
             foreach ($relations as $key => $value) {
-                if (is_callable($value)) {
+                if ($this->isCallback($value)) {
                     // Format: ['comments' => function($q) { ... }]
                     [$relationName, $columns] = $this->parseRelationWithColumns($key);
                     $constraint = !empty($columns)

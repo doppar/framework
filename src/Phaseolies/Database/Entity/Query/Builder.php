@@ -123,7 +123,7 @@ class Builder
      */
     public function where($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'AND');
         }
 
@@ -157,7 +157,7 @@ class Builder
      */
     public function orWhere($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'OR');
         }
 
@@ -359,7 +359,7 @@ class Builder
      */
     public function if($value, callable $callback, ?callable $default = null): self
     {
-        $payload = is_callable($value) ? $value() : $value;
+        $payload = $this->isCallback($value) ? $value() : $value;
 
         if ($payload === true || $this->hasValue($payload)) {
             $callback($this);
