@@ -29,6 +29,20 @@ trait Grammar
     }
 
     /**
+     * Determine if a value is a callback (closure, invokable or array callable).
+     *
+     * Strings are never treated as callbacks: names like "date" or "time"
+     * pass is_callable() but are column names or values here.
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    protected function isCallback(mixed $value): bool
+    {
+        return !is_string($value) && is_callable($value);
+    }
+
+    /**
      * Get the current driver
      *
      * @return string
