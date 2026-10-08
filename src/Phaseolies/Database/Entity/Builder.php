@@ -16,7 +16,8 @@ use Phaseolies\Database\Entity\Query\{
     CollectsRelations,
     InteractsWithNestedRelations,
     InteractsWithConditionBinding,
-    InteractsWithCursorPagination
+    InteractsWithCursorPagination,
+    InteractsWithSoftDeleteScope
 };
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
@@ -34,7 +35,10 @@ class Builder
     use InteractsWithAggregateFucntion;
     use CollectsRelations;
     use InteractsWithNestedRelations;
-    use InteractsWithConditionBinding;
+    use InteractsWithConditionBinding, InteractsWithSoftDeleteScope {
+        InteractsWithSoftDeleteScope::buildWhereClause insteadof InteractsWithConditionBinding;
+        InteractsWithConditionBinding::buildWhereClause as protected buildConditionWhereClause;
+    }
     use InteractsWithCursorPagination;
 
     /**
@@ -293,6 +297,9 @@ class Builder
     public function whereNested(callable $callback, string $boolean = 'AND'): self
     {
         $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->connectionName);
+
+        // The outer query applies the soft delete constraint once
+        $nestedQuery->withoutSoftDeleteScope();
 
         $callback($nestedQuery);
 
@@ -581,18 +588,25 @@ class Builder
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
 
+        $relatedQuery = $this->buildRelatedSubqueryScope($relatedModel, $callback);
+        $softDeleteConstraint = $relatedQuery->compileSoftDeleteConstraint($relatedTable);
+
         // Build subquery with JOIN to access related model columns
         $subquery = "SELECT 1 FROM {$quote($pivotTable)}";
 
-        // Add JOIN to related table if we have a callback
-        if ($callback) {
+        // Join the related table when its columns are needed
+        if ($callback || $softDeleteConstraint !== null) {
             $subquery .= " INNER JOIN {$quote($relatedTable)} ON {$quote($pivotTable)}.{$quote($relatedKey)} = {$quote($relatedTable)}.{$quote($relatedPrimaryKey)}";
         }
 
         $subquery .= " WHERE {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+            $subquery = $this->addCallbackConditions($subquery, $relatedQuery, $relatedTable);
+        }
+
+        if ($softDeleteConstraint !== null) {
+            $subquery .= " AND {$softDeleteConstraint}";
         }
 
         return $subquery;
@@ -614,30 +628,51 @@ class Builder
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
 
+        $relatedQuery = $this->buildRelatedSubqueryScope($relatedModel, $callback);
+
         $subquery = "SELECT 1 FROM {$quote($relatedTable)}
             WHERE {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+            $subquery = $this->addCallbackConditions($subquery, $relatedQuery, $relatedTable);
+        }
+
+        if (($softDeleteConstraint = $relatedQuery->compileSoftDeleteConstraint($relatedTable)) !== null) {
+            $subquery .= " AND {$softDeleteConstraint}";
         }
 
         return $subquery;
     }
 
     /**
+     * Build a query for the related model and run the user's callback on it,
+     * so the subquery can read back its conditions and trashed mode.
+     *
+     * @param mixed $relatedModel
+     * @param callable|null $callback
+     * @return self
+     */
+    private function buildRelatedSubqueryScope(mixed $relatedModel, ?callable $callback): self
+    {
+        $relatedQuery = $relatedModel::query($this->connectionName);
+
+        if ($callback) {
+            $callback($relatedQuery);
+        }
+
+        return $relatedQuery;
+    }
+
+    /**
      * Add callback conditions to the subquery
      *
      * @param string $subquery
-     * @param mixed $relatedModel
-     * @param callable $callback
+     * @param self $subQueryBuilder
      * @param string $relatedTable
      * @return string
      */
-    private function addCallbackConditions(string $subquery, mixed $relatedModel, callable $callback, string $relatedTable): string
+    private function addCallbackConditions(string $subquery, self $subQueryBuilder, string $relatedTable): string
     {
-        $subQueryBuilder = $relatedModel::query($this->connectionName);
-        $callback($subQueryBuilder);
-
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
         $escapeValue = fn($value) => $this->escapeValue($value);
 
@@ -1379,9 +1414,9 @@ class Builder
      * Reload the current model instance with fresh attributes from the database.
      *
      * @param string|array $relations
-     * @return $this|null
+     * @return Model|null
      */
-    public function fresh($relations = []): ?self
+    public function fresh($relations = []): ?Model
     {
         $model = $this->first();
 
@@ -1389,7 +1424,10 @@ class Builder
             return null;
         }
 
-        $freshModel = $this->getModel()->newQuery()
+        $freshQuery = $this->getModel()->newQuery();
+        $freshQuery->trashed = $this->trashed;
+
+        $freshModel = $freshQuery
             ->where($model->getKeyName(), $model->getKey())
             ->embed($relations)
             ->first();
@@ -1417,6 +1455,8 @@ class Builder
     /**
      * Delete records by their primary keys.
      *
+     * On a soft-deletable model the rows are soft-deleted instead.
+     *
      * @param mixed ...$ids
      * @return int
      * @throws PDOException
@@ -1433,13 +1473,31 @@ class Builder
         $primaryKey = $model->getKeyName();
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "DELETE FROM {$this->table} WHERE {$primaryKey} IN ({$placeholders})";
+        $bindings = $ids;
+
+        if ($this->shouldSoftDelete()) {
+            $column = $this->getSoftDeleteColumn();
+            $sets = ["{$column} = ?"];
+            $now = (string) now();
+            $bindings = [$now];
+
+            if ($model->usesTimestamps()) {
+                $sets[] = 'updated_at = ?';
+                $bindings[] = $now;
+            }
+
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $sets)
+                . " WHERE {$primaryKey} IN ({$placeholders}) AND {$column} IS NULL";
+            $bindings = array_merge($bindings, $ids);
+        } else {
+            $sql = "DELETE FROM {$this->table} WHERE {$primaryKey} IN ({$placeholders})";
+        }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            foreach ($ids as $index => $id) {
-                $stmt->bindValue($index + 1, $id, $this->getPdoParamType($id));
+            foreach (array_values($bindings) as $index => $value) {
+                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
             }
 
             $stmt->execute();
@@ -2464,6 +2522,18 @@ class Builder
             $attributes['updated_at'] = now();
         }
 
+        return $this->performUpdate($attributes);
+    }
+
+    /**
+     * Run an UPDATE for the given attributes against the matched rows,
+     * without touching updated_at.
+     *
+     * @param array $attributes
+     * @return bool
+     */
+    protected function performUpdate(array $attributes): bool
+    {
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
         $setBindings = array_values($attributes);
 
@@ -2505,6 +2575,12 @@ class Builder
      */
     public function delete(): bool
     {
+        if ($this->shouldSoftDelete()) {
+            $now = (string) now();
+
+            return $this->writeSoftDeleteState($now, $now);
+        }
+
         $sql = "DELETE FROM {$this->table}";
 
         [$whereSql, $whereBindings] = $this->buildWhereClause();
@@ -3293,6 +3369,7 @@ class Builder
         $this->offset = null;
         $this->joins = [];
         $this->eagerLoad = [];
+        $this->trashed = 'exclude';
 
         return $this;
     }

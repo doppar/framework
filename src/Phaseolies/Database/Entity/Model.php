@@ -9,13 +9,14 @@ use Phaseolies\Database\Entity\Casts\InteractsWithCasting;
 use Phaseolies\Database\Temporal\InteractsWithTemporal;
 use Phaseolies\Database\Entity\Watches\InteractsWithWatches;
 use Phaseolies\Database\Entity\Computed\InteractsWithComputedProperties;
+use Phaseolies\Database\Entity\SoftDeletes\InteractsWithSoftDeletes;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use Phaseolies\Database\Entity\Attributes\Hook;
 
 abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stringable
 {
-    use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties;
+    use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties, InteractsWithSoftDeletes;
 
     /**
      * The name of the database table associated with the model.
@@ -762,6 +763,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     /**
      * Delete the model from the database.
      *
+     * A #[SoftDeletes] model is soft-deleted; use forceDelete() to remove the row.
+     *
      * @return bool
      */
     public function delete(): bool
@@ -775,9 +778,15 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                 return false;
             }
 
-            $result = $this->newQuery()
-                ->where($this->primaryKey, $this->attributes[$this->primaryKey])
-                ->delete();
+            if ($this->usesSoftDeletes() && !$this->forceDeleting) {
+                $result = $this->performSoftDelete();
+            } else {
+                $query = $this->newQuery()
+                    ->withoutSoftDeleteScope()
+                    ->where($this->primaryKey, $this->attributes[$this->primaryKey]);
+
+                $result = $this->usesSoftDeletes() ? $query->forceDelete() : $query->delete();
+            }
 
             if ($result && self::$isHookShouldBeCalled) {
                 $this->fireAfterHooks('deleted');
@@ -1188,6 +1197,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
         $result = $this->newQuery()
+            ->withoutSoftDeleteScope()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->increment($column, $amount, $extra);
 
@@ -1213,6 +1223,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {
         $result = $this->newQuery()
+            ->withoutSoftDeleteScope()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->decrement($column, $amount, $extra);
 
