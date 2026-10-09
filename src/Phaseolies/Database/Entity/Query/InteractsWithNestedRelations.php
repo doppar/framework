@@ -51,6 +51,7 @@ trait InteractsWithNestedRelations
         $currentModel = $model;
         $previousTable = $this->table;
         $previousKey = null;
+        $relatedTables = [];
 
         foreach ($relations as $index => $relation) {
             if (!method_exists($currentModel, $relation)) {
@@ -66,6 +67,7 @@ trait InteractsWithNestedRelations
             $relatedModelInstance = new $relatedModel();
             $relatedTable = $relatedModelInstance->getTable();
             $relatedPrimaryKey = $relatedModelInstance->getKeyName();
+            $relatedTables[] = [$relatedModel, $relatedTable];
 
             if ($index === 0) {
                 if ($relationType === 'bindToMany') {
@@ -115,9 +117,17 @@ trait InteractsWithNestedRelations
 
         $subquery .= " WHERE {$subqueryParts['where']}";
 
+        // Exclude soft-deleted rows on every table in the chain but the
+        // last, whose constraint follows the callback's trashed mode
+        array_pop($relatedTables);
+        foreach ($relatedTables as [$relatedModel, $relatedTable]) {
+            $subquery .= $this->relatedSoftDeleteClause($relatedModel, $relatedTable);
+        }
+
+        $subQueryBuilder = $currentModel->query($this->connectionName);
+
         // Apply callback conditions on the final table
         if ($callback && $previousTable) {
-            $subQueryBuilder = $currentModel->query($this->connectionName);
             $callback($subQueryBuilder);
 
             foreach ($subQueryBuilder->conditions as $condition) {
@@ -138,6 +148,10 @@ trait InteractsWithNestedRelations
 
                 $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
             }
+        }
+
+        if (($softDeleteConstraint = $subQueryBuilder->compileSoftDeleteConstraint($previousTable)) !== null) {
+            $subquery .= " AND {$softDeleteConstraint}";
         }
 
         return $subquery;
@@ -192,6 +206,7 @@ trait InteractsWithNestedRelations
         $joins = [];
         $lastForeignKey = null;
         $lastLocalKey = null;
+        $softDeleteClauses = [];
 
         // Process each relation in the chain
         foreach ($relations as $index => $relation) {
@@ -209,6 +224,7 @@ trait InteractsWithNestedRelations
             $relatedModelInstance = new $relatedModel();
             $relatedTable = $relatedModelInstance->getTable();
             $relatedPrimaryKey = $relatedModelInstance->getKeyName();
+            $softDeleteClauses[] = $this->relatedSoftDeleteClause($relatedModel, $relatedTable);
 
             if ($relationType === 'bindToMany') {
                 // Many-to-many relationship
@@ -265,6 +281,9 @@ trait InteractsWithNestedRelations
             : $quote($column);
 
         $subquery .= $this->buildConditionClause($columnQualified, $operator, $value, $escapeValue);
+
+        // Exclude soft-deleted rows on every related table in the chain
+        $subquery .= implode('', $softDeleteClauses);
 
         $subquery .= ' LIMIT 1';
 

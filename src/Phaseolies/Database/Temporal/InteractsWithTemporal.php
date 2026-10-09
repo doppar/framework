@@ -12,7 +12,7 @@ use Phaseolies\Support\Collection;
 trait InteractsWithTemporal
 {
     /**
-     * Register after_created / after_updated / after_deleted hooks that
+     * Register after_created / after_updated / after_deleted / after_restored hooks that
      * automatically snapshot this model if it carries #[Temporal].
      *
      * Invoked once per class during the first model construction.
@@ -29,6 +29,7 @@ trait InteractsWithTemporal
             'after_created' => static fn(Model $model) => TemporalManager::snapshot($model, 'created'),
             'after_updated' => static fn(Model $model) => TemporalManager::snapshot($model, 'updated'),
             'after_deleted' => static fn(Model $model) => TemporalManager::snapshot($model, 'deleted'),
+            'after_restored' => static fn(Model $model) => TemporalManager::snapshot($model, 'restored'),
         ]);
     }
 
@@ -189,7 +190,17 @@ trait InteractsWithTemporal
             return false;
         }
 
-        return $rewound->save();
+        if (!$rewound->save()) {
+            return false;
+        }
+
+        // save() only writes creatable columns, so carry the snapshot's
+        // soft delete state over explicitly when it differs from now.
+        if ($this->usesSoftDeletes() && $rewound->trashed() !== $this->trashed()) {
+            return $rewound->trashed() ? $rewound->delete() : $rewound->restore();
+        }
+
+        return true;
     }
 
     /**

@@ -187,6 +187,7 @@ trait InteractsWithModelQueryProcessing
                 }
 
                 $response = $this->newQuery()
+                    ->withoutSoftDeleteScope()
                     ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                     ->update($dirtyAttributes);
 
@@ -507,6 +508,7 @@ trait InteractsWithModelQueryProcessing
 
         try {
             $result = $this->newQuery()
+                ->withoutSoftDeleteScope()
                 ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                 ->update($dirty);
 

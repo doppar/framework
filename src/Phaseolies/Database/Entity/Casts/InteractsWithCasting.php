@@ -21,6 +21,7 @@ trait InteractsWithCasting
         'lastLocalKey',
         'lastRelatedKey',
         'lastPivotTable',
+        'forceDeleting',
     ];
 
     /**
