@@ -1,5 +1,11 @@
 # Release Notes
 
+## v4.5.0 - 2026-10-09
+
+* Fix: query builder treats column names like date/time as callbacks by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/353
+* (feat) ORM: soft deletes via #[SoftDeletes] by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/354
+* Fix callback conditions in present() ifExists() being dropped or rewritten and add whereNotIn() to the Entity builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/355
+
 ## v4.4.0 - 2026-10-03
 
 * server:start: Doppar banner and per-request log with execution time by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/346
