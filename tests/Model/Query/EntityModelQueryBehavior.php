@@ -658,6 +658,90 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $this->assertCount(3, $users);
     }
 
+    public function testWhereNotIn(): void
+    {
+        $total = MockUser::query()->count();
+
+        $users = MockUser::whereNotIn('id', [1, 2])->get();
+
+        $this->assertCount($total - 2, $users);
+        $this->assertNotContains(1, array_column($users->toArray(), 'id'));
+        $this->assertNotContains(2, array_column($users->toArray(), 'id'));
+
+        // Values that match nothing exclude nothing
+        $this->assertCount($total, MockUser::whereNotIn('id', [100, 101])->get());
+        $this->assertSame($total, MockUser::whereNotIn('id', [100])->count());
+
+        // A list with gaps in its keys still binds every value
+        $this->assertCount($total - 2, MockUser::whereNotIn('id', [3 => 1, 7 => 2])->get());
+    }
+
+    public function testWhereNotInWithAnEmptyListExcludesNothing(): void
+    {
+        $total = MockUser::query()->count();
+
+        $this->assertCount($total, MockUser::whereNotIn('id', [])->get());
+        $this->assertCount(1, MockUser::where('id', 1)->whereNotIn('id', [])->get());
+    }
+
+    public function testOrWhereNotIn(): void
+    {
+        $total = MockUser::query()->count();
+
+        // id = 1 OR id NOT IN (1, 2, 3) => everyone except users 2 and 3
+        $users = MockUser::where('id', 1)->orWhereNotIn('id', [1, 2, 3])->get();
+
+        $this->assertCount($total - 2, $users);
+        $this->assertContains(1, array_column($users->toArray(), 'id'));
+
+        // An empty list in an OR group matches every row
+        $this->assertCount($total, MockUser::where('id', 1)->orWhereNotIn('id', [])->get());
+    }
+
+    public function testWhereNotInCombinesWithOtherConditionsAndBindingsKeepTheirOrder(): void
+    {
+        $users = MockUser::where('id', '>', 0)
+            ->whereNotIn('id', [1])
+            ->whereIn('id', [1, 2, 3])
+            ->where('id', '<', 3)
+            ->get();
+
+        $this->assertSame([2], array_map('intval', array_column($users->toArray(), 'id')));
+    }
+
+    public function testWhereNotInInsideANestedGroupAndWithAggregatesAndBulkWrites(): void
+    {
+        $total = MockUser::query()->count();
+
+        $this->assertSame(
+            $total - 1,
+            MockUser::where(fn($q) => $q->whereNotIn('id', [1])->orWhereNotIn('id', [1]))->count()
+        );
+
+        $this->assertSame(
+            (int) MockUser::query()->sum('id') - 1,
+            (int) MockUser::whereNotIn('id', [1])->sum('id')
+        );
+
+        MockUser::whereNotIn('id', [1])->update(['name' => 'Not In Updated']);
+
+        $this->assertSame($total - 1, MockUser::where('name', 'Not In Updated')->count());
+        $this->assertNotSame('Not In Updated', MockUser::find(1)->name);
+    }
+
+    public function testWhereNotInIsQualifiedWhenJoining(): void
+    {
+        // posts also has an id column, so an unqualified NOT IN would be ambiguous
+        $rows = MockUser::query()
+            ->select('users.id')
+            ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->whereNotIn('id', [2])
+            ->get();
+
+        $this->assertNotEmpty($rows->toArray());
+        $this->assertNotContains(2, array_map('intval', array_column($rows->toArray(), 'id')));
+    }
+
     public function testWhereBetween()
     {
         $users = MockUser::query()

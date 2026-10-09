@@ -108,7 +108,7 @@ trait Debuggable
                     continue;
                 }
 
-                if ($condition[2] === 'IN') {
+                if (in_array($condition[2], ['IN', 'NOT IN'])) {
                     $bindings = array_merge($bindings, $condition[3]);
                     continue;
                 }
