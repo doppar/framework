@@ -20,13 +20,15 @@ trait InteractsWithNestedRelations
         $relations = explode('.', $nestedRelation);
         $model = $this->getModel();
 
-        $subquery = $this->buildNestedRelationshipExistsSubquery($model, $relations, $callback);
+        $bindings = [];
+
+        $subquery = $this->buildNestedRelationshipExistsSubquery($model, $relations, $callback, $bindings);
         $subquery .= ' LIMIT 1';
 
         $this->conditions[] = [
             'type' => $type,
             'subquery' => $subquery,
-            'bindings' => [],
+            'bindings' => $bindings,
             'boolean' => $boolean
         ];
 
@@ -40,12 +42,12 @@ trait InteractsWithNestedRelations
      * @param Model $model
      * @param array $relations
      * @param callable|null $callback
+     * @param array $bindings
      * @return string
      */
-    private function buildNestedRelationshipExistsSubquery(Model $model, array $relations, ?callable $callback): string
+    private function buildNestedRelationshipExistsSubquery(Model $model, array $relations, ?callable $callback, array &$bindings): string
     {
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
-        $escapeValue = fn($val) => $this->escapeValue($val);
 
         $subqueryParts = [];
         $currentModel = $model;
@@ -130,24 +132,7 @@ trait InteractsWithNestedRelations
         if ($callback && $previousTable) {
             $callback($subQueryBuilder);
 
-            foreach ($subQueryBuilder->conditions as $condition) {
-                if (isset($condition['type'])) {
-                    continue;
-                }
-
-                $column = $condition[1];
-                $operator = $condition[2];
-                $value = $condition[3];
-
-                // Qualify column with table name
-                if (strpos($column, '.') === false) {
-                    $column = "{$quote($previousTable)}.{$quote($column)}";
-                } else {
-                    $column = $quote($column);
-                }
-
-                $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
-            }
+            $subquery .= $this->compileCallbackConditions($subQueryBuilder, $previousTable, $bindings);
         }
 
         if (($softDeleteConstraint = $subQueryBuilder->compileSoftDeleteConstraint($previousTable)) !== null) {

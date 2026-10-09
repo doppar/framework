@@ -86,11 +86,13 @@ trait InteractsWithConditionBinding
                 break;
 
             case 'IN':
+            case 'NOT IN':
                 if (empty($value)) {
-                    $sql = "1=0"; // Empty IN clause is always false
+                    // Empty IN clause is always false, empty NOT IN always true
+                    $sql = $operator === 'IN' ? "1=0" : "1=1";
                 } else {
                     $placeholders = implode(',', array_fill(0, count($value), '?'));
-                    $sql = "{$column} IN ({$placeholders})";
+                    $sql = "{$column} {$operator} ({$placeholders})";
                     $bindings = $value;
                 }
                 break;

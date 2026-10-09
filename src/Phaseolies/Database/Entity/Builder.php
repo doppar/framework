@@ -551,10 +551,12 @@ class Builder
         $relationType = $model->getLastRelationType();
         $relatedModel = $model->getLastRelatedModel();
 
+        $bindings = [];
+
         if ($relationType === 'bindToMany') {
-            $subquery = $this->buildManyToManySubquery($model, $relatedModel, $callback);
+            $subquery = $this->buildManyToManySubquery($model, $relatedModel, $callback, $bindings);
         } else {
-            $subquery = $this->buildDirectRelationshipSubquery($model, $relatedModel, $callback);
+            $subquery = $this->buildDirectRelationshipSubquery($model, $relatedModel, $callback, $bindings);
         }
 
         $subquery .= ' LIMIT 1';
@@ -562,7 +564,7 @@ class Builder
         $this->conditions[] = [
             'type' => $type,
             'subquery' => $subquery,
-            'bindings' => [],
+            'bindings' => $bindings,
             'boolean' => $boolean
         ];
 
@@ -575,9 +577,10 @@ class Builder
      * @param Model $model
      * @param mixed $relatedModel
      * @param callable|null $callback
+     * @param array $bindings
      * @return string
      */
-    private function buildManyToManySubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    private function buildManyToManySubquery(Model $model, mixed $relatedModel, ?callable $callback, array &$bindings): string
     {
         $pivotTable = $model->getLastPivotTable();
         $foreignKey = $model->getLastForeignKey();
@@ -602,7 +605,7 @@ class Builder
         $subquery .= " WHERE {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedQuery, $relatedTable);
+            $subquery .= $this->compileCallbackConditions($relatedQuery, $relatedTable, $bindings);
         }
 
         if ($softDeleteConstraint !== null) {
@@ -618,9 +621,10 @@ class Builder
      * @param Model $model
      * @param mixed $relatedModel
      * @param callable|null $callback
+     * @param array $bindings
      * @return string
      */
-    private function buildDirectRelationshipSubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    private function buildDirectRelationshipSubquery(Model $model, mixed $relatedModel, ?callable $callback, array &$bindings): string
     {
         $foreignKey = $model->getLastForeignKey();
         $localKey = $model->getLastLocalKey();
@@ -634,7 +638,7 @@ class Builder
             WHERE {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedQuery, $relatedTable);
+            $subquery .= $this->compileCallbackConditions($relatedQuery, $relatedTable, $bindings);
         }
 
         if (($softDeleteConstraint = $relatedQuery->compileSoftDeleteConstraint($relatedTable)) !== null) {
@@ -664,39 +668,52 @@ class Builder
     }
 
     /**
-     * Add callback conditions to the subquery
+     * Compile the conditions a callback added to a related query into an
+     * " AND (...)" fragment for a hand-built subquery.
      *
-     * @param string $subquery
-     * @param self $subQueryBuilder
+     * @param self $relatedQuery
      * @param string $relatedTable
+     * @param array $bindings
      * @return string
      */
-    private function addCallbackConditions(string $subquery, self $subQueryBuilder, string $relatedTable): string
+    private function compileCallbackConditions(self $relatedQuery, string $relatedTable, array &$bindings): string
     {
-        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
-        $escapeValue = fn($value) => $this->escapeValue($value);
+        $this->qualifyConditionColumns($relatedQuery, $relatedTable);
 
-        foreach ($subQueryBuilder->conditions as $condition) {
-            if (isset($condition['type'])) {
-                continue;
-            }
+        [$whereSql, $whereBindings] = $relatedQuery->buildConditionWhereClause();
 
-            $column = $condition[1];
-            $operator = $condition[2];
-            $value = $condition[3];
-
-            // Ensure column is properly qualified with table name if not already
-            if (strpos($column, '.') === false) {
-                $column = "{$quote($relatedTable)}.{$quote($column)}";
-            } else {
-                // Quote qualified column names
-                $column = $quote($column);
-            }
-
-            $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
+        if ($whereSql === '') {
+            return '';
         }
 
-        return $subquery;
+        $bindings = array_merge($bindings, $whereBindings);
+
+        return " AND ({$whereSql})";
+    }
+
+    /**
+     * Qualify the plain column names of a query's conditions, including
+     * those of nested groups, with the given table.
+     *
+     * @param self $query
+     * @param string $table
+     * @return void
+     */
+    private function qualifyConditionColumns(self $query, string $table): void
+    {
+        foreach ($query->conditions as &$condition) {
+            $type = $condition['type'] ?? null;
+
+            if ($type === 'NESTED') {
+                $this->qualifyConditionColumns($condition['query'], $table);
+            } elseif ($type === null && is_string($condition[1] ?? null)) {
+                if (preg_match('/^[A-Za-z_]\w*$/', $condition[1])) {
+                    $condition[1] = $this->quoteIdentifier("{$table}.{$condition[1]}");
+                } elseif (preg_match('/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/', $condition[1])) {
+                    $condition[1] = $this->quoteIdentifier($condition[1]);
+                }
+            }
+        }
     }
 
     /**
@@ -716,13 +733,13 @@ class Builder
             } elseif ($operator === '!=') {
                 return " AND {$column} IS NOT NULL";
             }
-        } elseif ($operator === 'IN') {
+        } elseif ($operator === 'IN' || $operator === 'NOT IN') {
             if (empty($value)) {
-                // Empty IN clause is always false
-                return " AND 1=0";
+                // Empty IN clause is always false, empty NOT IN always true
+                return $operator === 'IN' ? " AND 1=0" : " AND 1=1";
             } else {
                 $escapedValues = $escapeValue($value);
-                return " AND {$column} IN {$escapedValues}";
+                return " AND {$column} {$operator} {$escapedValues}";
             }
         } elseif ($operator === 'LIKE' || $operator === 'NOT LIKE') {
             $escapedValue = $escapeValue($value);
@@ -1928,6 +1945,55 @@ class Builder
         return $this;
     }
 
+    /**
+     * Add a WHERE NOT IN condition
+     *
+     * An empty list excludes nothing.
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function whereNotIn(string $field, array $values): self
+    {
+        return $this->addNotInCondition('AND', $field, $values);
+    }
+
+    /**
+     * Add a OR WHERE NOT IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function orWhereNotIn(string $field, array $values): self
+    {
+        return $this->addNotInCondition('OR', $field, $values);
+    }
+
+    /**
+     * Add a NOT IN condition with the given boolean
+     *
+     * @param string $boolean
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    private function addNotInCondition(string $boolean, string $field, array $values): self
+    {
+        $this->assertValidIdentifier($field);
+
+        if (strpos($field, '.') === false) {
+            $field = "{$this->tableReference()}.{$field}";
+        }
+
+        $values = array_values($values);
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->conditions[] = [$boolean, $field, 'NOT IN', $values, "($placeholders)"];
+
+        return $this;
+    }
+
 
     /**
      * Load one-to-one relationships
@@ -2334,7 +2400,7 @@ class Builder
                 if (in_array($nestedCondition[2], ['BETWEEN', 'NOT BETWEEN'])) {
                     $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
                     $stmt->bindValue($index++, $nestedCondition[4], $this->getPdoParamType($nestedCondition[4]));
-                } elseif ($nestedCondition[2] === 'IN') {
+                } elseif (in_array($nestedCondition[2], ['IN', 'NOT IN'])) {
                     foreach ($nestedCondition[3] as $value) {
                         $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
                     }
