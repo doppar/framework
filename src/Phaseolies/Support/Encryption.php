@@ -40,15 +40,6 @@ class Encryption
     private const TAG_LENGTH = 16;
 
     /**
-     * Fallback key used only when no APP_KEY is configured in the
-     * environment (this package's own test suite never loads a
-     * .env file).
-     *
-     * @var string
-     */
-    private const TESTING_KEY = 'base64:ImGTGoQ6ZhM7yBlMvp41ejp0nt8juImy1aIbf6shQCI=';
-
-    /**
      * Encrypt data using authenticated AES-256-GCM encryption.
      *
      * @param mixed $data
@@ -198,17 +189,26 @@ class Encryption
     }
 
     /**
-     * Get the raw, undecoded APP_KEY value from the environment,
-     * falling back to a fixed testing key only when no real key is
-     * configured at all.
+     * Get the raw, undecoded APP_KEY value from the environment.
+     *
+     * The key is looked up the same way env() does, so a key loaded
+     * from env.toml (which only populates $_ENV and $_SERVER) is found
+     * as well as one set as a real process environment variable.
      *
      * @return string
+     * @throws RuntimeException
      */
     private function getRawAppKey(): string
     {
-        $key = getenv('APP_KEY');
+        $key = $_ENV['APP_KEY'] ?? $_SERVER['APP_KEY'] ?? getenv('APP_KEY');
 
-        return ($key !== false && $key !== '') ? $key : self::TESTING_KEY;
+        if (!is_string($key) || trim($key) === '') {
+            throw new RuntimeException(
+                'No application encryption key has been specified. Set APP_KEY in env.toml or run "php pool key:generate".'
+            );
+        }
+
+        return $key;
     }
 
     /**
