@@ -207,11 +207,9 @@ trait InteractsWithBigDataProcessing
     private function openCursor(bool $unbuffered): Generator
     {
         $restore = null;
-        $attribute = match (true) {
-            defined('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY') => constant('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY'),
-            defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY') => constant('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY'),
-            default => null,
-        };
+        $attribute = defined('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY')
+            ? constant('Pdo\Mysql::ATTR_USE_BUFFERED_QUERY')
+            : null;
 
         try {
             if (
