@@ -41,7 +41,8 @@ class MigrateTemporalCommand extends Command
 
             $connectionLabel = $connection ?: 'per-model';
 
-            $this->line("<fg=yellow>🕐 Temporal Migration — connection: {$connectionLabel}</>");
+            $this->newLine();
+            $this->line("  <fg=yellow;options=bold>Temporal migration</> <fg=gray>connection: {$connectionLabel}" . ($dryRun ? ' · dry run' : '') . '</>');
             $this->newLine();
 
             $classes = $this->discoverTemporalModels($modelsPath);
@@ -51,15 +52,32 @@ class MigrateTemporalCommand extends Command
                 return Command::SUCCESS;
             }
 
+            $entries = [];
+
+            foreach ($classes as $class) {
+                $model     = new $class();
+                $baseTable = $model->getTable();
+
+                $entries[] = [
+                    'class'      => $class,
+                    'base'       => $baseTable,
+                    'history'    => TemporalManager::historyTable($baseTable, $class),
+                    'connection' => $this->resolveConnectionForModel($model, $connection),
+                ];
+            }
+
+            $classWidth      = max(array_map(fn ($e) => strlen($e['class']), $entries));
+            $connectionWidth = max(array_map(fn ($e) => strlen($e['connection']), $entries));
+            $tableWidth      = max(array_map(fn ($e) => strlen($e['base'] . ' → ' . $e['history']), $entries));
+
             $created = 0;
             $skipped = 0;
 
-            foreach ($classes as $class) {
-                $attr         = TemporalManager::getAttribute($class);
-                $model        = new $class();
-                $baseTable    = $model->getTable();
-                $historyTable = TemporalManager::historyTable($baseTable, $class);
-                $modelConnection = $this->resolveConnectionForModel($model, $connection);
+            foreach ($entries as $entry) {
+                $class           = $entry['class'];
+                $historyTable    = $entry['history'];
+                $modelConnection = $entry['connection'];
+                $attr            = TemporalManager::getAttribute($class);
 
                 try {
                     $pdo    = Database::getPdoInstance($modelConnection);
@@ -71,23 +89,22 @@ class MigrateTemporalCommand extends Command
                     return Command::FAILURE;
                 }
 
-                $this->line("  <fg=cyan>Model</>        : <fg=white>{$class}</>");
-                $this->line("  <fg=cyan>Connection</>   : <fg=white>{$modelConnection}</>");
-                $this->line("  <fg=cyan>Base table</>   : <fg=white>{$baseTable}</>");
-                $this->line("  <fg=cyan>History table</> : <fg=white>{$historyTable}</>");
+                $row = fn (string $icon, string $color, string $status) => $this->line(
+                    "  <fg={$color}>{$icon}</> <fg=white>" . str_pad($class, $classWidth) . '</>  '
+                    . '<fg=gray>' . str_pad($entry['base'] . ' → ' . $historyTable, $tableWidth) . '</>  '
+                    . '<fg=cyan>' . str_pad($modelConnection, $connectionWidth) . "</>  <fg={$color}>{$status}</>"
+                );
 
                 if (!$dryRun && $this->tableExists($pdo, $driver, $historyTable)) {
                     // Table exists — check if we need to add the actor column
                     if ($attr?->trackActor && !$this->columnExists($pdo, $driver, $historyTable, 'actor')) {
-                        $sql = $this->addActorColumnSql($driver, $historyTable);
-                        $pdo->exec($sql);
-                        $this->line('  <fg=green>→ Added missing `actor` column.</>');
+                        $pdo->exec($this->addActorColumnSql($driver, $historyTable));
+                        $row('✓', 'green', 'actor column added');
                         $created++;
                     } else {
-                        $this->line('  <fg=yellow>→ Already exists, skipped.</>');
+                        $row('•', 'yellow', 'already exists');
                         $skipped++;
                     }
-                    $this->newLine();
                     continue;
                 }
 
@@ -98,19 +115,20 @@ class MigrateTemporalCommand extends Command
                 );
 
                 if ($dryRun) {
+                    $row('›', 'yellow', 'would create');
                     foreach ($statements as $sql) {
-                        $this->line('  <fg=yellow>SQL:</> ' . preg_replace('/\s+/', ' ', trim($sql)));
+                        $this->line('      <fg=gray>' . preg_replace('/\s+/', ' ', trim($sql)) . '</>');
                     }
                 } else {
                     foreach ($statements as $sql) {
                         $pdo->exec($sql);
                     }
-                    $this->line('  <fg=green>→ Created successfully.</>');
+                    $row('✓', 'green', 'created');
                     $created++;
                 }
-
-                $this->newLine();
             }
+
+            $this->newLine();
 
             if (!$dryRun) {
                 $this->displaySuccess(
