@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.5.1 - 2026-10-11
+
+* Drop pre-8.5 PDO MySQL constant fallbacks and tidy migrate:temporal output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/356
+
 ## v4.5.0 - 2026-10-09
 
 * Fix: query builder treats column names like date/time as callbacks by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/353
