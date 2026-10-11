@@ -136,6 +136,11 @@ class Encryption
      * to derive before the APP_KEY decoding bug was fixed, so data
      * encrypted before that fix remains readable.
      *
+     * CBC carries no authentication, so the wrong key still "succeeds"
+     * whenever its garbage output happens to end in valid padding
+     * (roughly 1 in 256). When both keys decrypt, the result that is
+     * valid UTF-8 is preferred, since wrong-key output is random bytes.
+     *
      * @param string $encryptedData
      * @return string|false
      */
@@ -149,15 +154,23 @@ class Encryption
 
         [$ciphertext, $iv] = explode('::', $data, 2);
 
+        $candidates = [];
+
         foreach ([$this->getAppKey(), $this->getLegacyBuggyAppKey()] as $key) {
             $decrypted = openssl_decrypt($ciphertext, self::LEGACY_CIPHER, $key, 0, $iv);
 
             if ($decrypted !== false) {
-                return $decrypted;
+                $candidates[] = $decrypted;
             }
         }
 
-        return false;
+        foreach ($candidates as $candidate) {
+            if (preg_match('//u', $candidate) === 1) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0] ?? false;
     }
 
     /**

@@ -112,6 +112,26 @@ class EncryptionTest extends TestCase
         $this->assertSame('pre-fix secret', $this->encryption->decrypt($legacyBlob));
     }
 
+    public function test_legacy_ciphertext_is_not_decrypted_to_garbage_by_the_other_key()
+    {
+        // Without a MAC, the wrong CBC key yields valid padding about 1 time
+        // in 256, so enough random IVs are guaranteed to hit that case for
+        // both the correct key and the pre-fix buggy key.
+        $keys = [
+            $this->encryption->getAppKey(),
+            base64_decode(getenv('APP_KEY') ?: 'base64:ImGTGoQ6ZhM7yBlMvp41ejp0nt8juImy1aIbf6shQCI='),
+        ];
+
+        foreach ($keys as $key) {
+            for ($i = 0; $i < 3000; $i++) {
+                $iv = openssl_random_pseudo_bytes(16);
+                $legacyBlob = base64_encode(openssl_encrypt('legacy secret', 'AES-256-CBC', $key, 0, $iv) . '::' . $iv);
+
+                $this->assertSame('legacy secret', $this->encryption->decrypt($legacyBlob));
+            }
+        }
+    }
+
     public function test_get_app_key_strips_base64_prefix_correctly()
     {
         $rawEnv = 'base64:ImGTGoQ6ZhM7yBlMvp41ejp0nt8juImy1aIbf6shQCI=';
