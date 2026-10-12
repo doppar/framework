@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.5.2 - 2026-10-12
+
+* Fix: Encryption ignores APP_KEY from env.toml and silently uses a public test key by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/364
+
 ## v4.5.1 - 2026-10-11
 
 * Drop pre-8.5 PDO MySQL constant fallbacks and tidy migrate:temporal output by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/356
