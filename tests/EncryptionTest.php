@@ -112,6 +112,26 @@ class EncryptionTest extends TestCase
         $this->assertSame('pre-fix secret', $this->encryption->decrypt($legacyBlob));
     }
 
+    public function test_legacy_ciphertext_is_not_decrypted_to_garbage_by_the_other_key()
+    {
+        // Without a MAC, the wrong CBC key yields valid padding about 1 time
+        // in 256, so enough random IVs are guaranteed to hit that case for
+        // both the correct key and the pre-fix buggy key.
+        $keys = [
+            $this->encryption->getAppKey(),
+            base64_decode(getenv('APP_KEY') ?: 'base64:ImGTGoQ6ZhM7yBlMvp41ejp0nt8juImy1aIbf6shQCI='),
+        ];
+
+        foreach ($keys as $key) {
+            for ($i = 0; $i < 3000; $i++) {
+                $iv = openssl_random_pseudo_bytes(16);
+                $legacyBlob = base64_encode(openssl_encrypt('legacy secret', 'AES-256-CBC', $key, 0, $iv) . '::' . $iv);
+
+                $this->assertSame('legacy secret', $this->encryption->decrypt($legacyBlob));
+            }
+        }
+    }
+
     public function test_get_app_key_strips_base64_prefix_correctly()
     {
         $rawEnv = 'base64:ImGTGoQ6ZhM7yBlMvp41ejp0nt8juImy1aIbf6shQCI=';
@@ -123,5 +143,96 @@ class EncryptionTest extends TestCase
         $this->assertSame($expectedKey, $key);
         $this->assertSame(32, strlen($key));
         $this->assertNotSame($buggyKey, $key);
+    }
+
+    public function test_uses_app_key_loaded_from_env_toml()
+    {
+        // env.toml only populates $_ENV and $_SERVER, never putenv()
+        $tomlKey = 'base64:' . base64_encode(random_bytes(32));
+
+        $this->withAppKey($tomlKey, function () use ($tomlKey) {
+            $this->assertSame(base64_decode(substr($tomlKey, 7)), $this->encryption->getAppKey());
+
+            $encrypted = $this->encryption->encrypt('secret');
+
+            $this->assertSame('secret', $this->encryption->decrypt($encrypted));
+        }, putenv: false);
+    }
+
+    public function test_ciphertext_cannot_be_decrypted_with_another_key()
+    {
+        $encrypted = null;
+
+        $this->withAppKey('base64:' . base64_encode(random_bytes(32)), function () use (&$encrypted) {
+            $encrypted = $this->encryption->encrypt('secret');
+        });
+
+        $this->withAppKey('base64:' . base64_encode(random_bytes(32)), function () use ($encrypted) {
+            $this->assertFalse($this->encryption->decrypt($encrypted));
+        });
+    }
+
+    public function test_throws_when_app_key_is_missing()
+    {
+        $this->withAppKey(null, function () {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('No application encryption key has been specified');
+
+            $this->encryption->encrypt('secret');
+        });
+    }
+
+    public function test_throws_when_app_key_is_empty()
+    {
+        $this->withAppKey('', function () {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('No application encryption key has been specified');
+
+            $this->encryption->decrypt('v2:anything');
+        });
+    }
+
+    /**
+     * Run the callback with APP_KEY set to the given value (null unsets it),
+     * restoring the original environment afterwards.
+     */
+    private function withAppKey(?string $key, callable $callback, bool $putenv = true): void
+    {
+        $original = [
+            'env' => $_ENV['APP_KEY'] ?? null,
+            'server' => $_SERVER['APP_KEY'] ?? null,
+            'getenv' => getenv('APP_KEY'),
+        ];
+
+        unset($_ENV['APP_KEY'], $_SERVER['APP_KEY']);
+        putenv('APP_KEY');
+
+        if ($key !== null) {
+            $_ENV['APP_KEY'] = $key;
+            $_SERVER['APP_KEY'] = $key;
+
+            if ($putenv) {
+                putenv("APP_KEY={$key}");
+            }
+        }
+
+        try {
+            $callback();
+        } finally {
+            unset($_ENV['APP_KEY'], $_SERVER['APP_KEY']);
+            putenv('APP_KEY');
+
+            if ($original['env'] !== null) {
+                $_ENV['APP_KEY'] = $original['env'];
+            }
+
+            if ($original['server'] !== null) {
+                $_SERVER['APP_KEY'] = $original['server'];
+            }
+
+            if ($original['getenv'] !== false) {
+                putenv("APP_KEY={$original['getenv']}");
+            }
+        }
     }
 }
