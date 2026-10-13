@@ -1146,14 +1146,22 @@ class Application extends Container
             $this->resumeDeferScope($deferScope);
         }
 
+        $terminationFailure = null;
+
         try {
             foreach ($this->terminatingCallbacks as $callback) {
                 $this->callTerminatingCallback($callback, $request, $response, $exception);
             }
+        } catch (\Throwable $e) {
+            // Remember it so deferred-callback failures are reported against the
+            // exception that is actually ending the request, then let it propagate.
+            $terminationFailure = $e;
+
+            throw $e;
         } finally {
             try {
                 if ($deferScope !== null) {
-                    $this->endDeferScope($deferScope, $exception);
+                    $this->endDeferScope($deferScope, $terminationFailure ?? $exception);
                 }
             } finally {
                 $this->cleanupRequestScopedServices();

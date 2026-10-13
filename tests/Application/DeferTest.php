@@ -560,4 +560,80 @@ final class DeferTest extends TestCase
         $this->assertSame('Deferred callback failed: cleanup failed', $logged[0][0]);
         $this->assertSame($failure, $logged[0][1]['exception']);
     }
+
+    private function dispatchWithDeferredFailure(): DispatchResult
+    {
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willReturnCallback(function () {
+            $this->app->defer(function () { throw new RuntimeException('deferred failed'); });
+
+            return $this->makeResponse();
+        });
+        $this->app->router = $router;
+
+        return $this->app->dispatch(new Request());
+    }
+
+    public function testTerminatingCallbackFailureIsReportedAsTheOriginalOfDeferredFailures(): void
+    {
+        $terminating = new RuntimeException('terminating failed');
+        $this->app->terminating(function () use ($terminating) { throw $terminating; });
+
+        $result = $this->dispatchWithDeferredFailure();
+
+        try {
+            $result->terminate();
+            $this->fail('The terminating exception should propagate.');
+        } catch (RuntimeException $e) {
+            $this->assertSame($terminating, $e);
+        }
+
+        $this->assertCount(1, $this->reported);
+        $this->assertSame('deferred failed', $this->reported[0][0]->getMessage());
+        $this->assertSame($terminating, $this->reported[0][1]);
+        $this->assertFalse($this->app->hasDeferScope());
+    }
+
+    public function testTerminatingFailureTakesPrecedenceOverTheDispatchException(): void
+    {
+        $terminating = new RuntimeException('terminating failed');
+        $dispatchFailure = new HttpException(404, 'not found');
+        $this->app->terminating(function () use ($terminating) { throw $terminating; });
+
+        $scope = $this->app->beginDeferScope();
+        $this->app->defer(function () { throw new RuntimeException('deferred failed'); });
+        $this->app->suspendDeferScope($scope);
+
+        try {
+            $this->app->terminate(new Request(), null, $dispatchFailure, $scope);
+            $this->fail('The terminating exception should propagate.');
+        } catch (RuntimeException $e) {
+            $this->assertSame($terminating, $e);
+        }
+
+        $this->assertCount(1, $this->reported);
+        $this->assertSame($terminating, $this->reported[0][1]);
+    }
+
+    public function testDispatchExceptionIsStillTheOriginalWhenTerminatingCallbacksSucceed(): void
+    {
+        $dispatchFailure = new HttpException(404, 'not found');
+
+        $scope = $this->app->beginDeferScope();
+        $this->app->defer(function () { throw new RuntimeException('deferred failed'); });
+        $this->app->suspendDeferScope($scope);
+
+        $this->app->terminate(new Request(), null, $dispatchFailure, $scope);
+
+        $this->assertCount(1, $this->reported);
+        $this->assertSame($dispatchFailure, $this->reported[0][1]);
+    }
+
+    public function testDeferredFailureStillReportsNullOriginalWhenTerminationSucceeds(): void
+    {
+        $this->dispatchWithDeferredFailure()->terminate();
+
+        $this->assertCount(1, $this->reported);
+        $this->assertNull($this->reported[0][1]);
+    }
 }
