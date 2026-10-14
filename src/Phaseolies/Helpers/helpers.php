@@ -77,6 +77,19 @@ if (!function_exists('app')) {
     }
 }
 
+if (!function_exists('defer')) {
+    /**
+     * Register a callback to run when the current execution ends (LIFO).
+     *
+     * @param callable $callback
+     * @return \Phaseolies\Application
+     */
+    function defer(callable $callback)
+    {
+        return app()->defer($callback);
+    }
+}
+
 if (!function_exists('request')) {
     /**
      * Creates a new request instance to handle HTTP requests.

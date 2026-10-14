@@ -14,6 +14,7 @@ use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
+use Phaseolies\Support\DeferScope;
 use Phaseolies\ApplicationBuilder;
 use Devium\Toml\Toml;
 use RuntimeException;
@@ -211,6 +212,20 @@ class Application extends Container
      * @var array<int, array{callback: callable, parameters: array<int, \ReflectionParameter>}>
      */
     protected array $terminatingCallbacks = [];
+
+    /**
+     * Active defer scopes, innermost last.
+     *
+     * @var array<int, DeferScope>
+     */
+    protected array $deferScopes = [];
+
+    /**
+     * Custom reporter for exceptions thrown by deferred callbacks.
+     *
+     * @var callable|null
+     */
+    protected $deferFailureReporter = null;
 
     /**
      * Application constructor.
@@ -1119,14 +1134,227 @@ class Application extends Container
      * @param \Throwable|null $exception
      * @return void
      */
-    public function terminate(Request $request, ?Response $response = null, ?\Throwable $exception = null): void
-    {
+    public function terminate(
+        Request $request,
+        ?Response $response = null,
+        ?\Throwable $exception = null,
+        ?DeferScope $deferScope = null
+    ): void {
+        if ($deferScope !== null) {
+            // Make the request scope current again so terminating callbacks
+            // can still defer cleanup into it.
+            $this->resumeDeferScope($deferScope);
+        }
+
+        $terminationFailure = null;
+
         try {
             foreach ($this->terminatingCallbacks as $callback) {
                 $this->callTerminatingCallback($callback, $request, $response, $exception);
             }
+        } catch (\Throwable $e) {
+            // Remember it so deferred-callback failures are reported against the
+            // exception that is actually ending the request, then let it propagate.
+            $terminationFailure = $e;
+
+            throw $e;
         } finally {
-            $this->cleanupRequestScopedServices();
+            try {
+                if ($deferScope !== null) {
+                    $this->endDeferScope($deferScope, $terminationFailure ?? $exception);
+                }
+            } finally {
+                $this->cleanupRequestScopedServices();
+            }
+        }
+    }
+
+    /**
+     * Register a callback to run when the current execution ends.
+     *
+     * @param callable $callback
+     * @return self
+     * @throws \LogicException
+     */
+    public function defer(callable $callback): self
+    {
+        $scope = end($this->deferScopes);
+
+        if (!$scope instanceof DeferScope) {
+            throw new \LogicException(
+                'defer() was called outside an active execution scope. '
+                . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
+            );
+        }
+
+        $scope->push($callback);
+
+        return $this;
+    }
+
+    /**
+     * Determine if a defer scope is currently active.
+     *
+     * @return bool
+     */
+    public function hasDeferScope(): bool
+    {
+        return $this->deferScopes !== [];
+    }
+
+    /**
+     * Start a new, independent defer scope and make it the current one.
+     *
+     * @return DeferScope
+     */
+    public function beginDeferScope(): DeferScope
+    {
+        return $this->deferScopes[] = new DeferScope();
+    }
+
+    /**
+     * Detach a scope from the active stack without running its callbacks.
+     *
+     *
+     * @param DeferScope $scope
+     * @return void
+     */
+    public function suspendDeferScope(DeferScope $scope): void
+    {
+        $index = array_search($scope, $this->deferScopes, true);
+
+        if ($index === false) {
+            return;
+        }
+
+        while (count($this->deferScopes) > $index + 1) {
+            $this->endDeferScope(end($this->deferScopes));
+        }
+
+        array_pop($this->deferScopes);
+    }
+
+    /**
+     * Make a previously suspended scope the current scope again.
+     *
+     * @param DeferScope $scope
+     * @return void
+     */
+    public function resumeDeferScope(DeferScope $scope): void
+    {
+        if ($scope->isClosed() || in_array($scope, $this->deferScopes, true)) {
+            return;
+        }
+
+        $this->deferScopes[] = $scope;
+    }
+
+    /**
+     * End a defer scope: run its callbacks and discard it.
+     *
+     * @param DeferScope $scope
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    public function endDeferScope(DeferScope $scope, ?\Throwable $exception = null): void
+    {
+        $index = array_search($scope, $this->deferScopes, true);
+
+        if ($index === false) {
+            // Not current: either already ended or suspended. Run a
+            // suspended scope in place; a closed scope is a no-op.
+            $this->deferScopes[] = $scope;
+            $index = count($this->deferScopes) - 1;
+        }
+
+        while (count($this->deferScopes) > $index) {
+            // Run while still current, so callbacks may defer further cleanup.
+            $ending = end($this->deferScopes);
+            $failures = $ending->run();
+
+            if (end($this->deferScopes) === $ending) {
+                array_pop($this->deferScopes);
+            }
+
+            foreach ($failures as $failure) {
+                $this->reportDeferFailure($failure, $exception);
+            }
+        }
+    }
+
+    /**
+     * Run a callback inside its own defer scope.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function runInDeferScope(callable $callback): mixed
+    {
+        $scope = $this->beginDeferScope();
+
+        try {
+            return $callback();
+        } catch (\Throwable $e) {
+            $this->endDeferScope($scope, $e);
+
+            throw $e;
+        } finally {
+            $this->endDeferScope($scope);
+        }
+    }
+
+    /**
+     * Set a custom reporter for exceptions thrown by deferred callbacks.
+     *
+     * @param callable(\Throwable, ?\Throwable): void|null $reporter
+     * @return self
+     */
+    public function reportDeferredExceptionsUsing(?callable $reporter): self
+    {
+        $this->deferFailureReporter = $reporter;
+
+        return $this;
+    }
+
+    /**
+     * Report an exception thrown by a deferred callback.
+     *
+     * @param \Throwable $failure
+     * @param \Throwable|null $original
+     * @return void
+     */
+    protected function reportDeferFailure(\Throwable $failure, ?\Throwable $original): void
+    {
+        $reported = false;
+
+        try {
+            if ($this->deferFailureReporter !== null) {
+                ($this->deferFailureReporter)($failure, $original);
+                $reported = true;
+            } elseif ($this->has('log')) {
+                \Phaseolies\Support\Facades\Log::error('Deferred callback failed: ' . $failure->getMessage(), [
+                    'exception' => $failure,
+                ]);
+                $reported = true;
+            }
+        } catch (\Throwable) {
+            // Reporting must never break cleanup; fall through to the last resort.
+        }
+
+        if (!$reported) {
+            // No reporter or logger took it (absent, or it threw). Cleanup failures
+            // are never propagated, so leave a best-effort trace rather than none.
+            try {
+                error_log(sprintf(
+                    'Deferred callback failed: %s: %s in %s:%d',
+                    get_class($failure),
+                    $failure->getMessage(),
+                    $failure->getFile(),
+                    $failure->getLine()
+                ));
+            } catch (\Throwable) {
+                // Nothing left to try.
+            }
         }
     }
 
@@ -1284,6 +1512,8 @@ class Application extends Container
     {
         $this->snapshotBootBindings();
 
+        $deferScope = $this->beginDeferScope();
+
         try {
             $this->instance('request', $request);
 
@@ -1291,11 +1521,25 @@ class Application extends Container
 
             $response->prepare($request)->send();
 
-            return new DispatchResult($this, $request, $response);
-        } catch (HttpException $e) {
-            Response::dispatchHttpException($e);
+            $this->suspendDeferScope($deferScope);
 
-            return new DispatchResult($this, $request, null, $e);
+            return new DispatchResult($this, $request, $response, null, $deferScope);
+        } catch (HttpException $e) {
+            try {
+                Response::dispatchHttpException($e);
+            } catch (\Throwable $renderFailure) {
+                $this->endDeferScope($deferScope, $renderFailure);
+
+                throw $renderFailure;
+            }
+
+            $this->suspendDeferScope($deferScope);
+
+            return new DispatchResult($this, $request, null, $e, $deferScope);
+        } catch (\Throwable $e) {
+            $this->endDeferScope($deferScope, $e);
+
+            throw $e;
         }
     }
 }

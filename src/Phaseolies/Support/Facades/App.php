@@ -24,6 +24,9 @@ use Phaseolies\Facade\BaseFacade;
  * @method static void setLocale($locale)
  * @method static void setFallbackLocale($fallbackLocale)
  * @method static bool isLocale($locale)
+ * @method static \Phaseolies\Application defer(callable $callback)
+ * @method static mixed runInDeferScope(callable $callback)
+ * @method static bool hasDeferScope()
  *
  * @see \Phaseolies\Application
  */
