@@ -14,6 +14,7 @@ use Phaseolies\Console\Commands\MakeAuthorizerCommand;
 use Phaseolies\Console\Commands\MakeConsoleCommand;
 use Phaseolies\Console\Commands\MakeControllerCommand;
 use Phaseolies\Console\Commands\MakeHookCommand;
+use Phaseolies\Console\Commands\MakeSignalCommand;
 use Phaseolies\Console\Commands\MakeMailCommand;
 use Phaseolies\Console\Commands\MakeMiddlewareCommand;
 use Phaseolies\Console\Commands\MakeModelCommand;
@@ -80,6 +81,103 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertFileExists($file);
         $this->assertStringContainsString("protected \$name = 'doppar_demo:reports-sync';", (string) file_get_contents($file));
         $this->assertContains('Command created successfully', $command->capturedSuccesses);
+    }
+
+    public function testMakeSignalCommandCreatesAPlainSignalClass(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'Billing\\InvoicePaid';
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/Billing/InvoicePaid.php');
+        $contents = (string) file_get_contents($file);
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString('namespace App\\Signals\\Billing;', $contents);
+        $this->assertStringContainsString('class InvoicePaid', $contents);
+        $this->assertStringNotContainsString('DeliverOnSettle', $contents);
+        $this->assertContains('Signal created successfully', $command->capturedSuccesses);
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandAddsTheSettleAttribute(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'OrderPlaced';
+        $command->fakeOptions = ['settle' => true, 'connection' => null];
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/OrderPlaced.php');
+        $contents = (string) file_get_contents($file);
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString('use Phaseolies\\Signals\\Attributes\\DeliverOnSettle;', $contents);
+        $this->assertStringContainsString("#[DeliverOnSettle]\nclass OrderPlaced", $contents);
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandConnectionImpliesSettle(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'ReportStored';
+        $command->fakeOptions = ['settle' => false, 'connection' => 'analytics'];
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/ReportStored.php');
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString(
+            "#[DeliverOnSettle(connection: 'analytics')]\nclass ReportStored",
+            (string) file_get_contents($file)
+        );
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandRefusesToOverwriteOrAcceptUnsafeInput(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'OrderPlaced';
+        $this->assertSame(0, $command->handle());
+
+        $file = Env::path('src/Signals/OrderPlaced.php');
+        $original = (string) file_get_contents($file);
+        $this->assertSame(1, $command->handle());
+        $this->assertSame($original, (string) file_get_contents($file));
+
+        $bad = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $bad->fakeArguments['name'] = 'Evil';
+        $bad->fakeOptions = ['connection' => "x')]\nclass Pwned {} //"];
+        $this->assertSame(1, $bad->handle());
+        $this->assertFileDoesNotExist(Env::path('src/Signals/Evil.php'));
+
+        $badName = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $badName->fakeArguments['name'] = 'Not-A-Class';
+        $this->assertSame(1, $badName->handle());
+    }
+
+    private function lintFile(string $file): int
+    {
+        exec(PHP_BINARY . ' -l ' . escapeshellarg($file) . ' 2>&1', $output, $status);
+
+        return $status;
     }
 
     public function testMakeAuthCommandGeneratesExpectedFilesAndRoutes(): void
