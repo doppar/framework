@@ -636,4 +636,97 @@ final class DeferTest extends TestCase
         $this->assertCount(1, $this->reported);
         $this->assertNull($this->reported[0][1]);
     }
+
+    /**
+     * Run a failing deferred callback and return what error_log() received.
+     */
+    private function captureErrorLog(Application $app): string
+    {
+        $file = tempnam(sys_get_temp_dir(), 'defer-log');
+        $previous = ini_set('error_log', $file);
+
+        try {
+            $app->runInDeferScope(function () use ($app) {
+                $app->defer(function () { throw new RuntimeException('cleanup failed'); });
+            });
+
+            return (string) file_get_contents($file);
+        } finally {
+            ini_set('error_log', $previous === false ? '' : $previous);
+            @unlink($file);
+        }
+    }
+
+    public function testCleanupFailureFallsBackToErrorLogWhenNoLoggerIsBound(): void
+    {
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+
+        $output = $this->captureErrorLog($app);
+
+        $this->assertStringContainsString('Deferred callback failed: RuntimeException: cleanup failed', $output);
+    }
+
+    public function testCleanupFailureFallsBackToErrorLogWhenTheReporterThrows(): void
+    {
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        $app->reportDeferredExceptionsUsing(function () { throw new LogicException('reporter broke'); });
+
+        $output = $this->captureErrorLog($app);
+
+        $this->assertStringContainsString('Deferred callback failed: RuntimeException: cleanup failed', $output);
+    }
+
+    public function testCleanupFailureFallsBackToErrorLogWhenTheLoggerThrows(): void
+    {
+        $logger = new class {
+            public function error(string $message, array $context = []): void
+            {
+                throw new LogicException('logger broke');
+            }
+        };
+
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        $app->bind('log', fn() => $logger);
+        $app->bind('app', fn() => $app);
+        \Phaseolies\Facade\BaseFacade::setFacadeApplication($app);
+
+        try {
+            $output = $this->captureErrorLog($app);
+        } finally {
+            \Phaseolies\Facade\BaseFacade::setFacadeApplication(null);
+        }
+
+        $this->assertStringContainsString('Deferred callback failed: RuntimeException: cleanup failed', $output);
+    }
+
+    public function testErrorLogFallbackIsSkippedWhenTheReporterHandlesTheFailure(): void
+    {
+        $output = $this->captureErrorLog($this->app);
+
+        $this->assertSame('', $output);
+        $this->assertCount(1, $this->reported);
+    }
+
+    public function testLaterCleanupStillRunsWhenTheReporterThrows(): void
+    {
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        $app->reportDeferredExceptionsUsing(function () { throw new LogicException('reporter broke'); });
+        $order = [];
+
+        $file = tempnam(sys_get_temp_dir(), 'defer-log');
+        $previous = ini_set('error_log', $file);
+
+        try {
+            $app->runInDeferScope(function () use ($app, &$order) {
+                $app->defer(function () use (&$order) { $order[] = 'first'; });
+                $app->defer(function () { throw new RuntimeException('cleanup failed'); });
+                $app->defer(function () use (&$order) { $order[] = 'third'; });
+            });
+        } finally {
+            ini_set('error_log', $previous === false ? '' : $previous);
+            @unlink($file);
+        }
+
+        $this->assertSame(['third', 'first'], $order);
+    }
 }

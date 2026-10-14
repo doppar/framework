@@ -1325,22 +1325,36 @@ class Application extends Container
      */
     protected function reportDeferFailure(\Throwable $failure, ?\Throwable $original): void
     {
+        $reported = false;
+
         try {
             if ($this->deferFailureReporter !== null) {
                 ($this->deferFailureReporter)($failure, $original);
-
-                return;
-            }
-
-            if ($this->has('log')) {
+                $reported = true;
+            } elseif ($this->has('log')) {
                 \Phaseolies\Support\Facades\Log::error('Deferred callback failed: ' . $failure->getMessage(), [
                     'exception' => $failure,
                 ]);
-
-                return;
+                $reported = true;
             }
         } catch (\Throwable) {
-            // Reporting must never break cleanup.
+            // Reporting must never break cleanup; fall through to the last resort.
+        }
+
+        if (!$reported) {
+            // No reporter or logger took it (absent, or it threw). Cleanup failures
+            // are never propagated, so leave a best-effort trace rather than none.
+            try {
+                error_log(sprintf(
+                    'Deferred callback failed: %s: %s in %s:%d',
+                    get_class($failure),
+                    $failure->getMessage(),
+                    $failure->getFile(),
+                    $failure->getLine()
+                ));
+            } catch (\Throwable) {
+                // Nothing left to try.
+            }
         }
     }
 
