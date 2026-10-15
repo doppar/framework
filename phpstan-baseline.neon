@@ -259,6 +259,12 @@ parameters:
 			path: src/Phaseolies/Console/Commands/Migrations/MigrateTemporalCommand.php
 
 		-
+			message: '#^Using nullsafe property access "\?\-\>branches" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Console/Commands/Migrations/MigrateTemporalCommand.php
+
+		-
 			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\Route\:\:cacheRoutes\(\)\.$#'
 			identifier: staticMethod.notFound
 			count: 1
@@ -745,6 +751,12 @@ parameters:
 			path: src/Phaseolies/Database/Entity/Model.php
 
 		-
+			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__branch\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Phaseolies/Database/Entity/Model.php
+
+		-
 			message: '#^Access to an undefined property Phaseolies\\Database\\Entity\\Model\:\:\$__changed_cols\.$#'
 			identifier: property.notFound
 			count: 1
@@ -920,6 +932,12 @@ parameters:
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>suffix" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: src/Phaseolies/Database/Temporal/TemporalManager.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>branches" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
 			path: src/Phaseolies/Database/Temporal/TemporalManager.php

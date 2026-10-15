@@ -66,13 +66,43 @@ class TemporalManager
     }
 
     /**
+     * Determine whether the given model class supports named branches.
+     *
+     * @param string $class
+     * @return bool
+     */
+    public static function isBranchable(string $class): bool
+    {
+        return self::getAttribute($class)?->branches ?? false;
+    }
+
+    /**
+     * Guard a branch argument against classes that were not configured for branching.
+     *
+     * @param string $class
+     * @param string $branch
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    public static function assertBranchSupported(string $class, string $branch): void
+    {
+        if ($branch !== 'main' && !self::isBranchable($class)) {
+            throw new \RuntimeException(
+                $class . ' does not support branches. Add #[Temporal(branches: true)] to enable them.'
+            );
+        }
+    }
+
+    /**
      * Snapshot the model's current state into the history table.
      *
      * @param Model $model
      * @param string $action
+     * @param string $branch
      * @return void
      */
-    public static function snapshot(Model $model, string $action): void
+    public static function snapshot(Model $model, string $action, string $branch = 'main'): void
     {
         $pdo          = $model->getConnection();
         $historyTable = self::historyTable($model->getTable(), get_class($model));
@@ -111,44 +141,109 @@ class TemporalManager
             $data['actor'] = self::resolveActor();
         }
 
+        if ($attr?->branches && self::hasBranchColumn($pdo, $historyTable, $driver)) {
+            $data['branch'] = $branch;
+        }
+
         self::insertHistory($pdo, $historyTable, $data);
     }
 
     /**
-     * Check whether the `actor` column exists in the given history table
+     * Snapshot an already-resolved attribute array as a new branch entry.
+     *
+     * Used to fork a branch from a point-in-time snapshot of the main
+     * timeline without disturbing the record's own history.
+     *
+     * @param Model $model
+     * @param array $snapshot
+     * @param string $branch
+     * @return void
+     */
+    public static function snapshotBranch(Model $model, array $snapshot, string $branch): void
+    {
+        $pdo          = $model->getConnection();
+        $historyTable = self::historyTable($model->getTable(), get_class($model));
+        $driver       = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        $data = [
+            'record_id'    => $model->getKey(),
+            'action'       => 'branched',
+            'valid_from'   => self::nowMicro($driver),
+            'snapshot'     => json_encode($snapshot, JSON_UNESCAPED_UNICODE),
+            'changed_cols' => null,
+            'branch'       => $branch,
+        ];
+
+        $attr = self::getAttribute(get_class($model));
+        if ($attr?->trackActor && self::hasActorColumn($pdo, $historyTable, $driver)) {
+            $data['actor'] = self::resolveActor();
+        }
+
+        self::insertHistory($pdo, $historyTable, $data);
+    }
+
+    /**
+     * Check whether the `actor` column exists in the given history table.
      *
      * @param PDO $pdo
      * @param string $historyTable
      * @param string $driver
      * @return bool
      */
-    private static function hasActorColumn(PDO $pdo, string $historyTable, string $driver): bool
+    public static function hasActorColumn(PDO $pdo, string $historyTable, string $driver): bool
     {
-        $cacheKey = $historyTable . '.actor';
+        return self::hasColumn($pdo, $historyTable, 'actor', $driver);
+    }
+
+    /**
+     * Check whether the `branch` column exists in the given history table.
+     *
+     * @param PDO $pdo
+     * @param string $historyTable
+     * @param string $driver
+     * @return bool
+     */
+    public static function hasBranchColumn(PDO $pdo, string $historyTable, string $driver): bool
+    {
+        return self::hasColumn($pdo, $historyTable, 'branch', $driver);
+    }
+
+    /**
+     * Check whether the given column exists in the given history table.
+     *
+     * @param PDO $pdo
+     * @param string $historyTable
+     * @param string $column
+     * @param string $driver
+     * @return bool
+     */
+    private static function hasColumn(PDO $pdo, string $historyTable, string $column, string $driver): bool
+    {
+        $cacheKey = $historyTable . '.' . $column;
 
         if (!array_key_exists($cacheKey, self::$columnCache)) {
             try {
                 self::$columnCache[$cacheKey] = match ($driver) {
-                    'pgsql' => (function () use ($pdo, $historyTable): bool {
+                    'pgsql' => (function () use ($pdo, $historyTable, $column): bool {
                         $stmt = $pdo->prepare(
                             "SELECT COUNT(*) FROM information_schema.columns
-                             WHERE table_name = ? AND column_name = 'actor'"
+                             WHERE table_name = ? AND column_name = ?"
                         );
-                        $stmt->execute([$historyTable]);
+                        $stmt->execute([$historyTable, $column]);
                         return (bool) $stmt->fetchColumn();
                     })(),
-                    'sqlite' => (function () use ($pdo, $historyTable): bool {
+                    'sqlite' => (function () use ($pdo, $historyTable, $column): bool {
                         $stmt = $pdo->query("PRAGMA table_info(\"{$historyTable}\")");
                         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $col) {
-                            if ($col['name'] === 'actor') {
+                            if ($col['name'] === $column) {
                                 return true;
                             }
                         }
                         return false;
                     })(),
-                    default => (function () use ($pdo, $historyTable): bool {
-                        $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$historyTable}` LIKE 'actor'");
-                        $stmt->execute();
+                    default => (function () use ($pdo, $historyTable, $column): bool {
+                        $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$historyTable}` LIKE ?");
+                        $stmt->execute([$column]);
                         return $stmt->fetch() !== false;
                     })(),
                 };
@@ -215,21 +310,29 @@ class TemporalManager
      * @param string $historyTable
      * @param string $driver
      * @param bool $trackActor
+     * @param bool $trackBranches
      * @return string[]
      */
-    public static function createHistoryTableSql(string $historyTable, string $driver, bool $trackActor = false): array
-    {
-        $actorCol = $trackActor ? self::actorColumnSql($driver) : '';
+    public static function createHistoryTableSql(
+        string $historyTable,
+        string $driver,
+        bool $trackActor = false,
+        bool $trackBranches = false
+    ): array {
+        $actorCol  = $trackActor ? self::actorColumnSql($driver) : '';
+        $branchCol = $trackBranches ? self::branchColumnSql($driver) : '';
 
         return match ($driver) {
-            'pgsql'  => self::pgsqlDdl($historyTable, $actorCol),
-            'sqlite' => self::sqliteDdl($historyTable, $actorCol),
-            default  => self::mysqlDdl($historyTable, $actorCol),
+            'pgsql'  => self::pgsqlDdl($historyTable, $actorCol, $branchCol, $trackBranches),
+            'sqlite' => self::sqliteDdl($historyTable, $actorCol, $branchCol, $trackBranches),
+            default  => self::mysqlDdl($historyTable, $actorCol, $branchCol, $trackBranches),
         };
     }
 
-    private static function mysqlDdl(string $table, string $actorCol): array
+    private static function mysqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
+        $branchIndex = $trackBranches ? ",\n                INDEX `idx_branch` (`record_id`, `branch`)" : '';
+
         return [
             "CREATE TABLE IF NOT EXISTS `{$table}` (
                 `history_id`   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -239,14 +342,15 @@ class TemporalManager
                 `snapshot`     JSON            NOT NULL,
                 `changed_cols` JSON                NULL,
                 {$actorCol}
+                {$branchCol}
                 PRIMARY KEY (`history_id`),
                 INDEX `idx_record_id`  (`record_id`),
-                INDEX `idx_valid_from` (`valid_from`)
+                INDEX `idx_valid_from` (`valid_from`){$branchIndex}
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         ];
     }
 
-    private static function pgsqlDdl(string $table, string $actorCol): array
+    private static function pgsqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
             "CREATE TABLE IF NOT EXISTS \"{$table}\" (
@@ -256,16 +360,20 @@ class TemporalManager
                 valid_from   TIMESTAMPTZ  NOT NULL,
                 snapshot     JSONB        NOT NULL,
                 changed_cols JSONB            NULL
-                {$actorCol}
+                {$actorCol}{$branchCol}
             )",
             "CREATE INDEX IF NOT EXISTS \"idx_{$table}_record_id\"  ON \"{$table}\" (record_id)",
             "CREATE INDEX IF NOT EXISTS \"idx_{$table}_valid_from\" ON \"{$table}\" (valid_from)",
         ];
 
+        if ($trackBranches) {
+            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch)";
+        }
+
         return $stmts;
     }
 
-    private static function sqliteDdl(string $table, string $actorCol): array
+    private static function sqliteDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
             "CREATE TABLE IF NOT EXISTS \"{$table}\" (
@@ -275,11 +383,15 @@ class TemporalManager
                 valid_from   TEXT     NOT NULL,
                 snapshot     TEXT     NOT NULL,
                 changed_cols TEXT         NULL
-                {$actorCol}
+                {$actorCol}{$branchCol}
             )",
             "CREATE INDEX IF NOT EXISTS \"idx_{$table}_record_id\"  ON \"{$table}\" (record_id)",
             "CREATE INDEX IF NOT EXISTS \"idx_{$table}_valid_from\" ON \"{$table}\" (valid_from)",
         ];
+
+        if ($trackBranches) {
+            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch)";
+        }
 
         return $stmts;
     }
@@ -293,8 +405,17 @@ class TemporalManager
         };
     }
 
+    private static function branchColumnSql(string $driver): string
+    {
+        return match ($driver) {
+            'pgsql'  => ",\n                branch VARCHAR(50) NOT NULL DEFAULT 'main'",
+            'sqlite' => ",\n                branch TEXT NOT NULL DEFAULT 'main'",
+            default  => "`branch` VARCHAR(50) NOT NULL DEFAULT 'main',",
+        };
+    }
+
     /**
-     * Reset the internal class attribute cache. Useful in tests.
+     * Reset the internal class attribute and column-existence caches. Useful in tests.
      *
      * @param string|null $class  When null, clears all entries.
      * @return void
@@ -305,6 +426,7 @@ class TemporalManager
             unset(self::$cache[$class]);
         } else {
             self::$cache = [];
+            self::$columnCache = [];
         }
     }
 }

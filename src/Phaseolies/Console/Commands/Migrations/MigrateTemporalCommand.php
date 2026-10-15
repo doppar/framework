@@ -96,10 +96,21 @@ class MigrateTemporalCommand extends Command
                 );
 
                 if (!$dryRun && $this->tableExists($pdo, $driver, $historyTable)) {
-                    // Table exists — check if we need to add the actor column
+                    // Table exists — check if we need to add the actor and/or branch columns
+                    $addedColumns = [];
+
                     if ($attr?->trackActor && !$this->columnExists($pdo, $driver, $historyTable, 'actor')) {
                         $pdo->exec($this->addActorColumnSql($driver, $historyTable));
-                        $row('✓', 'green', 'actor column added');
+                        $addedColumns[] = 'actor';
+                    }
+
+                    if ($attr?->branches && !$this->columnExists($pdo, $driver, $historyTable, 'branch')) {
+                        $pdo->exec($this->addBranchColumnSql($driver, $historyTable));
+                        $addedColumns[] = 'branch';
+                    }
+
+                    if (!empty($addedColumns)) {
+                        $row('✓', 'green', implode(', ', $addedColumns) . ' column' . (count($addedColumns) > 1 ? 's' : '') . ' added');
                         $created++;
                     } else {
                         $row('•', 'yellow', 'already exists');
@@ -109,9 +120,10 @@ class MigrateTemporalCommand extends Command
                 }
 
                 $statements = TemporalManager::createHistoryTableSql(
-                    historyTable: $historyTable,
-                    driver:       $driver,
-                    trackActor:   $attr?->trackActor ?? false,
+                    historyTable:  $historyTable,
+                    driver:        $driver,
+                    trackActor:    $attr?->trackActor ?? false,
+                    trackBranches: $attr?->branches ?? false,
                 );
 
                 if ($dryRun) {
@@ -306,6 +318,22 @@ class MigrateTemporalCommand extends Command
             'pgsql'  => "ALTER TABLE \"{$table}\" ADD COLUMN actor VARCHAR(255) NULL",
             'sqlite' => "ALTER TABLE \"{$table}\" ADD COLUMN actor TEXT NULL",
             default  => "ALTER TABLE `{$table}` ADD COLUMN `actor` VARCHAR(255) NULL",
+        };
+    }
+
+    /**
+     * Generate the ALTER TABLE SQL to add the branch column.
+     *
+     * @param string $driver
+     * @param string $table
+     * @return string
+     */
+    private function addBranchColumnSql(string $driver, string $table): string
+    {
+        return match ($driver) {
+            'pgsql'  => "ALTER TABLE \"{$table}\" ADD COLUMN branch VARCHAR(50) NOT NULL DEFAULT 'main'",
+            'sqlite' => "ALTER TABLE \"{$table}\" ADD COLUMN branch TEXT NOT NULL DEFAULT 'main'",
+            default  => "ALTER TABLE `{$table}` ADD COLUMN `branch` VARCHAR(50) NOT NULL DEFAULT 'main'",
         };
     }
 }

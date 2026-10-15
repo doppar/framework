@@ -17,17 +17,32 @@ class TemporalBuilder extends Builder
     protected string $datetime;
 
     /**
+     * The branch these history queries are scoped to.
+     *
+     * @var string
+     */
+    protected string $branch;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
-     * @param int $rowPerPage 
+     * @param int $rowPerPage
      * @param string $datetime
+     * @param string $branch
      */
-    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage, string $datetime)
-    {
+    public function __construct(
+        PDO $pdo,
+        string $table,
+        string $modelClass,
+        int $rowPerPage,
+        string $datetime,
+        string $branch = 'main'
+    ) {
         parent::__construct($pdo, $table, $modelClass, $rowPerPage);
 
         $this->datetime = $this->normalizeDateTime($datetime);
+        $this->branch   = $branch;
     }
 
     /**
@@ -81,20 +96,26 @@ class TemporalBuilder extends Builder
     public function find($id): ?Model
     {
         $historyTable = TemporalManager::historyTable($this->table, $this->modelClass);
-        $key          = (new $this->modelClass())->getKeyName();
+        $hasBranch    = $this->hasBranchColumn($historyTable);
 
         $sql = "
             SELECT snapshot
             FROM   {$historyTable}
             WHERE  record_id = ?
             AND    valid_from <= ?
-            AND    action != 'deleted'
+            AND    action != 'deleted'"
+            . ($hasBranch ? ' AND branch = ?' : '') . "
             ORDER  BY valid_from DESC
             LIMIT  1
         ";
 
+        $params = [$id, $this->datetime];
+        if ($hasBranch) {
+            $params[] = $this->branch;
+        }
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id, $this->datetime]);
+        $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row) {
@@ -115,6 +136,10 @@ class TemporalBuilder extends Builder
     private function fetchTemporalRows(): array
     {
         $historyTable = TemporalManager::historyTable($this->table, $this->modelClass);
+        $hasBranch    = $this->hasBranchColumn($historyTable);
+
+        $innerBranch = $hasBranch ? ' AND h2.branch = ?' : '';
+        $outerBranch = $hasBranch ? ' AND h1.branch = ?' : '';
 
         $sql = "
             SELECT h1.snapshot, h1.record_id, h1.action
@@ -123,15 +148,38 @@ class TemporalBuilder extends Builder
                        SELECT MAX(h2.valid_from)
                        FROM   {$historyTable} h2
                        WHERE  h2.record_id  = h1.record_id
-                       AND    h2.valid_from <= ?
+                       AND    h2.valid_from <= ?{$innerBranch}
                    )
-            AND    h1.action != 'deleted'
+            AND    h1.action != 'deleted'{$outerBranch}
         ";
 
+        $params = [$this->datetime];
+        if ($hasBranch) {
+            $params[] = $this->branch;
+            $params[] = $this->branch;
+        }
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$this->datetime]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Whether the history table has a usable branch column for this model.
+     *
+     * @param string $historyTable
+     * @return bool
+     */
+    private function hasBranchColumn(string $historyTable): bool
+    {
+        if (!TemporalManager::isBranchable($this->modelClass)) {
+            return false;
+        }
+
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        return TemporalManager::hasBranchColumn($this->pdo, $historyTable, $driver);
     }
 
     /**
@@ -344,5 +392,15 @@ class TemporalBuilder extends Builder
     public function getDatetime(): string
     {
         return $this->datetime;
+    }
+
+    /**
+     * Expose the resolved branch for external use.
+     *
+     * @return string
+     */
+    public function getBranch(): string
+    {
+        return $this->branch;
     }
 }
