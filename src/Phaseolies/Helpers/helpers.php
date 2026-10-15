@@ -90,6 +90,25 @@ if (!function_exists('defer')) {
     }
 }
 
+if (!function_exists('signal')) {
+    /**
+     * Get the signal bus, or emit a signal when one is given
+     *
+     * @param object|null $signal
+     * @return \Phaseolies\Signals\SignalBus|void
+     */
+    function signal(?object $signal = null)
+    {
+        $bus = app('signal');
+
+        if ($signal === null) {
+            return $bus;
+        }
+
+        $bus->emit($signal);
+    }
+}
+
 if (!function_exists('request')) {
     /**
      * Creates a new request instance to handle HTTP requests.

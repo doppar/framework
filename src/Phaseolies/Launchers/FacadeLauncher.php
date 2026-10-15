@@ -7,6 +7,7 @@ use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
+use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\Mail\MailService;
 use Phaseolies\Support\LoggerService;
@@ -104,6 +105,10 @@ class FacadeLauncher extends ServiceLauncher
         // Bind the 'db' service to a singleton instance of the Database class.
         // This handles db related jobs
         $this->app->singleton('db', Database::class);
+
+        // Bind the 'signal' service to a singleton instance of the SignalBus class.
+        // This handles signals that can wait for a database transaction to settle
+        $this->app->singleton('signal', SignalBus::class);
 
         // Bind the 'app' service to a singleton instance of the Application class.
         // This handles app related jobs

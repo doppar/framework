@@ -475,6 +475,31 @@ abstract class Command extends SymfonyCommand
     }
 
     /**
+     * Check every segment of a generated class/path name
+     *
+     * @param string $name
+     * @return string|null
+     */
+    protected function generatedNameError(string $name): ?string
+    {
+        $normalized = $this->normalizeGeneratedName($name);
+        if ($normalized === '') {
+            return 'The name must not be empty.';
+        }
+
+        foreach (explode('/', $normalized) as $segment) {
+            if ($segment === '.' || $segment === '..') {
+                return 'The name must not contain "." or ".." segments.';
+            }
+            if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $segment)) {
+                return 'Every part of the name must be a valid class or namespace name; "' . $segment . '" is not.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Split a generated class/path name into normalized name, path parts and final class name.
      *
      * @param string $name
@@ -501,6 +526,11 @@ abstract class Command extends SymfonyCommand
     {
         $normalizedName = $this->normalizeGeneratedName($name);
         $relativePath = trim($baseDirectory, '/\\');
+
+        // Whatever the command validated, a generated file never leaves its directory.
+        if (in_array('..', explode('/', $normalizedName), true) || in_array('.', explode('/', $normalizedName), true)) {
+            throw new \InvalidArgumentException('A generated name must not contain "." or ".." segments.');
+        }
 
         if ($normalizedName !== '') {
             $relativePath .= '/' . $normalizedName;
