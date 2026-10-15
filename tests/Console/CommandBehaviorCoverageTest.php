@@ -173,6 +173,75 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(1, $badName->handle());
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unsafeSignalNames(): iterable
+    {
+        yield 'a namespace segment that is not an identifier' => ['Admin/123Invalid/OrderPaid'];
+        yield 'a segment with a dash' => ['Bad-Seg/OrderPaid'];
+        yield 'a dot segment' => ['Billing/./OrderPaid'];
+        yield 'a parent segment inside' => ['Billing/../OrderPaid'];
+        yield 'climbing out of the signals directory' => ['../Escaped'];
+        yield 'climbing out of the project' => ['../../outside/OrderPaid'];
+        yield 'backslashes do not get around it' => ['..\\..\\outside\\OrderPaid'];
+        yield 'only slashes' => ['///'];
+    }
+
+    #[DataProvider('unsafeSignalNames')]
+    public function testMakeSignalCommandRejectsEveryUnsafeNameSegment(string $name): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = $name;
+
+        $this->assertSame(1, $command->handle());
+        $this->assertNotEmpty($command->capturedErrors);
+        foreach (['src/Signals/Admin', 'src/Signals/Bad-Seg', 'src/Signals/Billing', 'src/Escaped.php', 'src/OrderPaid.php', 'outside', 'src/Signals/OrderPaid.php'] as $path) {
+            $this->assertFileDoesNotExist(Env::path($path), "nothing may be written for \"$name\" ($path)");
+        }
+    }
+
+    public function testMakeSignalCommandAcceptsValidNestedNamespaces(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'Admin\\Billing_2/OrderPaid';
+
+        $this->assertSame(0, $command->handle());
+        $file = Env::path('src/Signals/Admin/Billing_2/OrderPaid.php');
+        $this->assertFileExists($file);
+        $this->assertStringContainsString('namespace App\\Signals\\Admin\\Billing_2;', (string) file_get_contents($file));
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testGeneratedFilePathNeverLeavesItsDirectory(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+
+            public function path(string $name): string
+            {
+                return $this->generatedFilePath('src/Signals', $name);
+            }
+        };
+
+        $this->assertStringEndsWith('src/Signals/Billing/OrderPaid.php', str_replace('\\', '/', $command->path('Billing/OrderPaid')));
+        foreach (['../Escaped', 'Billing/../../Escaped', './OrderPaid'] as $bad) {
+            try {
+                $command->path($bad);
+                $this->fail("\"$bad\" should have been refused");
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('".." segments', $e->getMessage());
+            }
+        }
+    }
+
     private function lintFile(string $file): int
     {
         exec(PHP_BINARY . ' -l ' . escapeshellarg($file) . ' 2>&1', $output, $status);

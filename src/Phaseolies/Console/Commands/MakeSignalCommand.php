@@ -32,7 +32,7 @@ class MakeSignalCommand extends Command
             $connection = $this->option('connection');
             $connection = is_string($connection) && $connection !== '' ? $connection : null;
 
-            if ($className === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $className)) {
+            if ($className === '' || $this->generatedNameError($name) !== null) {
                 $this->displayError('The signal name must be a valid class name.');
                 return Command::FAILURE;
             }
