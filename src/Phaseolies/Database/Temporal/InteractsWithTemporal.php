@@ -34,20 +34,23 @@ trait InteractsWithTemporal
     }
 
     /**
-     * Return a TemporalBuilder scoped to the given point in time.
+     * Return a TemporalBuilder scoped to the given point in time (and branch).
      *
      * @param string $datetime
+     * @param string $branch
      * @return TemporalBuilder
      *
      * @throws \RuntimeException
      */
-    public static function at(string $datetime): TemporalBuilder
+    public static function at(string $datetime, string $branch = 'main'): TemporalBuilder
     {
         if (!TemporalManager::isTemporal(static::class)) {
             throw new \RuntimeException(
                 static::class . ' is not marked #[Temporal]. Add the attribute to enable time-travel queries.'
             );
         }
+
+        TemporalManager::assertBranchSupported(static::class, $branch);
 
         $model = new static();
 
@@ -57,29 +60,119 @@ trait InteractsWithTemporal
             modelClass: static::class,
             rowPerPage: $model->pageSize,
             datetime:   $datetime,
+            branch:     $branch,
         );
     }
 
     /**
-     * Return the complete audit history for this model instance
+     * Fork a new branch from this record's main timeline as it existed at
+     * the given point in time. Its timeline starts when the fork is created,
+     * so earlier queries on that branch return no snapshot.
      *
+     * @param string $name
+     * @param string $fromDatetime
+     * @return bool
+     *
+     * @throws \RuntimeException
+     */
+    public function branch(string $name, string $fromDatetime): bool
+    {
+        $this->assertTemporalAndLoaded();
+
+        if (!TemporalManager::isBranchable(static::class)) {
+            throw new \RuntimeException(
+                static::class . ' does not support branches. Add #[Temporal(branches: true)] to enable them.'
+            );
+        }
+
+        TemporalManager::validateBranchName($name);
+        if ($name === 'main') {
+            throw new \InvalidArgumentException('Branch name must be non-empty and cannot be "main".');
+        }
+
+        $snapshot = $this->snapshotAt($fromDatetime, 'main');
+
+        if ($snapshot === null) {
+            return false;
+        }
+
+        TemporalManager::snapshotBranch($this, $snapshot, $name);
+
+        return true;
+    }
+
+    /** Append this in-memory proposed state as a new version on an existing branch. */
+    public function saveToBranch(string $branch): bool
+    {
+        $this->assertTemporalAndLoaded();
+        TemporalManager::assertBranchSupported(static::class, $branch);
+        if ($branch === 'main') {
+            throw new \InvalidArgumentException('saveToBranch() requires a named branch.');
+        }
+        TemporalManager::snapshotBranchVersion($this, $branch);
+        $this->setOriginalAttributes($this->getAttributes());
+        return true;
+    }
+
+    /** Compare the current main state with the latest state on a named branch. */
+    public function diffAgainstBranch(string $branch): ?array
+    {
+        $this->assertTemporalAndLoaded();
+        TemporalManager::assertBranchSupported(static::class, $branch);
+        if ($branch === 'main') {
+            throw new \InvalidArgumentException('A named branch is required.');
+        }
+        $now = \Carbon\Carbon::now()->format('Y-m-d H:i:s.u');
+        $main = $this->snapshotAt($now, 'main');
+        $proposed = $this->snapshotAt($now, $branch);
+        if ($main === null || $proposed === null) {
+            return null;
+        }
+        $probe = new static();
+        return $this->formatDiff($main, $proposed, 'main → ' . $branch, $now, $now, $probe);
+    }
+
+    /**
+     * Return the complete audit history for this model instance on the given branch.
+     *
+     * @param string|null $branch Pass null to include every branch.
      * @return Collection
      * @throws \RuntimeException
      */
-    public function history(): Collection
+    public function history(?string $branch = 'main'): Collection
     {
         $this->assertTemporalAndLoaded();
 
         $historyTable = $this->historyTable();
         $pdo          = $this->getConnection();
+        $driver       = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-        $stmt = $pdo->prepare(
-            "SELECT history_id, action, valid_from, snapshot, changed_cols, actor
-             FROM   {$historyTable}
-             WHERE  record_id = ?
-             ORDER  BY valid_from ASC"
-        );
-        $stmt->execute([$this->getKey()]);
+        $hasActor  = TemporalManager::hasActorColumn($pdo, $historyTable, $driver);
+        $hasBranch = TemporalManager::isBranchable(static::class);
+        if ($branch !== null) {
+            TemporalManager::assertBranchSupported(static::class, $branch);
+        }
+        if ($hasBranch) {
+            TemporalManager::assertBranchColumn($pdo, $historyTable, $driver);
+        }
+
+        $columns = 'history_id, action, valid_from, snapshot, changed_cols'
+            . ($hasActor ? ', actor' : '')
+            . ($hasBranch ? ', branch' : '');
+
+        $sql = "SELECT {$columns}
+                FROM   {$historyTable}
+                WHERE  record_id = ?"
+            . ($hasBranch && $branch !== null ? ' AND branch = ?' : '')
+            . ' ORDER  BY valid_from ASC, history_id ASC';
+
+        $params = [$this->getKey()];
+        if ($hasBranch && $branch !== null) {
+            $params[] = $branch;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         $rows   = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $models = [];
@@ -96,7 +189,8 @@ trait InteractsWithTemporal
             $entry->__changed_cols = $row['changed_cols']
                 ? json_decode($row['changed_cols'], true)
                 : null;
-            $entry->__actor = $row['actor'] ?? null;
+            $entry->__actor  = $row['actor'] ?? null;
+            $entry->__branch = $row['branch'] ?? 'main';
 
             $models[] = $entry;
         }
@@ -105,37 +199,51 @@ trait InteractsWithTemporal
     }
 
     /**
-     * Compare the model's state at two points in time and return a structured diff.
+     * Compare the model's state at two points in time on the given branch and
+     * return a structured diff. Values are run through the model's casts and
+     * attributes marked unexposable (hidden) are excluded from the result.
      *
      * @param string $from
      * @param string $to
+     * @param string $branch
      * @return array|null
+     *
+     * @throws \RuntimeException
      */
-    public function diff(string $from, string $to): ?array
+    public function diff(string $from, string $to, string $branch = 'main'): ?array
     {
         $this->assertTemporalAndLoaded();
+        TemporalManager::assertBranchSupported(static::class, $branch);
 
-        $snapshotFrom = $this->snapshotAt($from);
-        $snapshotTo   = $this->snapshotAt($to);
+        $snapshotFrom = $this->snapshotAt($from, $branch);
+        $snapshotTo   = $this->snapshotAt($to, $branch);
 
         if ($snapshotFrom === null || $snapshotTo === null) {
             return null;
         }
 
+        return $this->formatDiff($snapshotFrom, $snapshotTo, $branch, $from, $to, new static());
+    }
+
+    private function formatDiff(array $snapshotFrom, array $snapshotTo, string $branch, string $from, string $to, Model $probe): array
+    {
+        $visibleFrom = $this->visibleSnapshot($snapshotFrom, $probe);
+        $visibleTo   = $this->visibleSnapshot($snapshotTo, $probe);
+
         $changes = [];
         $added   = [];
         $removed = [];
 
-        foreach ($snapshotTo as $col => $newVal) {
-            if (!array_key_exists($col, $snapshotFrom)) {
+        foreach ($visibleTo as $col => $newVal) {
+            if (!array_key_exists($col, $visibleFrom)) {
                 $added[$col] = $newVal;
-            } elseif ((string) $snapshotFrom[$col] !== (string) $newVal) {
-                $changes[$col] = ['from' => $snapshotFrom[$col], 'to' => $newVal];
+            } elseif (!$this->sameCastValue($visibleFrom[$col], $newVal)) {
+                $changes[$col] = ['from' => $visibleFrom[$col], 'to' => $newVal];
             }
         }
 
-        foreach ($snapshotFrom as $col => $oldVal) {
-            if (!array_key_exists($col, $snapshotTo)) {
+        foreach ($visibleFrom as $col => $oldVal) {
+            if (!array_key_exists($col, $visibleTo)) {
                 $removed[$col] = $oldVal;
             }
         }
@@ -143,24 +251,59 @@ trait InteractsWithTemporal
         return [
             'from'    => $from,
             'to'      => $to,
+            'branch'  => $branch,
             'changes' => $changes,
             'added'   => $added,
             'removed' => $removed,
         ];
     }
 
+    private function sameCastValue(mixed $left, mixed $right): bool
+    {
+        if (is_object($left) && is_object($right)) {
+            return $left == $right;
+        }
+        return $left === $right;
+    }
+
+    /**
+     * Apply this model's casts and unexposable (hidden) attribute filtering
+     * to a raw stored snapshot, for display/diffing purposes only.
+     *
+     * @param array $snapshot
+     * @return array
+     */
+    private function visibleSnapshot(array $snapshot, Model $probe): array
+    {
+        $visible = [];
+
+        foreach ($snapshot as $key => $value) {
+            if (in_array($key, $probe->unexposable, true)) {
+                continue;
+            }
+
+            $visible[$key] = $probe->castForGet($key, $value);
+        }
+
+        return $visible;
+    }
+
     /**
      * Return a new (unsaved) model instance populated with the state of this
-     * record at the given point in time.
+     * record at the given point in time on the given branch.
      *
      * @param string $datetime
+     * @param string $branch
      * @return static|null
+     *
+     * @throws \RuntimeException
      */
-    public function rewindTo(string $datetime): ?static
+    public function rewindTo(string $datetime, string $branch = 'main'): ?static
     {
         $this->assertTemporalAndLoaded();
+        TemporalManager::assertBranchSupported(static::class, $branch);
 
-        $snapshot = $this->snapshotAt($datetime);
+        $snapshot = $this->snapshotAt($datetime, $branch);
 
         if ($snapshot === null) {
             return null;
@@ -176,15 +319,23 @@ trait InteractsWithTemporal
     }
 
     /**
-     * Restore this model to its state at the given datetime and immediately
-     * persist the change.
+     * Restore this model to its state at the given datetime on the given
+     * branch and immediately persist the change. This always creates a new
+     * version through the normal save()/snapshot hooks; it never rewrites
+     * existing history, and restoring from a branch other than "main"
+     * requires the model to be configured for branches.
      *
      * @param string $datetime
+     * @param string $branch
      * @return bool
+     *
+     * @throws \RuntimeException
      */
-    public function restoreTo(string $datetime): bool
+    public function restoreTo(string $datetime, string $branch = 'main'): bool
     {
-        $rewound = $this->rewindTo($datetime);
+        $this->assertTemporalAndLoaded();
+        $this->assertNotDeletedAt($datetime, $branch);
+        $rewound = $this->rewindTo($datetime, $branch);
 
         if ($rewound === null) {
             return false;
@@ -200,6 +351,62 @@ trait InteractsWithTemporal
             return $rewound->trashed() ? $rewound->delete() : $rewound->restore();
         }
 
+        return true;
+    }
+
+    private function assertNotDeletedAt(string $datetime, string $branch): void
+    {
+        TemporalManager::assertBranchSupported(static::class, $branch);
+        $datetime = $this->normalizeTemporalDateTime($datetime);
+        $table = $this->historyTable();
+        $pdo = $this->getConnection();
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $hasBranch = TemporalManager::isBranchable(static::class);
+        if ($hasBranch) {
+            TemporalManager::assertBranchColumn($pdo, $table, $driver);
+        }
+        $sql = "SELECT action FROM {$table} WHERE record_id = ? AND valid_from <= ?" . ($hasBranch ? ' AND branch = ?' : '') . ' ORDER BY valid_from DESC, history_id DESC LIMIT 1';
+        $params = [$this->getKey(), $datetime];
+        if ($hasBranch) {
+            $params[] = $branch;
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        if ($stmt->fetchColumn() === 'deleted') {
+            throw new \RuntimeException('Cannot restore a deleted temporal version.');
+        }
+    }
+
+    /** Restore a specific history entry by id, refusing deleted snapshots. */
+    public function restoreVersion(int $historyId): bool
+    {
+        $this->assertTemporalAndLoaded();
+        $historyTable = $this->historyTable();
+        $pdo = $this->getConnection();
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        $hasBranch = TemporalManager::isBranchable(static::class);
+        if ($hasBranch) {
+            TemporalManager::assertBranchColumn($pdo, $historyTable, $driver);
+        }
+
+        $stmt = $pdo->prepare(
+            "SELECT snapshot, action" . ($hasBranch ? ', branch' : '')
+            . " FROM {$historyTable} WHERE history_id = ? AND record_id = ?"
+        );
+        $stmt->execute([$historyId, $this->getKey()]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return false;
+        }
+        if ($row['action'] === 'deleted') {
+            throw new \RuntimeException('A deleted temporal version cannot be restored.');
+        }
+        $snapshot = json_decode($row['snapshot'], true) ?? [];
+        $restored = new static($snapshot);
+        $restored->setOriginalAttributes($this->getAttributes());
+        if (!$restored->save()) {
+            return false;
+        }
         return true;
     }
 
@@ -224,35 +431,61 @@ trait InteractsWithTemporal
     }
 
     /**
-     * Fetch the raw snapshot array for this record at the given datetime.
+     * Fetch the raw snapshot array for this record at the given datetime on
+     * the given branch.
      *
      * @param string $datetime
+     * @param string $branch
      * @return array|null
      */
-    private function snapshotAt(string $datetime): ?array
+    private function snapshotAt(string $datetime, string $branch = 'main'): ?array
     {
         $historyTable = $this->historyTable();
         $pdo          = $this->getConnection();
+        $driver       = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-        // Normalize to end-of-day when only a date is given
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($datetime))) {
-            $datetime .= ' 23:59:59.999999';
+        $hasBranch = TemporalManager::isBranchable(static::class);
+        if ($hasBranch) {
+            TemporalManager::assertBranchColumn($pdo, $historyTable, $driver);
         }
 
-        $stmt = $pdo->prepare(
-            "SELECT snapshot
-             FROM   {$historyTable}
-             WHERE  record_id  = ?
-             AND    valid_from <= ?
-             AND    action     != 'deleted'
-             ORDER  BY valid_from DESC
-             LIMIT  1"
-        );
-        $stmt->execute([$this->getKey(), $datetime]);
+        $datetime = $this->normalizeTemporalDateTime($datetime);
+
+        $sql = "SELECT snapshot
+                FROM   {$historyTable}
+                WHERE  record_id  = ?
+                AND    valid_from <= ?
+                AND    action     != 'deleted'"
+            . ($hasBranch ? ' AND branch = ?' : '')
+            . ' ORDER  BY valid_from DESC, history_id DESC
+                LIMIT  1';
+
+        $params = [$this->getKey(), $datetime];
+        if ($hasBranch) {
+            $params[] = $branch;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row ? (json_decode($row['snapshot'], true) ?? null) : null;
+    }
+
+    private function normalizeTemporalDateTime(string $datetime): string
+    {
+        $datetime = trim($datetime);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $datetime)) {
+            return $datetime . ' 23:59:59.999999';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $datetime)) {
+            return $datetime . ':59.999999';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $datetime)) {
+            return $datetime . '.999999';
+        }
+        return $datetime;
     }
 
     /**
