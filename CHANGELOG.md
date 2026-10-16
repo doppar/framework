@@ -1,5 +1,11 @@
 # Release Notes
 
+## v4.6.0 - 2026-10-16
+
+* (feat) Application: Go-style defer() for guaranteed cleanup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/365
+* (feat) deliver domain notifications only after a transaction commits by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/366
+* (feat) Request-scoped lifecycle and context propagation by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/368
+
 ## v4.5.2 - 2026-10-12
 
 * Fix: Encryption ignores APP_KEY from env.toml and silently uses a public test key by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/364
