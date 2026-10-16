@@ -97,6 +97,10 @@ class Console extends SymfonyApplication
      */
     protected function doRunCommand(Command $command, InputInterface $input, OutputInterface $output): int
     {
-        return $this->app->runInDeferScope(fn() => parent::doRunCommand($command, $input, $output));
+        return $this->app->runInContext(
+            'console',
+            ['command' => $command->getName()],
+            fn() => $this->app->runInDeferScope(fn() => parent::doRunCommand($command, $input, $output))
+        );
     }
 }

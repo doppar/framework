@@ -10,6 +10,7 @@ use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\Mail\MailService;
+use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Support\Encryption;
 use Phaseolies\Support\CookieJar;
@@ -87,6 +88,12 @@ class FacadeLauncher extends ServiceLauncher
         // Bind the 'log' service to a singleton instance of the Logger class.
         // This handles user define log.
         $this->app->singleton('log', LoggerService::class);
+
+        // Bind the 'execution' service: a thin accessor over the container's
+        // active execution context (request, console command, worker job).
+        $this->app->singleton('execution', function () {
+            return new ExecutionService($this->app);
+        });
 
         // Bind the 'sanitize' service to a singleton instance of the Sanitizer class.
         // This handles user requested form data.
