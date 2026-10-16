@@ -109,6 +109,18 @@ if (!function_exists('signal')) {
     }
 }
 
+if (!function_exists('execution')) {
+    /**
+     * Get the execution service, the accessor for the active execution context
+     *
+     * @return \Phaseolies\Support\ExecutionService
+     */
+    function execution()
+    {
+        return app('execution');
+    }
+}
+
 if (!function_exists('request')) {
     /**
      * Creates a new request instance to handle HTTP requests.
