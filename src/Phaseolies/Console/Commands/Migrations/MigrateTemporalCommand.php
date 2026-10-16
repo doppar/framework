@@ -104,9 +104,15 @@ class MigrateTemporalCommand extends Command
                         $addedColumns[] = 'actor';
                     }
 
-                    if ($attr?->branches && !$this->columnExists($pdo, $driver, $historyTable, 'branch')) {
+                    if ($attr !== null && $attr->branches && !$this->columnExists($pdo, $driver, $historyTable, 'branch')) {
                         $pdo->exec($this->addBranchColumnSql($driver, $historyTable));
                         $addedColumns[] = 'branch';
+                    }
+
+                    $branchIndex = $driver === 'mysql' ? 'idx_branch' : 'idx_' . $historyTable . '_branch';
+                    if ($attr !== null && $attr->branches && !$this->indexExists($pdo, $driver, $historyTable, $branchIndex)) {
+                        $pdo->exec($this->createBranchIndexSql($driver, $historyTable));
+                        $addedColumns[] = 'branch index';
                     }
 
                     if (!empty($addedColumns)) {
@@ -123,7 +129,7 @@ class MigrateTemporalCommand extends Command
                     historyTable:  $historyTable,
                     driver:        $driver,
                     trackActor:    $attr?->trackActor ?? false,
-                    trackBranches: $attr?->branches ?? false,
+                    trackBranches: $attr !== null && $attr->branches,
                 );
 
                 if ($dryRun) {
@@ -280,7 +286,7 @@ class MigrateTemporalCommand extends Command
             if ($driver === 'pgsql') {
                 $stmt = $pdo->prepare(
                     "SELECT COUNT(*) FROM information_schema.columns
-                     WHERE table_name = ? AND column_name = ?"
+                     WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?"
                 );
                 $stmt->execute([$table, $column]);
                 return (bool) $stmt->fetchColumn();
@@ -334,6 +340,37 @@ class MigrateTemporalCommand extends Command
             'pgsql'  => "ALTER TABLE \"{$table}\" ADD COLUMN branch VARCHAR(50) NOT NULL DEFAULT 'main'",
             'sqlite' => "ALTER TABLE \"{$table}\" ADD COLUMN branch TEXT NOT NULL DEFAULT 'main'",
             default  => "ALTER TABLE `{$table}` ADD COLUMN `branch` VARCHAR(50) NOT NULL DEFAULT 'main'",
+        };
+    }
+
+    private function indexExists(PDO $pdo, string $driver, string $table, string $index): bool
+    {
+        try {
+            if ($driver === 'sqlite') {
+                foreach ($pdo->query("PRAGMA index_list(\"{$table}\")")->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    if ($row['name'] === $index) return true;
+                }
+                return false;
+            }
+            if ($driver === 'pgsql') {
+                $stmt = $pdo->prepare('SELECT 1 FROM pg_indexes WHERE schemaname = current_schema() AND tablename = ? AND indexname = ?');
+                $stmt->execute([$table, $index]);
+                return $stmt->fetchColumn() !== false;
+            }
+            $stmt = $pdo->prepare("SHOW INDEX FROM `{$table}` WHERE Key_name = ?");
+            $stmt->execute([$index]);
+            return $stmt->fetch() !== false;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function createBranchIndexSql(string $driver, string $table): string
+    {
+        $name = $driver === 'mysql' ? 'idx_branch' : 'idx_' . $table . '_branch';
+        return match ($driver) {
+            'pgsql', 'sqlite' => "CREATE INDEX \"{$name}\" ON \"{$table}\" (record_id, branch)",
+            default => "CREATE INDEX `{$name}` ON `{$table}` (record_id, branch)",
         };
     }
 }

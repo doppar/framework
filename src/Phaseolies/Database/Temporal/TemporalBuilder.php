@@ -105,7 +105,7 @@ class TemporalBuilder extends Builder
             AND    valid_from <= ?
             AND    action != 'deleted'"
             . ($hasBranch ? ' AND branch = ?' : '') . "
-            ORDER  BY valid_from DESC
+            ORDER  BY valid_from DESC, history_id DESC
             LIMIT  1
         ";
 
@@ -139,6 +139,7 @@ class TemporalBuilder extends Builder
         $hasBranch    = $this->hasBranchColumn($historyTable);
 
         $innerBranch = $hasBranch ? ' AND h2.branch = ?' : '';
+        $tieBranch   = $hasBranch ? ' AND h3.branch = ?' : '';
         $outerBranch = $hasBranch ? ' AND h1.branch = ?' : '';
 
         $sql = "
@@ -150,11 +151,18 @@ class TemporalBuilder extends Builder
                        WHERE  h2.record_id  = h1.record_id
                        AND    h2.valid_from <= ?{$innerBranch}
                    )
+            AND    h1.history_id = (
+                       SELECT MAX(h3.history_id)
+                       FROM   {$historyTable} h3
+                       WHERE  h3.record_id = h1.record_id
+                       AND    h3.valid_from = h1.valid_from{$tieBranch}
+                   )
             AND    h1.action != 'deleted'{$outerBranch}
         ";
 
         $params = [$this->datetime];
         if ($hasBranch) {
+            $params[] = $this->branch;
             $params[] = $this->branch;
             $params[] = $this->branch;
         }
@@ -179,7 +187,8 @@ class TemporalBuilder extends Builder
 
         $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
 
-        return TemporalManager::hasBranchColumn($this->pdo, $historyTable, $driver);
+        TemporalManager::assertBranchColumn($this->pdo, $historyTable, $driver);
+        return true;
     }
 
     /**

@@ -73,7 +73,8 @@ class TemporalManager
      */
     public static function isBranchable(string $class): bool
     {
-        return self::getAttribute($class)?->branches ?? false;
+        $attribute = self::getAttribute($class);
+        return $attribute !== null && $attribute->branches;
     }
 
     /**
@@ -87,10 +88,28 @@ class TemporalManager
      */
     public static function assertBranchSupported(string $class, string $branch): void
     {
+        self::validateBranchName($branch);
+
         if ($branch !== 'main' && !self::isBranchable($class)) {
             throw new \RuntimeException(
                 $class . ' does not support branches. Add #[Temporal(branches: true)] to enable them.'
             );
+        }
+    }
+
+    /** Validate branch names consistently with the persisted column. */
+    public static function validateBranchName(string $branch): void
+    {
+        if (strlen($branch) > 50 || !preg_match('/^[A-Za-z0-9_-]+$/', $branch)) {
+            throw new \InvalidArgumentException('Branch names must be 1-50 characters using letters, numbers, _ or -.');
+        }
+    }
+
+    /** Ensure branch-enabled models have completed migrate:temporal. */
+    public static function assertBranchColumn(PDO $pdo, string $historyTable, string $driver): void
+    {
+        if (!self::hasBranchColumn($pdo, $historyTable, $driver)) {
+            throw new \RuntimeException("Temporal branch column is missing from {$historyTable}; run migrate:temporal.");
         }
     }
 
@@ -141,7 +160,8 @@ class TemporalManager
             $data['actor'] = self::resolveActor();
         }
 
-        if ($attr?->branches && self::hasBranchColumn($pdo, $historyTable, $driver)) {
+        if ($attr !== null && $attr->branches) {
+            self::assertBranchColumn($pdo, $historyTable, $driver);
             $data['branch'] = $branch;
         }
 
@@ -164,6 +184,13 @@ class TemporalManager
         $pdo          = $model->getConnection();
         $historyTable = self::historyTable($model->getTable(), get_class($model));
         $driver       = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        self::assertBranchColumn($pdo, $historyTable, $driver);
+
+        $stmt = $pdo->prepare("SELECT 1 FROM {$historyTable} WHERE record_id = ? AND branch = ? LIMIT 1");
+        $stmt->execute([$model->getKey(), $branch]);
+        if ($stmt->fetchColumn()) {
+            throw new \RuntimeException("Branch '{$branch}' already exists for this record.");
+        }
 
         $data = [
             'record_id'    => $model->getKey(),
@@ -180,6 +207,21 @@ class TemporalManager
         }
 
         self::insertHistory($pdo, $historyTable, $data);
+    }
+
+    /** Append an edited proposed state to an existing branch without saving the live record. */
+    public static function snapshotBranchVersion(Model $model, string $branch): void
+    {
+        $pdo = $model->getConnection();
+        $table = self::historyTable($model->getTable(), get_class($model));
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+        self::assertBranchColumn($pdo, $table, $driver);
+        $exists = $pdo->prepare("SELECT 1 FROM {$table} WHERE record_id = ? AND branch = ? LIMIT 1");
+        $exists->execute([$model->getKey(), $branch]);
+        if (!$exists->fetchColumn()) {
+            throw new \RuntimeException("Branch '{$branch}' does not exist for this record.");
+        }
+        self::snapshot($model, 'updated', $branch);
     }
 
     /**
@@ -219,15 +261,15 @@ class TemporalManager
      */
     private static function hasColumn(PDO $pdo, string $historyTable, string $column, string $driver): bool
     {
-        $cacheKey = $historyTable . '.' . $column;
+        $cacheKey = spl_object_id($pdo) . '.' . $historyTable . '.' . $column;
 
         if (!array_key_exists($cacheKey, self::$columnCache)) {
             try {
-                self::$columnCache[$cacheKey] = match ($driver) {
+                $exists = match ($driver) {
                     'pgsql' => (function () use ($pdo, $historyTable, $column): bool {
                         $stmt = $pdo->prepare(
                             "SELECT COUNT(*) FROM information_schema.columns
-                             WHERE table_name = ? AND column_name = ?"
+                             WHERE table_schema = current_schema() AND table_name = ? AND column_name = ?"
                         );
                         $stmt->execute([$historyTable, $column]);
                         return (bool) $stmt->fetchColumn();
@@ -247,12 +289,15 @@ class TemporalManager
                         return $stmt->fetch() !== false;
                     })(),
                 };
+                if ($exists) {
+                    self::$columnCache[$cacheKey] = true;
+                }
             } catch (\Throwable) {
-                self::$columnCache[$cacheKey] = false;
+                unset(self::$columnCache[$cacheKey]);
             }
         }
 
-        return self::$columnCache[$cacheKey];
+        return self::$columnCache[$cacheKey] ?? false;
     }
 
     /**

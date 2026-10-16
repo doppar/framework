@@ -110,6 +110,8 @@ class MigrateTemporalCommandTest extends TestCase
         $this->assertTrue($this->tableExists($historyTable));
         $this->assertTrue(TemporalManager::hasActorColumn($this->pdo, $historyTable, 'sqlite'));
         $this->assertTrue(TemporalManager::hasBranchColumn($this->pdo, $historyTable, 'sqlite'));
+        $indexes = $this->pdo->query("PRAGMA index_list(\"{$historyTable}\")")->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertContains('idx_' . $historyTable . '_branch', array_column($indexes, 'name'));
         $this->assertStringContainsString('Created: 1', implode(' ', $command->capturedSuccesses));
     }
 
@@ -130,17 +132,19 @@ class MigrateTemporalCommandTest extends TestCase
         $command = $this->makeCommand(['path' => $modelsPath]);
         $exitCode = $command->handle();
 
-        // The command's own column check is uncached, but our pre-check above
-        // cached a stale "false" in TemporalManager's process-lifetime cache.
+        // The migration path changes the schema after the pre-check; existence
+        // checks must observe the new columns immediately.
         TemporalManager::resetCache();
 
         $this->assertSame(0, $exitCode);
         $this->assertEmpty($command->capturedErrors);
         $this->assertTrue(TemporalManager::hasActorColumn($this->pdo, $historyTable, 'sqlite'));
         $this->assertTrue(TemporalManager::hasBranchColumn($this->pdo, $historyTable, 'sqlite'));
+        $indexes = $this->pdo->query("PRAGMA index_list(\"{$historyTable}\")")->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertContains('idx_' . $historyTable . '_branch', array_column($indexes, 'name'));
 
         $status = implode(' ', array_map(fn ($line) => $line[0], $command->capturedLines));
-        $this->assertStringContainsString('actor, branch columns added', $status);
+        $this->assertStringContainsString('actor, branch, branch index columns added', $status);
     }
 
     public function testHandleIsIdempotentOnceColumnsExist(): void
