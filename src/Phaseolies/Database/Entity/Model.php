@@ -13,6 +13,10 @@ use Phaseolies\Database\Entity\SoftDeletes\InteractsWithSoftDeletes;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use Phaseolies\Database\Entity\Attributes\Hook;
+use Phaseolies\Database\Entity\Relations\BindTo;
+use Phaseolies\Database\Entity\Relations\BindToMany;
+use Phaseolies\Database\Entity\Relations\LinkMany;
+use Phaseolies\Database\Entity\Relations\LinkOne;
 
 /**
  * @phpstan-consistent-constructor
@@ -829,81 +833,102 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      * Define a one-to-one relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return LinkOne
      */
-    public function linkOne(string $related, string $foreignKey, string $localKey)
+    public function linkOne(string $related, ?string $foreignKey = null, ?string $localKey = null): LinkOne
     {
-        $this->lastRelationType = 'linkOne';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
+        $foreignKey ??= $this->defaultForeignKey();
+        $localKey ??= $this->getKeyName();
 
-        $relatedInstance = app($related);
+        $this->rememberRelation('linkOne', $related, $foreignKey, $localKey);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $query = $this->newRelationBuilder(LinkOne::class, $related);
+        $query->where($foreignKey, '=', $this->$localKey);
+
+        return $query;
     }
 
     /**
-     * Define a one-to-one relationship
+     * Define the inverse of a one-to-one or one-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return BindTo
      */
-    public function bindTo(string $related, string $foreignKey, string $localKey)
+    public function bindTo(string $related, ?string $foreignKey = null, ?string $localKey = null): BindTo
     {
-        $this->lastRelationType = 'bindTo';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
-
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $foreignKey ??= $relatedInstance->getKeyName();
+        $localKey ??= self::snakeCase(class_basename($related)) . '_' . $relatedInstance->getKeyName();
+
+        $this->rememberRelation('bindTo', $related, $foreignKey, $localKey);
+
+        $query = $this->newRelationBuilder(BindTo::class, $related);
+        $query->where($foreignKey, '=', $this->$localKey);
+
+        return $query;
     }
 
     /**
      * Define a one-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return LinkMany
      */
-    public function linkMany(string $related, string $foreignKey, string $localKey)
+    public function linkMany(string $related, ?string $foreignKey = null, ?string $localKey = null): LinkMany
     {
-        $this->lastRelationType = 'linkMany';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
+        $foreignKey ??= $this->defaultForeignKey();
+        $localKey ??= $this->getKeyName();
 
-        $relatedInstance = app($related);
+        $this->rememberRelation('linkMany', $related, $foreignKey, $localKey);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $query = $this->newRelationBuilder(LinkMany::class, $related);
+        $query->where($foreignKey, '=', $this->$localKey);
+
+        return $query;
     }
 
     /**
      * Define a many-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $relatedKey
-     * @param string $pivotTable
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $relatedKey
+     * @param string|null $pivotTable
+     * @return BindToMany
      */
-    public function bindToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
-    {
+    public function bindToMany(
+        string $related,
+        ?string $foreignKey = null,
+        ?string $relatedKey = null,
+        ?string $pivotTable = null
+    ): BindToMany {
+        $relatedModel = app($related);
+
+        $thisName = self::snakeCase(class_basename(static::class));
+        $relatedName = self::snakeCase(class_basename($related));
+
+        $foreignKey ??= $this->defaultForeignKey();
+        $relatedKey ??= $relatedName . '_' . $relatedModel->getKeyName();
+        if ($pivotTable === null) {
+            $names = [$thisName, $relatedName];
+            sort($names);
+            $pivotTable = implode('_', $names);
+        }
+
         $this->lastRelationType = 'bindToMany';
         $this->lastRelatedModel = $related;
         $this->lastForeignKey = $foreignKey;
         $this->lastRelatedKey = $relatedKey;
         $this->lastPivotTable = $pivotTable;
 
-        $relatedModel = app($related);
-        $query = $relatedModel->query();
+        $query = $this->newRelationBuilder(BindToMany::class, $related);
 
         $query->setRelationInfo([
             'type' => 'bindToMany',
@@ -914,6 +939,64 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         ]);
 
         return $query;
+    }
+
+    /**
+     * Remember the relationship that was just defined, for eager loading
+     *
+     * @param string $type
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return void
+     */
+    private function rememberRelation(string $type, string $related, string $foreignKey, string $localKey): void
+    {
+        $this->lastRelationType = $type;
+        $this->lastRelatedModel = $related;
+        $this->lastForeignKey = $foreignKey;
+        $this->lastLocalKey = $localKey;
+    }
+
+    /**
+     * The conventional foreign key that points at this model, for example user_id
+     *
+     * @return string
+     */
+    private function defaultForeignKey(): string
+    {
+        return self::snakeCase(class_basename(static::class)) . '_' . $this->getKeyName();
+    }
+
+    /**
+     * Create a query on the related model that has the given relationship type
+     *
+     * @template T of Builder
+     * @param class-string<T> $builder
+     * @param string $related
+     * @return T
+     */
+    private function newRelationBuilder(string $builder, string $related): Builder
+    {
+        $relatedInstance = app($related);
+        $connection = $relatedInstance->connection;
+
+        return new $builder(
+            Database::getPdoInstance($connection),
+            $relatedInstance->getTable(),
+            $related,
+            $relatedInstance->pageSize,
+            $connection
+        );
+    }
+
+    /**
+     * @param string $value
+     * @return string
+     */
+    private static function snakeCase(string $value): string
+    {
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $value));
     }
 
     /**
