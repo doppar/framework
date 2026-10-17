@@ -7,8 +7,10 @@ use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
+use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\Mail\MailService;
+use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Support\Encryption;
 use Phaseolies\Support\CookieJar;
@@ -87,6 +89,12 @@ class FacadeLauncher extends ServiceLauncher
         // This handles user define log.
         $this->app->singleton('log', LoggerService::class);
 
+        // Bind the 'execution' service: a thin accessor over the container's
+        // active execution context (request, console command, worker job).
+        $this->app->singleton('execution', function () {
+            return new ExecutionService($this->app);
+        });
+
         // Bind the 'sanitize' service to a singleton instance of the Sanitizer class.
         // This handles user requested form data.
         $this->app->singleton('sanitize', function () {
@@ -104,6 +112,10 @@ class FacadeLauncher extends ServiceLauncher
         // Bind the 'db' service to a singleton instance of the Database class.
         // This handles db related jobs
         $this->app->singleton('db', Database::class);
+
+        // Bind the 'signal' service to a singleton instance of the SignalBus class.
+        // This handles signals that can wait for a database transaction to settle
+        $this->app->singleton('signal', SignalBus::class);
 
         // Bind the 'app' service to a singleton instance of the Application class.
         // This handles app related jobs

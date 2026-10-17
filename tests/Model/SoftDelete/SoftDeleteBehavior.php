@@ -685,4 +685,34 @@ abstract class SoftDeleteTest extends ModelQueryDriverTestCase
         $this->assertFalse($fired);
         $this->assertNotNull($this->rawRow('articles', 1)['deleted_at']);
     }
+
+    public function testBuilderRestoreAndForceDeleteWithHooksFireHooksPerModel(): void
+    {
+        $events = [];
+        HookHandler::register(MockSoftArticle::class, [
+            'before_restored' => function ($m) use (&$events) {
+                $events[] = 'restored:' . $m->getKey();
+            },
+            'before_deleted' => function ($m) use (&$events) {
+                $events[] = 'deleted:' . $m->getKey();
+            },
+        ]);
+
+        try {
+            MockSoftArticle::find(1)->delete();
+            MockSoftArticle::find(2)->delete();
+            $events = [];
+
+            MockSoftArticle::query()->onlyTrashed()->withHooks()->restore();
+            $this->assertEqualsCanonicalizing(['restored:1', 'restored:2'], $events);
+            $this->assertNull($this->rawRow('articles', 1)['deleted_at']);
+
+            $events = [];
+            MockSoftArticle::query()->where('id', 3)->withHooks()->forceDelete();
+            $this->assertSame(['deleted:3'], $events);
+            $this->assertFalse($this->rawRow('articles', 3));
+        } finally {
+            unset(HookHandler::$hooks[MockSoftArticle::class]);
+        }
+    }
 }

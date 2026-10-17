@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Support;
 
+use Phaseolies\DI\Container;
 use Phaseolies\Logger\LogService;
 use Phaseolies\Logger\Exceptions\UnsupportedLogDriverException;
 use Phaseolies\Logger\Drivers\DefaultLogHandler;
@@ -51,7 +52,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->info($message, $context);
+        $this->reader()->info($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -65,7 +66,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->notice($message, $context);
+        $this->reader()->notice($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -79,7 +80,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->warning($message, $context);
+        $this->reader()->warning($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -93,7 +94,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->error($message, $context);
+        $this->reader()->error($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -107,7 +108,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->debug($message, $context);
+        $this->reader()->debug($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -121,7 +122,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->critical($message, $context);
+        $this->reader()->critical($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -135,7 +136,7 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->alert($message, $context);
+        $this->reader()->alert($message, $this->withExecutionContext($context));
     }
 
     /**
@@ -149,7 +150,24 @@ class LoggerService extends LogService
     {
         $message = $this->formatMessage($message);
 
-        $this->reader()->emergency($message, $context);
+        $this->reader()->emergency($message, $this->withExecutionContext($context));
+    }
+
+    /**
+     * Attach the active execution context (id, type, metadata) to a log
+     *
+     * @param array $context
+     * @return array
+     */
+    protected function withExecutionContext(array $context): array
+    {
+        $execution = Container::getInstance()->executionContext();
+
+        if ($execution === null || array_key_exists('execution', $context)) {
+            return $context;
+        }
+
+        return $context + ['execution' => $execution->toArray()];
     }
 
     /**

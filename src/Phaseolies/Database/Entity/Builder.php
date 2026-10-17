@@ -138,6 +138,16 @@ class Builder
     /**
      * @var bool
      */
+    protected bool $withoutHooks = false;
+
+    /**
+     * @var bool
+     */
+    protected bool $withHooks = false;
+
+    /**
+     * @var bool
+     */
     protected bool $suppressEagerLoad = false;
 
     /**
@@ -164,6 +174,103 @@ class Builder
     }
 
     /**
+     * Skip model hooks for the next write on every model this builder
+     * creates or loads.
+     *
+     * @return self
+     */
+    public function withoutHook(): self
+    {
+        $this->withoutHooks = true;
+
+        return $this;
+    }
+
+    /**
+     * Run model hooks for update(), delete(), restore() and forceDelete()
+     * by writing each matching model on its own.
+     *
+     * @return self
+     */
+    public function withHooks(): self
+    {
+        $this->withHooks = true;
+
+        return $this;
+    }
+
+    /**
+     * Run the callback on each matching model, in chunks by primary key.
+     * Returns false if any callback returned false.
+     *
+     * @param \Closure(Model): bool $callback
+     * @return bool
+     */
+    private function eachModelWithHooks(\Closure $callback): bool
+    {
+        $ok = true;
+
+        $this->chunkById(500, function ($models) use ($callback, &$ok) {
+            foreach ($models as $model) {
+                if ($callback($model) === false) {
+                    $ok = false;
+                }
+            }
+        });
+
+        return $ok;
+    }
+
+    /**
+     * Update the first model matching the attributes, or create it.
+     *
+     * @param array $attributes
+     * @param array $values
+     * @return Model
+     */
+    public function updateOrCreate(array $attributes, array $values = []): Model
+    {
+        $model = $this->firstMatching($attributes);
+
+        if ($model) {
+            $model->fill($values);
+            $model->save();
+
+            return $model;
+        }
+
+        return $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * Retrieve the first model matching the attributes, or create it.
+     *
+     * @param array $attributes
+     * @param array $values
+     * @return Model
+     */
+    public function firstOrCreate(array $attributes, array $values = []): Model
+    {
+        return $this->firstMatching($attributes)
+            ?? $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * @param array $attributes
+     * @return Model|null
+     */
+    private function firstMatching(array $attributes): ?Model
+    {
+        $query = clone $this;
+
+        foreach ($attributes as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        return $query->first();
+    }
+
+    /**
      * Create a new model instance and save it to the database
      *
      * @param array $attributes
@@ -173,6 +280,10 @@ class Builder
     {
         $modelClass = $this->modelClass;
         $model = new $modelClass();
+
+        if ($this->withoutHooks) {
+            $model->withoutHook();
+        }
 
         if ($this->connectionName !== null) {
             $model->setConnectionName($this->connectionName);
@@ -983,6 +1094,10 @@ class Builder
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $model = app($this->modelClass, [$row]);
+
+                if ($this->withoutHooks) {
+                    $model->withoutHook();
+                }
 
                 if ($this->connectionName !== null) {
                     $model->setConnectionName($this->connectionName);
@@ -2119,6 +2234,10 @@ class Builder
 
             $model = new $this->modelClass($result);
 
+            if ($this->withoutHooks) {
+                $model->withoutHook();
+            }
+
             if ($this->connectionName !== null) {
                 $model->setConnectionName($this->connectionName);
             }
@@ -2582,6 +2701,12 @@ class Builder
      */
     public function update(array $attributes): bool
     {
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn (Model $model) => $model->update($attributes)
+            );
+        }
+
         $class = $this->modelClass;
 
         if (app($class)->usesTimestamps()) {
@@ -2641,6 +2766,12 @@ class Builder
      */
     public function delete(): bool
     {
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn (Model $model) => $model->delete()
+            );
+        }
+
         if ($this->shouldSoftDelete()) {
             $now = (string) now();
 
@@ -2691,6 +2822,10 @@ class Builder
             // Convert results to model instances
             $models = array_map(function ($item) {
                 $model = new $this->modelClass($item);
+
+                if ($this->withoutHooks) {
+                    $model->withoutHook();
+                }
 
                 if ($this->connectionName !== null) {
                     $model->setConnectionName($this->connectionName);

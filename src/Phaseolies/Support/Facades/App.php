@@ -27,6 +27,8 @@ use Phaseolies\Facade\BaseFacade;
  * @method static \Phaseolies\Application defer(callable $callback)
  * @method static mixed runInDeferScope(callable $callback)
  * @method static bool hasDeferScope()
+ * @method static \Phaseolies\Support\ExecutionContext|null executionContext()
+ * @method static mixed runInContext(string $type, array $metadata, callable $callback)
  *
  * @see \Phaseolies\Application
  */

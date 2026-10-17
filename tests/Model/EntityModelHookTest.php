@@ -3,6 +3,7 @@
 namespace Tests\Unit\Model;
 
 use Phaseolies\Database\Database;
+use Phaseolies\Database\Entity\Hooks\HookHandler;
 use PHPUnit\Framework\TestCase;
 use PDO;
 use Tests\Support\Model\MockHook;
@@ -20,8 +21,34 @@ class EntityModelHookTest extends TestCase
         $this->setupDatabaseConnections();
     }
 
+    /**
+     * Hook table of MockHook as it was before a test added temporary hooks.
+     * MockHook registers its own hooks once per process, so restoring must
+     * put this back instead of removing the entry.
+     */
+    private ?array $savedHooks = null;
+
+    private function tempHooks(array $hooks): void
+    {
+        new MockHook(); // make sure the class has booted and registered its own hooks
+
+        $this->savedHooks ??= HookHandler::$hooks[MockHook::class] ?? [];
+
+        HookHandler::register(MockHook::class, $hooks);
+    }
+
+    private function restoreHooks(): void
+    {
+        if ($this->savedHooks !== null) {
+            HookHandler::$hooks[MockHook::class] = $this->savedHooks;
+            $this->savedHooks = null;
+        }
+    }
+
     protected function tearDown(): void
     {
+        $this->restoreHooks();
+
         $this->pdo = null;
         $this->tearDownDatabaseConnections();
     }
@@ -147,5 +174,240 @@ class EntityModelHookTest extends TestCase
         $hook->save();
 
         $this->assertFalse(MockHook::$wasCalledAfterUpdated, 'after_updated hook should have fired');
+    }
+
+    public function testChainedWithoutHookUpdateOnlyTouchesThatRecord(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::find(1);
+        $hook->withoutHook()->update(['name' => 'Only Me']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+        $this->assertSame('Only Me', MockHook::find(1)->name);
+        $this->assertSame('Jane Smith', MockHook::find(2)->name);
+        $this->assertSame('Bob Wilson', MockHook::find(3)->name);
+    }
+
+    public function testChainedWithoutHookDeleteOnlyRemovesThatRecord(): void
+    {
+        MockHook::find(1)->withoutHook()->delete();
+
+        $this->assertSame(2, MockHook::query()->count());
+        $this->assertNull(MockHook::find(1));
+    }
+
+    public function testChainedWithoutHookSaveWorks(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Saved';
+        $hook->withoutHook()->save();
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+        $this->assertSame('Saved', MockHook::find(1)->name);
+    }
+
+    public function testWithoutHookIsResetAfterOneWrite(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::find(1);
+        $hook->withoutHook()->update(['name' => 'Quiet']);
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+
+        $hook->name = 'Loud';
+        $hook->save();
+        $this->assertTrue(MockHook::$wasCalledAfterUpdated);
+    }
+
+    public function testWithoutHookIsResetWhenUpdateReturnsEarly(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::find(1);
+        $hook->withoutHook()->update([]); // nothing dirty, returns early
+
+        $hook->name = 'Loud';
+        $hook->save();
+
+        $this->assertTrue(MockHook::$wasCalledAfterUpdated);
+    }
+
+    public function testWithoutHookDoesNotLeakToOtherModelOperations(): void
+    {
+        MockHook::$wasCalledAfterCreated = false;
+
+        // A read through the builder must not switch hooks off globally
+        MockHook::withoutHook()->where('id', 1)->get();
+
+        MockHook::create(['name' => 'After Read']);
+
+        $this->assertTrue(MockHook::$wasCalledAfterCreated);
+    }
+
+    public function testWithoutHookBuilderDoesNotLeakAfterBulkUpdate(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        MockHook::withoutHook()->where('id', 1)->update(['name' => 'Bulk']);
+
+        $hook = MockHook::find(2);
+        $hook->name = 'Normal';
+        $hook->save();
+
+        $this->assertTrue(MockHook::$wasCalledAfterUpdated);
+    }
+
+    public function testWithoutHookFindThenSaveSkipsHooksOnce(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        $hook = MockHook::withoutHook()->find(1);
+        $hook->name = 'Imported';
+        $hook->save();
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+    }
+
+    public function testWithoutHookUpdateOrCreateAndFirstOrCreate(): void
+    {
+        MockHook::$wasCalledAfterCreated = false;
+        MockHook::$wasCalledAfterUpdated = false;
+
+        MockHook::withoutHook()->updateOrCreate(['name' => 'John Doe'], ['name' => 'John Doe']);
+        MockHook::withoutHook()->updateOrCreate(['name' => 'Brand New']);
+        MockHook::withoutHook()->firstOrCreate(['name' => 'Another New']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterCreated);
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+        $this->assertSame(5, MockHook::query()->count());
+    }
+
+    public function testBuilderUpdateWithoutWithHooksSkipsHooks(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        MockHook::query()->where('id', '>', 0)->update(['name' => 'Bulk']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+        $this->assertSame('Bulk', MockHook::find(3)->name);
+    }
+
+    public function testBuilderUpdateWithHooksFiresHooksPerModel(): void
+    {
+        $seen = [];
+        $this->tempHooks([
+            'before_updated' => function ($model) use (&$seen) {
+                $seen[] = $model->getKey();
+            },
+        ]);
+        MockHook::$wasCalledAfterUpdated = false;
+
+        try {
+            $result = MockHook::query()
+                ->where('id', '>', 1)
+                ->withHooks()
+                ->update(['name' => 'Hooked']);
+        } finally {
+            $this->restoreHooks();
+        }
+
+        $this->assertTrue($result);
+        $this->assertTrue(MockHook::$wasCalledAfterUpdated);
+        $this->assertEqualsCanonicalizing([2, 3], array_map('intval', $seen));
+        $this->assertSame('John Doe', MockHook::find(1)->name);
+        $this->assertSame('Hooked', MockHook::find(2)->name);
+        $this->assertSame('Hooked', MockHook::find(3)->name);
+    }
+
+    public function testBuilderUpdateWithHooksReachesRowsThatLeaveTheWhereClause(): void
+    {
+        // The update changes the column the WHERE uses, so rows drop out of
+        // the result set while it is being processed. None may be skipped.
+        for ($i = 0; $i < 1200; $i++) {
+            $this->pdo->exec("INSERT INTO hooks (name) VALUES ('pending')");
+        }
+
+        MockHook::query()->where('name', 'pending')->withHooks()->update(['name' => 'done']);
+
+        $this->assertSame(0, MockHook::query()->where('name', 'pending')->count());
+        $this->assertSame(1200, MockHook::query()->where('name', 'done')->count());
+    }
+
+    public function testBuilderUpdateWithHooksStopsWhereAHookThrows(): void
+    {
+        $this->tempHooks([
+            'before_updated' => function ($model) {
+                if ((int) $model->getKey() === 2) {
+                    throw new \RuntimeException('not this one');
+                }
+            },
+        ]);
+
+        try {
+            MockHook::query()->withHooks()->update(['name' => 'Changed']);
+            $this->fail('Expected the hook exception.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('not this one', $e->getMessage());
+        } finally {
+            $this->restoreHooks();
+        }
+
+        // Rows are written one by one and there is no implicit transaction:
+        // row 1 was saved, row 2 threw, row 3 was never reached.
+        $this->assertSame('Changed', MockHook::find(1)->name);
+        $this->assertSame('Jane Smith', MockHook::find(2)->name);
+        $this->assertSame('Bob Wilson', MockHook::find(3)->name);
+    }
+
+    public function testBuilderDeleteWithHooksFiresHooksPerModel(): void
+    {
+        $seen = [];
+        $this->tempHooks([
+            'before_deleted' => function ($model) use (&$seen) {
+                $seen[] = (int) $model->getKey();
+            },
+        ]);
+
+        try {
+            MockHook::query()->where('id', '<', 3)->withHooks()->delete();
+        } finally {
+            $this->restoreHooks();
+        }
+
+        $this->assertEqualsCanonicalizing([1, 2], $seen);
+        $this->assertSame(1, MockHook::query()->count());
+    }
+
+    public function testBuilderDeleteWithoutWithHooksSkipsHooks(): void
+    {
+        $fired = false;
+        $this->tempHooks([
+            'before_deleted' => function () use (&$fired) {
+                $fired = true;
+            },
+        ]);
+
+        try {
+            MockHook::query()->where('id', 1)->delete();
+        } finally {
+            $this->restoreHooks();
+        }
+
+        $this->assertFalse($fired);
+        $this->assertSame(2, MockHook::query()->count());
+    }
+
+    public function testWithHooksAndWithoutHookTogetherSkipHooks(): void
+    {
+        MockHook::$wasCalledAfterUpdated = false;
+
+        MockHook::withoutHook()->withHooks()->update(['name' => 'Quiet']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterUpdated);
+        $this->assertSame('Quiet', MockHook::find(1)->name);
+        $this->assertSame('Quiet', MockHook::find(3)->name);
     }
 }

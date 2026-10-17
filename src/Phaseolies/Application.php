@@ -15,6 +15,7 @@ use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\Support\DeferScope;
+use Phaseolies\Support\ExecutionContext;
 use Phaseolies\ApplicationBuilder;
 use Devium\Toml\Toml;
 use RuntimeException;
@@ -24,7 +25,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '4.5.2';
+    const VERSION = '4.7.0';
 
     /**
      * The base path of the application installation.
@@ -1138,8 +1139,13 @@ class Application extends Container
         Request $request,
         ?Response $response = null,
         ?\Throwable $exception = null,
-        ?DeferScope $deferScope = null
+        ?DeferScope $deferScope = null,
+        ?ExecutionContext $context = null
     ): void {
+        if ($context !== null) {
+            $this->resumeContext($context);
+        }
+
         if ($deferScope !== null) {
             // Make the request scope current again so terminating callbacks
             // can still defer cleanup into it.
@@ -1164,7 +1170,28 @@ class Application extends Container
                     $this->endDeferScope($deferScope, $terminationFailure ?? $exception);
                 }
             } finally {
-                $this->cleanupRequestScopedServices();
+                $cleanupFailure = null;
+
+                try {
+                    $this->cleanupRequestScopedServices();
+                } catch (\Throwable $e) {
+                    $cleanupFailure = $e;
+                }
+
+                try {
+                    if ($context !== null) {
+                        $this->endContext($context, $terminationFailure ?? $cleanupFailure);
+                    }
+                } finally {
+                    if ($cleanupFailure !== null) {
+                        // Never replace the exception that is already ending the request.
+                        if ($terminationFailure !== null) {
+                            $this->reportTeardownFailure('Request cleanup failed', $cleanupFailure);
+                        } else {
+                            throw $cleanupFailure;
+                        }
+                    }
+                }
             }
         }
     }
@@ -1512,6 +1539,7 @@ class Application extends Container
     {
         $this->snapshotBootBindings();
 
+        $context = $this->beginContext(ExecutionContext::REQUEST, $this->requestContextMetadata($request));
         $deferScope = $this->beginDeferScope();
 
         try {
@@ -1522,24 +1550,51 @@ class Application extends Container
             $response->prepare($request)->send();
 
             $this->suspendDeferScope($deferScope);
+            $this->suspendContext($context);
 
-            return new DispatchResult($this, $request, $response, null, $deferScope);
+            return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
             try {
                 Response::dispatchHttpException($e);
             } catch (\Throwable $renderFailure) {
                 $this->endDeferScope($deferScope, $renderFailure);
+                $this->endContext($context, $renderFailure);
 
                 throw $renderFailure;
             }
 
             $this->suspendDeferScope($deferScope);
+            $this->suspendContext($context);
 
-            return new DispatchResult($this, $request, null, $e, $deferScope);
+            return new DispatchResult($this, $request, null, $e, $deferScope, $context);
         } catch (\Throwable $e) {
             $this->endDeferScope($deferScope, $e);
+            $this->endContext($context, $e);
 
             throw $e;
         }
+    }
+
+    /**
+     * Describe a request for its execution context. Must never throw.
+     *
+     * @param mixed $request
+     * @return array<string, mixed>
+     */
+    protected function requestContextMetadata($request): array
+    {
+        $metadata = [];
+
+        try {
+            $metadata = array_filter([
+                'method' => $request->method(),
+                'path' => $request->getPath(),
+                'request_id' => $request->header('X-Request-Id'),
+            ], static fn($value) => $value !== null && $value !== '');
+        } catch (\Throwable) {
+            // Metadata is best-effort; the request must still be served.
+        }
+
+        return $metadata;
     }
 }

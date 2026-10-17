@@ -96,6 +96,12 @@ trait InteractsWithSoftDeleteScope
             $this->trashed = 'only';
         }
 
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn ($model) => $model->restore()
+            );
+        }
+
         return $this->writeSoftDeleteState(null, (string) now());
     }
 
@@ -131,6 +137,12 @@ trait InteractsWithSoftDeleteScope
     public function forceDelete(): bool
     {
         $this->assertSoftDeletable(__FUNCTION__);
+
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn ($model) => $model->forceDelete()
+            );
+        }
 
         $this->forceDeleting = true;
 

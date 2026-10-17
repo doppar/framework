@@ -372,7 +372,7 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $record->restoreVersion($deleted->__history_id);
     }
 
-    public function testRestoreToRefusesAPointWhereTheRecordWasDeleted(): void
+    public function testRewindAndRestoreAgreeOnAPointWhereTheRecordWasDeleted(): void
     {
         $this->travelTo('2026-02-01 10:00:00.000000');
         $created = MockBranchableRecord::create(['title' => 'Widget', 'price' => '100', 'internal_note' => null]);
@@ -381,9 +381,9 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->travelTo('2026-02-01 11:00:00.000000');
         $record->delete();
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('deleted temporal version');
-        $record->restoreTo('2026-02-01 11:30:00');
+        $this->assertNull($record->rewindTo('2026-02-01 11:30:00'));
+        $this->assertFalse($record->restoreTo('2026-02-01 11:30:00'));
+        $this->assertNotNull($record->rewindTo('2026-02-01 10:30:00'));
     }
 
     public function testRestoreToNonMainBranchThrowsForModelsNotConfiguredForBranching(): void
@@ -400,7 +400,7 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $record->restoreTo('2026-01-01 00:00:00', 'some-branch');
     }
 
-    public function testRestoreToKeepsLegacyBehaviorForNonBranchableModels(): void
+    public function testRewindAndRestoreTreatDeletedPointsTheSameOnNonBranchableModels(): void
     {
         $this->travelTo('2026-02-01 10:00:00.000000');
         $created = MockTemporalRecord::create([
@@ -410,7 +410,8 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->travelTo('2026-02-01 11:00:00.000000');
         $record->delete();
 
-        $this->assertTrue($record->restoreTo('2026-02-01 11:30:00'));
+        $this->assertNull($record->rewindTo('2026-02-01 11:30:00'));
+        $this->assertFalse($record->restoreTo('2026-02-01 11:30:00'));
     }
 
     public function testDiffAgainstBranchReturnsNullAfterMainDeletion(): void

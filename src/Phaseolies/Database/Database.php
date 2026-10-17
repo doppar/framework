@@ -35,6 +35,13 @@ class Database
     protected static $transactions = [];
 
     /**
+     * Signals waiting for a transaction to settle, per connection and nesting level
+     *
+     * @var array<string, array<int, array<int, array{0: \Phaseolies\Signals\SignalBus, 1: object}>>>
+     */
+    protected static $pendingSignals = [];
+
+    /**
      * The driver instances for each connection
      *
      * @var array<string, \Phaseolies\Database\Contracts\Driver\DriverInterface>
@@ -200,12 +207,15 @@ class Database
     {
         $pdo = $this->getPdo();
         $connection = $this->connection ?? config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
 
-        if (static::$transactions[$connection] === 1) {
+        if ($level === 1) {
             $pdo->commit();
         }
 
-        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
+        static::$transactions[$connection] = max(0, $level - 1);
+
+        static::settleSignals($connection, $level);
     }
 
     /**
@@ -218,14 +228,99 @@ class Database
     {
         $pdo = $this->getPdo();
         $connection = $this->connection ?? config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
 
-        if (static::$transactions[$connection] === 1) {
+        // Dropped first, so a rollback that itself fails can never leak them.
+        static::discardSignals($connection, $level);
+
+        if ($level === 1) {
             $pdo->rollBack();
         } else {
-            $pdo->exec("ROLLBACK TO SAVEPOINT trans" . static::$transactions[$connection]);
+            $pdo->exec("ROLLBACK TO SAVEPOINT trans" . $level);
         }
 
-        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
+        static::$transactions[$connection] = max(0, $level - 1);
+    }
+
+    /**
+     * Hold a signal until the open transaction on a connection settles
+     *
+     * @param \Phaseolies\Signals\SignalBus $bus
+     * @param object $signal
+     * @param string|null $connection
+     * @return bool
+     */
+    public static function stageSignal(\Phaseolies\Signals\SignalBus $bus, object $signal, ?string $connection = null): bool
+    {
+        $connection = $connection ?: config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
+
+        if ($level === 0) {
+            return false;
+        }
+
+        static::$pendingSignals[$connection][$level][] = [$bus, $signal];
+
+        return true;
+    }
+
+    /**
+     * Hand the signals of a committed level to the parent, or deliver them at the outermost level
+     *
+     * @param string $connection
+     * @param int $level
+     * @return void
+     */
+    protected static function settleSignals(string $connection, int $level): void
+    {
+        $signals = static::$pendingSignals[$connection][$level] ?? null;
+
+        if ($signals === null) {
+            return;
+        }
+
+        unset(static::$pendingSignals[$connection][$level]);
+
+        if ($level > 1) {
+            static::$pendingSignals[$connection][$level - 1] = array_merge(
+                static::$pendingSignals[$connection][$level - 1] ?? [],
+                $signals
+            );
+
+            return;
+        }
+
+        if (empty(static::$pendingSignals[$connection])) {
+            unset(static::$pendingSignals[$connection]);
+        }
+
+        foreach ($signals as [$bus, $signal]) {
+            $bus->settle($signal);
+        }
+    }
+
+    /**
+     * Drop the signals held by a level and every level inside it
+     *
+     * @param string $connection
+     * @param int $level
+     * @return void
+     */
+    protected static function discardSignals(string $connection, int $level): void
+    {
+        if (!isset(static::$pendingSignals[$connection])) {
+            return;
+        }
+
+        foreach (array_keys(static::$pendingSignals[$connection]) as $held) {
+            if ($held >= $level) {
+                unset(static::$pendingSignals[$connection][$held]);
+            }
+        }
+
+        if (empty(static::$pendingSignals[$connection])) {
+            unset(static::$pendingSignals[$connection]);
+        }
     }
 
     /**
@@ -631,6 +726,8 @@ class Database
                 static::$transactions[$connection] = 0;
             }
 
+            unset(static::$pendingSignals[$connection]);
+
             return true;
         } catch (\Throwable $e) {
             if (function_exists('error_log')) {
@@ -714,5 +811,6 @@ class Database
         static::$connections = [];
         static::$drivers = [];
         static::$transactions = [];
+        static::$pendingSignals = [];
     }
 }

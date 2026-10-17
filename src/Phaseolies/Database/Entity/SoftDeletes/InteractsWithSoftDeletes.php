@@ -89,11 +89,13 @@ trait InteractsWithSoftDeletes
         $this->assertUsesSoftDeletes(__FUNCTION__);
 
         if (!isset($this->attributes[$this->primaryKey])) {
+            $this->hooksSuppressed = false;
+
             return false;
         }
 
         try {
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('restored') === false) {
+            if (! $this->hooksSuppressed && $this->fireBeforeHooks('restored') === false) {
                 return false;
             }
 
@@ -107,14 +109,14 @@ trait InteractsWithSoftDeletes
             if ($result) {
                 $this->syncSoftDeleteAttributes(null, $now);
 
-                if (self::$isHookShouldBeCalled) {
+                if (! $this->hooksSuppressed) {
                     $this->fireAfterHooks('restored');
                 }
             }
 
             return $result;
         } finally {
-            self::$isHookShouldBeCalled = true;
+            $this->hooksSuppressed = false;
         }
     }
 

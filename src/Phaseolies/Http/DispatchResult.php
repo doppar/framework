@@ -4,6 +4,7 @@ namespace Phaseolies\Http;
 
 use Phaseolies\Application;
 use Phaseolies\Support\DeferScope;
+use Phaseolies\Support\ExecutionContext;
 
 class DispatchResult
 {
@@ -25,7 +26,8 @@ class DispatchResult
         protected Request $request,
         protected ?Response $response = null,
         protected ?\Throwable $exception = null,
-        protected ?DeferScope $deferScope = null
+        protected ?DeferScope $deferScope = null,
+        protected ?ExecutionContext $context = null
     ) {}
 
     /**
@@ -40,7 +42,7 @@ class DispatchResult
         }
 
         $this->terminated = true;
-        $this->app->terminate($this->request, $this->response, $this->exception, $this->deferScope);
+        $this->app->terminate($this->request, $this->response, $this->exception, $this->deferScope, $this->context);
 
         return $this;
     }
