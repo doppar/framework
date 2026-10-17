@@ -84,11 +84,10 @@ class TemporalBuilder extends Builder
         $key          = (new $this->modelClass())->getKeyName();
 
         $sql = "
-            SELECT snapshot
+            SELECT snapshot, action
             FROM   {$historyTable}
             WHERE  record_id = ?
             AND    valid_from <= ?
-            AND    action != 'deleted'
             ORDER  BY valid_from DESC
             LIMIT  1
         ";
@@ -97,7 +96,8 @@ class TemporalBuilder extends Builder
         $stmt->execute([$id, $this->datetime]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
+        // The latest row decides: if the record was deleted by then, it did not exist.
+        if (!$row || $row['action'] === 'deleted') {
             return null;
         }
 

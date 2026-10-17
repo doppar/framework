@@ -240,11 +240,10 @@ trait InteractsWithTemporal
         }
 
         $stmt = $pdo->prepare(
-            "SELECT snapshot
+            "SELECT snapshot, action
              FROM   {$historyTable}
              WHERE  record_id  = ?
              AND    valid_from <= ?
-             AND    action     != 'deleted'
              ORDER  BY valid_from DESC
              LIMIT  1"
         );
@@ -252,7 +251,12 @@ trait InteractsWithTemporal
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ? (json_decode($row['snapshot'], true) ?? null) : null;
+        // The latest row decides: if the record was deleted by then, it did not exist.
+        if (!$row || $row['action'] === 'deleted') {
+            return null;
+        }
+
+        return json_decode($row['snapshot'], true) ?? null;
     }
 
     /**
