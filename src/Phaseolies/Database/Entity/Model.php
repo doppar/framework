@@ -845,7 +845,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->rememberRelation('linkOne', $related, $foreignKey, $localKey);
 
         $query = $this->newRelationBuilder(LinkOne::class, $related);
-        $query->where($foreignKey, '=', $this->$localKey);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationParent($this, $foreignKey, $localKey);
 
         return $query;
     }
@@ -868,7 +869,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->rememberRelation('bindTo', $related, $foreignKey, $localKey);
 
         $query = $this->newRelationBuilder(BindTo::class, $related);
-        $query->where($foreignKey, '=', $this->$localKey);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationChild($this, $localKey, $foreignKey);
 
         return $query;
     }
@@ -889,7 +891,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->rememberRelation('linkMany', $related, $foreignKey, $localKey);
 
         $query = $this->newRelationBuilder(LinkMany::class, $related);
-        $query->where($foreignKey, '=', $this->$localKey);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationParent($this, $foreignKey, $localKey);
 
         return $query;
     }
@@ -942,6 +945,25 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Limit a relation query to the rows that point at this model
+     *
+     * @param Builder $query
+     * @param string $foreignKey
+     * @param mixed $value
+     * @return void
+     */
+    private function constrainRelation(Builder $query, string $foreignKey, mixed $value): void
+    {
+        if ($value === null) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where($foreignKey, '=', $value);
+    }
+
+    /**
      * Remember the relationship that was just defined, for eager loading
      *
      * @param string $type
@@ -981,13 +1003,38 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $relatedInstance = app($related);
         $connection = $relatedInstance->connection;
 
-        return new $builder(
+        $relation = new $builder(
             Database::getPdoInstance($connection),
             $relatedInstance->getTable(),
             $related,
             $relatedInstance->pageSize,
             $connection
         );
+
+        $source = $related::query();
+
+        foreach (self::builderProperties() as $property) {
+            if ($property->isInitialized($source)) {
+                $property->setValue($relation, $property->getValue($source));
+            }
+        }
+
+        return $relation;
+    }
+
+    /**
+     * The instance properties of the query builder, read once
+     *
+     * @return array<int, \ReflectionProperty>
+     */
+    private static function builderProperties(): array
+    {
+        static $properties = null;
+
+        return $properties ??= array_values(array_filter(
+            (new \ReflectionClass(Builder::class))->getProperties(),
+            fn (\ReflectionProperty $property) => !$property->isStatic()
+        ));
     }
 
     /**
@@ -999,6 +1046,17 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     private static function snakeCase(string $value): string
     {
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $value));
+    }
+
+    /**
+     * Whether an attribute is listed in the model's $creatable whitelist
+     *
+     * @param string $attribute
+     * @return bool
+     */
+    public function isCreatable(string $attribute): bool
+    {
+        return in_array($attribute, $this->creatable, true);
     }
 
     /**

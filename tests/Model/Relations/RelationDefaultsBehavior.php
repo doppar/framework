@@ -136,6 +136,36 @@ abstract class RelationDefaultsTest extends ModelQueryDriverTestCase
         $this->assertSame(['php', 'sql'], $articles[0]->topics->pluck('name')->all());
     }
 
+    public function testRelationsOfAnUnsavedModelMatchNothing(): void
+    {
+        // A row whose foreign key is NULL must not be picked up by a model without a key
+        $this->pdo->exec("INSERT INTO articles (author_id, title) VALUES (NULL, 'Orphan')");
+        $this->pdo->exec("INSERT INTO bios (author_id, line) VALUES (NULL, 'Orphan bio')");
+
+        $author = new Author();
+
+        $this->assertCount(0, $author->articles);
+        $this->assertNull($author->bio);
+        $this->assertSame(0, $author->articles()->count());
+        $this->assertNull((new Article())->author);
+    }
+
+    public function testRelationsApplyAConditionAddedByTheRelatedModelsQueryMethod(): void
+    {
+        $this->pdo->exec("INSERT INTO articles (author_id, title) VALUES (1, 'Hidden')");
+
+        $author = Author::find(1);
+
+        // The plain relation sees all three articles of author 1
+        $this->assertSame(['Alpha', 'Beta', 'Hidden'], $author->articles->pluck('title')->all());
+
+        // VisibleArticle::query() adds title != 'Hidden', and the relation keeps it
+        $this->assertSame(['Alpha', 'Beta'], $author->visibleArticles->pluck('title')->all());
+        $this->assertSame(2, $author->visibleArticles()->count());
+        $this->assertInstanceOf(LinkMany::class, $author->visibleArticles());
+        $this->assertSame(['Alpha'], $author->visibleArticles()->where('title', 'Alpha')->get()->pluck('title')->all());
+    }
+
     public function testRelationQueriesCanStillBeConstrained(): void
     {
         $this->assertSame(['Beta'], Author::find(1)->articles()->where('title', 'Beta')->get()->pluck('title')->all());
@@ -158,6 +188,11 @@ class Author extends Model
     public function articles(): LinkMany
     {
         return $this->linkMany(Article::class);
+    }
+
+    public function visibleArticles(): LinkMany
+    {
+        return $this->linkMany(VisibleArticle::class, 'author_id');
     }
 
     public function explicitBio(): LinkOne
@@ -227,5 +262,21 @@ class Topic extends Model
     public function articles(): BindToMany
     {
         return $this->bindToMany(Article::class);
+    }
+}
+
+/**
+ * Overrides query() to hide some rows from every query on the model.
+ */
+class VisibleArticle extends Model
+{
+    protected $table = 'articles';
+    protected $connection = 'default';
+    protected $timeStamps = false;
+    protected $creatable = ['author_id', 'title'];
+
+    public static function query(?string $connection = null): Builder
+    {
+        return parent::query($connection)->where('title', '!=', 'Hidden');
     }
 }

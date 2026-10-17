@@ -6,5 +6,5 @@ use Phaseolies\Database\Entity\Builder;
 
 class LinkOne extends Builder
 {
-    //
+    use InteractsWithRelationWrites;
 }
