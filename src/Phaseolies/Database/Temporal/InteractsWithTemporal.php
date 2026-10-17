@@ -129,7 +129,7 @@ trait InteractsWithTemporal
         foreach ($snapshotTo as $col => $newVal) {
             if (!array_key_exists($col, $snapshotFrom)) {
                 $added[$col] = $newVal;
-            } elseif ((string) $snapshotFrom[$col] !== (string) $newVal) {
+            } elseif (self::snapshotValuesDiffer($snapshotFrom[$col], $newVal)) {
                 $changes[$col] = ['from' => $snapshotFrom[$col], 'to' => $newVal];
             }
         }
@@ -257,6 +257,49 @@ trait InteractsWithTemporal
         }
 
         return json_decode($row['snapshot'], true) ?? null;
+    }
+
+    /**
+     * Determine whether two snapshot values are different
+     *
+     * @param mixed $from
+     * @param mixed $to
+     * @return bool
+     */
+    private static function snapshotValuesDiffer(mixed $from, mixed $to): bool
+    {
+        if (is_array($from) || is_array($to)) {
+            if (!is_array($from) || !is_array($to) || count($from) !== count($to)) {
+                return true;
+            }
+
+            foreach ($from as $key => $value) {
+                if (!array_key_exists($key, $to) || self::snapshotValuesDiffer($value, $to[$key])) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($from === null || $to === null) {
+            return $from !== $to;
+        }
+
+        if (is_object($from) || is_object($to)) {
+            return $from != $to;
+        }
+
+        return self::snapshotScalar($from) !== self::snapshotScalar($to);
+    }
+
+    /**
+     * @param bool|int|float|string $value
+     * @return string
+     */
+    private static function snapshotScalar(mixed $value): string
+    {
+        return is_bool($value) ? ($value ? '1' : '0') : (string) $value;
     }
 
     /**
