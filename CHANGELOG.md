@@ -1,5 +1,14 @@
 # Release Notes
 
+## v4.7.1 - 2026-10-17
+
+* Fix temporal lookups that bring back deleted records by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/372
+* Fix: Temporal diff() incorrectly compares cast values as strings by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/373
+* Fix: Temporal orWhere() filtering accepts every model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/374
+* Fix: Suspended child contexts survive after their parent ends by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/375
+* Fix: Context-ending listener failures can mask the original application failure by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/376
+* (feat) Branchable temporal records with explainable history by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/367
+
 ## v4.7.0 - 2026-10-17
 
 * Fix withoutHook() and add withHooks() for bulk queries by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/369
