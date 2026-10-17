@@ -176,11 +176,79 @@ class TemporalModelTest extends TestCase
         $this->assertCount(1, $afterDelete);
         $this->assertSame($first->id, $afterDelete[0]->id);
 
-        $deletedSnapshot = MockTemporalRecord::at('2026-01-01 14:00:00')->find($second->id);
+        // A record deleted before the requested time did not exist at that time
+        $this->assertNull(MockTemporalRecord::at('2026-01-01 14:00:00')->find($second->id));
 
-        $this->assertNotNull($deletedSnapshot);
-        $this->assertSame($second->id, $deletedSnapshot->id);
-        $this->assertSame('archived', $deletedSnapshot->status);
+        // ...but it did exist before it was deleted
+        $beforeDeleteSnapshot = MockTemporalRecord::at('2026-01-01 12:30:00')->find($second->id);
+
+        $this->assertNotNull($beforeDeleteSnapshot);
+        $this->assertSame($second->id, $beforeDeleteSnapshot->id);
+        $this->assertSame('archived', $beforeDeleteSnapshot->status);
+    }
+
+    public function testTemporalLookupsAfterDeletionDoNotReturnTheOldSnapshot(): void
+    {
+        $this->travelTo('2026-01-01 10:00:00.100000');
+        $created = MockTemporalRecord::create(['title' => 'Contract A', 'status' => 'draft', 'body' => 'Body']);
+        $record = MockTemporalRecord::find($created->id);
+
+        $this->travelTo('2026-01-01 11:00:00.200000');
+        $record->status = 'published';
+        $record->save();
+
+        $this->travelTo('2026-01-01 12:00:00.300000');
+        $record->delete();
+
+        $afterDelete = '2026-01-01 13:00:00';
+        $beforeDelete = '2026-01-01 11:30:00';
+
+        $this->assertNull(MockTemporalRecord::at($afterDelete)->find($record->id));
+        $this->assertNull($record->rewindTo($afterDelete));
+        $this->assertFalse($record->restoreTo($afterDelete));
+        $this->assertNull($record->diff($beforeDelete, $afterDelete));
+        $this->assertNull($record->diff($afterDelete, $afterDelete));
+
+        // Times before the deletion still resolve
+        $this->assertSame('published', $record->rewindTo($beforeDelete)->status);
+        $this->assertSame('published', MockTemporalRecord::at($beforeDelete)->find($record->id)->status);
+        $this->assertSame('draft', MockTemporalRecord::at('2026-01-01 10:30:00')->find($record->id)->status);
+    }
+
+    public function testTemporalLookupsSeeTheRecordAgainAfterARestoredEntry(): void
+    {
+        $this->travelTo('2026-01-01 10:00:00.100000');
+        $created = MockTemporalRecord::create(['title' => 'Contract A', 'status' => 'draft', 'body' => 'Body']);
+        $record = MockTemporalRecord::find($created->id);
+
+        $this->travelTo('2026-01-01 12:00:00.300000');
+        $record->delete();
+
+        // Add a 'restored' entry the way a soft-delete restore would
+        $history = $record->historyTable();
+        $row = $this->pdo->query("SELECT * FROM {$history} WHERE action = 'deleted'")->fetch(PDO::FETCH_ASSOC);
+        $columns = $this->pdo->query("PRAGMA table_info({$history})")->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($columns as $column) {
+            if ((int) $column['pk'] === 1 && $column['type'] === 'INTEGER' && array_key_exists($column['name'], $row)) {
+                // autoincrement key of the history table, not the record id
+                if ($column['name'] !== 'record_id') {
+                    unset($row[$column['name']]);
+                }
+            }
+        }
+
+        $row['action'] = 'restored';
+        $row['valid_from'] = '2026-01-01 14:00:00.000000';
+
+        $names = array_keys($row);
+        $this->pdo->prepare(
+            "INSERT INTO {$history} (" . implode(',', $names) . ') VALUES (' . implode(',', array_fill(0, count($names), '?')) . ')'
+        )->execute(array_values($row));
+
+        $this->assertNull(MockTemporalRecord::at('2026-01-01 13:00:00')->find($record->id));
+        $this->assertNotNull(MockTemporalRecord::at('2026-01-01 15:00:00')->find($record->id));
+        $this->assertNotNull($record->rewindTo('2026-01-01 15:00:00'));
     }
 
     public function testTemporalDiffRewindAndRestoreUseStoredSnapshots(): void
