@@ -605,6 +605,112 @@ class TemporalModelTest extends TestCase
         return $report;
     }
 
+    public function testTemporalOrWhereAsFirstConditionOnlyReturnsMatches(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        $this->assertSame(['B', 'D'], $this->titlesOf(MockTemporalRecord::at($at)->orWhere('status', 'closed')));
+        $this->assertSame(['C'], $this->titlesOf(MockTemporalRecord::at($at)->orWhereIn('status', ['draft'])));
+        $this->assertSame([], $this->titlesOf(MockTemporalRecord::at($at)->orWhere('status', 'nothing')));
+    }
+
+    public function testTemporalWhereAndOrWhereMatchSqlSemantics(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        $this->assertSame(
+            ['A', 'B', 'D'],
+            $this->titlesOf(MockTemporalRecord::at($at)->where('status', 'open')->orWhere('status', 'closed'))
+        );
+        $this->assertSame(
+            ['A', 'D'],
+            $this->titlesOf(MockTemporalRecord::at($at)->where('status', 'closed')->where('body', '1')->orWhere('status', 'open'))
+        );
+    }
+
+    public function testTemporalAndBindsTighterThanOr(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        // open OR (closed AND body = 2), not (open OR closed) AND body = 2
+        $this->assertSame(
+            ['A', 'B'],
+            $this->titlesOf(
+                MockTemporalRecord::at($at)->where('status', 'open')->orWhere('status', 'closed')->where('body', '2')
+            )
+        );
+    }
+
+    public function testTemporalIgnoresTheBooleanOfTheFirstCondition(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        // orWhere(closed) AND body = 1
+        $this->assertSame(
+            ['D'],
+            $this->titlesOf(MockTemporalRecord::at($at)->orWhere('status', 'closed')->where('body', '1'))
+        );
+    }
+
+    public function testTemporalNestedWhereGroups(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        $this->assertSame(
+            ['D'],
+            $this->titlesOf(
+                MockTemporalRecord::at($at)
+                    ->where(function ($query) {
+                        $query->where('status', 'closed')->orWhere('status', 'draft');
+                    })
+                    ->where('body', '1')
+            )
+        );
+
+        // body = 3 OR (status = closed AND body = 2)
+        $this->assertSame(
+            ['B', 'C'],
+            $this->titlesOf(
+                MockTemporalRecord::at($at)
+                    ->where('body', '3')
+                    ->orWhere(function ($query) {
+                        $query->where('status', 'closed')->where('body', '2');
+                    })
+            )
+        );
+    }
+
+    public function testTemporalRawConditionsAreRejectedInsteadOfIgnored(): void
+    {
+        $at = $this->seedForBooleanTests();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('not supported');
+
+        MockTemporalRecord::at($at)->whereRaw("status = 'open'")->get();
+    }
+
+    /**
+     * A open/1, B closed/2, C draft/3, D closed/1. Returns a time after all of them.
+     */
+    private function seedForBooleanTests(): string
+    {
+        $this->travelTo('2026-01-01 10:00:00.100000');
+
+        foreach ([['A', 'open', '1'], ['B', 'closed', '2'], ['C', 'draft', '3'], ['D', 'closed', '1']] as [$title, $status, $body]) {
+            MockTemporalRecord::create(['title' => $title, 'status' => $status, 'body' => $body]);
+        }
+
+        return '2026-01-01 11:00:00';
+    }
+
+    private function titlesOf($query): array
+    {
+        $titles = $query->orderBy('id')->get()->map->title->all();
+
+        return array_values($titles);
+    }
+
     private function travelTo(string $datetime): void
     {
         Carbon::setTestNow(Carbon::parse($datetime, 'UTC'));
