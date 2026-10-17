@@ -144,7 +144,7 @@ class MigrateTemporalCommandTest extends TestCase
         $this->assertContains('idx_' . $historyTable . '_branch', array_column($indexes, 'name'));
 
         $status = implode(' ', array_map(fn ($line) => $line[0], $command->capturedLines));
-        $this->assertStringContainsString('actor, branch, branch index columns added', $status);
+        $this->assertStringContainsString('actor, branch columns added; branch index added', $status);
     }
 
     public function testHandleIsIdempotentOnceColumnsExist(): void
