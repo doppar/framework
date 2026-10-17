@@ -217,6 +217,129 @@ final class ExecutionContextTest extends TestCase
         $this->assertSame(1, $ended);
     }
 
+    public function testEndingAParentEndsItsSuspendedChild(): void
+    {
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        $this->container->endContext($outer);
+        $this->container->resumeContext($inner);
+
+        $this->assertNull($this->container->executionContext());
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
+    public function testSuspendedChildEndListenersRunBeforeTheParentsAndOnlyOnce(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        $this->container->endContext($outer);
+        $this->container->endContext($inner); // already ended, must not fire again
+
+        $this->assertSame(['inner', 'outer'], $order);
+    }
+
+    public function testEndingAParentEndsSuspendedGrandchildrenDeepestFirst(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $middle = $this->container->beginContext('middle');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+        $this->container->suspendContext($middle);
+
+        $this->container->endContext($outer);
+
+        $this->assertSame(['inner', 'middle', 'outer'], $order);
+        $this->container->resumeContext($inner);
+        $this->container->resumeContext($middle);
+        $this->assertNull($this->container->executionContext());
+    }
+
+    public function testEndingASuspendedParentAlsoEndsItsSuspendedChild(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+        $this->container->suspendContext($outer);
+
+        $this->container->endContext($outer);
+
+        $this->assertSame(['inner', 'outer'], $order);
+    }
+
+    public function testEndingAContextLeavesUnrelatedSuspendedContextsAlive(): void
+    {
+        $other = $this->container->beginContext('request');
+        $this->container->suspendContext($other);
+
+        $outer = $this->container->beginContext('outer');
+        $this->container->endContext($outer);
+
+        $this->container->resumeContext($other);
+        $this->assertSame($other->id(), $this->container->executionContext()?->id());
+    }
+
+    public function testSuspendedChildScopedInstancesAreDroppedWithTheParent(): void
+    {
+        $this->container->bindExecution('scoped', fn () => new \stdClass());
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $first = $this->container->get('scoped');
+        $this->container->suspendContext($inner);
+        $this->container->endContext($outer);
+
+        $this->container->resumeContext($inner); // ended, so nothing to resume
+
+        $this->container->runInContext('again', [], function () use ($first) {
+            $this->assertNotSame($first, $this->container->get('scoped'));
+        });
+    }
+
+    public function testAFailingListenerForASuspendedChildStillEndsEverythingAndIsRethrown(): void
+    {
+        $ended = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$ended) {
+            $ended[] = $c->type();
+
+            if ($c->type() === 'inner') {
+                throw new \RuntimeException('inner listener failed');
+            }
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        try {
+            $this->container->endContext($outer);
+            $this->fail('Expected the listener failure');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('inner listener failed', $e->getMessage());
+        }
+
+        $this->assertSame(['inner', 'outer'], $ended);
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
     // ---------------------------------------------------------------- scopes
 
     public function testExecutionScopedServiceIsSharedWithinAContextAndNotAcrossContexts(): void
