@@ -1,5 +1,11 @@
 # Release Notes
 
+## v4.7.0 - 2026-10-17
+
+* Fix withoutHook() and add withHooks() for bulk queries by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/369
+* Freeze #[Immutable] services registered with a closure or instance() by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/370
+* Clearer errors for frozen services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/371
+
 ## v4.6.0 - 2026-10-16
 
 * (feat) Application: Go-style defer() for guaranteed cleanup by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/365
