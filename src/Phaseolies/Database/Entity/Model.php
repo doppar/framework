@@ -941,6 +941,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             'parentKey' => $this->getKey()
         ]);
 
+        $query->constrainToPivot($pivotTable, $foreignKey, $relatedKey, $relatedModel->getKeyName(), $this->getKey());
+
         return $query;
     }
 
@@ -954,13 +956,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     private function constrainRelation(Builder $query, string $foreignKey, mixed $value): void
     {
-        if ($value === null) {
-            $query->whereRaw('1 = 0');
-
-            return;
-        }
-
-        $query->where($foreignKey, '=', $value);
+        $query->constrainToColumn($foreignKey, $value);
     }
 
     /**

@@ -37,6 +37,7 @@ class Builder
     use InteractsWithNestedRelations;
     use InteractsWithConditionBinding, InteractsWithSoftDeleteScope {
         InteractsWithSoftDeleteScope::buildWhereClause insteadof InteractsWithConditionBinding;
+        InteractsWithSoftDeleteScope::buildWhereClause as protected buildSoftDeleteWhereClause;
         InteractsWithConditionBinding::buildWhereClause as protected buildConditionWhereClause;
     }
     use InteractsWithCursorPagination;
@@ -146,6 +147,13 @@ class Builder
     protected bool $withHooks = false;
 
     /**
+     * The condition that ties this query to the model it was reached from
+     *
+     * @var array{0: string, 1: array}|null
+     */
+    protected ?array $relationScope = null;
+
+    /**
      * @var bool
      */
     protected bool $suppressEagerLoad = false;
@@ -171,6 +179,94 @@ class Builder
         $this->modelClass = $modelClass;
         $this->rowPerPage = $rowPerPage;
         $this->connectionName = $connectionName;
+    }
+
+    /**
+     * Combine the query's conditions with the relation scope, if there is one
+     *
+     * @return array [sql, bindings]
+     */
+    protected function buildWhereClause(): array
+    {
+        [$sql, $bindings] = $this->buildSoftDeleteWhereClause();
+
+        if ($this->relationScope === null) {
+            return [$sql, $bindings];
+        }
+
+        [$scopeSql, $scopeBindings] = $this->relationScope;
+
+        return [
+            $sql === '' ? $scopeSql : "({$sql}) AND {$scopeSql}",
+            array_merge($bindings, $scopeBindings),
+        ];
+    }
+
+    /**
+     * Limit this query to rows whose column equals the value.
+     *
+     * @param string $column
+     * @param mixed $value
+     * @return static
+     */
+    public function constrainToColumn(string $column, mixed $value): static
+    {
+        if ($value === null) {
+            return $this->constrainToNothing();
+        }
+
+        $this->relationScope = [
+            $this->quoteIdentifier($this->tableReference() . '.' . $column) . ' = ?',
+            [$value],
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Limit this query to rows that the pivot table links to the parent
+     *
+     * @param string $pivotTable
+     * @param string $foreignKey
+     * @param string $relatedKey
+     * @param string $ownerKey
+     * @param mixed $parentKey
+     * @return static
+     */
+    public function constrainToPivot(
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        string $ownerKey,
+        mixed $parentKey
+    ): static {
+        if ($parentKey === null) {
+            return $this->constrainToNothing();
+        }
+
+        $quote = fn (string $identifier) => $this->quoteIdentifier($identifier);
+
+        $this->relationScope = [
+            $quote($this->tableReference() . '.' . $ownerKey)
+                . ' IN (SELECT ' . $quote($pivotTable . '.' . $relatedKey)
+                . ' FROM ' . $quote($pivotTable)
+                . ' WHERE ' . $quote($pivotTable . '.' . $foreignKey) . ' = ?)',
+            [$parentKey],
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Limit this query to rows that will never match
+     *
+     * @return static
+     */
+    private function constrainToNothing(): static
+    {
+        $this->relationScope = ['1 = 0', []];
+
+        return $this;
     }
 
     /**
