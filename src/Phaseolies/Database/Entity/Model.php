@@ -991,6 +991,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Convert a string to snake_case.
+     *
      * @param string $value
      * @return string
      */
