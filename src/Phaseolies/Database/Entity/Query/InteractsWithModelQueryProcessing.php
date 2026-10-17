@@ -10,9 +10,11 @@ use Phaseolies\Database\Database;
 trait InteractsWithModelQueryProcessing
 {
     /**
+     * Whether hooks are skipped for the next write on this instance.
+     *
      * @var bool
      */
-    protected static bool $isHookShouldBeCalled = true;
+    protected bool $hooksSuppressed = false;
 
     /**
      * Creates and returns a new query builder instance for the model.
@@ -33,18 +35,6 @@ trait InteractsWithModelQueryProcessing
             $model->pageSize,
             $connection
         );
-    }
-
-    /**
-     * Disable the execution of model hooks for the current instance.
-     *
-     * @return \Phaseolies\Database\Entity\Builder
-     */
-    public static function withoutHook(): Builder
-    {
-        self::$isHookShouldBeCalled = false;
-
-        return static::query();
     }
 
     /**
@@ -167,7 +157,7 @@ trait InteractsWithModelQueryProcessing
             if ($isUpdatable) {
                 $this->assertCreatableIsDefined();
 
-                if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+                if (! $this->hooksSuppressed && $this->fireBeforeHooks('updated') === false) {
                     return false;
                 }
 
@@ -191,7 +181,7 @@ trait InteractsWithModelQueryProcessing
                     ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                     ->update($dirtyAttributes);
 
-                if (self::$isHookShouldBeCalled && $response) {
+                if (! $this->hooksSuppressed && $response) {
                     $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirtyAttributes);
@@ -201,7 +191,7 @@ trait InteractsWithModelQueryProcessing
                 return $response;
             }
 
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('created') === false) {
+            if (! $this->hooksSuppressed && $this->fireBeforeHooks('created') === false) {
                 return false;
             }
 
@@ -224,13 +214,13 @@ trait InteractsWithModelQueryProcessing
             // model via getKey() instead of null.
             $this->attributes[$this->primaryKey] = $id;
 
-            if (self::$isHookShouldBeCalled) {
+            if (! $this->hooksSuppressed) {
                 $this->fireAfterHooks('created');
             }
 
             return true;
         } finally {
-            self::$isHookShouldBeCalled = true;
+            $this->hooksSuppressed = false;
         }
     }
 
@@ -478,6 +468,8 @@ trait InteractsWithModelQueryProcessing
     public function update(array $attributes): bool
     {
         if (!isset($this->attributes[$this->primaryKey])) {
+            $this->hooksSuppressed = false;
+
             return false;
         }
 
@@ -489,7 +481,7 @@ trait InteractsWithModelQueryProcessing
             $this->setAttribute($key, $value);
         }
 
-        if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('updated') === false) {
+        if (! $this->hooksSuppressed && $this->fireBeforeHooks('updated') === false) {
             return false;
         }
 
@@ -499,6 +491,8 @@ trait InteractsWithModelQueryProcessing
         $dirty = array_intersect_key($dirty, array_flip($this->creatable));
 
         if (empty($dirty)) {
+            $this->hooksSuppressed = false;
+
             return true;
         }
 
@@ -514,14 +508,14 @@ trait InteractsWithModelQueryProcessing
 
             if ($result) {
                 $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
-                if (self::$isHookShouldBeCalled) {
+                if (! $this->hooksSuppressed) {
                     $this->fireAfterHooks('updated');
                     $this->firePropertyWatches($dirty);
                 }
                 $this->originalAttributes = $this->attributes;
             }
         } finally {
-            self::$isHookShouldBeCalled = true;
+            $this->hooksSuppressed = false;
         }
 
         return $result;
