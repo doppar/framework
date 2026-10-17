@@ -97,7 +97,14 @@ class TemporalManager
         }
     }
 
-    /** Validate branch names consistently with the persisted column. */
+    /**
+     * Validate branch names consistently with the persisted column.
+     *
+     * @param string $branch
+     * @return void
+     *
+     * @throws \InvalidArgumentException
+     */
     public static function validateBranchName(string $branch): void
     {
         if (strlen($branch) > 50 || !preg_match('/^[a-z0-9_-]+$/', $branch)) {
@@ -105,7 +112,16 @@ class TemporalManager
         }
     }
 
-    /** Ensure branch-enabled models have completed migrate:temporal. */
+    /**
+     * Ensure branch-enabled models have completed migrate:temporal.
+     *
+     * @param PDO $pdo
+     * @param string $historyTable
+     * @param string $driver
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
     public static function assertBranchColumn(PDO $pdo, string $historyTable, string $driver): void
     {
         if (!self::hasBranchColumn($pdo, $historyTable, $driver)) {
@@ -212,7 +228,16 @@ class TemporalManager
         self::insertHistory($pdo, $historyTable, $data);
     }
 
-    /** Append an edited proposed state to an existing branch without saving the live record. */
+    /**
+     * Append an edited proposed state to an existing branch without saving
+     * the live record.
+     *
+     * @param Model $model
+     * @param string $branch
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
     public static function snapshotBranchVersion(Model $model, string $branch): void
     {
         $pdo = $model->getConnection();
@@ -379,6 +404,15 @@ class TemporalManager
         };
     }
 
+    /**
+     * Generate the MySQL history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function mysqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $branchIndex = $trackBranches ? ",\n                INDEX `idx_branch` (`record_id`, `branch`, `valid_from`)" : '';
@@ -400,6 +434,15 @@ class TemporalManager
         ];
     }
 
+    /**
+     * Generate the PostgreSQL history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function pgsqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
@@ -423,6 +466,15 @@ class TemporalManager
         return $stmts;
     }
 
+    /**
+     * Generate the SQLite history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function sqliteDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
@@ -455,6 +507,12 @@ class TemporalManager
         };
     }
 
+    /**
+     * Generate the branch column definition for the given driver.
+     *
+     * @param string $driver
+     * @return string
+     */
     private static function branchColumnSql(string $driver): string
     {
         return match ($driver) {

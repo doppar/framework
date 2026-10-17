@@ -352,6 +352,15 @@ class MigrateTemporalCommand extends Command
         };
     }
 
+    /**
+     * Check whether the given index exists on the given table.
+     *
+     * @param PDO $pdo
+     * @param string $driver
+     * @param string $table
+     * @param string $index
+     * @return bool
+     */
     private function indexExists(PDO $pdo, string $driver, string $table, string $index): bool
     {
         try {
@@ -374,6 +383,13 @@ class MigrateTemporalCommand extends Command
         }
     }
 
+    /**
+     * Generate the CREATE INDEX SQL for the branch lookup index.
+     *
+     * @param string $driver
+     * @param string $table
+     * @return string
+     */
     private function createBranchIndexSql(string $driver, string $table): string
     {
         $name = $driver === 'mysql' ? 'idx_branch' : 'idx_' . $table . '_branch';

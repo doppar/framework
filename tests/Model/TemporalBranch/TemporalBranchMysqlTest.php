@@ -10,6 +10,11 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('mysql')]
 final class TemporalBranchMysqlTest extends TemporalBranchTest
 {
+    /**
+     * Run the branch tests against MySQL.
+     *
+     * @return string
+     */
     protected static function driverName(): string
     {
         return 'mysql';

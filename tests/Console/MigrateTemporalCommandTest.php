@@ -47,6 +47,11 @@ class MigrateTemporalCommandTest extends TestCase
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdo]);
     }
 
+    /**
+     * Reset connections, temporal caches and temporary directories.
+     *
+     * @return void
+     */
     protected function tearDown(): void
     {
         $this->setStaticProperty(Database::class, 'connections', []);
@@ -204,6 +209,12 @@ class MigrateTemporalCommandTest extends TestCase
         return $dir;
     }
 
+    /**
+     * Recursively delete a temporary directory.
+     *
+     * @param string $dir
+     * @return void
+     */
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
@@ -223,7 +234,10 @@ class MigrateTemporalCommandTest extends TestCase
     }
 
     /**
+     * Build a migrate:temporal command that captures its output.
+     *
      * @param array<string, mixed> $options
+     * @return MigrateTemporalCommand
      */
     private function makeCommand(array $options): MigrateTemporalCommand
     {
@@ -236,6 +250,12 @@ class MigrateTemporalCommandTest extends TestCase
         return $command;
     }
 
+    /**
+     * Check whether the given table exists in the SQLite test database.
+     *
+     * @param string $table
+     * @return bool
+     */
     private function tableExists(string $table): bool
     {
         $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?");
@@ -244,6 +264,14 @@ class MigrateTemporalCommandTest extends TestCase
         return (bool) $stmt->fetchColumn();
     }
 
+    /**
+     * Overwrite a static property through reflection.
+     *
+     * @param string $className
+     * @param string $propertyName
+     * @param mixed $value
+     * @return void
+     */
     private function setStaticProperty(string $className, string $propertyName, mixed $value): void
     {
         $reflection = new \ReflectionClass($className);

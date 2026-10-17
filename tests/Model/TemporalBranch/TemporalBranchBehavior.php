@@ -16,6 +16,11 @@ use Tests\Support\Model\MockTemporalRecord;
 
 abstract class TemporalBranchTest extends ModelQueryDriverTestCase
 {
+    /**
+     * Define the live tables used by the branch tests.
+     *
+     * @return array
+     */
     protected function tableDefinitions(): array
     {
         return [
@@ -40,6 +45,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         ];
     }
 
+    /**
+     * The branch tests create their own records.
+     *
+     * @return array
+     */
     protected function seedData(): array
     {
         return [];
@@ -48,6 +58,8 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
     /**
      * History tables are rebuilt for every test: some tests replace them with
      * an unmigrated (branch-less) shape, and the DDL under test is per-driver.
+     *
+     * @return void
      */
     protected function resetTables(): void
     {
@@ -57,6 +69,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->recreateHistoryTable((new MockTemporalRecord())->historyTable(), true, false);
     }
 
+    /**
+     * Connect the database and register each mock model's temporal hooks once.
+     *
+     * @return void
+     */
     protected function setupDatabaseConnections(): void
     {
         parent::setupDatabaseConnections();
@@ -74,6 +91,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
     }
 
     #[After]
+    /**
+     * Clear the frozen clock, registered hooks and temporal caches.
+     *
+     * @return void
+     */
     protected function resetTemporalState(): void
     {
         Carbon::setTestNow();
@@ -485,6 +507,14 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->assertStringContainsString('(record_id, branch, valid_from)', $sqlite[3]);
     }
 
+    /**
+     * Drop and recreate a history table with the given optional columns.
+     *
+     * @param string $table
+     * @param bool $trackActor
+     * @param bool $trackBranches
+     * @return void
+     */
     private function recreateHistoryTable(string $table, bool $trackActor, bool $trackBranches): void
     {
         $this->dropTablesIfExist([$table]);
@@ -494,11 +524,23 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         }
     }
 
+    /**
+     * Freeze the clock at the given UTC datetime.
+     *
+     * @param string $datetime
+     * @return void
+     */
     private function travelTo(string $datetime): void
     {
         Carbon::setTestNow(Carbon::parse($datetime, 'UTC'));
     }
 
+    /**
+     * Assert that the operation asks for migrate:temporal to be run.
+     *
+     * @param callable $operation
+     * @return void
+     */
     private function assertMigrationGuard(callable $operation): void
     {
         try {
@@ -509,6 +551,12 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         }
     }
 
+    /**
+     * Assert that the operation rejects the branch name.
+     *
+     * @param callable $operation
+     * @return void
+     */
     private function expectInvalidBranchName(callable $operation): void
     {
         try {

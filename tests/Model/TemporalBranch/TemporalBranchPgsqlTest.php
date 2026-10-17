@@ -10,6 +10,11 @@ use PHPUnit\Framework\Attributes\Group;
 #[Group('pgsql')]
 final class TemporalBranchPgsqlTest extends TemporalBranchTest
 {
+    /**
+     * Run the branch tests against PostgreSQL.
+     *
+     * @return string
+     */
     protected static function driverName(): string
     {
         return 'pgsql';

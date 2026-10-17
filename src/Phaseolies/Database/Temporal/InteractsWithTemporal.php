@@ -101,7 +101,16 @@ trait InteractsWithTemporal
         return true;
     }
 
-    /** Append this in-memory proposed state as a new version on an existing branch. */
+    /**
+     * Append this in-memory proposed state as a new version on an existing
+     * branch. The live record is not written and the model stays dirty.
+     *
+     * @param string $branch
+     * @return bool
+     *
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     */
     public function saveToBranch(string $branch): bool
     {
         $this->assertTemporalAndLoaded();
@@ -113,7 +122,15 @@ trait InteractsWithTemporal
         return true;
     }
 
-    /** Compare the current main state with the latest state on a named branch. */
+    /**
+     * Compare the current main state with the latest state on a named branch.
+     *
+     * @param string $branch
+     * @return array|null
+     *
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     */
     public function diffAgainstBranch(string $branch): ?array
     {
         $this->assertTemporalAndLoaded();
@@ -235,6 +252,17 @@ trait InteractsWithTemporal
         return $this->formatDiff($snapshotFrom, $snapshotTo, $branch, $from, $to, new static());
     }
 
+    /**
+     * Build the structured diff between two raw snapshots.
+     *
+     * @param array $snapshotFrom
+     * @param array $snapshotTo
+     * @param string $branch
+     * @param string $from
+     * @param string $to
+     * @param Model $probe
+     * @return array
+     */
     private function formatDiff(array $snapshotFrom, array $snapshotTo, string $branch, string $from, string $to, Model $probe): array
     {
         $visibleFrom = $this->visibleSnapshot($snapshotFrom, $probe);
@@ -273,6 +301,7 @@ trait InteractsWithTemporal
      * to a raw stored snapshot, for display/diffing purposes only.
      *
      * @param array $snapshot
+     * @param Model $probe
      * @return array
      */
     private function visibleSnapshot(array $snapshot, Model $probe): array
@@ -513,6 +542,12 @@ trait InteractsWithTemporal
         return is_bool($value) ? ($value ? '1' : '0') : (string) $value;
     }
 
+    /**
+     * Expand a partial datetime to the end of the given day, minute or second.
+     *
+     * @param string $datetime
+     * @return string
+     */
     private function normalizeTemporalDateTime(string $datetime): string
     {
         $datetime = trim($datetime);
