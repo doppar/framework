@@ -14,6 +14,9 @@ use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use Phaseolies\Database\Entity\Attributes\Hook;
 
+/**
+ * @method static \Phaseolies\Database\Entity\Builder withoutHook()
+ */
 abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stringable
 {
     use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties, InteractsWithSoftDeletes;
@@ -770,11 +773,13 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function delete(): bool
     {
         if (!isset($this->attributes[$this->primaryKey])) {
+            $this->hooksSuppressed = false;
+
             return false;
         }
 
         try {
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('deleted') === false) {
+            if (! $this->hooksSuppressed && $this->fireBeforeHooks('deleted') === false) {
                 return false;
             }
 
@@ -788,13 +793,13 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
                 $result = $this->usesSoftDeletes() ? $query->forceDelete() : $query->delete();
             }
 
-            if ($result && self::$isHookShouldBeCalled) {
+            if ($result && ! $this->hooksSuppressed) {
                 $this->fireAfterHooks('deleted');
             }
 
             return $result;
         } finally {
-            self::$isHookShouldBeCalled = true;
+            $this->hooksSuppressed = false;
         }
     }
 
@@ -1247,6 +1252,14 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function __call($method, $parameters)
     {
+        // withoutHook() skips hooks for the next write on this instance only
+        // and returns the instance, so $model->withoutHook()->save() is safe.
+        if ($method === 'withoutHook') {
+            $this->hooksSuppressed = true;
+
+            return $this;
+        }
+
         return $this->newQuery()->$method(...$parameters);
     }
 }
