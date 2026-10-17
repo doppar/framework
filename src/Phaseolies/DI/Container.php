@@ -38,6 +38,13 @@ class Container implements ArrayAccess
     private array $resolving = [];
 
     /**
+     * Whether each class seen by freezeResolved() is a frozen service.
+     *
+     * @var array<class-string, bool>
+     */
+    private array $immutableClasses = [];
+
+    /**
      * The container instance.
      *
      * @var self|null
@@ -261,7 +268,7 @@ class Container implements ArrayAccess
 
         try {
             if (isset($this->instances[$abstract]) && $this->instances[$abstract] !== null) {
-                return $this->instances[$abstract];
+                return $this->freezeResolved($this->instances[$abstract]);
             }
 
             if (isset($this->bindings[$abstract])) {
@@ -286,7 +293,7 @@ class Container implements ArrayAccess
             // Fallback only: no exact instance and no explicit binding for $abstract.
             foreach ($this->instances as $instance) {
                 if ($instance instanceof $abstract) {
-                    return $instance;
+                    return $this->freezeResolved($instance);
                 }
             }
 
@@ -314,7 +321,7 @@ class Container implements ArrayAccess
         $concrete = $binding['concrete'];
 
         if (is_callable($concrete)) {
-            return $concrete($this, $parameters);
+            return $this->freezeResolved($concrete($this, $parameters));
         }
 
         if (is_string($concrete) && class_exists($concrete)) {
@@ -374,6 +381,31 @@ class Container implements ArrayAccess
         $this->freezeIfImmutable($reflector, $instance);
 
         return $instance;
+    }
+
+    /**
+     * Freeze an object handed out by a closure binding or instance()
+     *
+     * @param mixed $resolved
+     * @return mixed
+     */
+    private function freezeResolved(mixed $resolved): mixed
+    {
+        if (!is_object($resolved)) {
+            return $resolved;
+        }
+
+        $class = $resolved::class;
+
+        $this->immutableClasses[$class] ??= !empty((new \ReflectionClass($resolved))->getAttributes(Immutable::class))
+            && method_exists($resolved, 'freeze')
+            && method_exists($resolved, 'isFrozen');
+
+        if ($this->immutableClasses[$class] && !$resolved->isFrozen()) {
+            $resolved->freeze();
+        }
+
+        return $resolved;
     }
 
     /**

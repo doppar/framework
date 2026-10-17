@@ -2897,6 +2897,118 @@ class ContainerTest extends TestCase
     }
 
     // =========================================================================
+    // SERVICES CONFIGURED IN A LAUNCHER (closure bindings and instance())
+    // =========================================================================
+
+    public function testSingletonClosureResultIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->assertFalse($payment->isFrozen());
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame($payment, $resolved);
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('paypal', $resolved->gateway);
+    }
+
+    public function testSingletonClosureServiceBlocksMutationAfterResolve()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $resolved->taxRate = 0.0;
+    }
+
+    public function testLauncherReferenceIsFrozenOnceTheContainerResolvesIt()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+        $this->container->get(MockPaymentService::class);
+
+        // The launcher still holds the same object, and it is frozen too.
+        $this->expectException(ImmutableViolationException::class);
+        $payment->gateway = 'late change';
+    }
+
+    public function testInstanceIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->retries = 9;
+
+        $this->container->instance(MockPaymentService::class, $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame(9, $resolved->retries);
+    }
+
+    public function testResolvingTwiceKeepsTheConfiguredValues()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+        $payment->methods = ['wallet'];
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->container->get(MockPaymentService::class);
+        $again = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame('paypal', $again->gateway);
+        $this->assertSame(['wallet'], $again->methods);
+    }
+
+    public function testMakeWithClosureBindingFreezesEachResult()
+    {
+        $this->container->bind(MockPaymentService::class, fn () => new MockPaymentService());
+
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertNotSame($first, $second);
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+    }
+
+    public function testClosureResultWithoutImmutableAttributeIsNotFrozen()
+    {
+        $this->container->singleton('plain', fn () => new \stdClass());
+
+        $resolved = $this->container->get('plain');
+        $resolved->anything = 'allowed';
+
+        $this->assertSame('allowed', $resolved->anything);
+    }
+
+    public function testClosureReturningNonObjectIsLeftAlone()
+    {
+        $this->container->bind('answer', fn () => 42);
+
+        $this->assertSame(42, $this->container->get('answer'));
+    }
+
+    public function testBuildWithValuesInsteadOfAClosureStillWorks()
+    {
+        $this->container->singleton(
+            MockPaymentService::class,
+            fn ($app) => $app->build(MockPaymentService::class)
+        );
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('stripe', $resolved->gateway);
+    }
+
+    // =========================================================================
     // TRANSIENT BEHAVIOUR WITH IMMUTABLE
     // =========================================================================
 
