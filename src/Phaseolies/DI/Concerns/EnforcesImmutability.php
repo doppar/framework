@@ -30,6 +30,10 @@ trait EnforcesImmutability
      */
     public function freeze(): void
     {
+        if ($this->__frozen) {
+            return;
+        }
+
         $reflector = new \ReflectionClass(static::class);
 
         foreach ($reflector->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
