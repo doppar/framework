@@ -2474,11 +2474,12 @@ class ContainerTest extends TestCase
     public function testFreezeIsIdempotent()
     {
         $service = new MockPaymentService();
+        $service->gateway = 'paypal';
         $service->freeze();
-        // $service->freeze(); // second call must not throw
-        // Phaseolies\DI\Exceptions\ImmutableViolationException: Cannot mutate property $gateway on immutable service [Tests\Application\Mock\Services\MockPaymentService]. Services marked #[Immutable] are frozen after instantiation.
+        $service->freeze(); // second call is a no-op and keeps the values
 
         $this->assertTrue($service->isFrozen());
+        $this->assertSame('paypal', $service->gateway);
     }
 
     // =========================================================================
@@ -2746,6 +2747,48 @@ class ContainerTest extends TestCase
 
         $this->expectException(ImmutableViolationException::class);
         $cloned = clone $service;
+    }
+
+    public function testMutationMessageNamesClassPropertyAndTheFix()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$taxRate', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringContainsString('frozen once the container resolves them', $e->getMessage());
+            $this->assertStringContainsString('launcher', $e->getMessage());
+            $this->assertStringNotContainsString('ServiceProvider', $e->getMessage());
+        }
+    }
+
+    public function testCloneMessageSaysCloneNotProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            clone $service;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('Cannot clone immutable service', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringNotContainsString('$__clone', $e->getMessage());
+        }
+    }
+
+    public function testUnsetMessageNamesTheProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            unset($service->gateway);
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$gateway', $e->getMessage());
+        }
     }
 
     public function testCloningUnfrozenServiceIsAllowed()
