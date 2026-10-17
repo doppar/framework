@@ -15,6 +15,8 @@ use Phaseolies\Database\Contracts\Support\Jsonable;
 use Phaseolies\Database\Entity\Attributes\Hook;
 
 /**
+ * @phpstan-consistent-constructor
+ * @property string $__branch Temporal history metadata.
  * @method static \Phaseolies\Database\Entity\Builder withoutHook()
  */
 abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stringable

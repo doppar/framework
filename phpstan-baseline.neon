@@ -799,12 +799,6 @@ parameters:
 			path: src/Phaseolies/Database/Entity/Model.php
 
 		-
-			message: '#^Unsafe usage of new static\(\)\.$#'
-			identifier: new.static
-			count: 11
-			path: src/Phaseolies/Database/Entity/Model.php
-
-		-
 			message: '#^Call to an undefined static method Phaseolies\\Support\\Facades\\URL\:\:current\(\)\.$#'
 			identifier: staticMethod.notFound
 			count: 2
