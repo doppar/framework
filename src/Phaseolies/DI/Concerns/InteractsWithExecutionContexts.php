@@ -84,6 +84,24 @@ trait InteractsWithExecutionContexts
 
         $failure = null;
 
+        $endingIds = [$context->id() => true];
+
+        for ($i = $index; $i < count($this->contextStack); $i++) {
+            $endingIds[$this->contextStack[$i]->id()] = true;
+        }
+
+        foreach ($this->suspendedDescendantsOf($endingIds) as $descendant) {
+            if (!isset($this->liveContexts[$descendant->id()])) {
+                continue;
+            }
+
+            try {
+                $this->endContext($descendant);
+            } catch (\Throwable $e) {
+                $failure ??= $e;
+            }
+        }
+
         while (count($this->contextStack) > $index) {
             $ending = end($this->contextStack);
 
@@ -304,6 +322,35 @@ trait InteractsWithExecutionContexts
         if ($failure !== null) {
             throw $failure;
         }
+    }
+
+    /**
+     * Find suspended contexts that were started inside any of the given contexts, deepest first
+     *
+     * @param array<string, true> $ancestorIds
+     * @return array<int, ExecutionContext>
+     */
+    private function suspendedDescendantsOf(array $ancestorIds): array
+    {
+        $found = [];
+
+        foreach ($this->liveContexts as $live) {
+            if ($this->contextIndex($live) !== null) {
+                continue;
+            }
+
+            for ($parent = $live->parent(); $parent !== null; $parent = $parent->parent()) {
+                if (isset($ancestorIds[$parent->id()])) {
+                    $found[] = $live;
+
+                    break;
+                }
+            }
+        }
+
+        usort($found, fn (ExecutionContext $a, ExecutionContext $b) => $b->depth() <=> $a->depth());
+
+        return $found;
     }
 
     /**
