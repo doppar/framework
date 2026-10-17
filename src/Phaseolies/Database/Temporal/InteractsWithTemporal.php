@@ -101,7 +101,16 @@ trait InteractsWithTemporal
         return true;
     }
 
-    /** Append this in-memory proposed state as a new version on an existing branch. */
+    /**
+     * Append this in-memory proposed state as a new version on an existing
+     * branch. The live record is not written and the model stays dirty.
+     *
+     * @param string $branch
+     * @return bool
+     *
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     */
     public function saveToBranch(string $branch): bool
     {
         $this->assertTemporalAndLoaded();
@@ -110,11 +119,18 @@ trait InteractsWithTemporal
             throw new \InvalidArgumentException('saveToBranch() requires a named branch.');
         }
         TemporalManager::snapshotBranchVersion($this, $branch);
-        $this->setOriginalAttributes($this->getAttributes());
         return true;
     }
 
-    /** Compare the current main state with the latest state on a named branch. */
+    /**
+     * Compare the current main state with the latest state on a named branch.
+     *
+     * @param string $branch
+     * @return array|null
+     *
+     * @throws \InvalidArgumentException
+     * @throws \RuntimeException
+     */
     public function diffAgainstBranch(string $branch): ?array
     {
         $this->assertTemporalAndLoaded();
@@ -129,7 +145,18 @@ trait InteractsWithTemporal
             return null;
         }
         $probe = new static();
-        return $this->formatDiff($main, $proposed, 'main → ' . $branch, $now, $now, $probe);
+        $diff = $this->formatDiff($main, $proposed, $branch, $now, $now, $probe);
+        $visibleMain = $this->visibleSnapshot($main, $probe);
+        $visibleBranch = $this->visibleSnapshot($proposed, $probe);
+
+        return [
+            'at'      => $now,
+            'main'    => $visibleMain,
+            'branch'  => ['name' => $branch, 'snapshot' => $visibleBranch],
+            'changes' => $diff['changes'],
+            'added'   => $diff['added'],
+            'removed' => $diff['removed'],
+        ];
     }
 
     /**
@@ -225,6 +252,17 @@ trait InteractsWithTemporal
         return $this->formatDiff($snapshotFrom, $snapshotTo, $branch, $from, $to, new static());
     }
 
+    /**
+     * Build the structured diff between two raw snapshots.
+     *
+     * @param array $snapshotFrom
+     * @param array $snapshotTo
+     * @param string $branch
+     * @param string $from
+     * @param string $to
+     * @param Model $probe
+     * @return array
+     */
     private function formatDiff(array $snapshotFrom, array $snapshotTo, string $branch, string $from, string $to, Model $probe): array
     {
         $visibleFrom = $this->visibleSnapshot($snapshotFrom, $probe);
@@ -237,7 +275,7 @@ trait InteractsWithTemporal
         foreach ($visibleTo as $col => $newVal) {
             if (!array_key_exists($col, $visibleFrom)) {
                 $added[$col] = $newVal;
-            } elseif (!$this->sameCastValue($visibleFrom[$col], $newVal)) {
+            } elseif (self::snapshotValuesDiffer($visibleFrom[$col], $newVal)) {
                 $changes[$col] = ['from' => $visibleFrom[$col], 'to' => $newVal];
             }
         }
@@ -258,19 +296,12 @@ trait InteractsWithTemporal
         ];
     }
 
-    private function sameCastValue(mixed $left, mixed $right): bool
-    {
-        if (is_object($left) && is_object($right)) {
-            return $left == $right;
-        }
-        return $left === $right;
-    }
-
     /**
      * Apply this model's casts and unexposable (hidden) attribute filtering
      * to a raw stored snapshot, for display/diffing purposes only.
      *
      * @param array $snapshot
+     * @param Model $probe
      * @return array
      */
     private function visibleSnapshot(array $snapshot, Model $probe): array
@@ -325,6 +356,10 @@ trait InteractsWithTemporal
      * existing history, and restoring from a branch other than "main"
      * requires the model to be configured for branches.
      *
+     * Returns false when there is nothing to restore: no snapshot exists at
+     * that point, or the record had been deleted by then. The same rule makes
+     * rewindTo() return null for that point.
+     *
      * @param string $datetime
      * @param string $branch
      * @return bool
@@ -334,7 +369,6 @@ trait InteractsWithTemporal
     public function restoreTo(string $datetime, string $branch = 'main'): bool
     {
         $this->assertTemporalAndLoaded();
-        $this->assertNotDeletedAt($datetime, $branch);
         $rewound = $this->rewindTo($datetime, $branch);
 
         if ($rewound === null) {
@@ -354,30 +388,19 @@ trait InteractsWithTemporal
         return true;
     }
 
-    private function assertNotDeletedAt(string $datetime, string $branch): void
-    {
-        TemporalManager::assertBranchSupported(static::class, $branch);
-        $datetime = $this->normalizeTemporalDateTime($datetime);
-        $table = $this->historyTable();
-        $pdo = $this->getConnection();
-        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-        $hasBranch = TemporalManager::isBranchable(static::class);
-        if ($hasBranch) {
-            TemporalManager::assertBranchColumn($pdo, $table, $driver);
-        }
-        $sql = "SELECT action FROM {$table} WHERE record_id = ? AND valid_from <= ?" . ($hasBranch ? ' AND branch = ?' : '') . ' ORDER BY valid_from DESC, history_id DESC LIMIT 1';
-        $params = [$this->getKey(), $datetime];
-        if ($hasBranch) {
-            $params[] = $branch;
-        }
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        if ($stmt->fetchColumn() === 'deleted') {
-            throw new \RuntimeException('Cannot restore a deleted temporal version.');
-        }
-    }
-
-    /** Restore a specific history entry by id, refusing deleted snapshots. */
+    /**
+     * Restore this record to a specific history entry and persist it as a new
+     * version through the normal save()/snapshot hooks.
+     *
+     * Returns false when the id is unknown or belongs to another record, and
+     * throws when the entry is a "deleted" snapshot, since restoring an
+     * explicitly chosen deletion is always a mistake.
+     *
+     * @param int $historyId
+     * @return bool
+     *
+     * @throws \RuntimeException
+     */
     public function restoreVersion(int $historyId): bool
     {
         $this->assertTemporalAndLoaded();
@@ -390,8 +413,7 @@ trait InteractsWithTemporal
         }
 
         $stmt = $pdo->prepare(
-            "SELECT snapshot, action" . ($hasBranch ? ', branch' : '')
-            . " FROM {$historyTable} WHERE history_id = ? AND record_id = ?"
+            "SELECT snapshot, action FROM {$historyTable} WHERE history_id = ? AND record_id = ?"
         );
         $stmt->execute([$historyId, $this->getKey()]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -451,11 +473,10 @@ trait InteractsWithTemporal
 
         $datetime = $this->normalizeTemporalDateTime($datetime);
 
-        $sql = "SELECT snapshot
+        $sql = "SELECT snapshot, action
                 FROM   {$historyTable}
                 WHERE  record_id  = ?
-                AND    valid_from <= ?
-                AND    action     != 'deleted'"
+                AND    valid_from <= ?"
             . ($hasBranch ? ' AND branch = ?' : '')
             . ' ORDER  BY valid_from DESC, history_id DESC
                 LIMIT  1';
@@ -470,9 +491,63 @@ trait InteractsWithTemporal
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $row ? (json_decode($row['snapshot'], true) ?? null) : null;
+        // The latest row decides: if the record was deleted by then, it did not exist.
+        if (!$row || $row['action'] === 'deleted') {
+            return null;
+        }
+
+        return json_decode($row['snapshot'], true) ?? null;
     }
 
+    /**
+     * Determine whether two snapshot values are different
+     *
+     * @param mixed $from
+     * @param mixed $to
+     * @return bool
+     */
+    private static function snapshotValuesDiffer(mixed $from, mixed $to): bool
+    {
+        if (is_array($from) || is_array($to)) {
+            if (!is_array($from) || !is_array($to) || count($from) !== count($to)) {
+                return true;
+            }
+
+            foreach ($from as $key => $value) {
+                if (!array_key_exists($key, $to) || self::snapshotValuesDiffer($value, $to[$key])) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if ($from === null || $to === null) {
+            return $from !== $to;
+        }
+
+        if (is_object($from) || is_object($to)) {
+            return $from != $to;
+        }
+
+        return self::snapshotScalar($from) !== self::snapshotScalar($to);
+    }
+
+    /**
+     * @param bool|int|float|string $value
+     * @return string
+     */
+    private static function snapshotScalar(mixed $value): string
+    {
+        return is_bool($value) ? ($value ? '1' : '0') : (string) $value;
+    }
+
+    /**
+     * Expand a partial datetime to the end of the given day, minute or second.
+     *
+     * @param string $datetime
+     * @return string
+     */
     private function normalizeTemporalDateTime(string $datetime): string
     {
         $datetime = trim($datetime);

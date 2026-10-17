@@ -18,9 +18,9 @@ class TemporalManager
     /**
      * Per-process cache of history table column existence checks
      *
-     * @var array<string, bool>
+     * @var \WeakMap<PDO, array<string, bool>>|null
      */
-    private static array $columnCache = [];
+    private static ?\WeakMap $columnCache = null;
 
     /**
      * Determine whether the given model class carries #[Temporal].
@@ -97,15 +97,31 @@ class TemporalManager
         }
     }
 
-    /** Validate branch names consistently with the persisted column. */
+    /**
+     * Validate branch names consistently with the persisted column.
+     *
+     * @param string $branch
+     * @return void
+     *
+     * @throws \InvalidArgumentException
+     */
     public static function validateBranchName(string $branch): void
     {
-        if (strlen($branch) > 50 || !preg_match('/^[A-Za-z0-9_-]+$/', $branch)) {
-            throw new \InvalidArgumentException('Branch names must be 1-50 characters using letters, numbers, _ or -.');
+        if (strlen($branch) > 50 || !preg_match('/^[a-z0-9_-]+$/', $branch)) {
+            throw new \InvalidArgumentException('Branch names must be 1-50 lowercase characters using letters, numbers, _ or -.');
         }
     }
 
-    /** Ensure branch-enabled models have completed migrate:temporal. */
+    /**
+     * Ensure branch-enabled models have completed migrate:temporal.
+     *
+     * @param PDO $pdo
+     * @param string $historyTable
+     * @param string $driver
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
     public static function assertBranchColumn(PDO $pdo, string $historyTable, string $driver): void
     {
         if (!self::hasBranchColumn($pdo, $historyTable, $driver)) {
@@ -161,8 +177,11 @@ class TemporalManager
         }
 
         if ($attr !== null && $attr->branches) {
-            self::assertBranchColumn($pdo, $historyTable, $driver);
-            $data['branch'] = $branch;
+            if (self::hasBranchColumn($pdo, $historyTable, $driver)) {
+                $data['branch'] = $branch;
+            } elseif ($branch !== 'main') {
+                self::assertBranchColumn($pdo, $historyTable, $driver);
+            }
         }
 
         self::insertHistory($pdo, $historyTable, $data);
@@ -209,7 +228,16 @@ class TemporalManager
         self::insertHistory($pdo, $historyTable, $data);
     }
 
-    /** Append an edited proposed state to an existing branch without saving the live record. */
+    /**
+     * Append an edited proposed state to an existing branch without saving
+     * the live record.
+     *
+     * @param Model $model
+     * @param string $branch
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
     public static function snapshotBranchVersion(Model $model, string $branch): void
     {
         $pdo = $model->getConnection();
@@ -261,9 +289,11 @@ class TemporalManager
      */
     private static function hasColumn(PDO $pdo, string $historyTable, string $column, string $driver): bool
     {
-        $cacheKey = spl_object_id($pdo) . '.' . $historyTable . '.' . $column;
+        self::$columnCache ??= new \WeakMap();
+        $connectionCache = self::$columnCache[$pdo] ?? [];
+        $cacheKey = $historyTable . '.' . $column;
 
-        if (!array_key_exists($cacheKey, self::$columnCache)) {
+        if (!array_key_exists($cacheKey, $connectionCache)) {
             try {
                 $exists = match ($driver) {
                     'pgsql' => (function () use ($pdo, $historyTable, $column): bool {
@@ -289,15 +319,15 @@ class TemporalManager
                         return $stmt->fetch() !== false;
                     })(),
                 };
-                if ($exists) {
-                    self::$columnCache[$cacheKey] = true;
-                }
+                $connectionCache[$cacheKey] = $exists;
+                self::$columnCache[$pdo] = $connectionCache;
             } catch (\Throwable) {
-                unset(self::$columnCache[$cacheKey]);
+                unset($connectionCache[$cacheKey]);
+                self::$columnCache[$pdo] = $connectionCache;
             }
         }
 
-        return self::$columnCache[$cacheKey] ?? false;
+        return $connectionCache[$cacheKey] ?? false;
     }
 
     /**
@@ -374,9 +404,18 @@ class TemporalManager
         };
     }
 
+    /**
+     * Generate the MySQL history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function mysqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
-        $branchIndex = $trackBranches ? ",\n                INDEX `idx_branch` (`record_id`, `branch`)" : '';
+        $branchIndex = $trackBranches ? ",\n                INDEX `idx_branch` (`record_id`, `branch`, `valid_from`)" : '';
 
         return [
             "CREATE TABLE IF NOT EXISTS `{$table}` (
@@ -395,6 +434,15 @@ class TemporalManager
         ];
     }
 
+    /**
+     * Generate the PostgreSQL history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function pgsqlDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
@@ -412,12 +460,21 @@ class TemporalManager
         ];
 
         if ($trackBranches) {
-            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch)";
+            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch, valid_from)";
         }
 
         return $stmts;
     }
 
+    /**
+     * Generate the SQLite history table DDL.
+     *
+     * @param string $table
+     * @param string $actorCol
+     * @param string $branchCol
+     * @param bool $trackBranches
+     * @return array
+     */
     private static function sqliteDdl(string $table, string $actorCol, string $branchCol, bool $trackBranches): array
     {
         $stmts = [
@@ -435,7 +492,7 @@ class TemporalManager
         ];
 
         if ($trackBranches) {
-            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch)";
+            $stmts[] = "CREATE INDEX IF NOT EXISTS \"idx_{$table}_branch\" ON \"{$table}\" (record_id, branch, valid_from)";
         }
 
         return $stmts;
@@ -450,6 +507,12 @@ class TemporalManager
         };
     }
 
+    /**
+     * Generate the branch column definition for the given driver.
+     *
+     * @param string $driver
+     * @return string
+     */
     private static function branchColumnSql(string $driver): string
     {
         return match ($driver) {
@@ -471,7 +534,7 @@ class TemporalManager
             unset(self::$cache[$class]);
         } else {
             self::$cache = [];
-            self::$columnCache = [];
+            self::$columnCache = null;
         }
     }
 }

@@ -16,6 +16,11 @@ use Tests\Support\Model\MockTemporalRecord;
 
 abstract class TemporalBranchTest extends ModelQueryDriverTestCase
 {
+    /**
+     * Define the live tables used by the branch tests.
+     *
+     * @return array
+     */
     protected function tableDefinitions(): array
     {
         return [
@@ -40,6 +45,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         ];
     }
 
+    /**
+     * The branch tests create their own records.
+     *
+     * @return array
+     */
     protected function seedData(): array
     {
         return [];
@@ -48,6 +58,8 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
     /**
      * History tables are rebuilt for every test: some tests replace them with
      * an unmigrated (branch-less) shape, and the DDL under test is per-driver.
+     *
+     * @return void
      */
     protected function resetTables(): void
     {
@@ -57,6 +69,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->recreateHistoryTable((new MockTemporalRecord())->historyTable(), true, false);
     }
 
+    /**
+     * Connect the database and register each mock model's temporal hooks once.
+     *
+     * @return void
+     */
     protected function setupDatabaseConnections(): void
     {
         parent::setupDatabaseConnections();
@@ -74,6 +91,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
     }
 
     #[After]
+    /**
+     * Clear the frozen clock, registered hooks and temporal caches.
+     *
+     * @return void
+     */
     protected function resetTemporalState(): void
     {
         Carbon::setTestNow();
@@ -146,7 +168,7 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $created = MockBranchableRecord::create(['title' => 'Widget', 'price' => '100', 'internal_note' => null]);
         $record = MockBranchableRecord::find($created->id);
 
-        foreach ([str_repeat('a', 51), '', 'has space', "quote'd"] as $invalid) {
+        foreach ([str_repeat('a', 51), '', 'has space', "quote'd", 'MAIN', 'Draft'] as $invalid) {
             try {
                 $record->branch($invalid, '2026-02-01 10:00:00');
                 $this->fail("Expected branch name [{$invalid}] to be rejected.");
@@ -201,10 +223,23 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->assertMigrationGuard(fn() => $record->branch('proposal', '2026-02-01 10:00:00'));
         $this->assertMigrationGuard(fn() => $record->history());
         $this->assertMigrationGuard(fn() => $record->diff('2026-02-01', '2026-02-02'));
-        $this->assertMigrationGuard(function () use ($record): void {
-            $record->title = 'Renamed';
-            $record->save();
-        });
+    }
+
+    public function testMainWritesRemainSafeBeforeBranchColumnMigration(): void
+    {
+        $this->recreateHistoryTable((new MockBranchableRecord())->historyTable(), false, false);
+        TemporalManager::resetCache();
+
+        $record = MockBranchableRecord::create([
+            'title' => 'Widget', 'price' => '100', 'internal_note' => null,
+        ]);
+        $record = MockBranchableRecord::find($record->id);
+        $record->title = 'Renamed';
+        $this->assertTrue($record->save());
+        $this->assertTrue($record->delete());
+
+        $count = $this->pdo->query('SELECT COUNT(*) FROM branchable_records_history')->fetchColumn();
+        $this->assertSame(3, (int) $count);
     }
 
     public function testDiffRespectsCastsAndHidesUnexposableAttributes(): void
@@ -256,6 +291,24 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->assertArrayNotHasKey('title', $diff['changes']);
     }
 
+    public function testDiffIgnoresEquivalentUncastScalarTypes(): void
+    {
+        $this->pdo->exec("INSERT INTO branchable_records (title, price) VALUES ('5', '100')");
+        $record = MockBranchableRecord::find(1);
+        $table = $record->historyTable();
+        $first = json_encode(['id' => 1, 'title' => 5, 'price' => '100']);
+        $second = json_encode(['id' => 1, 'title' => '5', 'price' => '100']);
+        $stmt = $this->pdo->prepare(
+            "INSERT INTO {$table} (record_id, action, valid_from, snapshot, branch) VALUES (?, 'updated', ?, ?, 'main')"
+        );
+        $stmt->execute([1, '2026-02-01 10:00:00.000000', $first]);
+        $stmt->execute([1, '2026-02-01 11:00:00.000000', $second]);
+
+        $diff = $record->diff('2026-02-01 10:30:00', '2026-02-01 11:30:00');
+
+        $this->assertArrayNotHasKey('title', $diff['changes']);
+    }
+
     public function testBranchCanBeUpdatedDiffedAndRestoredByHistoryId(): void
     {
         $this->travelTo('2026-02-01 10:00:00.000000');
@@ -268,12 +321,16 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $proposal = MockBranchableRecord::at('2026-02-01 11:30:00', 'proposal')->find($record->id);
         $proposal->price = '140';
         $this->assertTrue($proposal->saveToBranch('proposal'));
+        $this->assertArrayHasKey('price', $proposal->getDirtyAttributes());
 
         // Writing to the branch never touches the live row or main history.
         $this->assertSame(100, MockBranchableRecord::find($record->id)->price);
         $this->assertCount(1, $record->history());
 
         $diff = $record->diffAgainstBranch('proposal');
+        $this->assertSame('proposal', $diff['branch']['name']);
+        $this->assertSame(100, $diff['main']['price']);
+        $this->assertSame(140, $diff['branch']['snapshot']['price']);
         $this->assertSame(100, $diff['changes']['price']['from']);
         $this->assertSame(140, $diff['changes']['price']['to']);
 
@@ -337,7 +394,7 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $record->restoreVersion($deleted->__history_id);
     }
 
-    public function testRestoreToRefusesAPointWhereTheRecordWasDeleted(): void
+    public function testRewindAndRestoreAgreeOnAPointWhereTheRecordWasDeleted(): void
     {
         $this->travelTo('2026-02-01 10:00:00.000000');
         $created = MockBranchableRecord::create(['title' => 'Widget', 'price' => '100', 'internal_note' => null]);
@@ -346,9 +403,9 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->travelTo('2026-02-01 11:00:00.000000');
         $record->delete();
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('deleted temporal version');
-        $record->restoreTo('2026-02-01 11:30:00');
+        $this->assertNull($record->rewindTo('2026-02-01 11:30:00'));
+        $this->assertFalse($record->restoreTo('2026-02-01 11:30:00'));
+        $this->assertNotNull($record->rewindTo('2026-02-01 10:30:00'));
     }
 
     public function testRestoreToNonMainBranchThrowsForModelsNotConfiguredForBranching(): void
@@ -363,6 +420,34 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('does not support branches');
         $record->restoreTo('2026-01-01 00:00:00', 'some-branch');
+    }
+
+    public function testRewindAndRestoreTreatDeletedPointsTheSameOnNonBranchableModels(): void
+    {
+        $this->travelTo('2026-02-01 10:00:00.000000');
+        $created = MockTemporalRecord::create([
+            'title' => 'Contract A', 'status' => 'draft', 'body' => 'Original body',
+        ]);
+        $record = MockTemporalRecord::find($created->id);
+        $this->travelTo('2026-02-01 11:00:00.000000');
+        $record->delete();
+
+        $this->assertNull($record->rewindTo('2026-02-01 11:30:00'));
+        $this->assertFalse($record->restoreTo('2026-02-01 11:30:00'));
+    }
+
+    public function testDiffAgainstBranchReturnsNullAfterMainDeletion(): void
+    {
+        $this->travelTo('2026-02-01 10:00:00.000000');
+        $created = MockBranchableRecord::create([
+            'title' => 'Widget', 'price' => '100', 'internal_note' => null,
+        ]);
+        $record = MockBranchableRecord::find($created->id);
+        $record->branch('proposal', '2026-02-01 10:00:00');
+        $this->travelTo('2026-02-01 11:00:00.000000');
+        $record->delete();
+
+        $this->assertNull($record->diffAgainstBranch('proposal'));
     }
 
     public function testSameMicrosecondVersionsResolveToTheLatestHistoryId(): void
@@ -391,12 +476,11 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
 
         $this->assertFalse(TemporalManager::hasBranchColumn($this->pdo, $table, $driver));
 
-        // No resetCache(): a missing column must not be cached, so long-running
-        // workers see the column as soon as migrate:temporal adds it.
         $this->pdo->exec(sprintf(
             "ALTER TABLE %s ADD COLUMN branch VARCHAR(50) NOT NULL DEFAULT 'main'",
             $this->quoteIdentifier($table)
         ));
+        TemporalManager::resetCache();
 
         $this->assertTrue(TemporalManager::hasBranchColumn($this->pdo, $table, $driver));
 
@@ -410,17 +494,27 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         $sqlite = TemporalManager::createHistoryTableSql('widgets_history', 'sqlite', false, true);
 
         $this->assertStringContainsString("`branch` VARCHAR(50) NOT NULL DEFAULT 'main'", $mysql[0]);
-        $this->assertStringContainsString('idx_branch', $mysql[0]);
+        $this->assertStringContainsString('INDEX `idx_branch` (`record_id`, `branch`, `valid_from`)', $mysql[0]);
 
         $this->assertCount(4, $pgsql);
         $this->assertStringContainsString("branch VARCHAR(50) NOT NULL DEFAULT 'main'", $pgsql[0]);
         $this->assertStringContainsString('idx_widgets_history_branch', $pgsql[3]);
+        $this->assertStringContainsString('(record_id, branch, valid_from)', $pgsql[3]);
 
         $this->assertCount(4, $sqlite);
         $this->assertStringContainsString("branch TEXT NOT NULL DEFAULT 'main'", $sqlite[0]);
         $this->assertStringContainsString('idx_widgets_history_branch', $sqlite[3]);
+        $this->assertStringContainsString('(record_id, branch, valid_from)', $sqlite[3]);
     }
 
+    /**
+     * Drop and recreate a history table with the given optional columns.
+     *
+     * @param string $table
+     * @param bool $trackActor
+     * @param bool $trackBranches
+     * @return void
+     */
     private function recreateHistoryTable(string $table, bool $trackActor, bool $trackBranches): void
     {
         $this->dropTablesIfExist([$table]);
@@ -430,11 +524,23 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         }
     }
 
+    /**
+     * Freeze the clock at the given UTC datetime.
+     *
+     * @param string $datetime
+     * @return void
+     */
     private function travelTo(string $datetime): void
     {
         Carbon::setTestNow(Carbon::parse($datetime, 'UTC'));
     }
 
+    /**
+     * Assert that the operation asks for migrate:temporal to be run.
+     *
+     * @param callable $operation
+     * @return void
+     */
     private function assertMigrationGuard(callable $operation): void
     {
         try {
@@ -445,6 +551,12 @@ abstract class TemporalBranchTest extends ModelQueryDriverTestCase
         }
     }
 
+    /**
+     * Assert that the operation rejects the branch name.
+     *
+     * @param callable $operation
+     * @return void
+     */
     private function expectInvalidBranchName(callable $operation): void
     {
         try {

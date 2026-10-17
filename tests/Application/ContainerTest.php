@@ -2474,11 +2474,12 @@ class ContainerTest extends TestCase
     public function testFreezeIsIdempotent()
     {
         $service = new MockPaymentService();
+        $service->gateway = 'paypal';
         $service->freeze();
-        // $service->freeze(); // second call must not throw
-        // Phaseolies\DI\Exceptions\ImmutableViolationException: Cannot mutate property $gateway on immutable service [Tests\Application\Mock\Services\MockPaymentService]. Services marked #[Immutable] are frozen after instantiation.
+        $service->freeze(); // second call is a no-op and keeps the values
 
         $this->assertTrue($service->isFrozen());
+        $this->assertSame('paypal', $service->gateway);
     }
 
     // =========================================================================
@@ -2748,6 +2749,48 @@ class ContainerTest extends TestCase
         $cloned = clone $service;
     }
 
+    public function testMutationMessageNamesClassPropertyAndTheFix()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$taxRate', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringContainsString('frozen once the container resolves them', $e->getMessage());
+            $this->assertStringContainsString('launcher', $e->getMessage());
+            $this->assertStringNotContainsString('ServiceProvider', $e->getMessage());
+        }
+    }
+
+    public function testCloneMessageSaysCloneNotProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            clone $service;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('Cannot clone immutable service', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringNotContainsString('$__clone', $e->getMessage());
+        }
+    }
+
+    public function testUnsetMessageNamesTheProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            unset($service->gateway);
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$gateway', $e->getMessage());
+        }
+    }
+
     public function testCloningUnfrozenServiceIsAllowed()
     {
         $service = new MockPaymentService(); // not through container — not frozen yet
@@ -2894,6 +2937,118 @@ class ContainerTest extends TestCase
         $this->assertTrue($first->isFrozen());
         $this->assertTrue($second->isFrozen());
         $this->assertSame($first, $second);
+    }
+
+    // =========================================================================
+    // SERVICES CONFIGURED IN A LAUNCHER (closure bindings and instance())
+    // =========================================================================
+
+    public function testSingletonClosureResultIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->assertFalse($payment->isFrozen());
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame($payment, $resolved);
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('paypal', $resolved->gateway);
+    }
+
+    public function testSingletonClosureServiceBlocksMutationAfterResolve()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $resolved->taxRate = 0.0;
+    }
+
+    public function testLauncherReferenceIsFrozenOnceTheContainerResolvesIt()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+        $this->container->get(MockPaymentService::class);
+
+        // The launcher still holds the same object, and it is frozen too.
+        $this->expectException(ImmutableViolationException::class);
+        $payment->gateway = 'late change';
+    }
+
+    public function testInstanceIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->retries = 9;
+
+        $this->container->instance(MockPaymentService::class, $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame(9, $resolved->retries);
+    }
+
+    public function testResolvingTwiceKeepsTheConfiguredValues()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+        $payment->methods = ['wallet'];
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->container->get(MockPaymentService::class);
+        $again = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame('paypal', $again->gateway);
+        $this->assertSame(['wallet'], $again->methods);
+    }
+
+    public function testMakeWithClosureBindingFreezesEachResult()
+    {
+        $this->container->bind(MockPaymentService::class, fn () => new MockPaymentService());
+
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertNotSame($first, $second);
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+    }
+
+    public function testClosureResultWithoutImmutableAttributeIsNotFrozen()
+    {
+        $this->container->singleton('plain', fn () => new \stdClass());
+
+        $resolved = $this->container->get('plain');
+        $resolved->anything = 'allowed';
+
+        $this->assertSame('allowed', $resolved->anything);
+    }
+
+    public function testClosureReturningNonObjectIsLeftAlone()
+    {
+        $this->container->bind('answer', fn () => 42);
+
+        $this->assertSame(42, $this->container->get('answer'));
+    }
+
+    public function testBuildWithValuesInsteadOfAClosureStillWorks()
+    {
+        $this->container->singleton(
+            MockPaymentService::class,
+            fn ($app) => $app->build(MockPaymentService::class)
+        );
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('stripe', $resolved->gateway);
     }
 
     // =========================================================================

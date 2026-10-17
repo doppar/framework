@@ -51,7 +51,7 @@ trait InteractsWithExecutionContexts
         try {
             $this->fireContextListeners('begin', $context);
         } catch (\Throwable $e) {
-            $this->endContext($context);
+            $this->endContext($context, $e);
 
             throw $e;
         }
@@ -63,11 +63,12 @@ trait InteractsWithExecutionContexts
      * End a context: end any contexts nested inside it, run the end
      *
      * @param ExecutionContext $context
+     * @param \Throwable|null $original
      * @return void
      *
      * @throws \Throwable
      */
-    public function endContext(ExecutionContext $context): void
+    public function endContext(ExecutionContext $context, ?\Throwable $original = null): void
     {
         $index = $this->contextIndex($context);
 
@@ -82,7 +83,25 @@ trait InteractsWithExecutionContexts
             $index = count($this->contextStack) - 1;
         }
 
-        $failure = null;
+        $failures = [];
+
+        $endingIds = [$context->id() => true];
+
+        for ($i = $index; $i < count($this->contextStack); $i++) {
+            $endingIds[$this->contextStack[$i]->id()] = true;
+        }
+
+        foreach ($this->suspendedDescendantsOf($endingIds) as $descendant) {
+            if (!isset($this->liveContexts[$descendant->id()])) {
+                continue;
+            }
+
+            try {
+                $this->endContext($descendant, $original);
+            } catch (\Throwable $e) {
+                $failures[] = $e;
+            }
+        }
 
         while (count($this->contextStack) > $index) {
             $ending = end($this->contextStack);
@@ -90,15 +109,77 @@ trait InteractsWithExecutionContexts
             try {
                 $this->fireContextListeners('end', $ending);
             } catch (\Throwable $e) {
-                $failure ??= $e;
+                $failures[] = $e;
             }
 
             unset($this->scopedInstances[$ending->id()], $this->liveContexts[$ending->id()]);
             array_pop($this->contextStack);
         }
 
-        if ($failure !== null) {
-            throw $failure;
+        if ($failures === []) {
+            return;
+        }
+
+        // Throw the first failure only when nothing else is failing. All other
+        // failures are reported, so none is lost and none replaces the original.
+        $thrown = $original === null ? array_shift($failures) : null;
+
+        foreach ($failures as $failure) {
+            $this->reportContextFailure($failure, $original);
+        }
+
+        if ($thrown !== null) {
+            throw $thrown;
+        }
+    }
+
+    /**
+     * Report a failure of a context-ending listener that is not being thrown
+     *
+     * @param \Throwable $failure
+     * @param \Throwable|null $original
+     * @return void
+     */
+    protected function reportContextFailure(\Throwable $failure, ?\Throwable $original): void
+    {
+        $this->reportTeardownFailure('Execution context ending listener failed', $failure);
+    }
+
+    /**
+     * Log a failure that happened while tearing down and must not replace another exception
+     *
+     * @param string $label
+     * @param \Throwable $failure
+     * @return void
+     */
+    protected function reportTeardownFailure(string $label, \Throwable $failure): void
+    {
+        $reported = false;
+
+        try {
+            if ($this->has('log')) {
+                \Phaseolies\Support\Facades\Log::error($label . ': ' . $failure->getMessage(), [
+                    'exception' => $failure,
+                ]);
+                $reported = true;
+            }
+        } catch (\Throwable) {
+            // Reporting must never break teardown; fall through to the last resort.
+        }
+
+        if (!$reported) {
+            try {
+                error_log(sprintf(
+                    '%s: %s: %s in %s:%d',
+                    $label,
+                    get_class($failure),
+                    $failure->getMessage(),
+                    $failure->getFile(),
+                    $failure->getLine()
+                ));
+            } catch (\Throwable) {
+                // Nothing left to try.
+            }
         }
     }
 
@@ -115,10 +196,16 @@ trait InteractsWithExecutionContexts
         $context = $this->beginContext($type, $metadata);
 
         try {
-            return $callback($context);
-        } finally {
-            $this->endContext($context);
+            $result = $callback($context);
+        } catch (\Throwable $e) {
+            $this->endContext($context, $e);
+
+            throw $e;
         }
+
+        $this->endContext($context);
+
+        return $result;
     }
 
     /**
@@ -304,6 +391,35 @@ trait InteractsWithExecutionContexts
         if ($failure !== null) {
             throw $failure;
         }
+    }
+
+    /**
+     * Find suspended contexts that were started inside any of the given contexts, deepest first
+     *
+     * @param array<string, true> $ancestorIds
+     * @return array<int, ExecutionContext>
+     */
+    private function suspendedDescendantsOf(array $ancestorIds): array
+    {
+        $found = [];
+
+        foreach ($this->liveContexts as $live) {
+            if ($this->contextIndex($live) !== null) {
+                continue;
+            }
+
+            for ($parent = $live->parent(); $parent !== null; $parent = $parent->parent()) {
+                if (isset($ancestorIds[$parent->id()])) {
+                    $found[] = $live;
+
+                    break;
+                }
+            }
+        }
+
+        usort($found, fn (ExecutionContext $a, ExecutionContext $b) => $b->depth() <=> $a->depth());
+
+        return $found;
     }
 
     /**

@@ -354,7 +354,7 @@ class Authenticate
 
         if ($user && $user->getRememberToken()) {
             $user->setRememberToken(null);
-            $user::withoutHook();
+            $user->withoutHook();
             $user->save();
         }
 

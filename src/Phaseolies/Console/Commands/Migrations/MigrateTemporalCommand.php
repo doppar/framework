@@ -98,6 +98,7 @@ class MigrateTemporalCommand extends Command
                 if (!$dryRun && $this->tableExists($pdo, $driver, $historyTable)) {
                     // Table exists — check if we need to add the actor and/or branch columns
                     $addedColumns = [];
+                    $addedIndexes = [];
 
                     if ($attr?->trackActor && !$this->columnExists($pdo, $driver, $historyTable, 'actor')) {
                         $pdo->exec($this->addActorColumnSql($driver, $historyTable));
@@ -112,11 +113,19 @@ class MigrateTemporalCommand extends Command
                     $branchIndex = $driver === 'mysql' ? 'idx_branch' : 'idx_' . $historyTable . '_branch';
                     if ($attr !== null && $attr->branches && !$this->indexExists($pdo, $driver, $historyTable, $branchIndex)) {
                         $pdo->exec($this->createBranchIndexSql($driver, $historyTable));
-                        $addedColumns[] = 'branch index';
+                        $addedIndexes[] = 'branch';
                     }
 
-                    if (!empty($addedColumns)) {
-                        $row('✓', 'green', implode(', ', $addedColumns) . ' column' . (count($addedColumns) > 1 ? 's' : '') . ' added');
+                    if (!empty($addedColumns) || !empty($addedIndexes)) {
+                        TemporalManager::resetCache();
+                        $status = [];
+                        if (!empty($addedColumns)) {
+                            $status[] = implode(', ', $addedColumns) . ' column' . (count($addedColumns) > 1 ? 's' : '') . ' added';
+                        }
+                        if (!empty($addedIndexes)) {
+                            $status[] = implode(', ', $addedIndexes) . ' index added';
+                        }
+                        $row('✓', 'green', implode('; ', $status));
                         $created++;
                     } else {
                         $row('•', 'yellow', 'already exists');
@@ -343,6 +352,15 @@ class MigrateTemporalCommand extends Command
         };
     }
 
+    /**
+     * Check whether the given index exists on the given table.
+     *
+     * @param PDO $pdo
+     * @param string $driver
+     * @param string $table
+     * @param string $index
+     * @return bool
+     */
     private function indexExists(PDO $pdo, string $driver, string $table, string $index): bool
     {
         try {
@@ -365,12 +383,19 @@ class MigrateTemporalCommand extends Command
         }
     }
 
+    /**
+     * Generate the CREATE INDEX SQL for the branch lookup index.
+     *
+     * @param string $driver
+     * @param string $table
+     * @return string
+     */
     private function createBranchIndexSql(string $driver, string $table): string
     {
         $name = $driver === 'mysql' ? 'idx_branch' : 'idx_' . $table . '_branch';
         return match ($driver) {
-            'pgsql', 'sqlite' => "CREATE INDEX \"{$name}\" ON \"{$table}\" (record_id, branch)",
-            default => "CREATE INDEX `{$name}` ON `{$table}` (record_id, branch)",
+            'pgsql', 'sqlite' => "CREATE INDEX \"{$name}\" ON \"{$table}\" (record_id, branch, valid_from)",
+            default => "CREATE INDEX `{$name}` ON `{$table}` (record_id, branch, valid_from)",
         };
     }
 }

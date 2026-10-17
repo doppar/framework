@@ -25,7 +25,7 @@ class Application extends Container
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '4.6.0';
+    const VERSION = '4.7.1';
 
     /**
      * The base path of the application installation.
@@ -1170,11 +1170,26 @@ class Application extends Container
                     $this->endDeferScope($deferScope, $terminationFailure ?? $exception);
                 }
             } finally {
+                $cleanupFailure = null;
+
                 try {
                     $this->cleanupRequestScopedServices();
-                } finally {
+                } catch (\Throwable $e) {
+                    $cleanupFailure = $e;
+                }
+
+                try {
                     if ($context !== null) {
-                        $this->endContext($context);
+                        $this->endContext($context, $terminationFailure ?? $cleanupFailure);
+                    }
+                } finally {
+                    if ($cleanupFailure !== null) {
+                        // Never replace the exception that is already ending the request.
+                        if ($terminationFailure !== null) {
+                            $this->reportTeardownFailure('Request cleanup failed', $cleanupFailure);
+                        } else {
+                            throw $cleanupFailure;
+                        }
                     }
                 }
             }
@@ -1543,7 +1558,7 @@ class Application extends Container
                 Response::dispatchHttpException($e);
             } catch (\Throwable $renderFailure) {
                 $this->endDeferScope($deferScope, $renderFailure);
-                $this->endContext($context);
+                $this->endContext($context, $renderFailure);
 
                 throw $renderFailure;
             }
@@ -1554,7 +1569,7 @@ class Application extends Container
             return new DispatchResult($this, $request, null, $e, $deferScope, $context);
         } catch (\Throwable $e) {
             $this->endDeferScope($deferScope, $e);
-            $this->endContext($context);
+            $this->endContext($context, $e);
 
             throw $e;
         }

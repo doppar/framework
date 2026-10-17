@@ -217,6 +217,129 @@ final class ExecutionContextTest extends TestCase
         $this->assertSame(1, $ended);
     }
 
+    public function testEndingAParentEndsItsSuspendedChild(): void
+    {
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        $this->container->endContext($outer);
+        $this->container->resumeContext($inner);
+
+        $this->assertNull($this->container->executionContext());
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
+    public function testSuspendedChildEndListenersRunBeforeTheParentsAndOnlyOnce(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        $this->container->endContext($outer);
+        $this->container->endContext($inner); // already ended, must not fire again
+
+        $this->assertSame(['inner', 'outer'], $order);
+    }
+
+    public function testEndingAParentEndsSuspendedGrandchildrenDeepestFirst(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $middle = $this->container->beginContext('middle');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+        $this->container->suspendContext($middle);
+
+        $this->container->endContext($outer);
+
+        $this->assertSame(['inner', 'middle', 'outer'], $order);
+        $this->container->resumeContext($inner);
+        $this->container->resumeContext($middle);
+        $this->assertNull($this->container->executionContext());
+    }
+
+    public function testEndingASuspendedParentAlsoEndsItsSuspendedChild(): void
+    {
+        $order = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$order) {
+            $order[] = $c->type();
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+        $this->container->suspendContext($outer);
+
+        $this->container->endContext($outer);
+
+        $this->assertSame(['inner', 'outer'], $order);
+    }
+
+    public function testEndingAContextLeavesUnrelatedSuspendedContextsAlive(): void
+    {
+        $other = $this->container->beginContext('request');
+        $this->container->suspendContext($other);
+
+        $outer = $this->container->beginContext('outer');
+        $this->container->endContext($outer);
+
+        $this->container->resumeContext($other);
+        $this->assertSame($other->id(), $this->container->executionContext()?->id());
+    }
+
+    public function testSuspendedChildScopedInstancesAreDroppedWithTheParent(): void
+    {
+        $this->container->bindExecution('scoped', fn () => new \stdClass());
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $first = $this->container->get('scoped');
+        $this->container->suspendContext($inner);
+        $this->container->endContext($outer);
+
+        $this->container->resumeContext($inner); // ended, so nothing to resume
+
+        $this->container->runInContext('again', [], function () use ($first) {
+            $this->assertNotSame($first, $this->container->get('scoped'));
+        });
+    }
+
+    public function testAFailingListenerForASuspendedChildStillEndsEverythingAndIsRethrown(): void
+    {
+        $ended = [];
+        $this->container->contextEnding(function (ExecutionContext $c) use (&$ended) {
+            $ended[] = $c->type();
+
+            if ($c->type() === 'inner') {
+                throw new \RuntimeException('inner listener failed');
+            }
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        try {
+            $this->container->endContext($outer);
+            $this->fail('Expected the listener failure');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('inner listener failed', $e->getMessage());
+        }
+
+        $this->assertSame(['inner', 'outer'], $ended);
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
     // ---------------------------------------------------------------- scopes
 
     public function testExecutionScopedServiceIsSharedWithinAContextAndNotAcrossContexts(): void
@@ -629,6 +752,263 @@ final class ExecutionContextTest extends TestCase
         $this->assertNull($app->executionContext());
     }
 
+    public function testEndingListenerFailureDoesNotReplaceTheHandlerException(): void
+    {
+        $app = $this->application();
+        $app->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willThrowException(new \RuntimeException('handler failed'));
+        $app->router = $router;
+
+        $log = $this->captureErrorLog();
+
+        try {
+            $app->dispatch(new Request());
+            $this->fail('expected the handler exception');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('handler failed', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('Execution context ending listener failed: LogicException: teardown failed', $logged);
+        $this->assertNull($app->executionContext());
+    }
+
+    public function testEndingListenerFailureStillSurfacesWhenNothingElseFailed(): void
+    {
+        $app = $this->application();
+        $app->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+        $app->router = $this->respondingRouter(function () {});
+
+        $result = $app->dispatch(new Request());
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('teardown failed');
+
+        $result->terminate();
+    }
+
+    public function testEndingListenerFailureDoesNotReplaceATerminatingCallbackException(): void
+    {
+        $app = $this->application();
+        $app->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+        $app->terminating(function () {
+            throw new \RuntimeException('terminating failed');
+        });
+        $app->router = $this->respondingRouter(function () {});
+
+        $result = $app->dispatch(new Request());
+        $log = $this->captureErrorLog();
+
+        try {
+            $result->terminate();
+            $this->fail('expected the terminating exception');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('terminating failed', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('teardown failed', $logged);
+        $this->assertNull($app->executionContext());
+    }
+
+    private function applicationWithFailingCleanup(): Application
+    {
+        $app = (new ReflectionClass(FailingCleanupApplication::class))->newInstanceWithoutConstructor();
+        $app->reportDeferredExceptionsUsing(fn() => null);
+
+        return $app;
+    }
+
+    public function testCleanupFailureDoesNotReplaceATerminatingCallbackException(): void
+    {
+        $app = $this->applicationWithFailingCleanup();
+        $app->terminating(function () {
+            throw new \RuntimeException('terminating failed');
+        });
+        $app->router = $this->respondingRouter(function () {});
+
+        $result = $app->dispatch(new Request());
+        $log = $this->captureErrorLog();
+
+        try {
+            $result->terminate();
+            $this->fail('expected the terminating exception');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('terminating failed', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('Request cleanup failed: LogicException: cleanup failed', $logged);
+        $this->assertNull($app->executionContext());
+    }
+
+    public function testCleanupFailureStillSurfacesAndTheContextStillEndsWhenNothingElseFailed(): void
+    {
+        $app = $this->applicationWithFailingCleanup();
+        $ended = 0;
+        $app->contextEnding(function () use (&$ended) {
+            $ended++;
+        });
+        $app->router = $this->respondingRouter(function () {});
+
+        $result = $app->dispatch(new Request());
+
+        try {
+            $result->terminate();
+            $this->fail('expected the cleanup exception');
+        } catch (\LogicException $e) {
+            $this->assertSame('cleanup failed', $e->getMessage());
+        }
+
+        $this->assertSame(1, $ended);
+        $this->assertNull($app->executionContext());
+    }
+
+    public function testCleanupFailureWinsOverAnEndingListenerFailureWhenNothingElseFailed(): void
+    {
+        $app = $this->applicationWithFailingCleanup();
+        $app->contextEnding(function () {
+            throw new \RuntimeException('listener failed');
+        });
+        $app->router = $this->respondingRouter(function () {});
+
+        $result = $app->dispatch(new Request());
+        $log = $this->captureErrorLog();
+
+        try {
+            $result->terminate();
+            $this->fail('expected the cleanup exception');
+        } catch (\LogicException $e) {
+            $this->assertSame('cleanup failed', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('listener failed', $logged);
+        $this->assertNull($app->executionContext());
+    }
+
+    public function testRunInContextKeepsTheCallbackExceptionWhenAnEndingListenerFails(): void
+    {
+        $this->container->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+
+        $log = $this->captureErrorLog();
+
+        try {
+            $this->container->runInContext('job', [], function () {
+                throw new \RuntimeException('job failed');
+            });
+            $this->fail('expected the job exception');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('job failed', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('teardown failed', $logged);
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
+    public function testRunInContextThrowsTheEndingListenerFailureWhenTheCallbackSucceeded(): void
+    {
+        $this->container->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+
+        $this->expectException(\LogicException::class);
+
+        $this->container->runInContext('job', [], fn () => 'done');
+    }
+
+    public function testRunInContextReturnsTheCallbackResult(): void
+    {
+        $this->assertSame('done', $this->container->runInContext('job', [], fn () => 'done'));
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
+    public function testBeginningListenerFailureIsNotReplacedByAnEndingListenerFailure(): void
+    {
+        $this->container->contextBeginning(function () {
+            throw new \RuntimeException('begin failed');
+        });
+        $this->container->contextEnding(function () {
+            throw new \LogicException('teardown failed');
+        });
+
+        $log = $this->captureErrorLog();
+
+        try {
+            $this->container->beginContext('job');
+            $this->fail('expected the begin failure');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('begin failed', $e->getMessage());
+        } finally {
+            $this->releaseErrorLog($log);
+        }
+
+        $this->assertFalse($this->container->hasExecutionContext());
+    }
+
+    public function testEveryEndingListenerFailureIsReportedBeyondTheFirstThrownOne(): void
+    {
+        $this->container->contextEnding(function (ExecutionContext $c) {
+            throw new \LogicException('failed: ' . $c->type());
+        });
+
+        $outer = $this->container->beginContext('outer');
+        $inner = $this->container->beginContext('inner');
+        $this->container->suspendContext($inner);
+
+        $log = $this->captureErrorLog();
+
+        try {
+            $this->container->endContext($outer);
+            $this->fail('expected the first failure');
+        } catch (\LogicException $e) {
+            $this->assertSame('failed: inner', $e->getMessage());
+        } finally {
+            $logged = $this->releaseErrorLog($log);
+        }
+
+        $this->assertStringContainsString('failed: outer', $logged);
+    }
+
+    /**
+     * @return array{string, string|false}
+     */
+    private function captureErrorLog(): array
+    {
+        $file = tempnam(sys_get_temp_dir(), 'ctxlog');
+        $previous = ini_set('error_log', $file);
+
+        return [$file, $previous];
+    }
+
+    private function releaseErrorLog(array $log): string
+    {
+        [$file, $previous] = $log;
+
+        ini_set('error_log', $previous === false ? '' : $previous);
+
+        $contents = (string) file_get_contents($file);
+        @unlink($file);
+
+        return $contents;
+    }
+
     public function testRequestMetadataComesFromTheRequest(): void
     {
         $app = $this->application();
@@ -730,5 +1110,13 @@ final class ExecutionContextTest extends TestCase
         $this->assertSame(['defer', 'context-end'], $order);
         $this->assertSame($seen->id(), $cleanupSawContext->id());
         $this->assertNull($app->executionContext());
+    }
+}
+
+class FailingCleanupApplication extends Application
+{
+    protected function cleanupRequestScopedServices(): void
+    {
+        throw new \LogicException('cleanup failed');
     }
 }

@@ -99,11 +99,10 @@ class TemporalBuilder extends Builder
         $hasBranch    = $this->hasBranchColumn($historyTable);
 
         $sql = "
-            SELECT snapshot
+            SELECT snapshot, action
             FROM   {$historyTable}
             WHERE  record_id = ?
-            AND    valid_from <= ?
-            AND    action != 'deleted'"
+            AND    valid_from <= ?"
             . ($hasBranch ? ' AND branch = ?' : '') . "
             ORDER  BY valid_from DESC, history_id DESC
             LIMIT  1
@@ -118,7 +117,8 @@ class TemporalBuilder extends Builder
         $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
+        // The latest row decides: if the record was deleted by then, it did not exist.
+        if (!$row || $row['action'] === 'deleted') {
             return null;
         }
 
@@ -233,29 +233,104 @@ class TemporalBuilder extends Builder
             return $models;
         }
 
-        return array_values(array_filter($models, function (Model $model) {
-            $pass = true;
+        return array_values(array_filter(
+            $models,
+            fn (Model $model) => $this->matchesConditions($model, $this->conditions)
+        ));
+    }
 
-            foreach ($this->conditions as $condition) {
-                // Skip typed conditions (NESTED, EXISTS, RAW_WHERE, etc.)
-                if (isset($condition['type'])) {
-                    continue;
-                }
+    /**
+     * Check a model against a list of conditions
+     *
+     * @param Model $model
+     * @param array $conditions
+     * @return bool
+     * @throws \LogicException
+     */
+    private function matchesConditions(Model $model, array $conditions): bool
+    {
+        $seen        = false;
+        $anyGroup    = false;
+        $groupResult = true;
 
-                [$boolean, $field, $operator, $value] = array_pad($condition, 4, null);
-                $extra = $condition[4] ?? null;
-
-                // Strip table prefix if present (e.g. "contracts.status" → "status")
-                $column = str_contains($field, '.') ? explode('.', $field, 2)[1] : $field;
-                $actual = $model->{$column} ?? null;
-
-                $result = $this->evaluateCondition($actual, $operator, $value, $extra);
-
-                $pass = $boolean === 'OR' ? ($pass || $result) : ($pass && $result);
+        foreach ($conditions as $condition) {
+            if (($condition['type'] ?? null) === 'RAW_GROUP_BY') {
+                continue;
             }
 
-            return $pass;
-        }));
+            $boolean = strtoupper(isset($condition['type'])
+                ? ($condition['boolean'] ?? 'AND')
+                : ($condition[0] ?? 'AND'));
+
+            $result = $this->matchesCondition($model, $condition);
+
+            if (!$seen) {
+                $groupResult = $result;
+                $seen = true;
+            } elseif ($boolean === 'OR') {
+                $anyGroup    = $anyGroup || $groupResult;
+                $groupResult = $result;
+            } else {
+                $groupResult = $groupResult && $result;
+            }
+        }
+
+        return !$seen || $anyGroup || $groupResult;
+    }
+
+    /**
+     * Check a model against a single condition entry.
+     *
+     * @param Model $model
+     * @param array $condition
+     * @return bool
+     * @throws \LogicException
+     */
+    private function matchesCondition(Model $model, array $condition): bool
+    {
+        if (isset($condition['type'])) {
+            if ($condition['type'] === 'NESTED') {
+                return $this->matchesConditions($model, $condition['query']->conditions);
+            }
+
+            throw new \LogicException(
+                "Temporal queries filter snapshots in PHP, so {$condition['type']} conditions are not supported. "
+                    . 'Use where(), orWhere(), whereIn(), whereNull(), whereBetween() or a nested where() instead.'
+            );
+        }
+
+        [, $field, $operator, $value] = array_pad($condition, 4, null);
+        $extra = $condition[4] ?? null;
+
+        // Strip table prefix if present (e.g. "contracts.status" → "status")
+        $column = str_contains($field, '.') ? explode('.', $field, 2)[1] : $field;
+        $actual = $model->{$column} ?? null;
+
+        return $this->evaluateCondition($actual, $operator, $value, $extra);
+    }
+
+    /**
+     * Add a nested WHERE group. The nested query keeps the same point in time.
+     *
+     * @param callable $callback
+     * @param string $boolean
+     * @return self
+     */
+    public function whereNested(callable $callback, string $boolean = 'AND'): self
+    {
+        $nested = new self($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->datetime);
+
+        $callback($nested);
+
+        if (!empty($nested->conditions)) {
+            $this->conditions[] = [
+                'type' => 'NESTED',
+                'query' => $nested,
+                'boolean' => $boolean,
+            ];
+        }
+
+        return $this;
     }
 
     /**
