@@ -21,8 +21,34 @@ class EntityModelHookTest extends TestCase
         $this->setupDatabaseConnections();
     }
 
+    /**
+     * Hook table of MockHook as it was before a test added temporary hooks.
+     * MockHook registers its own hooks once per process, so restoring must
+     * put this back instead of removing the entry.
+     */
+    private ?array $savedHooks = null;
+
+    private function tempHooks(array $hooks): void
+    {
+        new MockHook(); // make sure the class has booted and registered its own hooks
+
+        $this->savedHooks ??= HookHandler::$hooks[MockHook::class] ?? [];
+
+        HookHandler::register(MockHook::class, $hooks);
+    }
+
+    private function restoreHooks(): void
+    {
+        if ($this->savedHooks !== null) {
+            HookHandler::$hooks[MockHook::class] = $this->savedHooks;
+            $this->savedHooks = null;
+        }
+    }
+
     protected function tearDown(): void
     {
+        $this->restoreHooks();
+
         $this->pdo = null;
         $this->tearDownDatabaseConnections();
     }
@@ -272,7 +298,7 @@ class EntityModelHookTest extends TestCase
     public function testBuilderUpdateWithHooksFiresHooksPerModel(): void
     {
         $seen = [];
-        HookHandler::register(MockHook::class, [
+        $this->tempHooks([
             'before_updated' => function ($model) use (&$seen) {
                 $seen[] = $model->getKey();
             },
@@ -285,7 +311,7 @@ class EntityModelHookTest extends TestCase
                 ->withHooks()
                 ->update(['name' => 'Hooked']);
         } finally {
-            unset(HookHandler::$hooks[MockHook::class]);
+            $this->restoreHooks();
         }
 
         $this->assertTrue($result);
@@ -312,7 +338,7 @@ class EntityModelHookTest extends TestCase
 
     public function testBuilderUpdateWithHooksStopsWhereAHookThrows(): void
     {
-        HookHandler::register(MockHook::class, [
+        $this->tempHooks([
             'before_updated' => function ($model) {
                 if ((int) $model->getKey() === 2) {
                     throw new \RuntimeException('not this one');
@@ -326,7 +352,7 @@ class EntityModelHookTest extends TestCase
         } catch (\RuntimeException $e) {
             $this->assertSame('not this one', $e->getMessage());
         } finally {
-            unset(HookHandler::$hooks[MockHook::class]);
+            $this->restoreHooks();
         }
 
         // Rows are written one by one and there is no implicit transaction:
@@ -339,7 +365,7 @@ class EntityModelHookTest extends TestCase
     public function testBuilderDeleteWithHooksFiresHooksPerModel(): void
     {
         $seen = [];
-        HookHandler::register(MockHook::class, [
+        $this->tempHooks([
             'before_deleted' => function ($model) use (&$seen) {
                 $seen[] = (int) $model->getKey();
             },
@@ -348,7 +374,7 @@ class EntityModelHookTest extends TestCase
         try {
             MockHook::query()->where('id', '<', 3)->withHooks()->delete();
         } finally {
-            unset(HookHandler::$hooks[MockHook::class]);
+            $this->restoreHooks();
         }
 
         $this->assertEqualsCanonicalizing([1, 2], $seen);
@@ -358,7 +384,7 @@ class EntityModelHookTest extends TestCase
     public function testBuilderDeleteWithoutWithHooksSkipsHooks(): void
     {
         $fired = false;
-        HookHandler::register(MockHook::class, [
+        $this->tempHooks([
             'before_deleted' => function () use (&$fired) {
                 $fired = true;
             },
@@ -367,7 +393,7 @@ class EntityModelHookTest extends TestCase
         try {
             MockHook::query()->where('id', 1)->delete();
         } finally {
-            unset(HookHandler::$hooks[MockHook::class]);
+            $this->restoreHooks();
         }
 
         $this->assertFalse($fired);
