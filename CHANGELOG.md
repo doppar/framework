@@ -1,5 +1,10 @@
 # Release Notes
 
+## v4.8.0 - 2026-10-18
+
+* Optional relationship keys and typed relation classes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/377
+* (feat) Create and save records through relationships by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/378
+
 ## v4.7.1 - 2026-10-17
 
 * Fix temporal lookups that bring back deleted records by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/372
