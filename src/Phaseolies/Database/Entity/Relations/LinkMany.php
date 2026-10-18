@@ -6,5 +6,5 @@ use Phaseolies\Database\Entity\Builder;
 
 class LinkMany extends Builder
 {
-    //
+    use InteractsWithRelationWrites;
 }
