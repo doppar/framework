@@ -44,10 +44,19 @@ class BindTo extends Builder
      *
      * @param Model|int|string $parent
      * @return Model The child
+     * @throws \InvalidArgumentException
      * @throws \LogicException
      */
     public function associate(Model|int|string $parent): Model
     {
+        $expected = $this->modelClass;
+
+        if ($parent instanceof Model && !($parent instanceof $expected)) {
+            throw new \InvalidArgumentException(
+                'Expected an instance of ' . $expected . ', got ' . $parent::class . '.'
+            );
+        }
+
         $child = $this->childModel();
 
         $value = $parent instanceof Model ? $parent->{$this->ownerKey} : $parent;

@@ -227,6 +227,24 @@ abstract class RelationWritesTest extends ModelQueryDriverTestCase
         Article::find(1)->author()->associate(new Author());
     }
 
+    public function testAssociateRejectsAModelOfTheWrongClass(): void
+    {
+        $bio = Author::find(1)->bio()->create(['line' => 'Ann writes']); // a saved model, but not an Author
+        $article = Article::find(2); // author 2
+
+        try {
+            $article->author()->associate($bio);
+            $this->fail('Expected an InvalidArgumentException');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString(Author::class, $e->getMessage());
+            $this->assertStringContainsString(Bio::class, $e->getMessage());
+        }
+
+        $this->assertEquals(2, $article->author_id, 'the child is left unchanged');
+        $article->save();
+        $this->assertSame(1, $this->rowCount('articles', 'id = 2 AND author_id = 2'));
+    }
+
     public function testAssociateNeedsTheForeignKeyToBeCreatable(): void
     {
         $note = new Note();
