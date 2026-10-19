@@ -348,6 +348,44 @@ class TemporalManager
     }
 
     /**
+     * Normalize a user supplied point in time for comparison with `valid_from`.
+     *
+     * Partial datetimes are expanded to the end of the given day, minute or
+     * second. On PostgreSQL `valid_from` is a TIMESTAMPTZ written with an
+     * explicit offset, so a value without one would be read in the session
+     * time zone instead of the application's; the application offset is
+     * appended to keep reads and writes in the same zone.
+     *
+     * @param string $datetime
+     * @param string $driver
+     * @return string
+     */
+    public static function normalizeDateTime(string $datetime, string $driver): string
+    {
+        $datetime = trim($datetime);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $datetime)) {
+            $datetime .= ' 23:59:59.999999';
+        } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $datetime)) {
+            $datetime .= ':59.999999';
+        } elseif (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $datetime)) {
+            $datetime .= '.999999';
+        }
+
+        $hasOffset = (bool) preg_match('/(Z|[+-]\d{2}(:?\d{2})?)$/i', $datetime);
+
+        if ($driver === 'pgsql' && !$hasOffset) {
+            try {
+                return \Carbon\Carbon::parse($datetime)->format('Y-m-d H:i:s.uP');
+            } catch (\Throwable) {
+                return $datetime;
+            }
+        }
+
+        return $datetime;
+    }
+
+    /**
      * Generate a high-resolution timestamp string for the current driver.
      *
      * @param string $driver
