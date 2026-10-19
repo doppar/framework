@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.8.1 - 2026-10-19
+
+* Fix SQL injection via unvalidated table, view and column identifiers by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/379
+
 ## v4.8.0 - 2026-10-18
 
 * Optional relationship keys and typed relation classes by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/377
