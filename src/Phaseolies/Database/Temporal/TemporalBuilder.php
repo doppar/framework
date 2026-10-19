@@ -441,31 +441,14 @@ class TemporalBuilder extends Builder
     }
 
     /**
-     * Normalize various human-friendly datetime strings into a sortable
+     * Normalize a datetime for comparison with `valid_from`
      *
      * @param string $datetime
      * @return string
      */
     private function normalizeDateTime(string $datetime): string
     {
-        $datetime = trim($datetime);
-
-        // Date-only: append end-of-day
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $datetime)) {
-            return $datetime . ' 23:59:59.999999';
-        }
-
-        // Date + HH:MM only
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $datetime)) {
-            return $datetime . ':59.999999';
-        }
-
-        // Date + HH:MM:SS only
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $datetime)) {
-            return $datetime . '.999999';
-        }
-
-        return $datetime;
+        return TemporalManager::normalizeDateTime($datetime, $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME));
     }
 
     /**

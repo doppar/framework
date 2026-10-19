@@ -9,7 +9,29 @@ trait Grammar
      *
      * @var string
      */
-    private const VALID_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$/';
+    private const VALID_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?\z/';
+
+    /**
+     * Matches a plain, unqualified identifier
+     *
+     * @var string
+     */
+    private const VALID_SIMPLE_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*\z/';
+
+    /**
+     * Determine if a value is a safe identifier.
+     *
+     * @param string $identifier
+     * @param bool $allowQualified
+     * @return bool
+     */
+    protected static function isValidIdentifier(string $identifier, bool $allowQualified = true): bool
+    {
+        return (bool) preg_match(
+            $allowQualified ? self::VALID_IDENTIFIER_PATTERN : self::VALID_SIMPLE_IDENTIFIER_PATTERN,
+            $identifier
+        );
+    }
 
     /**
      * Ensure a value used as a column identifier is a safe
@@ -20,7 +42,7 @@ trait Grammar
      */
     protected function assertValidIdentifier(string $identifier): void
     {
-        if (!preg_match(self::VALID_IDENTIFIER_PATTERN, $identifier)) {
+        if (!static::isValidIdentifier($identifier)) {
             throw new \InvalidArgumentException(
                 "Invalid column identifier \"{$identifier}\". " .
                 "Use whereRaw()/orderByRaw()/groupByRaw() to build conditions from raw SQL expressions."
@@ -72,13 +94,20 @@ trait Grammar
      *
      * @param string $tableName
      * @return string
+     * @throws \InvalidArgumentException
      */
     public function getTableColumnsSql(string $tableName): string
     {
+        $this->assertValidIdentifier($tableName);
+
+        // information_schema compares table_name as a string value, so it is
+        // escaped as a literal rather than quoted as an identifier
+        $literal = str_replace("'", "''", $tableName);
+
         return match ($this->getDriver()) {
-            'sqlite' => "PRAGMA table_info({$tableName})",
-            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$tableName}'",
-            default => "DESCRIBE {$tableName}",
+            'sqlite' => "PRAGMA table_info({$this->quoteIdentifier($tableName)})",
+            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$literal}'",
+            default => "DESCRIBE {$this->quoteIdentifier($tableName)}",
         };
     }
 

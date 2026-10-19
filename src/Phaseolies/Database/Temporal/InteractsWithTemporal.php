@@ -543,24 +543,14 @@ trait InteractsWithTemporal
     }
 
     /**
-     * Expand a partial datetime to the end of the given day, minute or second.
+     * Normalize a datetime for comparison with `valid_from`
      *
      * @param string $datetime
      * @return string
      */
     private function normalizeTemporalDateTime(string $datetime): string
     {
-        $datetime = trim($datetime);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $datetime)) {
-            return $datetime . ' 23:59:59.999999';
-        }
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $datetime)) {
-            return $datetime . ':59.999999';
-        }
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $datetime)) {
-            return $datetime . '.999999';
-        }
-        return $datetime;
+        return TemporalManager::normalizeDateTime($datetime, $this->getConnection()->getAttribute(PDO::ATTR_DRIVER_NAME));
     }
 
     /**
