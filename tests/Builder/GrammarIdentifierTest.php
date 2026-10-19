@@ -188,6 +188,17 @@ final class GrammarIdentifierTest extends TestCase
         }
     }
 
+    public function testPgsqlTableNameIsAnEscapedLiteralNotAnIdentifier(): void
+    {
+        $sql = $this->grammarFor('pgsql')->getTableColumnsSql('main.users');
+
+        $this->assertSame(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'main.users'",
+            $sql
+        );
+        $this->assertStringNotContainsString('"', $sql);
+    }
+
     public function testQuoteIdentifierUsesDriverSpecificQuoteCharacter(): void
     {
         $this->assertSame('`users`', $this->grammarFor('mysql')->quoteIdentifier('users'));

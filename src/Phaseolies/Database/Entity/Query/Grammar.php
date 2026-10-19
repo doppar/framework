@@ -100,9 +100,13 @@ trait Grammar
     {
         $this->assertValidIdentifier($tableName);
 
+        // information_schema compares table_name as a string value, so it is
+        // escaped as a literal rather than quoted as an identifier
+        $literal = str_replace("'", "''", $tableName);
+
         return match ($this->getDriver()) {
             'sqlite' => "PRAGMA table_info({$this->quoteIdentifier($tableName)})",
-            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$tableName}'",
+            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$literal}'",
             default => "DESCRIBE {$this->quoteIdentifier($tableName)}",
         };
     }
