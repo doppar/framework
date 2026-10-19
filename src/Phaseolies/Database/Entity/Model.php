@@ -1401,6 +1401,6 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             return $this;
         }
 
-        return $this->newQuery()->$method(...$parameters);
+        return static::query($this->connection)->$method(...$parameters);
     }
 }
