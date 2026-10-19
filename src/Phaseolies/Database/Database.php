@@ -483,15 +483,29 @@ class Database
      * @param array $params
      * @return array
      * @throws PDOException
+     * @throws \InvalidArgumentException
      */
     public static function view(string $viewName, array $where = [], array $params = []): array
     {
-        $sql = "SELECT * FROM {$viewName}";
+        if (!static::isValidIdentifier($viewName)) {
+            throw new \InvalidArgumentException("Invalid view name \"{$viewName}\".");
+        }
+
+        $quote = static::getPdoInstance()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql' ? '"' : '`';
+        $quoteId = fn(string $id): string => $quote . str_replace('.', "{$quote}.{$quote}", $id) . $quote;
+
+        $sql = "SELECT * FROM " . $quoteId($viewName);
 
         if (!empty($where)) {
             $conditions = [];
             foreach ($where as $column => $value) {
-                $conditions[] = "{$column} = :{$column}";
+                $column = (string) $column;
+
+                if (!static::isValidIdentifier($column, false)) {
+                    throw new \InvalidArgumentException("Invalid column name \"{$column}\".");
+                }
+
+                $conditions[] = $quoteId($column) . " = :{$column}";
                 $params[":{$column}"] = $value;
             }
             $sql .= " WHERE " . implode(' AND ', $conditions);
