@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.8.2 - 2026-10-26
+
+* Honor overridden query() on instance calls to the model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/380
+
 ## v4.8.1 - 2026-10-19
 
 * Fix SQL injection via unvalidated table, view and column identifiers by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/379
