@@ -128,6 +128,8 @@ namespace Tests\Unit\Storage {
     use Phaseolies\Support\Storage\LocalFileSystem;
     use Phaseolies\Support\Storage\PublicFileSystem;
     use Phaseolies\Support\Storage\StorageFileService;
+    use Phaseolies\Support\Storage\Contracts\StorageInterface;
+    use Phaseolies\Support\Storage\IFileSystem;
     use PHPUnit\Framework\Attributes\DataProvider;
     use PHPUnit\Framework\TestCase;
     use Tests\Unit\Storage\Support\UploadTestConfig;
@@ -188,6 +190,19 @@ namespace Tests\Unit\Storage {
             $this->assertTrue($disk->store('documents', $file, 'stored.txt'));
             $this->assertFileExists($this->localRoot . '/documents/stored.txt');
             $this->assertSame('local disk content', (string) file_get_contents($this->localRoot . '/documents/stored.txt'));
+        }
+
+        public function testStorageImplementationConformsToTheStorageContract(): void
+        {
+            $storage = new StorageFileService();
+
+            $this->assertInstanceOf(StorageInterface::class, $storage);
+            $this->assertSame($this->localRoot, $storage->getDiskPath('local'));
+
+            $disk = $storage->disk('local');
+
+            $this->assertInstanceOf(IFileSystem::class, $disk);
+            $this->assertInstanceOf(LocalFileSystem::class, $disk);
         }
 
         public function testStorageFacadeResolvesPublicDiskAndStoresUpload(): void

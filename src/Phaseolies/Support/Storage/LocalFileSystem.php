@@ -53,7 +53,7 @@ class LocalFileSystem extends FileSystem implements IFileSystem
      * @return string
      * @throws \Phaseolies\Support\Storage\FileNotFoundException
      */
-    public function content($path)
+    public function content(string $path): string
     {
         $fullPath = $this->resolvePath($path);
 

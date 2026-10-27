@@ -7,6 +7,7 @@ use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
+use Phaseolies\Support\Storage\Contracts\StorageInterface;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\Mail\MailService;
@@ -79,7 +80,8 @@ class FacadeLauncher extends ServiceLauncher
 
         // Bind the 'storage' service to a singleton instance of the Storage class.
         // This handles file uploads.
-        $this->app->singleton('storage', StorageFileService::class);
+        $this->app->singleton(StorageInterface::class, StorageFileService::class);
+        $this->app->alias(StorageInterface::class, 'storage');
 
         // Bind the 'vite' service to a singleton instance of the Vite manager.
         // This resolves dev-server and built frontend assets.
