@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Auth\Security;
 
-class PasswordHashing
+use Phaseolies\Auth\Security\Contracts\HashingInterface;
+
+class PasswordHashing implements HashingInterface
 {
     /**
      * Hash a password using the configured algorithm and options.
@@ -11,7 +13,7 @@ class PasswordHashing
      * @return string
      * @throws \RuntimeException
      */
-    public function make($password)
+    public function make(string $password): string
     {
         $driver = config('hashing.driver', 'bcrypt');
 
@@ -44,7 +46,7 @@ class PasswordHashing
      * @param string $hashedPassword
      * @return bool
      */
-    public function check($password, $hashedPassword)
+    public function check(string $password, string $hashedPassword): bool
     {
         return password_verify($password, $hashedPassword);
     }
@@ -55,7 +57,7 @@ class PasswordHashing
      * @param string $hashedPassword
      * @return bool
      */
-    public function needsRehash($hashedPassword)
+    public function needsRehash(string $hashedPassword): bool
     {
         $driver = config('hashing.driver', 'bcrypt');
 

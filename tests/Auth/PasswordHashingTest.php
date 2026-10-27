@@ -14,7 +14,12 @@ namespace Phaseolies\Auth\Security {
 namespace Tests\Unit\Auth {
 
     use Phaseolies\Auth\Security\PasswordHashing;
+    use Phaseolies\Auth\Security\Contracts\HashingInterface;
+    use Phaseolies\Application;
+    use Phaseolies\DI\Container;
+    use Phaseolies\Launchers\FacadeLauncher;
     use PHPUnit\Framework\TestCase;
+    use ReflectionClass;
     use RuntimeException;
 
     class PasswordHashingTest extends TestCase
@@ -33,6 +38,32 @@ namespace Tests\Unit\Auth {
         protected function tearDown(): void
         {
             unset($GLOBALS['doppar_hashing_test_config']);
+        }
+
+        public function testPasswordHashingImplementationConformsToTheHashingContract(): void
+        {
+            $this->assertInstanceOf(HashingInterface::class, $this->hashing);
+        }
+
+        public function testApplicationBindsTheHashingContractAndLegacyServiceNameToTheSameSingleton(): void
+        {
+            $app = $this->getMockBuilder(Application::class)
+                ->disableOriginalConstructor()
+                ->onlyMethods([])
+                ->getMock();
+
+            $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
+            $containerConstructor->invoke($app);
+
+            (new FacadeLauncher($app))->register();
+
+            $contractHashing = $app->get(HashingInterface::class);
+            $legacyHashing = $app->get('hash');
+
+            $this->assertInstanceOf(HashingInterface::class, $contractHashing);
+            $this->assertInstanceOf(PasswordHashing::class, $contractHashing);
+            $this->assertSame($contractHashing, $legacyHashing);
+            $this->assertTrue($legacyHashing->check('secret123', $legacyHashing->make('secret123')));
         }
 
         public function testMakeReturnsBcryptHash()

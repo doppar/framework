@@ -22,6 +22,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
+use Phaseolies\Auth\Security\Contracts\HashingInterface;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 
@@ -46,9 +47,10 @@ class FacadeLauncher extends ServiceLauncher
         // This is used to generate HTTP responses.
         $this->app->singleton('response', Response::class);
 
-        // Bind the 'hash' service to a singleton instance of the PasswordHashing class.
-        // This provides password hashing and verification functionality.
-        $this->app->singleton('hash', PasswordHashing::class);
+        // Bind the hashing contract to a singleton implementation and retain
+        // the existing 'hash' service name as an alias.
+        $this->app->singleton(HashingInterface::class, PasswordHashing::class);
+        $this->app->alias(HashingInterface::class, 'hash');
 
         // Bind the 'auth' service to a singleton instance of the GuardManager class.
         // This handles user authentication and authorization.
