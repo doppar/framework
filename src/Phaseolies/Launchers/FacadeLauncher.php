@@ -10,6 +10,7 @@ use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
 use Phaseolies\Support\Mail\MailService;
+use Phaseolies\Support\Mail\Contracts\MailInterface;
 use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Support\Encryption;
@@ -68,7 +69,8 @@ class FacadeLauncher extends ServiceLauncher
 
         // Bind the 'mail' service to a singleton instance of the MailService class.
         // This handles sending emails.
-        $this->app->singleton('mail', MailService::class);
+        $this->app->singleton(MailInterface::class, MailService::class);
+        $this->app->alias(MailInterface::class, 'mail');
 
         // Bind the 'url' service to a singleton instance of the UrlGenerator class.
         // This generates URLs for the application, using the base URL from the environment

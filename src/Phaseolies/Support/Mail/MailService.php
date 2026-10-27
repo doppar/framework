@@ -3,6 +3,7 @@
 namespace Phaseolies\Support\Mail;
 
 use Phaseolies\Database\Entity\Model;
+use Phaseolies\Support\Mail\Contracts\MailInterface;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport;
@@ -13,7 +14,7 @@ use Symfony\Component\Mime\Crypto\DkimSigner;
 use Symfony\Component\Mime\Crypto\SMimeSigner;
 use Symfony\Component\Mime\Message;
 
-class MailService
+class MailService implements MailInterface
 {
     /**
      * The address the next email will be delivered to.
