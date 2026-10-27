@@ -13,6 +13,7 @@ use Phaseolies\Support\Mail\MailService;
 use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Support\Encryption;
+use Phaseolies\Support\Contracts\EncryptionInterface;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Http\Support\RequestAbortion;
 use Phaseolies\Http\Response\RedirectResponse;
@@ -56,7 +57,8 @@ class FacadeLauncher extends ServiceLauncher
 
         // Bind the 'crypt' service to a singleton instance of the Encryption class.
         // This provides encryption and decryption functionality.
-        $this->app->singleton('crypt', Encryption::class);
+        $this->app->singleton(EncryptionInterface::class, Encryption::class);
+        $this->app->alias(EncryptionInterface::class, 'crypt');
 
         // Bind the 'redirect' service to a singleton instance of the RedirectResponse class.
         // This is used to generate HTTP redirect responses.

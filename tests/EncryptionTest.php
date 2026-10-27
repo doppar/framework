@@ -3,8 +3,13 @@
 namespace Tests\Unit;
 
 use Phaseolies\Support\Encryption;
+use Phaseolies\Support\Contracts\EncryptionInterface;
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
 use RuntimeException;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class EncryptionTest extends TestCase
 {
@@ -13,6 +18,35 @@ class EncryptionTest extends TestCase
     protected function setUp(): void
     {
         $this->encryption = new Encryption();
+    }
+
+    public function testEncryptionImplementationConformsToTheEncryptionContract(): void
+    {
+        $this->assertInstanceOf(EncryptionInterface::class, $this->encryption);
+    }
+
+    public function testApplicationBindsTheEncryptionContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $app = $this->getMockBuilder(Application::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods([])
+            ->getMock();
+
+        $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
+        $containerConstructor->invoke($app);
+
+        (new FacadeLauncher($app))->register();
+
+        $contractEncryption = $app->get(EncryptionInterface::class);
+        $legacyEncryption = $app->get('crypt');
+
+        $this->assertInstanceOf(EncryptionInterface::class, $contractEncryption);
+        $this->assertInstanceOf(Encryption::class, $contractEncryption);
+        $this->assertSame($contractEncryption, $legacyEncryption);
+
+        $encrypted = $contractEncryption->encrypt('contract value');
+
+        $this->assertSame('contract value', $legacyEncryption->decrypt($encrypted));
     }
 
     public function testEncryptAndDecryptAString()
