@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Support;
 
-class Session
+use Phaseolies\Session\Contracts\SessionInterface;
+
+class Session implements SessionInterface
 {
     /**
      * The session data.
@@ -43,7 +45,7 @@ class Session
      * @param mixed $default
      * @return mixed
      */
-    public function get(string $key, $default = null)
+    public function get(string $key, $default = null): mixed
     {
         $value = $this->data[$key] ?? $default;
 
@@ -57,7 +59,7 @@ class Session
      * @param mixed $default
      * @return mixed
      */
-    public function pull(string $key, $default = null)
+    public function pull(string $key, $default = null): mixed
     {
         $value = $this->data[$key] ?? $default;
 
@@ -73,7 +75,7 @@ class Session
      * @param mixed $default
      * @return mixed
      */
-    public function getPeek(string $key, $default = null)
+    public function getPeek(string $key, $default = null): mixed
     {
         $value = $this->peek[$key] ?? $default;
 

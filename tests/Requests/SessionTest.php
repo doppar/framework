@@ -3,6 +3,11 @@
 namespace Tests\Unit\Requests;
 
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
+use ReflectionClass;
 use PHPUnit\Framework\TestCase;
 
 class SessionTest extends TestCase
@@ -29,6 +34,35 @@ class SessionTest extends TestCase
     public function testConstructorInitializesSession()
     {
         $this->assertSame($_SESSION, $this->session->all());
+    }
+
+    public function testSessionImplementationConformsToTheSessionContract(): void
+    {
+        $this->assertInstanceOf(SessionInterface::class, $this->session);
+    }
+
+    public function testApplicationBindsTheSessionContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $app = $this->getMockBuilder(Application::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods([])
+            ->getMock();
+
+        $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
+        $containerConstructor->invoke($app);
+
+        (new FacadeLauncher($app))->register();
+
+        $contractSession = $app->get(SessionInterface::class);
+        $legacySession = $app->get('session');
+
+        $this->assertInstanceOf(SessionInterface::class, $contractSession);
+        $this->assertInstanceOf(Session::class, $contractSession);
+        $this->assertSame($contractSession, $legacySession);
+
+        $contractSession->put('from_contract', 'value');
+
+        $this->assertSame(['from_contract' => 'value'], $legacySession->all());
     }
 
     public function testPutAndGetSingleValue()
