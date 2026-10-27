@@ -522,6 +522,36 @@ class ContainerTest extends TestCase
         $this->assertEquals('value', $this->container->get('alias2'));
     }
 
+    public function testForgetResolvedViaAliasClearsSharedInstance()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $first = $this->container->get('alias');
+        $this->container->forgetResolved('alias');
+
+        $this->assertNotSame($first, $this->container->get('alias'));
+        $this->assertNotSame($first, $this->container->get('original'));
+    }
+
+    public function testInstanceOverrideViaAliasReachesTarget()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $fake = new \stdClass();
+        $this->container->instance('alias', $fake);
+
+        $this->assertSame($fake, $this->container->get('original'));
+        $this->assertSame($fake, $this->container->get('alias'));
+    }
+
+    public function testAliasToItselfThrows()
+    {
+        $this->expectException(\LogicException::class);
+        $this->container->alias('same', 'same');
+    }
+
     //========================================
     // EXTEND TESTS
     //========================================

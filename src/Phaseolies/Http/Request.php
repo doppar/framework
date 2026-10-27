@@ -160,7 +160,10 @@ class Request
         $this->query = new InputBag($query);
         $this->attributes = new ParameterBag($attributes);
         $this->cookies = new InputBag($cookies);
-        $this->session = new Session();
+        $container = app();
+        $this->session = $container->has(SessionInterface::class)
+            ? $container->get(SessionInterface::class)
+            : new Session();
         $this->files = $files;
         $this->content = $content;
         $this->requestUri = $this->getPath();

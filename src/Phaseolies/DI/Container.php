@@ -31,6 +31,15 @@ class Container implements ArrayAccess
     private array $instances = [];
 
     /**
+     * Registered aliases, keyed by alias name and pointing at the abstract
+     * they stand for. Every lookup is redirected to the canonical key, so an
+     * alias shares the resolved instance and lifecycle of its target.
+     *
+     * @var array<string, string>
+     */
+    private array $aliases = [];
+
+    /**
      * Array to track currently resolving classes (for circular dependency detection)
      *
      * @var array<string, bool>
@@ -123,6 +132,10 @@ class Container implements ArrayAccess
      */
     public function offsetUnset($offset): void
     {
+        unset($this->aliases[$offset]);
+
+        $offset = $this->getAlias($offset);
+
         unset($this->bindings[$offset], $this->instances[$offset]);
         $this->forgetScopedInstance($offset);
     }
@@ -140,6 +153,8 @@ class Container implements ArrayAccess
         if ($concrete === null) {
             $concrete = $abstract;
         }
+
+        unset($this->aliases[$abstract]);
 
         $this->bindings[$abstract] = [
             'concrete' => $concrete,
@@ -203,6 +218,8 @@ class Container implements ArrayAccess
      */
     public function scopeOf(string $abstract): ?string
     {
+        $abstract = $this->getAlias($abstract);
+
         if (!isset($this->bindings[$abstract])) {
             return null;
         }
@@ -233,6 +250,8 @@ class Container implements ArrayAccess
      */
     public function instance(string $abstract, mixed $instance): void
     {
+        $abstract = $this->getAlias($abstract);
+
         $this->instances[$abstract] = $instance;
 
         $this->bindings[$abstract] = [
@@ -252,6 +271,8 @@ class Container implements ArrayAccess
      */
     public function get(string $abstract, array $parameters = []): mixed
     {
+        $abstract = $this->getAlias($abstract);
+
         if (isset($this->resolving[$abstract])) {
             throw new \RuntimeException("Circular dependency detected while resolving [{$abstract}]");
         }
@@ -519,6 +540,8 @@ class Container implements ArrayAccess
      */
     public function has(string $key): bool
     {
+        $key = $this->getAlias($key);
+
         return isset($this->bindings[$key]) || class_exists($key);
     }
 
@@ -530,6 +553,8 @@ class Container implements ArrayAccess
      */
     public function hasInstance(string $key): bool
     {
+        $key = $this->getAlias($key);
+
         return isset($this->instances[$key]) && $this->instances[$key] !== null;
     }
 
@@ -541,6 +566,8 @@ class Container implements ArrayAccess
      */
     public function forgetResolved(string $abstract): void
     {
+        $abstract = $this->getAlias($abstract);
+
         unset($this->instances[$abstract]);
         $this->forgetScopedInstance($abstract);
     }
@@ -592,6 +619,7 @@ class Container implements ArrayAccess
         } finally {
             $this->bindings = [];
             $this->instances = [];
+            $this->aliases = [];
             $this->resolving = [];
             $this->bootBindingKeys = [];
             $this->bootBindingsSnapshotted = false;
@@ -744,10 +772,30 @@ class Container implements ArrayAccess
      */
     public function alias(string $abstract, string $alias): void
     {
-        $this->bindings[$alias] = [
-            'concrete' => fn(Container $container) => $container->get($abstract),
-            'singleton' => false
-        ];
+        if ($this->getAlias($abstract) === $alias) {
+            throw new \LogicException("[{$abstract}] is aliased to itself.");
+        }
+
+        // The alias name must no longer resolve through a stale binding.
+        unset($this->bindings[$alias], $this->instances[$alias]);
+        $this->forgetScopedInstance($alias);
+
+        $this->aliases[$alias] = $abstract;
+    }
+
+    /**
+     * Resolve a name to its canonical abstract by following the alias chain.
+     *
+     * @param string $abstract
+     * @return string
+     */
+    public function getAlias(string $abstract): string
+    {
+        while (isset($this->aliases[$abstract])) {
+            $abstract = $this->aliases[$abstract];
+        }
+
+        return $abstract;
     }
 
     /**
@@ -835,6 +883,8 @@ class Container implements ArrayAccess
      */
     public function isSingleton(string $abstract): bool
     {
+        $abstract = $this->getAlias($abstract);
+
         return isset($this->bindings[$abstract]) && $this->bindings[$abstract]['singleton'];
     }
 
@@ -845,10 +895,7 @@ class Container implements ArrayAccess
      */
     public function getAliases(): array
     {
-        return array_filter($this->bindings, function ($binding) {
-            $concrete = $binding['concrete'];
-            return is_callable($concrete) && !(is_string($concrete) && class_exists($concrete));
-        });
+        return $this->aliases;
     }
 
     /**

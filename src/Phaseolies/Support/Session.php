@@ -45,7 +45,7 @@ class Session implements SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function get(string $key, $default = null): mixed
+    public function get(string $key, $default = null)
     {
         $value = $this->data[$key] ?? $default;
 
@@ -59,7 +59,7 @@ class Session implements SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function pull(string $key, $default = null): mixed
+    public function pull(string $key, $default = null)
     {
         $value = $this->data[$key] ?? $default;
 
@@ -75,7 +75,7 @@ class Session implements SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function getPeek(string $key, $default = null): mixed
+    public function getPeek(string $key, $default = null)
     {
         $value = $this->peek[$key] ?? $default;
 

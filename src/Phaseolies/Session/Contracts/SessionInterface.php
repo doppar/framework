@@ -11,7 +11,7 @@ interface SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function get(string $key, $default = null): mixed;
+    public function get(string $key, $default = null);
 
     /**
      * Get a session value by key and remove it.
@@ -20,7 +20,7 @@ interface SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function pull(string $key, $default = null): mixed;
+    public function pull(string $key, $default = null);
 
     /**
      * Get a peek value by key.
@@ -29,7 +29,7 @@ interface SessionInterface
      * @param mixed $default
      * @return mixed
      */
-    public function getPeek(string $key, $default = null): mixed;
+    public function getPeek(string $key, $default = null);
 
     /**
      * Put a value into the session peek data.

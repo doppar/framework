@@ -65,6 +65,32 @@ class SessionTest extends TestCase
         $this->assertSame(['from_contract' => 'value'], $legacySession->all());
     }
 
+    public function testSessionIsResetBetweenRequestsAndOverridableByLegacyKey(): void
+    {
+        $app = $this->getMockBuilder(Application::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods([])
+            ->getMock();
+
+        (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+        (new FacadeLauncher($app))->register();
+        $app->snapshotBootBindings();
+
+        $first = $app->get('session');
+        $first->put('user_id', 1);
+
+        // Same sweep Application::cleanupRequestScopedServices() performs.
+        $app->forgetResolved('session');
+        $app->forgetRequestScopedInstances();
+
+        $second = $app->get('session');
+        $this->assertNotSame($first, $second);
+
+        $fake = new Session();
+        $app->instance('session', $fake);
+        $this->assertSame($fake, $app->get(SessionInterface::class));
+    }
+
     public function testPutAndGetSingleValue()
     {
         $this->session->put('test_key', 'test_value');
