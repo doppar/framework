@@ -59,8 +59,8 @@ class FacadeLauncher extends ServiceLauncher
         // This handles user authentication and authorization.
         $this->app->singleton('auth', ActorManager::class);
 
-        // Bind the 'crypt' service to a singleton instance of the Encryption class.
-        // This provides encryption and decryption functionality.
+        // Bind the encryption contract to a singleton implementation and retain
+        // the existing 'crypt' service name as an alias.
         $this->app->singleton(EncryptionInterface::class, Encryption::class);
         $this->app->alias(EncryptionInterface::class, 'crypt');
 
