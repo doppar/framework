@@ -673,20 +673,32 @@ class ContainerTest extends TestCase
         $this->assertSame('alias2', $this->container->getAlias('alias2'));
     }
 
-    public function testExecutionScopeBindingReplacesExistingAlias()
+    public function testExecutionScopeBindingThroughAliasRebindsTarget()
     {
         $this->container->singleton('target', fn() => 'target');
         $this->container->alias('target', 'name');
 
         $this->container->bindWithScope('name', fn() => 'own', Container::SCOPE_EXECUTION);
 
-        $resolved = null;
+        $resolved = [];
         $this->container->runInContext('console', [], function () use (&$resolved) {
-            $resolved = $this->container->get('name');
+            $resolved = [$this->container->get('name'), $this->container->get('target')];
         });
 
-        $this->assertSame('own', $resolved);
-        $this->assertSame('target', $this->container->get('target'));
+        $this->assertSame(['own', 'own'], $resolved);
+        $this->assertSame(['name' => 'target'], $this->container->getAliases());
+    }
+
+    public function testBindingThroughAliasRebindsTargetAndKeepsAlias()
+    {
+        $this->container->singleton('original', fn() => 'old');
+        $this->container->alias('original', 'alias');
+
+        $this->container->singleton('alias', fn() => 'new');
+
+        $this->assertSame('new', $this->container->get('original'));
+        $this->assertSame('new', $this->container->get('alias'));
+        $this->assertSame(['alias' => 'original'], $this->container->getAliases());
     }
 
     //========================================
