@@ -63,16 +63,12 @@ class PasswordHashing implements HashingInterface
      */
     public function needsRehash(?string $hashedPassword): bool
     {
-        if ($hashedPassword === null) {
-            return true;
-        }
-
         $driver = config('hashing.driver', 'bcrypt');
 
         switch ($driver) {
             case 'bcrypt':
                 $rounds = config('hashing.bcrypt.rounds', 10);
-                return password_needs_rehash($hashedPassword, PASSWORD_BCRYPT, ['cost' => $rounds]);
+                return $hashedPassword === null || password_needs_rehash($hashedPassword, PASSWORD_BCRYPT, ['cost' => $rounds]);
 
             case 'argon':
             case 'argon2id':
@@ -81,7 +77,7 @@ class PasswordHashing implements HashingInterface
                     'time_cost' => config('hashing.argon.time', PASSWORD_ARGON2_DEFAULT_TIME_COST),
                     'threads' => config('hashing.argon.threads', PASSWORD_ARGON2_DEFAULT_THREADS),
                 ];
-                return password_needs_rehash($hashedPassword, PASSWORD_ARGON2ID, $options);
+                return $hashedPassword === null || password_needs_rehash($hashedPassword, PASSWORD_ARGON2ID, $options);
 
             default:
                 throw new \RuntimeException("Unsupported hashing driver: {$driver}");

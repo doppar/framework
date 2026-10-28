@@ -41,17 +41,13 @@ namespace Tests\Unit\Auth {
         }
 
         /**
-         * Build a real Application without booting it, so only the container is initialised
+         * Build a real Application without booting it
          *
          * @return Application
          */
         private function makeApplication(): Application
         {
-            $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
-
-            (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
-
-            return $app;
+            return (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
         }
 
         public function testPasswordHashingImplementationConformsToTheHashingContract(): void
@@ -99,6 +95,27 @@ namespace Tests\Unit\Auth {
 
             $this->assertSame($fake, $app->get(HashingInterface::class));
             $this->assertSame($fake, $app->get('hash'));
+        }
+
+        public function testNeedsRehashStillRejectsUnsupportedDriverForMissingHash(): void
+        {
+            $GLOBALS['doppar_hashing_test_config']['hashing.driver'] = 'md5';
+
+            $this->expectException(RuntimeException::class);
+            $this->hashing->needsRehash(null);
+        }
+
+        public function testSingletonOverrideByLegacyKeyReachesTheContract(): void
+        {
+            $app = $this->makeApplication();
+
+            (new FacadeLauncher($app))->register();
+
+            $custom = new PasswordHashing();
+            $app->singleton('hash', fn() => $custom);
+
+            $this->assertSame($custom, $app->get('hash'));
+            $this->assertSame($custom, $app->get(HashingInterface::class));
         }
 
         public function testMakeReturnsBcryptHash()

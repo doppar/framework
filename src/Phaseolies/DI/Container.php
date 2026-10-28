@@ -150,11 +150,11 @@ class Container implements ArrayAccess
      */
     public function bind(string $abstract, callable|string|null $concrete = null, bool $singleton = false): void
     {
+        $abstract = $this->getAlias($abstract);
+
         if ($concrete === null) {
             $concrete = $abstract;
         }
-
-        unset($this->aliases[$abstract]);
 
         $this->bindings[$abstract] = [
             'concrete' => $concrete,
@@ -190,8 +190,7 @@ class Container implements ArrayAccess
      */
     public function bindWithScope(string $abstract, callable|string|null $concrete, string $scope): void
     {
-        // Binding an abstract directly must win over any alias of the same name.
-        unset($this->aliases[$abstract]);
+        $abstract = $this->getAlias($abstract);
 
         match ($scope) {
             self::SCOPE_SINGLETON => $this->bind($abstract, $concrete, true),

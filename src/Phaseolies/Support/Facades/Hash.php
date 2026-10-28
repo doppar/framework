@@ -7,7 +7,7 @@ use Phaseolies\Facade\BaseFacade;
 /**
  * @method static string make(string $plainText)
  * @method static bool check(?string $plainText, ?string $hashedText)
- * @method static bool needsRehash(?string $password)
+ * @method static bool needsRehash(?string $hashedPassword)
  *
  * @see \Phaseolies\Auth\Security\Contracts\HashingInterface
  */
