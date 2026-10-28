@@ -789,8 +789,10 @@ class Container implements ArrayAccess
      */
     public function alias(string $abstract, string $alias): void
     {
-        if ($this->getAlias($abstract) === $alias) {
-            throw new \LogicException("[{$abstract}] is aliased to itself.");
+        for ($node = $abstract; $node !== null; $node = $this->aliases[$node] ?? null) {
+            if ($node === $alias) {
+                throw new \LogicException("Aliasing [{$abstract}] to [{$alias}] would create a circular alias.");
+            }
         }
 
         // The alias name must no longer resolve through a stale binding.

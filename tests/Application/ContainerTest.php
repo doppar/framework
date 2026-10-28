@@ -552,6 +552,23 @@ class ContainerTest extends TestCase
         $this->container->alias('same', 'same');
     }
 
+    public function testRepointingMidChainAliasThrowsInsteadOfLooping()
+    {
+        $this->container->singleton('c', fn() => 'value');
+        $this->container->alias('c', 'b');
+        $this->container->alias('b', 'a');
+
+        try {
+            $this->container->alias('a', 'b');
+            $this->fail('Expected a circular alias to be rejected.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('circular', $e->getMessage());
+        }
+
+        $this->assertSame('value', $this->container->get('a'));
+        $this->assertSame('c', $this->container->getAlias('a'));
+    }
+
     public function testUsingThroughAliasRestoresOriginalBinding()
     {
         $original = new \stdClass();
