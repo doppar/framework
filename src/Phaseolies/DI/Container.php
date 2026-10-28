@@ -216,7 +216,7 @@ class Container implements ArrayAccess
      * Get the scope a binding was declared with.
      *
      * @param string $abstract
-     * @return string|null Null when nothing is bound.
+     * @return string|null
      */
     public function scopeOf(string $abstract): ?string
     {
@@ -573,6 +573,7 @@ class Container implements ArrayAccess
         $abstract = $this->getAlias($abstract);
 
         unset($this->instances[$abstract]);
+
         $this->forgetScopedInstance($abstract);
     }
 
@@ -796,6 +797,7 @@ class Container implements ArrayAccess
 
         // The alias name must no longer resolve through a stale binding.
         unset($this->bindings[$alias], $this->instances[$alias]);
+
         $this->forgetScopedInstance($alias);
 
         $this->aliases[$alias] = $abstract;
