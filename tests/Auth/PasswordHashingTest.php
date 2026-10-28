@@ -40,6 +40,20 @@ namespace Tests\Unit\Auth {
             unset($GLOBALS['doppar_hashing_test_config']);
         }
 
+        /**
+         * Build a real Application without booting it, so only the container is initialised
+         *
+         * @return Application
+         */
+        private function makeApplication(): Application
+        {
+            $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+
+            (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+
+            return $app;
+        }
+
         public function testPasswordHashingImplementationConformsToTheHashingContract(): void
         {
             $this->assertInstanceOf(HashingInterface::class, $this->hashing);
@@ -47,13 +61,7 @@ namespace Tests\Unit\Auth {
 
         public function testApplicationBindsTheHashingContractAndLegacyServiceNameToTheSameSingleton(): void
         {
-            $app = $this->getMockBuilder(Application::class)
-                ->disableOriginalConstructor()
-                ->onlyMethods([])
-                ->getMock();
-
-            $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
-            $containerConstructor->invoke($app);
+            $app = $this->makeApplication();
 
             (new FacadeLauncher($app))->register();
 
@@ -82,12 +90,8 @@ namespace Tests\Unit\Auth {
 
         public function testInstanceOverrideByLegacyKeyReachesTheContract(): void
         {
-            $app = $this->getMockBuilder(Application::class)
-                ->disableOriginalConstructor()
-                ->onlyMethods([])
-                ->getMock();
+            $app = $this->makeApplication();
 
-            (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
             (new FacadeLauncher($app))->register();
 
             $fake = new PasswordHashing();
