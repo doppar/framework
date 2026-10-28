@@ -42,23 +42,31 @@ class PasswordHashing implements HashingInterface
     /**
      * Verify if a given password matches the stored hash.
      *
-     * @param string $password
-     * @param string $hashedPassword
+     * @param ?string $password
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function check(string $password, string $hashedPassword): bool
+    public function check(?string $password, ?string $hashedPassword): bool
     {
+        if ($password === null || $hashedPassword === null) {
+            return false;
+        }
+
         return password_verify($password, $hashedPassword);
     }
 
     /**
      * Check if a password hash needs rehashing (security upgrade).
      *
-     * @param string $hashedPassword
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function needsRehash(string $hashedPassword): bool
+    public function needsRehash(?string $hashedPassword): bool
     {
+        if ($hashedPassword === null) {
+            return true;
+        }
+
         $driver = config('hashing.driver', 'bcrypt');
 
         switch ($driver) {

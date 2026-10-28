@@ -66,6 +66,37 @@ namespace Tests\Unit\Auth {
             $this->assertTrue($legacyHashing->check('secret123', $legacyHashing->make('secret123')));
         }
 
+        public function testCheckReturnsFalseForMissingPasswordOrHash(): void
+        {
+            $hash = $this->hashing->make('secret123');
+
+            $this->assertFalse($this->hashing->check('secret123', null));
+            $this->assertFalse($this->hashing->check(null, $hash));
+            $this->assertFalse($this->hashing->check(null, null));
+        }
+
+        public function testNeedsRehashIsTrueForMissingHash(): void
+        {
+            $this->assertTrue($this->hashing->needsRehash(null));
+        }
+
+        public function testInstanceOverrideByLegacyKeyReachesTheContract(): void
+        {
+            $app = $this->getMockBuilder(Application::class)
+                ->disableOriginalConstructor()
+                ->onlyMethods([])
+                ->getMock();
+
+            (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+            (new FacadeLauncher($app))->register();
+
+            $fake = new PasswordHashing();
+            $app->instance('hash', $fake);
+
+            $this->assertSame($fake, $app->get(HashingInterface::class));
+            $this->assertSame($fake, $app->get('hash'));
+        }
+
         public function testMakeReturnsBcryptHash()
         {
             $hash = $this->hashing->make('secret123');

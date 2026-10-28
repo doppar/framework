@@ -15,17 +15,17 @@ interface HashingInterface
     /**
      * Verify if a given password matches the stored hash.
      *
-     * @param string $password
-     * @param string $hashedPassword
+     * @param ?string $password
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function check(string $password, string $hashedPassword): bool;
+    public function check(?string $password, ?string $hashedPassword): bool;
 
     /**
      * Check if a password hash needs rehashing.
      *
-     * @param string $hashedPassword
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function needsRehash(string $hashedPassword): bool;
+    public function needsRehash(?string $hashedPassword): bool;
 }
