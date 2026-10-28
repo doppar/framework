@@ -86,6 +86,10 @@ class SessionTest extends TestCase
         $second = $app->get('session');
         $this->assertNotSame($first, $second);
 
+        $second->put('user_id', 2);
+        $app->forgetResolved('session');
+        $this->assertNotSame($second, $app->get('session'));
+
         $fake = new Session();
         $app->instance('session', $fake);
         $this->assertSame($fake, $app->get(SessionInterface::class));

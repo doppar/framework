@@ -134,7 +134,7 @@ class Container implements ArrayAccess
     {
         unset($this->aliases[$offset]);
 
-        $offset = $this->getAlias($offset);
+        $this->forgetAliasesOf($offset);
 
         unset($this->bindings[$offset], $this->instances[$offset]);
         $this->forgetScopedInstance($offset);
@@ -190,6 +190,9 @@ class Container implements ArrayAccess
      */
     public function bindWithScope(string $abstract, callable|string|null $concrete, string $scope): void
     {
+        // Binding an abstract directly must win over any alias of the same name.
+        unset($this->aliases[$abstract]);
+
         match ($scope) {
             self::SCOPE_SINGLETON => $this->bind($abstract, $concrete, true),
             self::SCOPE_TRANSIENT => $this->bind($abstract, $concrete, false),
@@ -251,6 +254,8 @@ class Container implements ArrayAccess
     public function instance(string $abstract, mixed $instance): void
     {
         $abstract = $this->getAlias($abstract);
+
+        $this->forgetScopedInstance($abstract);
 
         $this->instances[$abstract] = $instance;
 
@@ -702,17 +707,22 @@ class Container implements ArrayAccess
      */
     public function extend(string $abstract, callable $extender): void
     {
+        $abstract = $this->getAlias($abstract);
+
         if (!$this->has($abstract)) {
             throw new \RuntimeException("Cannot extend unbound abstract [{$abstract}]");
         }
 
-        $previous = $this->bindings[$abstract];
+        $previous = $this->bindings[$abstract] ?? ['concrete' => $abstract, 'singleton' => false];
 
         $this->bindings[$abstract] = [
             'concrete' => fn(Container $container, array $parameters = []) => $extender($container->resolveBinding($abstract, $previous, $parameters), $container),
             'singleton' => $previous['singleton'],
             'scope' => $previous['scope'] ?? ($previous['singleton'] ? self::SCOPE_SINGLETON : self::SCOPE_TRANSIENT),
         ];
+
+        unset($this->instances[$abstract]);
+        $this->forgetScopedInstance($abstract);
     }
 
     /**
@@ -726,6 +736,13 @@ class Container implements ArrayAccess
     public function using(array $overrides, callable $callback): mixed
     {
         $saved = [];
+        $canonical = [];
+
+        foreach ($overrides as $abstract => $concrete) {
+            $canonical[$this->getAlias($abstract)] = $concrete;
+        }
+
+        $overrides = $canonical;
 
         foreach (array_keys($overrides) as $abstract) {
             $saved[$abstract] = [
@@ -781,6 +798,22 @@ class Container implements ArrayAccess
         $this->forgetScopedInstance($alias);
 
         $this->aliases[$alias] = $abstract;
+    }
+
+    /**
+     * Remove every alias that points at the given abstract
+     *
+     * @param string $abstract
+     * @return void
+     */
+    private function forgetAliasesOf(string $abstract): void
+    {
+        foreach ($this->aliases as $alias => $target) {
+            if ($target === $abstract) {
+                unset($this->aliases[$alias]);
+                $this->forgetAliasesOf($alias);
+            }
+        }
     }
 
     /**
@@ -921,7 +954,7 @@ class Container implements ArrayAccess
      */
     public function isResolving(string $abstract): bool
     {
-        return isset($this->resolving[$abstract]);
+        return isset($this->resolving[$this->getAlias($abstract)]);
     }
 
     /**
@@ -963,9 +996,6 @@ class Container implements ArrayAccess
      */
     public function resolved(string $abstract): bool
     {
-        return $this->hasInstance($abstract) ||
-            (isset($this->bindings[$abstract]) &&
-                $this->bindings[$abstract]['singleton'] &&
-                $this->hasInstance($abstract));
+        return $this->hasInstance($abstract);
     }
 }
