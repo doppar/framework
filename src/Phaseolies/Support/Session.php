@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Support;
 
-class Session
+use Phaseolies\Session\Contracts\SessionInterface;
+
+class Session implements SessionInterface
 {
     /**
      * The session data.
