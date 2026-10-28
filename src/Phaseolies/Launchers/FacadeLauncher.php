@@ -9,6 +9,7 @@ use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\Mail\MailService;
 use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
@@ -39,9 +40,10 @@ class FacadeLauncher extends ServiceLauncher
         // This allows the application to access configuration settings globally.
         $this->app->singleton('config', Config::class);
 
-        // Bind the 'session' service to a singleton instance of the Session class.
-        // This manages user session data throughout the application.
-        $this->app->singleton('session', Session::class);
+        // Bind the session contract to a singleton implementation and retain
+        // the existing 'session' service name as an alias.
+        $this->app->singleton(SessionInterface::class, Session::class);
+        $this->app->alias(SessionInterface::class, 'session');
 
         // Bind the 'response' service to a singleton instance of the Response class.
         // This is used to generate HTTP responses.
