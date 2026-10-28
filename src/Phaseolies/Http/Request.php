@@ -4,6 +4,7 @@ namespace Phaseolies\Http;
 
 use Phaseolies\Utilities\IpUtils;
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\File;
 use Phaseolies\Support\Facades\Str;
 use Phaseolies\Support\Facades\App;
@@ -115,7 +116,7 @@ class Request
     public InputBag $cookies;
     public ServerBag $server;
     public HeaderBag $headers;
-    public Session $session;
+    public SessionInterface $session;
     public array $files;
     protected $content;
     protected static bool $httpMethodParameterOverride = false;
@@ -159,7 +160,10 @@ class Request
         $this->query = new InputBag($query);
         $this->attributes = new ParameterBag($attributes);
         $this->cookies = new InputBag($cookies);
-        $this->session = new Session();
+        $container = app();
+        $this->session = $container->has(SessionInterface::class)
+            ? $container->get(SessionInterface::class)
+            : new Session();
         $this->files = $files;
         $this->content = $content;
         $this->requestUri = $this->getPath();
@@ -1683,9 +1687,9 @@ class Request
     /**
      * Get the session instance.
      *
-     * @return Session
+     * @return SessionInterface
      */
-    public function session(): Session
+    public function session(): SessionInterface
     {
         return $this->session;
     }

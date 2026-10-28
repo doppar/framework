@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Auth\Security;
 
-class PasswordHashing
+use Phaseolies\Auth\Security\Contracts\HashingInterface;
+
+class PasswordHashing implements HashingInterface
 {
     /**
      * Hash a password using the configured algorithm and options.
@@ -11,7 +13,7 @@ class PasswordHashing
      * @return string
      * @throws \RuntimeException
      */
-    public function make($password)
+    public function make(string $password): string
     {
         $driver = config('hashing.driver', 'bcrypt');
 
@@ -40,29 +42,33 @@ class PasswordHashing
     /**
      * Verify if a given password matches the stored hash.
      *
-     * @param string $password
-     * @param string $hashedPassword
+     * @param ?string $password
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function check($password, $hashedPassword)
+    public function check(?string $password, ?string $hashedPassword): bool
     {
+        if ($password === null || $hashedPassword === null) {
+            return false;
+        }
+
         return password_verify($password, $hashedPassword);
     }
 
     /**
      * Check if a password hash needs rehashing (security upgrade).
      *
-     * @param string $hashedPassword
+     * @param ?string $hashedPassword
      * @return bool
      */
-    public function needsRehash($hashedPassword)
+    public function needsRehash(?string $hashedPassword): bool
     {
         $driver = config('hashing.driver', 'bcrypt');
 
         switch ($driver) {
             case 'bcrypt':
                 $rounds = config('hashing.bcrypt.rounds', 10);
-                return password_needs_rehash($hashedPassword, PASSWORD_BCRYPT, ['cost' => $rounds]);
+                return $hashedPassword === null || password_needs_rehash($hashedPassword, PASSWORD_BCRYPT, ['cost' => $rounds]);
 
             case 'argon':
             case 'argon2id':
@@ -71,7 +77,7 @@ class PasswordHashing
                     'time_cost' => config('hashing.argon.time', PASSWORD_ARGON2_DEFAULT_TIME_COST),
                     'threads' => config('hashing.argon.threads', PASSWORD_ARGON2_DEFAULT_THREADS),
                 ];
-                return password_needs_rehash($hashedPassword, PASSWORD_ARGON2ID, $options);
+                return $hashedPassword === null || password_needs_rehash($hashedPassword, PASSWORD_ARGON2ID, $options);
 
             default:
                 throw new \RuntimeException("Unsupported hashing driver: {$driver}");

@@ -9,6 +9,7 @@ use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\Mail\MailService;
 use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
@@ -23,6 +24,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
+use Phaseolies\Auth\Security\Contracts\HashingInterface;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 
@@ -39,17 +41,19 @@ class FacadeLauncher extends ServiceLauncher
         // This allows the application to access configuration settings globally.
         $this->app->singleton('config', Config::class);
 
-        // Bind the 'session' service to a singleton instance of the Session class.
-        // This manages user session data throughout the application.
-        $this->app->singleton('session', Session::class);
+        // Bind the session contract to a singleton implementation and retain
+        // the existing 'session' service name as an alias.
+        $this->app->singleton(SessionInterface::class, Session::class);
+        $this->app->alias(SessionInterface::class, 'session');
 
         // Bind the 'response' service to a singleton instance of the Response class.
         // This is used to generate HTTP responses.
         $this->app->singleton('response', Response::class);
 
-        // Bind the 'hash' service to a singleton instance of the PasswordHashing class.
-        // This provides password hashing and verification functionality.
-        $this->app->singleton('hash', PasswordHashing::class);
+        // Bind the hashing contract to a singleton implementation and retain
+        // the existing 'hash' service name as an alias.
+        $this->app->singleton(HashingInterface::class, PasswordHashing::class);
+        $this->app->alias(HashingInterface::class, 'hash');
 
         // Bind the 'auth' service to a singleton instance of the GuardManager class.
         // This handles user authentication and authorization.
