@@ -2,17 +2,17 @@
 
 namespace Phaseolies\Http\Support;
 
-use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
 
 trait InteractsWithVerifyTwoFactorUser
 {
     /**
      * Validate a 2FA token stored in the session.
      *
-     * @param Session $session
+     * @param SessionInterface $session
      * @return array|false
      */
-    protected function validateTwoFactorSession(Session $session): array|false
+    protected function validateTwoFactorSession(SessionInterface $session): array|false
     {
         if (!$session->has('2fa_token')) {
             return false;

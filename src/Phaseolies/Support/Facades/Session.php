@@ -25,7 +25,7 @@ use Phaseolies\Facade\BaseFacade;
  * @method static void invalidate()
  * @method static void regenerateToken()
  *
- * @see \Phaseolies\Support\Session
+ * @see \Phaseolies\Session\Contracts\SessionInterface
  */
 class Session extends BaseFacade
 {
