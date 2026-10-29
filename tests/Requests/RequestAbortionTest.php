@@ -247,6 +247,32 @@ PHP);
         }
     }
 
+    public function testAbortIfTreatsFalsyNonBoolConditionsAsNoOp()
+    {
+        foreach ([null, [], 0, '', '0'] as $condition) {
+            $this->requestAbortion->abortIf($condition, 404, 'Not found');
+        }
+
+        $this->assertTrue(true);
+    }
+
+    public function testAbortIfThrowsForTruthyNonBoolConditions()
+    {
+        $mockRequest = Mockery::mock(Request::class);
+        $mockRequest->shouldReceive('isAjax')->andReturn(true);
+        $mockRequest->shouldReceive('isApiRequest')->andReturn(false);
+        $this->container->instance('request', $mockRequest);
+
+        foreach ([new \stdClass(), [1], 'yes', 1] as $condition) {
+            try {
+                $this->requestAbortion->abortIf($condition, 404, 'Not found');
+                $this->fail('Expected HttpResponseException was not thrown');
+            } catch (HttpResponseException $e) {
+                $this->assertEquals(404, $e->getStatusCode());
+            }
+        }
+    }
+
     public function testAbortIfWithFalseConditionDoesNotCallAbort()
     {
         // This should not throw any exception and should not call request()

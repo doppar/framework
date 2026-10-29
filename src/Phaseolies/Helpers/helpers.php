@@ -898,7 +898,7 @@ if (!function_exists('abort_if')) {
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers

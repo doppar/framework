@@ -69,8 +69,9 @@ class FacadeLauncher extends ServiceLauncher
         // This is used to generate HTTP redirect responses.
         $this->app->singleton('redirect', RedirectResponse::class);
 
-        // Bind the 'abort' service to a singleton instance of the RequestAbortion class.
-        // This is used to abort requests and return error responses.
+        // Bind the request abortion contract to a singleton implementation and retain
+        // the existing 'abort' service name as an alias. This is used to abort requests
+        // and return error responses.
         $this->app->singleton(RequestAbortionInterface::class, RequestAbortion::class);
         $this->app->alias(RequestAbortionInterface::class, 'abort');
 

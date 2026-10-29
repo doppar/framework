@@ -70,14 +70,14 @@ class RequestAbortion implements RequestAbortionInterface
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers
      * @return void
      * @throws HttpException
      */
-    public function abortIf(bool $condition, int $code, string $message = '', array $headers = []): void
+    public function abortIf(mixed $condition, int $code, string $message = '', array $headers = []): void
     {
         if ($condition) {
             $this->abort($code, $message, $headers);
