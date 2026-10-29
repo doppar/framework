@@ -883,7 +883,6 @@ if (!function_exists('abort')) {
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
-     * @param int
      * @param int $code
      * @param string $message
      * @param array $headers
@@ -899,7 +898,7 @@ if (!function_exists('abort_if')) {
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers

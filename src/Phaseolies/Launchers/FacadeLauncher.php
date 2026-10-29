@@ -17,6 +17,7 @@ use Phaseolies\Support\Encryption;
 use Phaseolies\Support\Contracts\EncryptionInterface;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Http\Support\RequestAbortion;
+use Phaseolies\Http\Contracts\RequestAbortionInterface;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\Response;
 use Phaseolies\Database\Migration\Schema;
@@ -68,9 +69,11 @@ class FacadeLauncher extends ServiceLauncher
         // This is used to generate HTTP redirect responses.
         $this->app->singleton('redirect', RedirectResponse::class);
 
-        // Bind the 'abort' service to a singleton instance of the RequestAbortion class.
-        // This is used to abort requests and return error responses.
-        $this->app->singleton('abort', RequestAbortion::class);
+        // Bind the request abortion contract to a singleton implementation and retain
+        // the existing 'abort' service name as an alias. This is used to abort requests
+        // and return error responses.
+        $this->app->singleton(RequestAbortionInterface::class, RequestAbortion::class);
+        $this->app->alias(RequestAbortionInterface::class, 'abort');
 
         // Bind the 'mail' service to a singleton instance of the MailService class.
         // This handles sending emails.
