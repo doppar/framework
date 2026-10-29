@@ -2,6 +2,9 @@
 
 namespace Phaseolies\Http\Contracts;
 
+use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\HttpResponseException;
+
 interface RequestAbortionInterface
 {
     /**
@@ -11,6 +14,7 @@ interface RequestAbortionInterface
      * @param string $message
      * @param array $headers
      * @return void
+     * @throws HttpException|HttpResponseException
      */
     public function abort(int $code, string $message = '', array $headers = []): void;
 
@@ -22,6 +26,7 @@ interface RequestAbortionInterface
      * @param string $message
      * @param array $headers
      * @return void
+     * @throws HttpException|HttpResponseException
      */
     public function abortIf(mixed $condition, int $code, string $message = '', array $headers = []): void;
 }

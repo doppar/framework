@@ -66,10 +66,7 @@ PHP);
 
     public function testApplicationBindsTheAbortionContractAndLegacyServiceNameToTheSameSingleton(): void
     {
-        $app = $this->getMockBuilder(Application::class)
-            ->disableOriginalConstructor()
-            ->onlyMethods([])
-            ->getMock();
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
 
         $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
         $containerConstructor->invoke($app);
@@ -207,8 +204,9 @@ PHP);
 
     public function testAbortIfDoesNotThrowWhenConditionIsFalse()
     {
+        $this->expectNotToPerformAssertions();
+
         $this->requestAbortion->abortIf(false, 500, 'Should not throw');
-        $this->assertTrue(true);
     }
 
     public function testAbortIfThrowsWhenConditionIsTrue()
@@ -249,11 +247,11 @@ PHP);
 
     public function testAbortIfTreatsFalsyNonBoolConditionsAsNoOp()
     {
+        $this->expectNotToPerformAssertions();
+
         foreach ([null, [], 0, '', '0'] as $condition) {
             $this->requestAbortion->abortIf($condition, 404, 'Not found');
         }
-
-        $this->assertTrue(true);
     }
 
     public function testAbortIfThrowsForTruthyNonBoolConditions()
