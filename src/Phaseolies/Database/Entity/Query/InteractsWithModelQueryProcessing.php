@@ -224,6 +224,10 @@ trait InteractsWithModelQueryProcessing
                 $this->fireAfterHooks('created');
             }
 
+            // Sync even when hooks are suppressed, otherwise the model stays
+            // dirty and the next save() rewrites the row it just inserted.
+            $this->originalAttributes = $this->attributes;
+
             return true;
         } finally {
             $this->hooksSuppressed = false;
