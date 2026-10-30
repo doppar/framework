@@ -68,6 +68,9 @@ class Sanitizer
      */
     public function validate(): bool
     {
+        // Validating again must not stack the same errors on top of the old ones.
+        $this->errors = [];
+
         foreach ($this->rules as $field => $ruleString) {
             // Custom rule class bound via Bind::to(new Rule())->context([...])
             if ($ruleString instanceof Bind) {
@@ -78,7 +81,7 @@ class Sanitizer
                 continue;
             }
 
-            $rulesArray = explode('|', $ruleString);
+            $rulesArray = $this->splitRules($ruleString);
 
             foreach ($rulesArray as $rule) {
                 $this->applyRule($field, $rule);
@@ -170,6 +173,8 @@ class Sanitizer
             $this->errors[$field] = [];
         }
 
-        $this->errors[$field][] = $message;
+        if (!in_array($message, $this->errors[$field], true)) {
+            $this->errors[$field][] = $message;
+        }
     }
 }
