@@ -60,7 +60,8 @@ interface StringServiceInterface
      * @param string $string
      * @param int $visibleFromStart
      * @param int $visibleFromEnd
-     * @param string
+     * @param string $maskCharacter
+     * @return string
      */
     public function mask(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string;
 
@@ -110,8 +111,7 @@ interface StringServiceInterface
     public function contains(string $haystack, string | array $needles, bool $ignoreCase = true): bool;
 
     /**
-     * Limit the number of words in a string, handling Unicode and preserving
-     * natural word boundaries (splitting on whitespace).
+     * Limit the number of words in a string, handling Unicode and preserving  natural word boundaries
      *
      * @param string $string
      * @param int $words
@@ -155,8 +155,7 @@ interface StringServiceInterface
     public function startsWith(string $haystack, string | array $needles): bool;
 
     /**
-     * Check if a string ends with one or more given needles (case‐sensitive).
-     * This version is Unicode‐safe (works with any UTF‐8 text).
+     * Check if a string ends with one or more given needles (case-sensitive).
      *
      * @param string $haystack
      * @param string|array $needles
