@@ -128,6 +128,8 @@ namespace Tests\Unit\Storage {
     use Phaseolies\Support\Storage\LocalFileSystem;
     use Phaseolies\Support\Storage\PublicFileSystem;
     use Phaseolies\Support\Storage\StorageFileService;
+    use Phaseolies\Support\Storage\Contracts\StorageInterface;
+    use Phaseolies\Support\Storage\IFileSystem;
     use PHPUnit\Framework\Attributes\DataProvider;
     use PHPUnit\Framework\TestCase;
     use Tests\Unit\Storage\Support\UploadTestConfig;
@@ -188,6 +190,106 @@ namespace Tests\Unit\Storage {
             $this->assertTrue($disk->store('documents', $file, 'stored.txt'));
             $this->assertFileExists($this->localRoot . '/documents/stored.txt');
             $this->assertSame('local disk content', (string) file_get_contents($this->localRoot . '/documents/stored.txt'));
+        }
+
+        public function testStorageImplementationConformsToTheStorageContract(): void
+        {
+            $storage = new StorageFileService();
+
+            $this->assertInstanceOf(StorageInterface::class, $storage);
+            $this->assertSame($this->localRoot, $storage->getDiskPath('local'));
+
+            $disk = $storage->disk('local');
+
+            $this->assertInstanceOf(IFileSystem::class, $disk);
+            $this->assertInstanceOf(LocalFileSystem::class, $disk);
+        }
+
+        public function testDiskResolvesPublicDiskAsFileSystemContract(): void
+        {
+            $disk = (new StorageFileService())->disk('public');
+
+            $this->assertInstanceOf(IFileSystem::class, $disk);
+            $this->assertInstanceOf(PublicFileSystem::class, $disk);
+        }
+
+        public function testDiskBasePathMatchesConfiguredRootThroughNewAndDeprecatedNames(): void
+        {
+            $storage = new StorageFileService();
+
+            $this->assertSame($this->localRoot, $storage->disk('local')->storageBasePath());
+            $this->assertSame($this->localRoot, $storage->disk('local')->storeageBasePath());
+            $this->assertSame($this->publicRoot, $storage->disk('public')->storageBasePath());
+            $this->assertSame($this->publicRoot, $storage->disk('public')->storeageBasePath());
+        }
+
+        public function testDiskThrowsForUnsupportedDiskName(): void
+        {
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Unsupported s3');
+
+            (new StorageFileService())->disk('s3');
+        }
+
+        public function testDiskThrowsDiskNotFoundWhenALocalDiskHasNoConfiguredRoot(): void
+        {
+            UploadTestConfig::reset();
+
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Disk [local] has no root');
+
+            (new StorageFileService())->disk('local');
+        }
+
+        public function testDiskThrowsDiskNotFoundWhenAPublicDiskHasNoConfiguredRoot(): void
+        {
+            UploadTestConfig::reset();
+            UploadTestConfig::set('filesystem.disks.local.root', $this->localRoot);
+
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Disk [public] has no root');
+
+            (new StorageFileService())->disk('public');
+        }
+
+        public function testStoringAnUploadAfterStoreAsExplainsThatTheTemporaryFileWasMoved(): void
+        {
+            $file = $this->makeUploadedStyleFile('photo.jpg', 'payload', 'image/jpeg');
+
+            $this->assertSame('first/photo.jpg', $file->storeAs('first', 'photo.jpg', 'public'));
+
+            $this->expectException(\Phaseolies\Support\Storage\FileNotFoundException::class);
+            $this->expectExceptionMessage('may have been moved already');
+
+            Storage::disk('public')->store('second', $file, 'photo.jpg');
+        }
+
+        public function testStoringAnUploadOnTheDiskBeforeStoreAsKeepsBothCopies(): void
+        {
+            $file = $this->makeUploadedStyleFile('photo.jpg', 'payload', 'image/jpeg');
+
+            $this->assertTrue(Storage::disk('public')->store('second', $file, 'photo.jpg'));
+            $this->assertSame('first/photo.jpg', $file->storeAs('first', 'photo.jpg', 'public'));
+
+            $this->assertSame('payload', (string) file_get_contents($this->publicRoot . '/second/photo.jpg'));
+            $this->assertSame('payload', (string) file_get_contents($this->publicRoot . '/first/photo.jpg'));
+        }
+
+        public function testGetDiskPathReturnsNullForUnconfiguredDisk(): void
+        {
+            $this->assertNull((new StorageFileService())->getDiskPath('missing-disk'));
+        }
+
+        public function testDiskContractSupportsStoreGetContentAndDeleteRoundTrip(): void
+        {
+            $disk = (new StorageFileService())->disk('local');
+            $file = $this->makeUploadedStyleFile('round.txt', 'round trip');
+
+            $this->assertTrue($disk->store('docs', $file, 'round.txt'));
+            $this->assertSame($this->localRoot . '/docs/round.txt', $disk->get('docs/round.txt'));
+            $this->assertSame('round trip', $disk->content('docs/round.txt'));
+            $this->assertTrue($disk->delete('docs/round.txt'));
+            $this->assertNull($disk->get('docs/round.txt'));
         }
 
         public function testStorageFacadeResolvesPublicDiskAndStoresUpload(): void
