@@ -252,6 +252,29 @@ namespace Tests\Unit\Storage {
             (new StorageFileService())->disk('public');
         }
 
+        public function testStoringAnUploadAfterStoreAsExplainsThatTheTemporaryFileWasMoved(): void
+        {
+            $file = $this->makeUploadedStyleFile('photo.jpg', 'payload', 'image/jpeg');
+
+            $this->assertSame('first/photo.jpg', $file->storeAs('first', 'photo.jpg', 'public'));
+
+            $this->expectException(\Phaseolies\Support\Storage\FileNotFoundException::class);
+            $this->expectExceptionMessage('may have been moved already');
+
+            Storage::disk('public')->store('second', $file, 'photo.jpg');
+        }
+
+        public function testStoringAnUploadOnTheDiskBeforeStoreAsKeepsBothCopies(): void
+        {
+            $file = $this->makeUploadedStyleFile('photo.jpg', 'payload', 'image/jpeg');
+
+            $this->assertTrue(Storage::disk('public')->store('second', $file, 'photo.jpg'));
+            $this->assertSame('first/photo.jpg', $file->storeAs('first', 'photo.jpg', 'public'));
+
+            $this->assertSame('payload', (string) file_get_contents($this->publicRoot . '/second/photo.jpg'));
+            $this->assertSame('payload', (string) file_get_contents($this->publicRoot . '/first/photo.jpg'));
+        }
+
         public function testGetDiskPathReturnsNullForUnconfiguredDisk(): void
         {
             $this->assertNull((new StorageFileService())->getDiskPath('missing-disk'));
