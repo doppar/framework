@@ -465,7 +465,6 @@ class StringServiceTest extends TestCase
         $this->assertSame('hello_world', $this->stringService->snake('HelloWorld'));
         $this->assertSame('user_profile_image', $this->stringService->snake('userProfileImage'));
         $this->assertSame('already_snake', $this->stringService->snake('already_snake'));
-        $this->assertSame('user1name', $this->stringService->snake('user1Name'));
         $this->assertSame('', $this->stringService->snake(''));
     }
 
@@ -680,6 +679,292 @@ class StringServiceTest extends TestCase
         $name = $this->stringService->suffixAppend('invoice', 'Controller');
 
         $this->assertSame('Invoice', $this->stringService->removeSuffix($name, 'Controller'));
+    }
+
+    // ---- slug separators --------------------------------------------------
+
+    public function testSlugTurnsUnderscoresSlashesAndColonsIntoSeparators()
+    {
+        $this->assertSame('snake-case-title', $this->stringService->slug('snake_case_title'));
+        $this->assertSame('path-to-file', $this->stringService->slug('path/to/file'));
+        $this->assertSame('key-value', $this->stringService->slug('key:value'));
+        $this->assertSame('a-b-c', $this->stringService->slug('a\\b|c'));
+    }
+
+    public function testSlugTurnsSymbolsIntoSeparators()
+    {
+        $this->assertSame('rock-roll', $this->stringService->slug('Rock & Roll'));
+        $this->assertSame('a-b', $this->stringService->slug('a&b'));
+        $this->assertSame('1-1', $this->stringService->slug('1+1'));
+        $this->assertSame('hello-world', $this->stringService->slug('(hello) [world]'));
+    }
+
+    public function testSlugConvertsExistingSeparatorsToACustomOne()
+    {
+        $this->assertSame('hello_world', $this->stringService->slug('hello-world', '_'));
+        $this->assertSame('a_b_c', $this->stringService->slug('a-b c', '_'));
+        $this->assertSame('hello.world', $this->stringService->slug('hello world', '.'));
+    }
+
+    public function testSlugKeepsExistingHyphensWithTheDefaultSeparator()
+    {
+        $this->assertSame('well-known-fact', $this->stringService->slug('well-known fact'));
+        $this->assertSame('a-b', $this->stringService->slug('a--b'));
+    }
+
+    public function testSlugOfNothingMeaningfulIsEmpty()
+    {
+        $this->assertSame('', $this->stringService->slug(''));
+        $this->assertSame('', $this->stringService->slug('!!! ??? ---'));
+        $this->assertSame('', $this->stringService->slug('___', '_'));
+    }
+
+    public function testSlugKeepsDigits()
+    {
+        $this->assertSame('top-10-tips', $this->stringService->slug('Top 10 Tips!'));
+        $this->assertSame('v2-0', $this->stringService->slug('v2.0'));
+    }
+
+    public function testSlugDoesNotSplitWordsOnCombiningMarks()
+    {
+        $this->assertSame('cafe-au-lait', $this->stringService->slug("cafe\u{0301} au lait"));
+        $this->assertSame('ecole', $this->stringService->slug("e\u{0301}cole"));
+    }
+
+    public function testSlugNeverStartsOrEndsWithTheSeparator()
+    {
+        foreach (['-a-', '_a_', '/a/', ' a ', '.a.'] as $input) {
+            $this->assertSame('a', $this->stringService->slug($input), "slug of '{$input}'");
+        }
+    }
+
+    public function testSlugIsIdempotent()
+    {
+        $slug = $this->stringService->slug('Hello, World_of/PHP & More!');
+
+        $this->assertSame($slug, $this->stringService->slug($slug));
+    }
+
+    // ---- studly / camel ---------------------------------------------------
+
+    public function testStudlyKeepsExistingHumps()
+    {
+        $this->assertSame('FooBar', $this->stringService->studly('fooBar'));
+        $this->assertSame('FooBarBaz', $this->stringService->studly('fooBar_baz'));
+        $this->assertSame('IPhoneCase', $this->stringService->studly('iPhone case'));
+        $this->assertSame('McDonald', $this->stringService->studly('mcDonald'));
+        $this->assertSame('XMLParser', $this->stringService->studly('XMLParser'));
+    }
+
+    public function testStudlyStillNormalisesWordsWithoutHumps()
+    {
+        $this->assertSame('HelloWorld', $this->stringService->studly('hello_world'));
+        $this->assertSame('HelloWorld', $this->stringService->studly('HELLO_WORLD'));
+        $this->assertSame('HelloWorld', $this->stringService->studly('Hello-World'));
+        $this->assertSame('UserId', $this->stringService->studly('user_ID'));
+        $this->assertSame('HelloWorld', $this->stringService->studly('hello world'));
+    }
+
+    public function testStudlyHandlesMessySeparatorsAndEmptyInput()
+    {
+        $this->assertSame('', $this->stringService->studly(''));
+        $this->assertSame('', $this->stringService->studly('___'));
+        $this->assertSame('HelloWorld', $this->stringService->studly('__hello__world__'));
+        $this->assertSame('HelloWorld', $this->stringService->studly("hello\t\nworld"));
+    }
+
+    public function testStudlyHandlesUnicode()
+    {
+        $this->assertSame('ÉcoleNom', $this->stringService->studly('école_nom'));
+        $this->assertSame('ÉcoleNom', $this->stringService->studly('écoleNom'));
+        $this->assertSame('ПриветМир', $this->stringService->studly('привет_мир'));
+    }
+
+    public function testStudlyKeepsDigits()
+    {
+        $this->assertSame('User2Name', $this->stringService->studly('user2_name'));
+        $this->assertSame('Create2024Table', $this->stringService->studly('create_2024_table'));
+    }
+
+    public function testCamelKeepsExistingHumps()
+    {
+        $this->assertSame('fooBar', $this->stringService->camel('fooBar'));
+        $this->assertSame('fooBarBaz', $this->stringService->camel('FooBar_baz'));
+        $this->assertSame('iPhoneCase', $this->stringService->camel('iPhone case'));
+    }
+
+    public function testCamelKeepsSnakeAndKebabBehaviour()
+    {
+        $this->assertSame('helloWorld', $this->stringService->camel('hello_world'));
+        $this->assertSame('helloWorld', $this->stringService->camel('hello-world'));
+        $this->assertSame('helloWorld', $this->stringService->camel('HELLO_WORLD'));
+        $this->assertSame('helloWorld', $this->stringService->camel('Hello_World'));
+        $this->assertSame('userId', $this->stringService->camel('user_ID'));
+    }
+
+    public function testCamelHandlesEmptyAndUnicodeInput()
+    {
+        $this->assertSame('', $this->stringService->camel(''));
+        $this->assertSame('écoleNom', $this->stringService->camel('école_nom'));
+        $this->assertSame('écoleNom', $this->stringService->camel('École_Nom'));
+    }
+
+    public function testCamelOfAMigrationStyleName()
+    {
+        // Migrator::getMigrationClass() derives the class name this way.
+        $this->assertSame('20240101CreateUsersTable', $this->stringService->camel('2024_01_01_create_users_table'));
+        $this->assertSame('20240101CreateUsersTable', $this->stringService->camel('2024_01_01_CreateUsersTable'));
+    }
+
+    public function testCamelAndSnakeRoundTripForPlainNames()
+    {
+        foreach (['hello_world', 'user_profile_image', 'order_item'] as $name) {
+            $this->assertSame($name, $this->stringService->snake($this->stringService->camel($name)));
+        }
+    }
+
+    // ---- snake digits -----------------------------------------------------
+
+    public function testSnakeStartsANewWordAfterADigit()
+    {
+        $this->assertSame('user1_name', $this->stringService->snake('user1Name'));
+        $this->assertSame('address2_line', $this->stringService->snake('address2Line'));
+        $this->assertSame('hello_world2_go', $this->stringService->snake('HelloWorld2Go'));
+        $this->assertSame('level10_boss', $this->stringService->snake('level10Boss'));
+    }
+
+    public function testSnakeLeavesTrailingAndLeadingDigitsAlone()
+    {
+        $this->assertSame('post2', $this->stringService->snake('Post2'));
+        $this->assertSame('version2', $this->stringService->snake('version2'));
+        $this->assertSame('2fa_code', $this->stringService->snake('2faCode'));
+        $this->assertSame('user_2', $this->stringService->snake('user_2'));
+    }
+
+    public function testSnakeIsIdempotent()
+    {
+        foreach (['userName', 'address2Line', 'HelloWorld2Go', 'école_nom'] as $input) {
+            $once = $this->stringService->snake($input);
+
+            $this->assertSame($once, $this->stringService->snake($once), "snake of '{$input}'");
+        }
+    }
+
+    public function testSnakeKeepsTheNamesTheFrameworkRelyOn()
+    {
+        // Table names and computed-property keys come from snake().
+        $this->assertSame('blog_post', $this->stringService->snake('BlogPost'));
+        $this->assertSame('full_name', $this->stringService->snake('fullName'));
+        $this->assertSame('post_tags', $this->stringService->snake('PostTags'));
+        $this->assertSame('success', $this->stringService->snake('success'));
+    }
+
+    // ---- between ----------------------------------------------------------
+
+    public function testBetweenReturnsNestedDelimitersUpToTheLastClosingMatch()
+    {
+        $this->assertSame('a[b]c', $this->stringService->between('[a[b]c]', '[', ']'));
+        $this->assertSame('x(y)z', $this->stringService->between('f(x(y)z)', '(', ')'));
+    }
+
+    public function testBetweenWithASingleDelimitedValue()
+    {
+        $this->assertSame('b', $this->stringService->between('a [b] c', '[', ']'));
+        $this->assertSame('大阪', $this->stringService->between('東京-大阪-名古屋', '東京-', '-名古屋'));
+    }
+
+    public function testBetweenSpansEverythingUpToTheLastClosingDelimiter()
+    {
+        $this->assertSame('b] c [d', $this->stringService->between('a [b] c [d] e', '[', ']'));
+    }
+
+    public function testBetweenWithMultiCharacterDelimiters()
+    {
+        $this->assertSame('x', $this->stringService->between('<<x>>', '<<', '>>'));
+        $this->assertSame('a>>b', $this->stringService->between('<<a>>b>>', '<<', '>>'));
+    }
+
+    public function testBetweenWithAMissingClosingDelimiterReturnsTheRest()
+    {
+        $this->assertSame('b', $this->stringService->between('a [b', '[', ']'));
+    }
+
+    public function testBetweenWithAMissingOpeningDelimiterStartsAtTheBeginning()
+    {
+        $this->assertSame('abc', $this->stringService->between('abc]def', '[', ']'));
+    }
+
+    public function testBetweenWithNeitherDelimiterReturnsTheSubject()
+    {
+        $this->assertSame('no-delims', $this->stringService->between('no-delims', '[', ']'));
+    }
+
+    public function testBetweenWithAnEmptyDelimiterReturnsTheSubject()
+    {
+        $this->assertSame('abc', $this->stringService->between('abc', '', ']'));
+        $this->assertSame('abc', $this->stringService->between('abc', '[', ''));
+        $this->assertSame('', $this->stringService->between('', '[', ']'));
+    }
+
+    public function testBetweenWithAdjacentDelimitersIsEmpty()
+    {
+        $this->assertSame('', $this->stringService->between('a[]b', '[', ']'));
+    }
+
+    public function testBetweenWithIdenticalOpeningAndClosingDelimiters()
+    {
+        $this->assertSame('b', $this->stringService->between('a"b"c', '"', '"'));
+    }
+
+    // ---- countWord numbers ------------------------------------------------
+
+    public function testCountWordCountsNumbers()
+    {
+        $this->assertSame(4, $this->stringService->countWord('I have 2 cats'));
+        $this->assertSame(1, $this->stringService->countWord('2024'));
+        $this->assertSame(3, $this->stringService->countWord('1 2 3'));
+    }
+
+    public function testCountWordKeepsDecimalsAndThousandsTogether()
+    {
+        $this->assertSame(3, $this->stringService->countWord('pi is 3.14.'));
+        $this->assertSame(2, $this->stringService->countWord('1,000,000 users'));
+        $this->assertSame(2, $this->stringService->countWord('version v2.0'));
+    }
+
+    public function testCountWordKeepsLettersAndDigitsInOneWord()
+    {
+        $this->assertSame(2, $this->stringService->countWord('2nd place'));
+        $this->assertSame(1, $this->stringService->countWord('abc123'));
+        $this->assertSame(2, $this->stringService->countWord('covid-19 cases'));
+    }
+
+    public function testCountWordStillSplitsLettersOnPunctuation()
+    {
+        $this->assertSame(2, $this->stringService->countWord('a.b'));
+        $this->assertSame(3, $this->stringService->countWord('a,b,c'));
+        $this->assertSame(2, $this->stringService->countWord('Hello, World!'));
+    }
+
+    public function testCountWordKeepsApostrophesAndUnicode()
+    {
+        $this->assertSame(2, $this->stringService->countWord("don't stop"));
+        $this->assertSame(2, $this->stringService->countWord('привет мир'));
+        $this->assertSame(1, $this->stringService->countWord('héllo'));
+    }
+
+    public function testCountWordOfNothingIsZero()
+    {
+        $this->assertSame(0, $this->stringService->countWord(''));
+        $this->assertSame(0, $this->stringService->countWord('   '));
+        $this->assertSame(0, $this->stringService->countWord('!!! ... ---'));
+    }
+
+    public function testCountWordIgnoresATrailingSeparatorAfterANumber()
+    {
+        $this->assertSame(1, $this->stringService->countWord('100.'));
+        $this->assertSame(1, $this->stringService->countWord('100,'));
+        $this->assertSame(2, $this->stringService->countWord('100.,5'));
     }
 
     public function testStringServiceConformsToTheContract()

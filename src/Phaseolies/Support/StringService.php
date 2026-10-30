@@ -38,7 +38,9 @@ class StringService implements StringServiceInterface
      */
     public function countWord(string $string): int
     {
-        preg_match_all('/\p{L}[\p{L}\p{Mn}\p{Pd}\'’]*/u', $string, $matches);
+        // A word starts with a letter or digit. A "." or "," only continues it
+        // between two digits, so 3.14 and 1,000 count as one word.
+        preg_match_all('/[\p{L}\p{Nd}](?:[\p{L}\p{Nd}\p{Mn}\p{Pd}\'’]|(?<=\p{Nd})[.,](?=\p{Nd}))*/u', $string, $matches);
 
         return count($matches[0]);
     }
@@ -83,11 +85,9 @@ class StringService implements StringServiceInterface
      */
     public function camel(string $input): string
     {
-        $input = str_replace(['-', '_'], ' ', $input);
-        $input = mb_convert_case($input, MB_CASE_TITLE, 'UTF-8');
-        $input = str_replace(' ', '', $input);
+        $studly = $this->studly($input);
 
-        return lcfirst($input);
+        return mb_strtolower(mb_substr($studly, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($studly, 1, null, 'UTF-8');
     }
 
     /**
@@ -143,7 +143,7 @@ class StringService implements StringServiceInterface
      */
     public function snake(string $input): string
     {
-        return mb_strtolower(preg_replace('/(\p{Ll})(\p{Lu})/u', '$1_$2', $input) ?? $input, 'UTF-8');
+        return mb_strtolower(preg_replace('/([\p{Ll}\p{Nd}])(\p{Lu})/u', '$1_$2', $input) ?? $input, 'UTF-8');
     }
 
     /**
@@ -167,16 +167,12 @@ class StringService implements StringServiceInterface
     public function slug(string $input, string $separator = '-'): string
     {
         $slug = mb_strtolower($input, 'UTF-8');
-        $slug = preg_replace('/[\s,\.;\'"!\?]+/u', $separator, $slug);
-        $slug = preg_replace('/[^\p{L}\p{Nd}' . preg_quote($separator, '/') . ']+/u', '', $slug);
 
-        if ($separator === '') {
-            return $slug;
-        }
+        $slug = preg_replace('/\p{M}+/u', '', $slug) ?? $slug;
 
-        $slug = preg_replace('/(?:' . preg_quote($separator, '/') . '){2,}/u', $separator, $slug);
+        $slug = preg_replace('/[^\p{L}\p{Nd}]+/u', "\0", $slug) ?? $slug;
 
-        return trim($slug, $separator);
+        return str_replace("\0", $separator, trim($slug, "\0"));
     }
 
     /**
@@ -361,11 +357,24 @@ class StringService implements StringServiceInterface
      */
     public function studly(string $input, string $encoding = 'UTF-8'): string
     {
-        $spaced = str_replace(['-', '_'], ' ', $input);
+        $segments = preg_split('/([-_\s]+)/u', $input, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$input];
 
-        $titled = mb_convert_case($spaced, MB_CASE_TITLE, $encoding);
+        $studly = '';
 
-        $studly = str_replace(' ', '', $titled);
+        foreach ($segments as $segment) {
+            if ($segment === '' || preg_match('/^[-_\s]+$/u', $segment)) {
+                continue;
+            }
+
+            $first = mb_substr($segment, 0, 1, $encoding);
+            $rest = mb_substr($segment, 1, null, $encoding);
+
+            // A word that already has humps (fooBar, iPhone, XMLParser) keeps
+            // them; any other word is normalised (HELLO, hello -> Hello).
+            $studly .= preg_match('/\p{Ll}/u', $rest) && preg_match('/\p{Lu}/u', $rest)
+                ? mb_strtoupper($first, $encoding) . $rest
+                : mb_convert_case($segment, MB_CASE_TITLE, $encoding);
+        }
 
         return $studly;
     }
@@ -585,8 +594,15 @@ class StringService implements StringServiceInterface
      */
     public function between(string $subject, string $from, string $to): string
     {
+        if ($from === '' || $to === '') {
+            return $subject;
+        }
+
         $start = $this->after($subject, $from);
-        return $this->before($start, $to);
+        $pos = mb_strrpos($start, $to, 0, 'UTF-8');
+
+        // Up to the last closing match, so a nested "[a[b]c]" yields "a[b]c".
+        return $pos === false ? $start : mb_substr($start, 0, $pos, 'UTF-8');
     }
 
     /**
