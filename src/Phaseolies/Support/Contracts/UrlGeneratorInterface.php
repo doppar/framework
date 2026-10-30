@@ -14,7 +14,7 @@ interface UrlGeneratorInterface
     public function enqueue(string $path = '/', ?bool $secure = null): string;
 
     /**
-     * Generate the current full URL without query parameters.
+     * Generate the current full URL, including query parameters.
      *
      * @return string
      */
@@ -92,10 +92,10 @@ interface UrlGeneratorInterface
     /**
      * Determine whether a value is a valid URL.
      *
-     * @param string $path
+     * @param mixed $path
      * @return bool
      */
-    public function isValid(string $path): bool;
+    public function isValid(mixed $path): bool;
 
     /**
      * Get the configured base URL.
