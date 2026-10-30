@@ -4,8 +4,9 @@ namespace Phaseolies\Signals;
 
 use Phaseolies\Database\Database;
 use Phaseolies\Signals\Attributes\DeliverOnSettle;
+use Phaseolies\Signals\Contracts\SignalBusInterface;
 
-class SignalBus
+class SignalBus implements SignalBusInterface
 {
     /**
      * Registered listeners, keyed by signal class or interface name

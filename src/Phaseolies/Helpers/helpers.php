@@ -96,7 +96,7 @@ if (!function_exists('signal')) {
      * Get the signal bus, or emit a signal when one is given
      *
      * @param object|null $signal
-     * @return \Phaseolies\Signals\SignalBus|void
+     * @return \Phaseolies\Signals\Contracts\SignalBusInterface|void
      */
     function signal(?object $signal = null)
     {
