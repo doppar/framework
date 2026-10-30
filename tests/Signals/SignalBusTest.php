@@ -3,7 +3,12 @@
 namespace Tests\Unit\Signals;
 
 use PHPUnit\Framework\TestCase;
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
+use Phaseolies\Signals\Contracts\SignalBusInterface;
 use Phaseolies\Signals\SignalBus;
+use ReflectionClass;
 
 interface TracksOrders {}
 
@@ -37,6 +42,34 @@ final class SignalBusTest extends TestCase
     {
         $this->bus = new SignalBus();
         InvokableListener::$seen = [];
+    }
+
+    public function testSignalBusConformsToTheContract(): void
+    {
+        $this->assertInstanceOf(SignalBusInterface::class, $this->bus);
+    }
+
+    public function testApplicationBindsTheSignalContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $app = $this->getMockBuilder(Application::class)->disableOriginalConstructor()->onlyMethods([])->getMock();
+        (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+        $previous = Container::getInstance();
+        Container::setInstance($app);
+        $originalAppUrl = getenv('APP_URL');
+
+        try {
+            putenv('APP_URL=http://localhost');
+            (new FacadeLauncher($app))->register();
+
+            $contract = $app->get(SignalBusInterface::class);
+
+            $this->assertInstanceOf(SignalBus::class, $contract);
+            $this->assertSame($contract, $app->get('signal'));
+            $this->assertSame($contract, signal());
+        } finally {
+            Container::setInstance($previous);
+            $originalAppUrl === false ? putenv('APP_URL') : putenv("APP_URL={$originalAppUrl}");
+        }
     }
 
     public function testHigherPriorityListenersRunFirst(): void

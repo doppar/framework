@@ -11,6 +11,7 @@ use Phaseolies\Support\Contracts\StringServiceInterface;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Support\Storage\Contracts\StorageInterface;
 use Phaseolies\Signals\SignalBus;
+use Phaseolies\Signals\Contracts\SignalBusInterface;
 use Phaseolies\Support\Session;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\Mail\MailService;
@@ -131,9 +132,11 @@ class FacadeLauncher extends ServiceLauncher
         // This handles db related jobs
         $this->app->singleton('db', Database::class);
 
-        // Bind the 'signal' service to a singleton instance of the SignalBus class.
+        // Bind the signal bus contract to a singleton implementation and
+        // retain the existing 'signal' service name as an alias.
         // This handles signals that can wait for a database transaction to settle
-        $this->app->singleton('signal', SignalBus::class);
+        $this->app->singleton(SignalBusInterface::class, SignalBus::class);
+        $this->app->alias(SignalBusInterface::class, 'signal');
 
         // Bind the 'app' service to a singleton instance of the Application class.
         // This handles app related jobs

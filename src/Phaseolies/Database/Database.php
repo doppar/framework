@@ -37,7 +37,7 @@ class Database
     /**
      * Signals waiting for a transaction to settle, per connection and nesting level
      *
-     * @var array<string, array<int, array<int, array{0: \Phaseolies\Signals\SignalBus, 1: object}>>>
+     * @var array<string, array<int, array<int, array{0: \Phaseolies\Signals\Contracts\SignalBusInterface, 1: object}>>>
      */
     protected static $pendingSignals = [];
 
@@ -245,12 +245,12 @@ class Database
     /**
      * Hold a signal until the open transaction on a connection settles
      *
-     * @param \Phaseolies\Signals\SignalBus $bus
+     * @param \Phaseolies\Signals\Contracts\SignalBusInterface $bus
      * @param object $signal
      * @param string|null $connection
      * @return bool
      */
-    public static function stageSignal(\Phaseolies\Signals\SignalBus $bus, object $signal, ?string $connection = null): bool
+    public static function stageSignal(\Phaseolies\Signals\Contracts\SignalBusInterface $bus, object $signal, ?string $connection = null): bool
     {
         $connection = $connection ?: config('database.default');
         $level = static::$transactions[$connection] ?? 0;
