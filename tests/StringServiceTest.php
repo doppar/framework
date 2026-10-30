@@ -70,6 +70,66 @@ class StringServiceTest extends TestCase
         $this->assertEquals('john', $this->stringService->mask('john', 2, 2));
     }
 
+    public function testMaskWithNoVisibleEndHidesTheEnd()
+    {
+        $this->assertSame('12*******', $this->stringService->mask('123456789', 2, 0));
+        $this->assertSame('se*********', $this->stringService->mask('secretvalue', 2, 0));
+    }
+
+    public function testMaskWithNoVisibleEndNeverRepeatsTheOriginal()
+    {
+        $original = '1234567890';
+        $masked = $this->stringService->mask($original, 3, 0);
+
+        $this->assertSame(strlen($original), strlen($masked));
+        $this->assertStringNotContainsString($original, $masked);
+        $this->assertStringNotContainsString('4567890', $masked);
+    }
+
+    public function testMaskWithNoVisibleStartHidesTheStart()
+    {
+        $this->assertSame('*******89', $this->stringService->mask('123456789', 0, 2));
+    }
+
+    public function testMaskWithNothingVisibleMasksEverything()
+    {
+        $this->assertSame('*********', $this->stringService->mask('123456789', 0, 0));
+        $this->assertSame('#####', $this->stringService->mask('abcde', 0, 0, '#'));
+    }
+
+    public function testMaskKeepsTheOriginalLength()
+    {
+        foreach ([[0, 0], [1, 0], [0, 1], [2, 3], [4, 4]] as [$start, $end]) {
+            $this->assertSame(
+                9,
+                strlen($this->stringService->mask('123456789', $start, $end)),
+                "visible {$start}/{$end} changed the length"
+            );
+        }
+    }
+
+    public function testMaskTreatsNegativeVisibleCountsAsZero()
+    {
+        $this->assertSame('*********', $this->stringService->mask('123456789', -2, -3));
+        $this->assertSame('12*******', $this->stringService->mask('123456789', 2, -1));
+        $this->assertSame('*******89', $this->stringService->mask('123456789', -1, 2));
+    }
+
+    public function testMaskReturnsShortStringsUnchanged()
+    {
+        $this->assertSame('', $this->stringService->mask('', 1, 1));
+        $this->assertSame('ab', $this->stringService->mask('ab', 1, 1));
+        $this->assertSame('abc', $this->stringService->mask('abc', 3, 0));
+        $this->assertSame('abc', $this->stringService->mask('abc', 0, 3));
+    }
+
+    public function testMaskOnlyHidesTheMiddleWhenBothEndsAreVisible()
+    {
+        $this->assertSame('1*******9', $this->stringService->mask('123456789', 1, 1));
+        $this->assertSame('123***789', $this->stringService->mask('123456789', 3, 3));
+        $this->assertSame('12345678*', $this->stringService->mask('123456789', 8, 0));
+    }
+
     public function testTruncate()
     {
         $this->assertEquals('Hello...', $this->stringService->truncate('Hello World', 5));
@@ -241,6 +301,387 @@ class StringServiceTest extends TestCase
         $this->assertFalse($this->stringService->isJson(''));
     }
 
+    // ---- isPalindrome -----------------------------------------------------
+
+    public function testIsPalindromeHandlesNonLatinText()
+    {
+        $this->assertFalse($this->stringService->isPalindrome('привет'));
+        $this->assertFalse($this->stringService->isPalindrome('你好吗'));
+        $this->assertTrue($this->stringService->isPalindrome('топот'));
+        $this->assertTrue($this->stringService->isPalindrome('А роза упала на лапу Азора'));
+        $this->assertTrue($this->stringService->isPalindrome('été'));
+        $this->assertTrue($this->stringService->isPalindrome('ÉtÉ'));
+    }
+
+    public function testIsPalindromeKeepsAsciiBehaviour()
+    {
+        $this->assertTrue($this->stringService->isPalindrome('Was it a car or a cat I saw?'));
+        $this->assertTrue($this->stringService->isPalindrome('12321'));
+        $this->assertFalse($this->stringService->isPalindrome('12345'));
+        $this->assertFalse($this->stringService->isPalindrome('ab-à'));
+    }
+
+    // ---- random / uuid ----------------------------------------------------
+
+    public function testRandomReturnsTheRequestedLength()
+    {
+        foreach ([0, 1, 7, 32, 200] as $length) {
+            $this->assertSame($length, strlen($this->stringService->random($length)));
+        }
+    }
+
+    public function testRandomWithNegativeLengthReturnsEmptyString()
+    {
+        $this->assertSame('', $this->stringService->random(-5));
+    }
+
+    public function testRandomOnlyUsesAlphanumericCharacters()
+    {
+        $this->assertMatchesRegularExpression('/^[a-zA-Z0-9]{500}$/', $this->stringService->random(500));
+    }
+
+    public function testRandomCanRepeatCharactersWithinOneString()
+    {
+        // A shuffle of the alphabet can never repeat a character in a short
+        // string; real random picks do, so 62 draws of 400 chars always repeat.
+        $this->assertLessThan(400, count(array_unique(str_split($this->stringService->random(400)))));
+    }
+
+    public function testRandomEventuallyUsesEveryCharacterClass()
+    {
+        $seen = array_unique(str_split($this->stringService->random(5000)));
+
+        $this->assertGreaterThan(55, count($seen));
+        $this->assertMatchesRegularExpression('/[a-z]/', implode('', $seen));
+        $this->assertMatchesRegularExpression('/[A-Z]/', implode('', $seen));
+        $this->assertMatchesRegularExpression('/[0-9]/', implode('', $seen));
+    }
+
+    public function testRandomValuesDoNotCollide()
+    {
+        $values = [];
+
+        for ($i = 0; $i < 500; $i++) {
+            $values[] = $this->stringService->random(16);
+        }
+
+        $this->assertCount(500, array_unique($values));
+    }
+
+    public function testUuidIsAlwaysAValidVersion4()
+    {
+        for ($i = 0; $i < 300; $i++) {
+            $this->assertMatchesRegularExpression(
+                '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
+                $this->stringService->uuid()
+            );
+        }
+    }
+
+    public function testUuidValuesDoNotCollide()
+    {
+        $values = [];
+
+        for ($i = 0; $i < 1000; $i++) {
+            $values[] = $this->stringService->uuid();
+        }
+
+        $this->assertCount(1000, array_unique($values));
+    }
+
+    public function testUuidVariantNibbleCoversEveryAllowedValue()
+    {
+        $variants = [];
+
+        for ($i = 0; $i < 600; $i++) {
+            $variants[$this->stringService->uuid()[19]] = true;
+        }
+
+        $this->assertEqualsCanonicalizing(['8', '9', 'a', 'b'], array_keys($variants));
+    }
+
+    // ---- truncate ---------------------------------------------------------
+
+    public function testTruncateCountsCharactersNotBytes()
+    {
+        $this->assertSame('héllo...', $this->stringService->truncate('héllo wörld', 5));
+        $this->assertSame('héllo', $this->stringService->truncate('héllo', 5));
+        $this->assertSame('日本...', $this->stringService->truncate('日本語テキスト', 2));
+    }
+
+    public function testTruncateNeverProducesInvalidUtf8()
+    {
+        foreach (range(0, 8) as $max) {
+            $this->assertTrue(mb_check_encoding($this->stringService->truncate('héllo wörld 日本語', $max), 'UTF-8'));
+        }
+    }
+
+    public function testTruncateWithNegativeLengthKeepsOnlyTheSuffix()
+    {
+        $this->assertSame('...', $this->stringService->truncate('hello world', -1));
+        $this->assertSame('...', $this->stringService->truncate('hello world', 0));
+    }
+
+    public function testTruncateKeepsStringsThatFitExactly()
+    {
+        $this->assertSame('', $this->stringService->truncate('', 3));
+        $this->assertSame('abc', $this->stringService->truncate('abc', 3));
+        $this->assertSame('abc...', $this->stringService->truncate('abcd', 3));
+    }
+
+    // ---- mask (multibyte) -------------------------------------------------
+
+    public function testMaskCountsCharactersNotBytes()
+    {
+        $this->assertSame('h*********d', $this->stringService->mask('héllo wörld', 1, 1));
+        $this->assertSame('日*****ト', $this->stringService->mask('日本語テキスト', 1, 1));
+        $this->assertSame('日本*****', $this->stringService->mask('日本語テキスト', 2, 0));
+    }
+
+    public function testMaskNeverProducesInvalidUtf8()
+    {
+        foreach ([[1, 1], [2, 0], [0, 2], [3, 3]] as [$start, $end]) {
+            $this->assertTrue(mb_check_encoding($this->stringService->mask('héllo wörld 日本語', $start, $end), 'UTF-8'));
+        }
+    }
+
+    public function testMaskKeepsTheCharacterLengthOfMultibyteText()
+    {
+        $this->assertSame(11, mb_strlen($this->stringService->mask('héllo wörld', 2, 2)));
+    }
+
+    // ---- snake ------------------------------------------------------------
+
+    public function testSnakeHandlesNonAsciiLetters()
+    {
+        $this->assertSame('école_nom', $this->stringService->snake('ÉcoleNom'));
+        $this->assertSame('é_nom', $this->stringService->snake('éNom'));
+        $this->assertSame('straße_name', $this->stringService->snake('straßeName'));
+    }
+
+    public function testSnakeKeepsAsciiBehaviour()
+    {
+        $this->assertSame('hello_world', $this->stringService->snake('helloWorld'));
+        $this->assertSame('hello_world', $this->stringService->snake('HelloWorld'));
+        $this->assertSame('user_profile_image', $this->stringService->snake('userProfileImage'));
+        $this->assertSame('already_snake', $this->stringService->snake('already_snake'));
+        $this->assertSame('user1name', $this->stringService->snake('user1Name'));
+        $this->assertSame('', $this->stringService->snake(''));
+    }
+
+    // ---- slug -------------------------------------------------------------
+
+    public function testSlugWithEmptySeparatorJoinsTheWords()
+    {
+        $this->assertSame('helloworld', $this->stringService->slug('Hello World', ''));
+    }
+
+    public function testSlugWithEmptySeparatorStillStripsPunctuation()
+    {
+        $this->assertSame('helloworld', $this->stringService->slug('Hello, World!', ''));
+    }
+
+    public function testSlugCollapsesRepeatedSeparatorsAndTrimsTheEdges()
+    {
+        $this->assertSame('hello-world', $this->stringService->slug('  Hello    World!!  '));
+        $this->assertSame('hello__world', $this->stringService->slug('Hello World', '__'));
+        $this->assertSame('hello--world', $this->stringService->slug('Hello  World', '--'));
+    }
+
+    public function testSlugKeepsUnicodeLetters()
+    {
+        $this->assertSame('привет-мир', $this->stringService->slug('Привет Мир'));
+    }
+
+    // ---- contains ---------------------------------------------------------
+
+    public function testContainsNeverMatchesAnEmptyNeedle()
+    {
+        $this->assertFalse($this->stringService->contains('abc', ''));
+        $this->assertFalse($this->stringService->contains('abc', ['']));
+        $this->assertFalse($this->stringService->contains('', ''));
+    }
+
+    public function testContainsStillMatchesOtherNeedlesNextToAnEmptyOne()
+    {
+        $this->assertTrue($this->stringService->contains('abc', ['', 'b']));
+        $this->assertFalse($this->stringService->contains('abc', ['', 'x']));
+    }
+
+    public function testContainsRespectsCaseSensitivity()
+    {
+        $this->assertFalse($this->stringService->contains('Hello', 'hello', false));
+        $this->assertTrue($this->stringService->contains('Hello', 'Hello', false));
+        $this->assertTrue($this->stringService->contains('Ünï', 'ÜNÏ'));
+    }
+
+    // ---- limitWords -------------------------------------------------------
+
+    public function testLimitWordsWithNonPositiveLimitReturnsOnlyTheEnding()
+    {
+        $this->assertSame('...', $this->stringService->limitWords('a b c d', 0));
+        $this->assertSame('...', $this->stringService->limitWords('a b c d', -1));
+        $this->assertSame('...', $this->stringService->limitWords('a b c d', -100));
+    }
+
+    public function testLimitWordsDoesNotThrowOnInvalidUtf8()
+    {
+        $this->assertSame("\xFF bad...", $this->stringService->limitWords("\xFF bad worse", 2));
+    }
+
+    public function testLimitWordsHandlesEmptyAndWhitespaceOnlyStrings()
+    {
+        $this->assertSame('', $this->stringService->limitWords('', 3));
+        $this->assertSame('', $this->stringService->limitWords("  \n ", 3));
+    }
+
+    public function testLimitWordsSplitsOnAnyWhitespace()
+    {
+        $this->assertSame('a b...', $this->stringService->limitWords("a\tb\nc d", 2));
+    }
+
+    // ---- longestCommonSubstring ------------------------------------------
+
+    public function testLongestCommonSubstringNeverSplitsACharacter()
+    {
+        $this->assertSame('caf', $this->stringService->longestCommonSubstring('café', 'cafè'));
+        $this->assertTrue(mb_check_encoding($this->stringService->longestCommonSubstring('café', 'cafè'), 'UTF-8'));
+        $this->assertSame('本語', $this->stringService->longestCommonSubstring('日本語', '本語'));
+    }
+
+    public function testLongestCommonSubstringFindsTheLongestRun()
+    {
+        $this->assertSame('abcd', $this->stringService->longestCommonSubstring('xxabcdyy', 'zabcdz'));
+        $this->assertSame('Hello ', $this->stringService->longestCommonSubstring('Hello World', 'Hello There'));
+    }
+
+    public function testLongestCommonSubstringWithNothingInCommonIsEmpty()
+    {
+        $this->assertSame('', $this->stringService->longestCommonSubstring('abc', 'xyz'));
+        $this->assertSame('', $this->stringService->longestCommonSubstring('', 'abc'));
+        $this->assertSame('', $this->stringService->longestCommonSubstring('abc', ''));
+        $this->assertSame('', $this->stringService->longestCommonSubstring('', ''));
+    }
+
+    public function testLongestCommonSubstringPrefersTheFirstOfEqualLengthRuns()
+    {
+        $this->assertSame('ab', $this->stringService->longestCommonSubstring('abXcd', 'cdYab'));
+    }
+
+    public function testLongestCommonSubstringHandlesLongInputs()
+    {
+        $a = str_repeat('a', 1500) . 'MATCH' . str_repeat('b', 1500);
+        $b = str_repeat('c', 1500) . 'MATCH' . str_repeat('d', 1500);
+
+        $this->assertSame('MATCH', $this->stringService->longestCommonSubstring($a, $b));
+    }
+
+    // ---- highlightKeyword -------------------------------------------------
+
+    public function testHighlightKeywordAcceptsAZeroKeyword()
+    {
+        $this->assertSame('a<strong>0</strong>b', $this->stringService->highlightKeyword('a0b', '0'));
+    }
+
+    public function testHighlightKeywordIgnoresAnEmptyKeyword()
+    {
+        $this->assertSame('abc', $this->stringService->highlightKeyword('abc', ''));
+    }
+
+    public function testHighlightKeywordMatchesNonAsciiCaseInsensitively()
+    {
+        $this->assertSame('<strong>Été</strong>', $this->stringService->highlightKeyword('Été', 'été'));
+    }
+
+    public function testHighlightKeywordKeepsTheOriginalCaseOfTheMatch()
+    {
+        $this->assertSame('<b>Hello</b> world', $this->stringService->highlightKeyword('Hello world', 'hello', 'b'));
+    }
+
+    public function testHighlightKeywordEscapesRegexCharactersInTheKeyword()
+    {
+        $this->assertSame('1<strong>+</strong>1', $this->stringService->highlightKeyword('1+1', '+'));
+        $this->assertSame('a<strong>.</strong>b', $this->stringService->highlightKeyword('a.b', '.'));
+    }
+
+    public function testHighlightKeywordStillWorksOnInvalidUtf8()
+    {
+        $this->assertSame("\xFF <strong>a</strong>", $this->stringService->highlightKeyword("\xFF a", 'a'));
+    }
+
+    public function testHighlightKeywordHighlightsEveryOccurrence()
+    {
+        $this->assertSame('<strong>a</strong>b<strong>a</strong>', $this->stringService->highlightKeyword('aba', 'a'));
+    }
+
+    // ---- toUpper ----------------------------------------------------------
+
+    public function testToUpperHandlesNonAsciiLetters()
+    {
+        $this->assertSame('ÉA', $this->stringService->toUpper('éa'));
+        $this->assertSame('ПРИВЕТ', $this->stringService->toUpper('привет'));
+        $this->assertSame('GET', $this->stringService->toUpper('get'));
+        $this->assertSame('', $this->stringService->toUpper(''));
+    }
+
+    // ---- suffixAppend / removeSuffix -------------------------------------
+
+    public function testSuffixAppendWorksWithoutABootedContainer()
+    {
+        $this->assertSame('PostController', $this->stringService->suffixAppend('post', 'Controller'));
+    }
+
+    public function testSuffixAppendLeavesAnExistingSuffixAlone()
+    {
+        $this->assertSame('PostController', $this->stringService->suffixAppend('PostController', 'Controller'));
+    }
+
+    public function testSuffixAppendOfAnEmptyInputReturnsTheSuffix()
+    {
+        $this->assertSame('Controller', $this->stringService->suffixAppend('', 'Controller'));
+    }
+
+    public function testSuffixAppendCapitalisesAMultibyteFirstLetter()
+    {
+        $this->assertSame('ÉcoleController', $this->stringService->suffixAppend('école', 'Controller'));
+    }
+
+    public function testRemoveSuffixRemovesOnlyAMatchingSuffix()
+    {
+        $this->assertSame('Post', $this->stringService->removeSuffix('PostController', 'Controller'));
+        $this->assertSame('hello', $this->stringService->removeSuffix('hello', 'xyz'));
+        $this->assertSame('PostControllerX', $this->stringService->removeSuffix('PostControllerX', 'Controller'));
+    }
+
+    public function testRemoveSuffixWithAnEmptySuffixReturnsTheInput()
+    {
+        $this->assertSame('hello', $this->stringService->removeSuffix('hello', ''));
+        $this->assertSame('', $this->stringService->removeSuffix('', ''));
+    }
+
+    public function testRemoveSuffixIgnoresASuffixLongerThanTheInput()
+    {
+        $this->assertSame('ab', $this->stringService->removeSuffix('ab', 'abc'));
+    }
+
+    public function testRemoveSuffixOfTheWholeStringLeavesNothing()
+    {
+        $this->assertSame('', $this->stringService->removeSuffix('Controller', 'Controller'));
+    }
+
+    public function testRemoveSuffixHandlesMultibyteSuffixes()
+    {
+        $this->assertSame('café', $this->stringService->removeSuffix('café日本', '日本'));
+        $this->assertSame('日', $this->stringService->removeSuffix('日本', '本'));
+    }
+
+    public function testSuffixAppendAndRemoveSuffixRoundTrip()
+    {
+        $name = $this->stringService->suffixAppend('invoice', 'Controller');
+
+        $this->assertSame('Invoice', $this->stringService->removeSuffix($name, 'Controller'));
+    }
+
     public function testStringServiceConformsToTheContract()
     {
         $this->assertInstanceOf(StringServiceInterface::class, $this->stringService);
@@ -252,16 +693,16 @@ class StringServiceTest extends TestCase
         (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
         $previous = Container::getInstance();
         Container::setInstance($app);
+        $originalAppUrl = getenv('APP_URL');
 
         try {
-            $originalAppUrl = getenv('APP_URL');
             putenv('APP_URL=http://localhost');
             (new FacadeLauncher($app))->register();
 
             $contract = $app->get(StringServiceInterface::class);
 
             $this->assertInstanceOf(StringService::class, $contract);
-            $this->assertSame($contract, $app->get('str'));
+            $this->assertSame($contract, app('str'));
             $this->assertSame($contract, str());
         } finally {
             Container::setInstance($previous);

@@ -51,9 +51,9 @@ class StringService implements StringServiceInterface
      */
     public function isPalindrome(string $string): bool
     {
-        $cleaned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $string));
+        $cleaned = mb_strtolower(preg_replace('/[^\p{L}\p{Nd}]/u', '', $string) ?? '', 'UTF-8');
 
-        return $cleaned === strrev($cleaned);
+        return $cleaned === $this->reverse($cleaned);
     }
 
     /**
@@ -64,7 +64,15 @@ class StringService implements StringServiceInterface
      */
     public function random(int $length = 10): string
     {
-        return substr(str_shuffle(str_repeat('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', $length)), 0, $length);
+        $alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $last = strlen($alphabet) - 1;
+        $result = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $result .= $alphabet[random_int(0, $last)];
+        }
+
+        return $result;
     }
 
     /**
@@ -88,18 +96,23 @@ class StringService implements StringServiceInterface
      * @param string $string
      * @param int $visibleFromStart
      * @param int $visibleFromEnd
-     * @param string
+     * @param string $maskCharacter
+     * @return string
      */
     public function mask(string $string, int $visibleFromStart = 1, int $visibleFromEnd = 1, string $maskCharacter = '*'): string
     {
-        $length = strlen($string);
+        $visibleFromStart = max(0, $visibleFromStart);
+        $visibleFromEnd   = max(0, $visibleFromEnd);
+
+        $length = mb_strlen($string, 'UTF-8');
 
         if ($length <= $visibleFromStart + $visibleFromEnd) {
             return $string;
         }
 
-        $startPart  = substr($string, 0, $visibleFromStart);
-        $endPart    = substr($string, -$visibleFromEnd);
+        $startPart  = mb_substr($string, 0, $visibleFromStart, 'UTF-8');
+
+        $endPart    = $visibleFromEnd > 0 ? mb_substr($string, -$visibleFromEnd, null, 'UTF-8') : '';
         $middlePart = str_repeat($maskCharacter, $length - $visibleFromStart - $visibleFromEnd);
 
         return $startPart . $middlePart . $endPart;
@@ -115,7 +128,11 @@ class StringService implements StringServiceInterface
      */
     public function truncate(string $string, int $maxLength, string $suffix = '...'): string
     {
-        return (strlen($string) > $maxLength) ? substr($string, 0, $maxLength) . $suffix : $string;
+        $maxLength = max(0, $maxLength);
+
+        return (mb_strlen($string, 'UTF-8') > $maxLength)
+            ? mb_substr($string, 0, $maxLength, 'UTF-8') . $suffix
+            : $string;
     }
 
     /**
@@ -126,7 +143,7 @@ class StringService implements StringServiceInterface
      */
     public function snake(string $input): string
     {
-        return strtolower(preg_replace('/([a-z])([A-Z])/', '$1_$2', $input));
+        return mb_strtolower(preg_replace('/(\p{Ll})(\p{Lu})/u', '$1_$2', $input) ?? $input, 'UTF-8');
     }
 
     /**
@@ -152,7 +169,12 @@ class StringService implements StringServiceInterface
         $slug = mb_strtolower($input, 'UTF-8');
         $slug = preg_replace('/[\s,\.;\'"!\?]+/u', $separator, $slug);
         $slug = preg_replace('/[^\p{L}\p{Nd}' . preg_quote($separator, '/') . ']+/u', '', $slug);
-        $slug = preg_replace('/' . preg_quote($separator, '/') . '{2,}/u', $separator, $slug);
+
+        if ($separator === '') {
+            return $slug;
+        }
+
+        $slug = preg_replace('/(?:' . preg_quote($separator, '/') . '){2,}/u', $separator, $slug);
 
         return trim($slug, $separator);
     }
@@ -173,6 +195,10 @@ class StringService implements StringServiceInterface
                     return true;
                 }
             }
+            return false;
+        }
+
+        if ($needles === '') {
             return false;
         }
 
@@ -201,7 +227,10 @@ class StringService implements StringServiceInterface
             return '';
         }
 
-        $wordArray = preg_split('/\s+/u', $trimmed);
+        $words = max(0, $words);
+
+        // Fall back to a byte-wise split when the string is not valid UTF-8.
+        $wordArray = preg_split('/\s+/u', $trimmed) ?: preg_split('/\s+/', $trimmed);
 
         // If the total number of words is less than or equal to $words, return original.
         if (count($wordArray) <= $words) {
@@ -252,17 +281,13 @@ class StringService implements StringServiceInterface
      */
     public function uuid(): string
     {
-        return sprintf(
-            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff)
-        );
+        $bytes = random_bytes(16);
+
+        // Set the version (4) and variant (RFC 4122) bits.
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
     }
 
     /**
@@ -386,23 +411,31 @@ class StringService implements StringServiceInterface
      */
     public function longestCommonSubstring(string $str1, string $str2): string
     {
-        $matrix    = array_fill(0, strlen($str1) + 1, array_fill(0, strlen($str2) + 1, 0));
+        $chars1    = mb_str_split($str1, 1, 'UTF-8');
+        $chars2    = mb_str_split($str2, 1, 'UTF-8');
+        $length2   = count($chars2);
         $maxLength = 0;
         $endIndex  = 0;
+        $previous  = array_fill(0, $length2 + 1, 0);
 
-        for ($i = 1; $i <= strlen($str1); $i++) {
-            for ($j = 1; $j <= strlen($str2); $j++) {
-                if ($str1[$i - 1] === $str2[$j - 1]) {
-                    $matrix[$i][$j] = $matrix[$i - 1][$j - 1] + 1;
-                    if ($matrix[$i][$j] > $maxLength) {
-                        $maxLength = $matrix[$i][$j];
-                        $endIndex  = $i;
+        foreach ($chars1 as $i => $char1) {
+            $current = array_fill(0, $length2 + 1, 0);
+
+            foreach ($chars2 as $j => $char2) {
+                if ($char1 === $char2) {
+                    $current[$j + 1] = $previous[$j] + 1;
+
+                    if ($current[$j + 1] > $maxLength) {
+                        $maxLength = $current[$j + 1];
+                        $endIndex  = $i + 1;
                     }
                 }
             }
+
+            $previous = $current;
         }
 
-        return substr($str1, $endIndex - $maxLength, $maxLength);
+        return implode('', array_slice($chars1, $endIndex - $maxLength, $maxLength));
     }
 
     /**
@@ -448,15 +481,15 @@ class StringService implements StringServiceInterface
      */
     public function highlightKeyword(string $input, string $keyword, string $tag = 'strong'): string
     {
-        if (empty($keyword)) {
+        if ($keyword === '') {
             return $input;
         }
 
-        return preg_replace(
-            '/(' . preg_quote($keyword, '/') . ')/i',
-            "<$tag>$1</$tag>",
-            $input
-        );
+        $pattern = '/(' . preg_quote($keyword, '/') . ')/i';
+
+        return preg_replace($pattern . 'u', "<$tag>$1</$tag>", $input)
+            ?? preg_replace($pattern, "<$tag>$1</$tag>", $input)
+            ?? $input;
     }
 
     /**
@@ -467,7 +500,7 @@ class StringService implements StringServiceInterface
      */
     public function toUpper(string $input): string
     {
-        return strtoupper($input);
+        return mb_strtoupper($input, 'UTF-8');
     }
 
     /**
@@ -479,11 +512,15 @@ class StringService implements StringServiceInterface
      */
     public function suffixAppend(string $input, string $suffix): string
     {
-        if (str()->endsWith($input, $suffix)) {
+        if ($this->endsWith($input, $suffix)) {
             return $input;
         }
 
-        return strtoupper($input[0]) . substr($input, 1) . $suffix;
+        if ($input === '') {
+            return $suffix;
+        }
+
+        return mb_strtoupper(mb_substr($input, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($input, 1, null, 'UTF-8') . $suffix;
     }
 
     /**
@@ -495,7 +532,11 @@ class StringService implements StringServiceInterface
      */
     public function removeSuffix(string $input, string $suffix): string
     {
-        return substr($input, 0, -strlen($suffix));
+        if ($suffix === '' || ! $this->endsWith($input, $suffix)) {
+            return $input;
+        }
+
+        return mb_substr($input, 0, mb_strlen($input, 'UTF-8') - mb_strlen($suffix, 'UTF-8'), 'UTF-8');
     }
 
     /**
