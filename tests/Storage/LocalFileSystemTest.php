@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Storage;
 
+use Phaseolies\Support\Storage\IFileSystem;
 use Phaseolies\Support\Storage\LocalFileSystem;
 use Phaseolies\Support\Storage\FileNotFoundException;
 use Phaseolies\Support\File;
@@ -116,9 +117,19 @@ class LocalFileSystemTest extends TestCase
         $this->assertFalse($result);
     }
 
-    public function testStoreageBasePathReturnsConfiguredPath()
+    public function testStorageBasePathReturnsConfiguredPath()
     {
-        $this->assertEquals($this->tmpDir, $this->fs->storeageBasePath());
+        $this->assertSame($this->tmpDir, $this->fs->storageBasePath());
+    }
+
+    public function testDeprecatedStoreageBasePathAliasStillWorks()
+    {
+        $this->assertSame($this->tmpDir, $this->fs->storeageBasePath());
+    }
+
+    public function testImplementsFileSystemContract()
+    {
+        $this->assertInstanceOf(IFileSystem::class, $this->fs);
     }
 
     public function testStoreMovesFileToCorrectPath()

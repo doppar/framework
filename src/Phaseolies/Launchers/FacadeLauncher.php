@@ -89,8 +89,9 @@ class FacadeLauncher extends ServiceLauncher
             return new UrlGenerator(env('APP_URL') ?? config('app.url'));
         });
 
-        // Bind the 'storage' service to a singleton instance of the Storage class.
-        // This handles file uploads.
+        // Bind the StorageInterface contract to a singleton StorageFileService and
+        // keep the legacy 'storage' key as an alias of it, so both resolve to the
+        // same instance. This handles file uploads.
         $this->app->singleton(StorageInterface::class, StorageFileService::class);
         $this->app->alias(StorageInterface::class, 'storage');
 

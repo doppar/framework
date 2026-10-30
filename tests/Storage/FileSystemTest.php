@@ -101,9 +101,35 @@ class FileSystemTest extends TestCase
         $this->assertEquals($this->tmpDir . '/uploads/image.jpg', $result);
     }
 
-    public function testStoreageBasePathReturnsFilePath()
+    public function testStorageBasePathReturnsFilePath()
     {
-        $this->assertEquals($this->tmpDir, $this->fs->storeageBasePath());
+        $this->assertSame($this->tmpDir, $this->fs->storageBasePath());
+    }
+
+    public function testDeprecatedStoreageBasePathAliasReturnsSameValue()
+    {
+        $this->assertSame($this->fs->storageBasePath(), $this->fs->storeageBasePath());
+    }
+
+    public function testDeprecatedAliasDelegatesToStorageBasePath()
+    {
+        $fs = new class('/original') extends FileSystem {
+            public function storageBasePath(): string
+            {
+                return '/overridden';
+            }
+        };
+
+        $this->assertSame('/overridden', $fs->storeageBasePath());
+    }
+
+    public function testDeprecatedAliasIsMarkedDeprecated()
+    {
+        $doc = (new \ReflectionMethod(FileSystem::class, 'storeageBasePath'))->getDocComment();
+
+        $this->assertIsString($doc);
+        $this->assertStringContainsString('@deprecated', $doc);
+        $this->assertStringContainsString('storageBasePath()', $doc);
     }
 
     public function testIsDirectoryExistsCreatesDirectoryIfMissing()

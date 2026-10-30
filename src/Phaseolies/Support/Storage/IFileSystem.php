@@ -21,7 +21,7 @@ interface IFileSystem
      *
      * @return string
      */
-    public function storeageBasePath(): string;
+    public function storageBasePath(): string;
 
     /**
      * Get the absolute path for a stored file.

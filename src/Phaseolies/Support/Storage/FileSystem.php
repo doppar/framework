@@ -189,13 +189,24 @@ class FileSystem
     }
 
     /**
-     * return project base path in os
+     * Get the filesystem base path.
      *
+     * @return string
+     */
+    public function storageBasePath(): string
+    {
+        return $this->filePath;
+    }
+
+    /**
+     * Get the filesystem base path.
+     *
+     * @deprecated Misspelled name kept for backward compatibility, use storageBasePath() instead.
      * @return string
      */
     public function storeageBasePath(): string
     {
-        return $this->filePath;
+        return $this->storageBasePath();
     }
 
     /**

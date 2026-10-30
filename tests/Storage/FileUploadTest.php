@@ -205,6 +205,49 @@ namespace Tests\Unit\Storage {
             $this->assertInstanceOf(LocalFileSystem::class, $disk);
         }
 
+        public function testDiskResolvesPublicDiskAsFileSystemContract(): void
+        {
+            $disk = (new StorageFileService())->disk('public');
+
+            $this->assertInstanceOf(IFileSystem::class, $disk);
+            $this->assertInstanceOf(PublicFileSystem::class, $disk);
+        }
+
+        public function testDiskBasePathMatchesConfiguredRootThroughNewAndDeprecatedNames(): void
+        {
+            $storage = new StorageFileService();
+
+            $this->assertSame($this->localRoot, $storage->disk('local')->storageBasePath());
+            $this->assertSame($this->localRoot, $storage->disk('local')->storeageBasePath());
+            $this->assertSame($this->publicRoot, $storage->disk('public')->storageBasePath());
+            $this->assertSame($this->publicRoot, $storage->disk('public')->storeageBasePath());
+        }
+
+        public function testDiskThrowsForUnsupportedDiskName(): void
+        {
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Unsupported s3');
+
+            (new StorageFileService())->disk('s3');
+        }
+
+        public function testGetDiskPathReturnsNullForUnconfiguredDisk(): void
+        {
+            $this->assertNull((new StorageFileService())->getDiskPath('missing-disk'));
+        }
+
+        public function testDiskContractSupportsStoreGetContentAndDeleteRoundTrip(): void
+        {
+            $disk = (new StorageFileService())->disk('local');
+            $file = $this->makeUploadedStyleFile('round.txt', 'round trip');
+
+            $this->assertTrue($disk->store('docs', $file, 'round.txt'));
+            $this->assertSame($this->localRoot . '/docs/round.txt', $disk->get('docs/round.txt'));
+            $this->assertSame('round trip', $disk->content('docs/round.txt'));
+            $this->assertTrue($disk->delete('docs/round.txt'));
+            $this->assertNull($disk->get('docs/round.txt'));
+        }
+
         public function testStorageFacadeResolvesPublicDiskAndStoresUpload(): void
         {
             $disk = Storage::disk('public');

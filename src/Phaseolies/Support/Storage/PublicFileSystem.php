@@ -22,16 +22,6 @@ class PublicFileSystem extends FileSystem implements IFileSystem
     }
 
     /**
-     * return project base path in os
-     *
-     * @return string
-     */
-    public function storeageBasePath(): string
-    {
-        return $this->filePath;
-    }
-
-    /**
      * Get the contents of a file.
      *
      * @param string $path
