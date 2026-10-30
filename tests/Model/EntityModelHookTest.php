@@ -410,4 +410,204 @@ class EntityModelHookTest extends TestCase
         $this->assertSame('Quiet', MockHook::find(1)->name);
         $this->assertSame('Quiet', MockHook::find(3)->name);
     }
+
+    /**
+     * Register an after_updated spy on MockHook that records how many times it
+     * ran and what getOriginal('name') was while it ran.
+     *
+     * @return \stdClass
+     */
+    private function spyAfterUpdated(): \stdClass
+    {
+        $spy = new \stdClass();
+        $spy->calls = 0;
+        $spy->originals = [];
+
+        $this->tempHooks([
+            'after_updated' => function ($model) use ($spy) {
+                $spy->calls++;
+                $spy->originals[] = $model->getOriginal('name');
+            },
+        ]);
+
+        return $spy;
+    }
+
+    public function testQuietSaveLeavesTheModelClean(): void
+    {
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        $this->assertSame([], $hook->getDirtyAttributes());
+        $this->assertFalse($hook->isDirtyAttr('name'));
+        $this->assertSame('Quiet', $hook->getOriginal('name'));
+    }
+
+    public function testQuietSaveStillPersistsTheChange(): void
+    {
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+
+        $this->assertTrue($hook->withoutHook()->save());
+        $this->assertSame('Quiet', MockHook::find(1)->name);
+    }
+
+    public function testQuietSaveDoesNotFireAfterUpdated(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        $this->assertSame(0, $spy->calls);
+    }
+
+    public function testPlainSaveAfterQuietSaveDoesNotRefireTheHook(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        $this->assertTrue($hook->save()); // nothing new changed
+
+        $this->assertSame(0, $spy->calls, 'a change that is already persisted must not fire after_updated later');
+    }
+
+    public function testPlainSaveAfterQuietSaveDoesNotRewriteTheRow(): void
+    {
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        // Change the row behind the model's back. A stale-dirty model would
+        // overwrite it again on the next save().
+        $this->pdo->exec("UPDATE hooks SET name = 'Changed elsewhere' WHERE id = 1");
+
+        $hook->save();
+
+        $this->assertSame('Changed elsewhere', MockHook::find(1)->name);
+    }
+
+    public function testChangeAfterQuietSaveIsTheOnlyDirtyAttribute(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        $hook->name = 'Loud';
+        $this->assertSame(['name' => 'Loud'], $hook->getDirtyAttributes());
+
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertSame(['Quiet'], $spy->originals, 'the hook must see the quiet value as the original');
+        $this->assertSame('Loud', MockHook::find(1)->name);
+    }
+
+    public function testQuietSaveAppliesToOneWriteOnly(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+
+        $hook->name = 'Loud';
+        $hook->save();
+
+        $hook->name = 'Louder';
+        $hook->save();
+
+        $this->assertSame(2, $spy->calls);
+    }
+
+    public function testRepeatedQuietSavesStayClean(): void
+    {
+        $hook = MockHook::find(1);
+
+        foreach (['One', 'Two', 'Three'] as $name) {
+            $hook->name = $name;
+            $hook->withoutHook()->save();
+
+            $this->assertSame([], $hook->getDirtyAttributes());
+        }
+
+        $this->assertSame('Three', MockHook::find(1)->name);
+    }
+
+    public function testQuietSaveWithNothingDirtyDoesNotLeakSuppressionIntoTheNextSave(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->withoutHook()->save(); // nothing dirty, returns early
+
+        $hook->name = 'Loud';
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+    }
+
+    public function testNormalSaveStillExposesTheOldValueInsideAfterUpdated(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Loud';
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertSame(['John Doe'], $spy->originals, 'originals must only be synced after the hook has run');
+        $this->assertSame([], $hook->getDirtyAttributes());
+        $this->assertSame('Loud', $hook->getOriginal('name'));
+    }
+
+    public function testNormalSaveFollowedByAnotherSaveDoesNotRefireTheHook(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::find(1);
+        $hook->name = 'Loud';
+        $hook->save();
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+    }
+
+    public function testQuietSaveOnOneInstanceDoesNotAffectAnotherInstanceOfTheSameRow(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $quiet = MockHook::find(1);
+        $other = MockHook::find(1);
+
+        $quiet->name = 'Quiet';
+        $quiet->withoutHook()->save();
+
+        $other->name = 'Loud';
+        $other->save();
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertSame([], $quiet->getDirtyAttributes());
+        $this->assertSame([], $other->getDirtyAttributes());
+    }
+
+    public function testQuietUpdateAndQuietSaveBehaveTheSame(): void
+    {
+        $viaSave = MockHook::find(1);
+        $viaSave->name = 'Same';
+        $viaSave->withoutHook()->save();
+
+        $viaUpdate = MockHook::find(2);
+        $viaUpdate->withoutHook()->update(['name' => 'Same']);
+
+        $this->assertSame($viaUpdate->getDirtyAttributes(), $viaSave->getDirtyAttributes());
+        $this->assertSame($viaUpdate->getOriginal('name'), $viaSave->getOriginal('name'));
+    }
 }

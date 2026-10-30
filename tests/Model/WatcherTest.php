@@ -974,6 +974,22 @@ class WatcherTest extends TestCase
         $this->assertFalse(SpyListener::$called, 'withoutHook() must suppress watches');
     }
 
+    /** A quiet save() must not leave the change pending, or the next save() fires the watch late */
+    public function testSaveAfterQuietSaveDoesNotFireTheWatchLater(): void
+    {
+        $id    = $this->insertOrder('pending', 100, 'test');
+        $order = MockWatchableOrder::find($id);
+
+        $order->status = 'cancelled';
+        $order->withoutHook()->save();
+        $this->assertFalse(SpyListener::$called);
+
+        $order->save(); // nothing new changed
+
+        $this->assertFalse(SpyListener::$called, 'an already-persisted change must not fire a watch on a later save');
+        $this->assertSame([], $order->getDirtyAttributes());
+    }
+
     /** withoutHook() prevents watches from firing on update() */
     public function testWithoutHookDisablesWatchesOnUpdate(): void
     {
