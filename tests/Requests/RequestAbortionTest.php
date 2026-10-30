@@ -5,16 +5,20 @@ namespace Tests\Unit\Requests;
 require_once __DIR__ . '/../Support/MockContainer.php';
 
 use Phaseolies\Http\Support\RequestAbortion;
+use Phaseolies\Http\Contracts\RequestAbortionInterface;
 use Phaseolies\Http\Request;
+use Phaseolies\Application;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
 use Phaseolies\Translation\FileLoader;
 use Phaseolies\Translation\Translator;
 use stdClass;
 use PHPUnit\Framework\TestCase;
 use Mockery;
 use Tests\Support\MockContainer;
+use ReflectionClass;
 
 class TestableRequestAbortion extends RequestAbortion
 {
@@ -53,6 +57,28 @@ return [
 PHP);
         $this->container->bind('translator', fn() => new Translator(new FileLoader($this->translationPath), 'en'));
         $this->requestAbortion = new TestableRequestAbortion();
+    }
+
+    public function testRequestAbortionImplementationConformsToTheContract(): void
+    {
+        $this->assertInstanceOf(RequestAbortionInterface::class, $this->requestAbortion);
+    }
+
+    public function testApplicationBindsTheAbortionContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+
+        $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
+        $containerConstructor->invoke($app);
+
+        (new FacadeLauncher($app))->register();
+
+        $contractAbortion = $app->get(RequestAbortionInterface::class);
+        $legacyAbortion = $app->get('abort');
+
+        $this->assertInstanceOf(RequestAbortionInterface::class, $contractAbortion);
+        $this->assertInstanceOf(RequestAbortion::class, $contractAbortion);
+        $this->assertSame($contractAbortion, $legacyAbortion);
     }
 
     protected function tearDown(): void
@@ -178,8 +204,9 @@ PHP);
 
     public function testAbortIfDoesNotThrowWhenConditionIsFalse()
     {
+        $this->expectNotToPerformAssertions();
+
         $this->requestAbortion->abortIf(false, 500, 'Should not throw');
-        $this->assertTrue(true);
     }
 
     public function testAbortIfThrowsWhenConditionIsTrue()
@@ -215,6 +242,32 @@ PHP);
             $this->assertEquals(401, $e->getStatusCode());
             $this->assertSame('Unauthorized', $e->getValidationErrors());
             throw $e;
+        }
+    }
+
+    public function testAbortIfTreatsFalsyNonBoolConditionsAsNoOp()
+    {
+        $this->expectNotToPerformAssertions();
+
+        foreach ([null, [], 0, '', '0'] as $condition) {
+            $this->requestAbortion->abortIf($condition, 404, 'Not found');
+        }
+    }
+
+    public function testAbortIfThrowsForTruthyNonBoolConditions()
+    {
+        $mockRequest = Mockery::mock(Request::class);
+        $mockRequest->shouldReceive('isAjax')->andReturn(true);
+        $mockRequest->shouldReceive('isApiRequest')->andReturn(false);
+        $this->container->instance('request', $mockRequest);
+
+        foreach ([new \stdClass(), [1], 'yes', 1] as $condition) {
+            try {
+                $this->requestAbortion->abortIf($condition, 404, 'Not found');
+                $this->fail('Expected HttpResponseException was not thrown');
+            } catch (HttpResponseException $e) {
+                $this->assertEquals(404, $e->getStatusCode());
+            }
         }
     }
 

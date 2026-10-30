@@ -9,6 +9,7 @@ use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Support\Collection;
 use Phaseolies\Session\MessageBag;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\ResponseFactory;
 use Phaseolies\Http\Response;
@@ -287,11 +288,11 @@ if (!function_exists('back')) {
 
 if (!function_exists('session')) {
     /**
-     * Creates a new Session instance
+     * Gets the current session instance or a value from it.
      *
      * @param mixed $key
      * @param mixed $default
-     * @return mixed
+     * @return ($key is null ? SessionInterface : mixed)
      */
     function session($key = null, $default = null): mixed
     {
@@ -882,7 +883,6 @@ if (!function_exists('abort')) {
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
-     * @param int
      * @param int $code
      * @param string $message
      * @param array $headers
@@ -898,7 +898,7 @@ if (!function_exists('abort_if')) {
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers

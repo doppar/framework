@@ -3,8 +3,12 @@
 namespace Tests\Unit;
 
 use Phaseolies\Support\Encryption;
+use Phaseolies\Support\Contracts\EncryptionInterface;
+use Phaseolies\Application;
+use Phaseolies\Launchers\FacadeLauncher;
 use RuntimeException;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class EncryptionTest extends TestCase
 {
@@ -13,6 +17,65 @@ class EncryptionTest extends TestCase
     protected function setUp(): void
     {
         $this->encryption = new Encryption();
+    }
+
+    /**
+     * Build a real Application without booting it
+     *
+     * @return Application
+     */
+    private function makeApplication(): Application
+    {
+        return (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+    }
+
+    public function testEncryptionImplementationConformsToTheEncryptionContract(): void
+    {
+        $this->assertInstanceOf(EncryptionInterface::class, $this->encryption);
+    }
+
+    public function testApplicationBindsTheEncryptionContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $app = $this->makeApplication();
+
+        (new FacadeLauncher($app))->register();
+
+        $contractEncryption = $app->get(EncryptionInterface::class);
+        $legacyEncryption = $app->get('crypt');
+
+        $this->assertInstanceOf(EncryptionInterface::class, $contractEncryption);
+        $this->assertInstanceOf(Encryption::class, $contractEncryption);
+        $this->assertSame($contractEncryption, $legacyEncryption);
+
+        $encrypted = $contractEncryption->encrypt('contract value');
+
+        $this->assertSame('contract value', $legacyEncryption->decrypt($encrypted));
+    }
+
+    public function testInstanceOverrideByLegacyKeyReachesTheContract(): void
+    {
+        $app = $this->makeApplication();
+
+        (new FacadeLauncher($app))->register();
+
+        $fake = new Encryption();
+        $app->instance('crypt', $fake);
+
+        $this->assertSame($fake, $app->get(EncryptionInterface::class));
+        $this->assertSame($fake, $app->get('crypt'));
+    }
+
+    public function testSingletonOverrideByLegacyKeyReachesTheContract(): void
+    {
+        $app = $this->makeApplication();
+
+        (new FacadeLauncher($app))->register();
+
+        $custom = new Encryption();
+        $app->singleton('crypt', fn() => $custom);
+
+        $this->assertSame($custom, $app->get('crypt'));
+        $this->assertSame($custom, $app->get(EncryptionInterface::class));
     }
 
     public function testEncryptAndDecryptAString()

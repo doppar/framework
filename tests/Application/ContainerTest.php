@@ -522,6 +522,185 @@ class ContainerTest extends TestCase
         $this->assertEquals('value', $this->container->get('alias2'));
     }
 
+    public function testForgetResolvedViaAliasClearsSharedInstance()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $first = $this->container->get('alias');
+        $this->container->forgetResolved('alias');
+
+        $this->assertNotSame($first, $this->container->get('alias'));
+        $this->assertNotSame($first, $this->container->get('original'));
+    }
+
+    public function testInstanceOverrideViaAliasReachesTarget()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $fake = new \stdClass();
+        $this->container->instance('alias', $fake);
+
+        $this->assertSame($fake, $this->container->get('original'));
+        $this->assertSame($fake, $this->container->get('alias'));
+    }
+
+    public function testAliasToItselfThrows()
+    {
+        $this->expectException(\LogicException::class);
+        $this->container->alias('same', 'same');
+    }
+
+    public function testRepointingMidChainAliasThrowsInsteadOfLooping()
+    {
+        $this->container->singleton('c', fn() => 'value');
+        $this->container->alias('c', 'b');
+        $this->container->alias('b', 'a');
+
+        try {
+            $this->container->alias('a', 'b');
+            $this->fail('Expected a circular alias to be rejected.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('circular', $e->getMessage());
+        }
+
+        $this->assertSame('value', $this->container->get('a'));
+        $this->assertSame('c', $this->container->getAlias('a'));
+    }
+
+    public function testUsingThroughAliasRestoresOriginalBinding()
+    {
+        $original = new \stdClass();
+        $this->container->instance('original', $original);
+        $this->container->alias('original', 'alias');
+
+        $fake = new \stdClass();
+        $seen = $this->container->using(['alias' => $fake], fn($c) => $c->get('original'));
+
+        $this->assertSame($fake, $seen);
+        $this->assertSame($original, $this->container->get('original'));
+        $this->assertSame($original, $this->container->get('alias'));
+    }
+
+    public function testExtendThroughAliasWrapsTheTarget()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $this->container->extend('alias', function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get('original')->extended);
+        $this->assertSame($this->container->get('original'), $this->container->get('alias'));
+    }
+
+    public function testResolvedAndIsResolvingFollowAliases()
+    {
+        $this->container->singleton('original', function ($c) {
+            $this->assertTrue($c->isResolving('alias'));
+            return new \stdClass();
+        });
+        $this->container->alias('original', 'alias');
+
+        $this->assertFalse($this->container->resolved('alias'));
+        $this->container->get('alias');
+        $this->assertTrue($this->container->resolved('alias'));
+        $this->assertTrue($this->container->resolved('original'));
+    }
+
+    public function testUnsetAliasLeavesTargetIntact()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        unset($this->container['alias']);
+
+        $this->assertNotNull($this->container->get('original'));
+        $this->assertSame([], $this->container->getAliases());
+    }
+
+    public function testExtendAppliesToAnAlreadyResolvedSingleton()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->get('original');
+
+        $this->container->extend('original', function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get('original')->extended);
+    }
+
+    public function testExtendUnboundClassBuildsAndExtendsIt()
+    {
+        $this->container->extend(\stdClass::class, function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get(\stdClass::class)->extended);
+    }
+
+    public function testInstanceReplacesExecutionScopedValue()
+    {
+        $this->container->bindWithScope('scoped', fn() => new \stdClass(), Container::SCOPE_EXECUTION);
+
+        $fake = new \stdClass();
+        $resolved = null;
+        $this->container->runInContext('console', [], function () use ($fake, &$resolved) {
+            $this->container->get('scoped');
+            $this->container->instance('scoped', $fake);
+            $resolved = $this->container->get('scoped');
+        });
+
+        $this->assertSame($fake, $resolved);
+        $this->assertSame(Container::SCOPE_SINGLETON, $this->container->scopeOf('scoped'));
+    }
+
+    public function testUnsettingTargetRemovesItsAliases()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+        $this->container->alias('alias', 'alias2');
+
+        unset($this->container['original']);
+
+        $this->assertSame([], $this->container->getAliases());
+        $this->assertSame('alias2', $this->container->getAlias('alias2'));
+    }
+
+    public function testExecutionScopeBindingThroughAliasRebindsTarget()
+    {
+        $this->container->singleton('target', fn() => 'target');
+        $this->container->alias('target', 'name');
+
+        $this->container->bindWithScope('name', fn() => 'own', Container::SCOPE_EXECUTION);
+
+        $resolved = [];
+        $this->container->runInContext('console', [], function () use (&$resolved) {
+            $resolved = [$this->container->get('name'), $this->container->get('target')];
+        });
+
+        $this->assertSame(['own', 'own'], $resolved);
+        $this->assertSame(['name' => 'target'], $this->container->getAliases());
+    }
+
+    public function testBindingThroughAliasRebindsTargetAndKeepsAlias()
+    {
+        $this->container->singleton('original', fn() => 'old');
+        $this->container->alias('original', 'alias');
+
+        $this->container->singleton('alias', fn() => 'new');
+
+        $this->assertSame('new', $this->container->get('original'));
+        $this->assertSame('new', $this->container->get('alias'));
+        $this->assertSame(['alias' => 'original'], $this->container->getAliases());
+    }
+
     //========================================
     // EXTEND TESTS
     //========================================

@@ -2,9 +2,10 @@
 
 namespace Phaseolies\Support;
 
+use Phaseolies\Support\Contracts\EncryptionInterface;
 use RuntimeException;
 
-class Encryption
+class Encryption implements EncryptionInterface
 {
     /**
      * The cipher used for new encryption. AES-256-GCM is an AEAD
