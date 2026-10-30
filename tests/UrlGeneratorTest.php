@@ -2,8 +2,13 @@
 
 namespace Tests\Unit;
 
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 use Phaseolies\Support\UrlGenerator;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class UrlGeneratorTest extends TestCase
 {
@@ -19,6 +24,42 @@ class UrlGeneratorTest extends TestCase
         $_SERVER['argv'] = ['phpunit'];
 
         $this->urlGenerator = new UrlGenerator($this->baseUrl);
+    }
+
+    public function testUrlGeneratorImplementationConformsToTheContract(): void
+    {
+        $this->assertInstanceOf(UrlGeneratorInterface::class, $this->urlGenerator);
+    }
+
+    public function testApplicationBindsTheUrlContractAndLegacyServiceNameToTheSameSingleton(): void
+    {
+        $originalAppUrl = getenv('APP_URL');
+        putenv('APP_URL=http://localhost');
+
+        try {
+            $app = $this->getMockBuilder(Application::class)
+                ->disableOriginalConstructor()
+                ->onlyMethods([])
+                ->getMock();
+
+            $containerConstructor = (new ReflectionClass(Container::class))->getConstructor();
+            $containerConstructor->invoke($app);
+
+            (new FacadeLauncher($app))->register();
+
+            $contractUrl = $app->get(UrlGeneratorInterface::class);
+            $legacyUrl = $app->get('url');
+
+            $this->assertInstanceOf(UrlGeneratorInterface::class, $contractUrl);
+            $this->assertInstanceOf(UrlGenerator::class, $contractUrl);
+            $this->assertSame($contractUrl, $legacyUrl);
+        } finally {
+            if ($originalAppUrl === false) {
+                putenv('APP_URL');
+            } else {
+                putenv("APP_URL={$originalAppUrl}");
+            }
+        }
     }
 
     protected function tearDown(): void

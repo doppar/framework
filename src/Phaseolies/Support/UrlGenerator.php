@@ -3,8 +3,9 @@
 namespace Phaseolies\Support;
 
 use Phaseolies\Http\Exceptions\RouteNameNotFoundException;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 
-class UrlGenerator
+class UrlGenerator implements UrlGeneratorInterface
 {
     /**
      * The base URL for generating URLs.
@@ -284,7 +285,7 @@ class UrlGenerator
      * @param string $path
      * @return bool
      */
-    public function isValid($path): bool
+    public function isValid(string $path): bool
     {
         if (! preg_match('~^(#|//|https?://|(mailto|tel|sms):)~', $path)) {
             return filter_var($path, FILTER_VALIDATE_URL) !== false;

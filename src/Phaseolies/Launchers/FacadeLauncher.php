@@ -4,6 +4,7 @@ namespace Phaseolies\Launchers;
 
 use Phaseolies\Support\Validation\Sanitizer;
 use Phaseolies\Support\UrlGenerator;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
@@ -82,12 +83,12 @@ class FacadeLauncher extends ServiceLauncher
         $this->app->singleton(MailInterface::class, MailService::class);
         $this->app->alias(MailInterface::class, 'mail');
 
-        // Bind the 'url' service to a singleton instance of the UrlGenerator class.
-        // This generates URLs for the application, using the base URL from the environment
-        // or configuration.
-        $this->app->singleton('url', function () {
+        // Bind the URL generator contract to a singleton implementation and
+        // retain the existing 'url' service name as an alias.
+        $this->app->singleton(UrlGeneratorInterface::class, function () {
             return new UrlGenerator(env('APP_URL') ?? config('app.url'));
         });
+        $this->app->alias(UrlGeneratorInterface::class, 'url');
 
         // Bind the StorageInterface contract to a singleton StorageFileService and
         // keep the legacy 'storage' key as an alias of it, so both resolve to the
