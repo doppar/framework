@@ -203,23 +203,6 @@ trait InteractsWithSoftDeleteScope
     }
 
     /**
-     * Get the name the query's FROM clause refers to its table by:
-     * the alias for "table as alias" or "table alias", else the table.
-     *
-     * @return string
-     */
-    protected function tableReference(): string
-    {
-        $table = trim($this->table);
-
-        if (preg_match('/^\S+\s+(?:as\s+)?(\S+)$/i', $table, $matches)) {
-            return $matches[1];
-        }
-
-        return $table;
-    }
-
-    /**
      * Build the default soft delete constraint for a related model used
      * inside a hand-written subquery, as an " AND ..." fragment.
      *
