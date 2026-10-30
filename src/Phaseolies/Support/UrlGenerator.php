@@ -104,7 +104,7 @@ class UrlGenerator implements UrlGeneratorInterface
     }
 
     /**
-     * Generate a full URL without query parameters.
+     * Generate the current full URL, including query parameters.
      *
      * @return string
      */
@@ -242,7 +242,22 @@ class UrlGenerator implements UrlGeneratorInterface
             $url .= '#' . $this->fragment;
         }
 
+        $this->resetBuilderState();
+
         return $url;
+    }
+
+    /**
+     * Reset the per-URL builder state
+     *
+     * @return void
+     */
+    protected function resetBuilderState(): void
+    {
+        $this->path = '/';
+        $this->query = [];
+        $this->fragment = '';
+        $this->expiration = 0;
     }
 
     /**
@@ -282,11 +297,15 @@ class UrlGenerator implements UrlGeneratorInterface
      * This method is taken from PHP Laravel framework
      * Determine if the given path is a valid URL.
      *
-     * @param string $path
+     * @param mixed $path
      * @return bool
      */
-    public function isValid(string $path): bool
+    public function isValid(mixed $path): bool
     {
+        if (! is_string($path)) {
+            return false;
+        }
+
         if (! preg_match('~^(#|//|https?://|(mailto|tel|sms):)~', $path)) {
             return filter_var($path, FILTER_VALIDATE_URL) !== false;
         }

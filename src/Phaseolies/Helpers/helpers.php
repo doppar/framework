@@ -2,7 +2,7 @@
 
 use Phaseolies\Utilities\Paginator;
 use Phaseolies\Translation\Translator;
-use Phaseolies\Support\UrlGenerator;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Facades\Log;
 use Phaseolies\Support\Facades\Crypt;
@@ -194,11 +194,11 @@ if (!function_exists('url')) {
      * @param string|null $path
      * @param mixed $parameters
      * @param bool|null $secure
-     * @return ($path is null ? \Phaseolies\Support\UrlGenerator : string)
+     * @return ($path is null ? \Phaseolies\Support\Contracts\UrlGeneratorInterface : string)
      */
     function url(?string $path = null, $parameters = [], ?bool $secure = null)
     {
-        $urlGenerator = app(UrlGenerator::class);
+        $urlGenerator = app(UrlGeneratorInterface::class);
 
         if (is_null($path)) {
             return $urlGenerator;

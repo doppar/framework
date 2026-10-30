@@ -62,6 +62,37 @@ class UrlGeneratorTest extends TestCase
         }
     }
 
+    public function testIsValidReturnsFalseForNonStringValues(): void
+    {
+        $this->assertFalse($this->urlGenerator->isValid(null));
+        $this->assertFalse($this->urlGenerator->isValid(123));
+        $this->assertFalse($this->urlGenerator->isValid(['https://example.com']));
+    }
+
+    public function testBuilderStateDoesNotLeakBetweenUrls(): void
+    {
+        $this->urlGenerator->to('first')->withQuery(['id' => 1])->withFragment('top')->make();
+
+        $this->assertEquals('http://localhost/second', $this->urlGenerator->to('second')->make());
+    }
+
+    public function testUrlHelperResolvesTheSharedSingleton(): void
+    {
+        $app = $this->getMockBuilder(Application::class)->disableOriginalConstructor()->onlyMethods([])->getMock();
+        (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+        $previous = Container::getInstance();
+        Container::setInstance($app);
+
+        try {
+            putenv('APP_URL=http://localhost');
+            (new FacadeLauncher($app))->register();
+
+            $this->assertSame($app->get('url'), url());
+        } finally {
+            Container::setInstance($previous);
+        }
+    }
+
     protected function tearDown(): void
     {
         unset($_SERVER['HTTP_HOST']);
