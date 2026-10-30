@@ -181,10 +181,16 @@ trait InteractsWithModelQueryProcessing
                     ->where($this->primaryKey, $this->attributes[$this->primaryKey])
                     ->update($dirtyAttributes);
 
-                if (! $this->hooksSuppressed && $response) {
+                if ($response) {
                     $this->pruneNonColumnDirtyAttributes($this->getDirtyAttributes());
-                    $this->fireAfterHooks('updated');
-                    $this->firePropertyWatches($dirtyAttributes);
+
+                    if (! $this->hooksSuppressed) {
+                        $this->fireAfterHooks('updated');
+                        $this->firePropertyWatches($dirtyAttributes);
+                    }
+
+                    // Sync even when hooks are suppressed, otherwise the model
+                    // stays dirty for a change that is already persisted.
                     $this->originalAttributes = $this->attributes;
                 }
 
