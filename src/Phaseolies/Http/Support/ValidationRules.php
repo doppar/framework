@@ -150,6 +150,10 @@ trait ValidationRules
         if ($this->isNullable($input, $fieldName) && $rule !== 'null') {
             return null;
         } else {
+            if ($this->rejectsNonScalarValue($rule, $input[$fieldName] ?? null)) {
+                return $this->getErrorMessage('string', $fieldName);
+            }
+
             switch ($rule) {
                 case 'required':
                     if ($this->isEmptyFieldRequired($input, $fieldName)) {
@@ -1308,6 +1312,10 @@ trait ValidationRules
     {
         $value = $input[$fieldName] ?? '';
 
+        if (is_string($value) && str_contains($value, "\0")) {
+            return false;
+        }
+
         $date = \DateTime::createFromFormat($format, $value);
 
         return $date !== false && $date->format($format) === $value;
@@ -1402,6 +1410,86 @@ trait ValidationRules
     protected function _removeRuleSuffix(string $string): string
     {
         return explode(":", $string)[0];
+    }
+
+    /**
+     * Split a "required|min:3|regex:/a|b/" rule string into its rules.
+     *
+     * @param string $ruleString
+     * @return array<int, string>
+     */
+    protected function splitRules(string $ruleString): array
+    {
+        $pieces = explode('|', $ruleString);
+        $count = count($pieces);
+        $rules = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $rule = $pieces[$i];
+
+            if (str_starts_with($rule, 'regex:')) {
+                $joined = $rule;
+                $next = $i;
+
+                while (! $this->isRegexClosed(substr($joined, 6)) && $next + 1 < $count) {
+                    $joined .= '|' . $pieces[++$next];
+                }
+
+                // An unterminated pattern keeps its own piece instead of swallowing
+                // the rules that follow it.
+                if ($this->isRegexClosed(substr($joined, 6))) {
+                    $rule = $joined;
+                    $i = $next;
+                }
+            }
+
+            $rules[] = $rule;
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Determine if a regex pattern has its closing delimiter (and optional flags).
+     *
+     * @param string $pattern
+     * @return bool
+     */
+    protected function isRegexClosed(string $pattern): bool
+    {
+        if (strlen($pattern) < 2) {
+            return false;
+        }
+
+        $closing = ['(' => ')', '[' => ']', '{' => '}', '<' => '>'][$pattern[0]] ?? $pattern[0];
+
+        // The closing delimiter must not be escaped, i.e. be preceded by an even
+        // number of backslashes.
+        return (bool) preg_match(
+            '/(?<!\\\\)(?:\\\\\\\\)*' . preg_quote($closing, '/') . '[a-zA-Z]*$/',
+            substr($pattern, 1)
+        );
+    }
+
+    /**
+     * Determine if a rule cannot be applied to the given array or object value.
+     *
+     * @param string $rule
+     * @param mixed $value
+     * @return bool
+     */
+    protected function rejectsNonScalarValue(string $rule, mixed $value): bool
+    {
+        if (is_object($value)) {
+            return ! in_array($rule, ['required', 'array', 'string', 'null'], true);
+        }
+
+        return is_array($value) && in_array($rule, [
+            'min', 'max', 'date', 'gte', 'lte', 'gt', 'lt',
+            'alpha', 'alpha_num', 'alpha_dash', 'regex', 'phone', 'uuid',
+            'starts_with', 'ends_with', 'date_format', 'uppercase', 'lowercase', 'slug',
+            'digits', 'min_digits', 'max_digits', 'same_as', 'unique', 'exists_in',
+        ], true);
     }
 
     /**

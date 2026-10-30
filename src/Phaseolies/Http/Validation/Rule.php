@@ -72,12 +72,12 @@ trait Rule
                     continue;
                 }
 
-                $fieldRules = explode("|", $value);
+                $fieldRules = $this->splitRules($value);
                 foreach ($fieldRules as $rule) {
                     $ruleValue = $this->_getRuleSuffix($rule);
                     $rule = $this->_removeRuleSuffix($rule);
                     $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
-                    if ($errorMessage) {
+                    if ($errorMessage && ! in_array($errorMessage, $errors[$fieldName] ?? [], true)) {
                         $errors[$fieldName][] = $errorMessage;
                     }
                 }
