@@ -610,4 +610,175 @@ class EntityModelHookTest extends TestCase
         $this->assertSame($viaUpdate->getDirtyAttributes(), $viaSave->getDirtyAttributes());
         $this->assertSame($viaUpdate->getOriginal('name'), $viaSave->getOriginal('name'));
     }
+
+    /**
+     * Register an after_created spy on MockHook that records what the model
+     * looked like from inside the hook.
+     *
+     * @return \stdClass
+     */
+    private function spyAfterCreated(): \stdClass
+    {
+        $spy = new \stdClass();
+        $spy->calls = 0;
+        $spy->keys = [];
+        $spy->names = [];
+
+        $this->tempHooks([
+            'after_created' => function ($model) use ($spy) {
+                $spy->calls++;
+                $spy->keys[] = $model->getKey();
+                $spy->names[] = $model->name;
+            },
+        ]);
+
+        return $spy;
+    }
+
+    public function testInsertViaSaveLeavesTheModelClean(): void
+    {
+        $hook = new MockHook();
+        $hook->name = 'Fresh';
+        $hook->save();
+
+        $this->assertNotNull($hook->getKey());
+        $this->assertSame([], $hook->getDirtyAttributes());
+        $this->assertFalse($hook->isDirtyAttr('name'));
+        $this->assertFalse($hook->isDirtyAttr('id'));
+        $this->assertSame('Fresh', $hook->getOriginal('name'));
+        $this->assertEquals($hook->getKey(), $hook->getOriginal('id'));
+    }
+
+    public function testCreateLeavesTheModelClean(): void
+    {
+        $hook = MockHook::create(['name' => 'Fresh']);
+
+        $this->assertSame([], $hook->getDirtyAttributes());
+        $this->assertSame('Fresh', $hook->getOriginal('name'));
+    }
+
+    public function testQuietCreateLeavesTheModelClean(): void
+    {
+        MockHook::$wasCalledAfterCreated = false;
+
+        $hook = MockHook::withoutHook()->create(['name' => 'Fresh']);
+
+        $this->assertFalse(MockHook::$wasCalledAfterCreated);
+        $this->assertSame([], $hook->getDirtyAttributes());
+        $this->assertSame('Fresh', $hook->getOriginal('name'));
+    }
+
+    public function testQuietInsertViaSaveLeavesTheModelClean(): void
+    {
+        $hook = new MockHook();
+        $hook->name = 'Fresh';
+        $hook->withoutHook()->save();
+
+        $this->assertSame([], $hook->getDirtyAttributes());
+    }
+
+    public function testSaveRightAfterInsertDoesNotFireAfterUpdated(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::create(['name' => 'Fresh']);
+
+        $this->assertTrue($hook->save()); // nothing changed since the insert
+        $this->assertSame(0, $spy->calls);
+    }
+
+    public function testSaveRightAfterInsertDoesNotRewriteTheRow(): void
+    {
+        $hook = MockHook::create(['name' => 'Fresh']);
+
+        // A stale-dirty model would overwrite this on the next save().
+        $this->pdo->exec("UPDATE hooks SET name = 'Changed elsewhere' WHERE id = " . (int) $hook->getKey());
+
+        $hook->save();
+
+        $this->assertSame('Changed elsewhere', MockHook::find($hook->getKey())->name);
+    }
+
+    public function testChangeAfterInsertIsTheOnlyDirtyAttribute(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::create(['name' => 'Fresh']);
+        $hook->name = 'Edited';
+
+        $this->assertSame(['name' => 'Edited'], $hook->getDirtyAttributes());
+
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertSame(['Fresh'], $spy->originals, 'the hook must see the inserted value as the original');
+        $this->assertSame('Edited', MockHook::find($hook->getKey())->name);
+    }
+
+    public function testAfterCreatedStillSeesTheKeyAndAttributes(): void
+    {
+        $spy = $this->spyAfterCreated();
+
+        $hook = MockHook::create(['name' => 'Fresh']);
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertEquals($hook->getKey(), $spy->keys[0]);
+        $this->assertSame('Fresh', $spy->names[0]);
+    }
+
+    public function testAfterCreatedFiresOnlyOnceAcrossLaterSaves(): void
+    {
+        $spy = $this->spyAfterCreated();
+
+        $hook = MockHook::create(['name' => 'Fresh']);
+        $hook->save();
+        $hook->name = 'Edited';
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+    }
+
+    public function testFirstOrCreateReturnsACleanModelWhenItInserts(): void
+    {
+        $hook = MockHook::firstOrCreate(['name' => 'Brand New']);
+
+        $this->assertSame([], $hook->getDirtyAttributes());
+    }
+
+    public function testUpdateOrCreateReturnsACleanModelWhenItInserts(): void
+    {
+        $hook = MockHook::updateOrCreate(['name' => 'Brand New'], []);
+
+        $this->assertSame([], $hook->getDirtyAttributes());
+    }
+
+    public function testInsertedModelsDoNotShareStateWithEachOther(): void
+    {
+        $first = MockHook::create(['name' => 'First']);
+        $second = MockHook::create(['name' => 'Second']);
+
+        $second->name = 'Second edited';
+
+        $this->assertSame([], $first->getDirtyAttributes());
+        $this->assertSame(['name' => 'Second edited'], $second->getDirtyAttributes());
+        $this->assertSame('First', $first->getOriginal('name'));
+    }
+
+    public function testInsertThenQuietSaveThenSaveStaysConsistent(): void
+    {
+        $spy = $this->spyAfterUpdated();
+
+        $hook = MockHook::create(['name' => 'Fresh']);
+
+        $hook->name = 'Quiet';
+        $hook->withoutHook()->save();
+        $this->assertSame([], $hook->getDirtyAttributes());
+
+        $hook->name = 'Loud';
+        $hook->save();
+
+        $this->assertSame(1, $spy->calls);
+        $this->assertSame(['Quiet'], $spy->originals);
+        $this->assertSame('Loud', MockHook::find($hook->getKey())->name);
+    }
 }
