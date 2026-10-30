@@ -2,7 +2,9 @@
 
 namespace Phaseolies\Support;
 
-class StringService
+use Phaseolies\Support\Contracts\StringServiceInterface;
+
+class StringService implements StringServiceInterface
 {
     /**
      * Extract a substring from the given input string.
@@ -71,7 +73,7 @@ class StringService
      * @param string $input
      * @return string
      */
-    function camel(string $input): string
+    public function camel(string $input): string
     {
         $input = str_replace(['-', '_'], ' ', $input);
         $input = mb_convert_case($input, MB_CASE_TITLE, 'UTF-8');
@@ -191,7 +193,7 @@ class StringService
      * @param string $encoding
      * @return string
      */
-    function limitWords(string $string, int $words, string $end = '...', string $encoding = 'UTF-8'): string
+    public function limitWords(string $string, int $words, string $end = '...', string $encoding = 'UTF-8'): string
     {
         $trimmed = trim($string);
 

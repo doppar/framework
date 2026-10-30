@@ -36,7 +36,7 @@ use Phaseolies\Facade\BaseFacade;
  * @method static string between(string $subject, string $from, string $to)
  * @method static bool isJson(string $value)
  * @method static string urlHarmonize(string $url)
- * @see \Phaseolies\Support\StringService
+ * @see \Phaseolies\Support\Contracts\StringServiceInterface
  */
 class Str extends BaseFacade
 {

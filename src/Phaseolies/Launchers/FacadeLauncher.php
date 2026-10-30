@@ -7,6 +7,7 @@ use Phaseolies\Support\UrlGenerator;
 use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
+use Phaseolies\Support\Contracts\StringServiceInterface;
 use Phaseolies\Support\Storage\StorageFileService;
 use Phaseolies\Support\Storage\Contracts\StorageInterface;
 use Phaseolies\Signals\SignalBus;
@@ -116,9 +117,11 @@ class FacadeLauncher extends ServiceLauncher
             return new Sanitizer([], []);
         });
 
-        // Bind the 'str' service to a singleton instance of the StringService class.
+        // Bind the string service contract to a singleton implementation and
+        // retain the existing 'str' service name as an alias.
         // This handles string related helper jobs
-        $this->app->singleton('str', StringService::class);
+        $this->app->singleton(StringServiceInterface::class, StringService::class);
+        $this->app->alias(StringServiceInterface::class, 'str');
 
         // Bind the 'cookie' service to a singleton instance of the CookieJar class.
         // This handles cookie related jobs
