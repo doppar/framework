@@ -8,14 +8,19 @@ use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 use Phaseolies\Support\ViteManager;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\Storage\StorageFileService;
+use Phaseolies\Support\Storage\Contracts\StorageInterface;
 use Phaseolies\Signals\SignalBus;
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\Mail\MailService;
+use Phaseolies\Support\Mail\Contracts\MailInterface;
 use Phaseolies\Support\ExecutionService;
 use Phaseolies\Support\LoggerService;
 use Phaseolies\Support\Encryption;
+use Phaseolies\Support\Contracts\EncryptionInterface;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Http\Support\RequestAbortion;
+use Phaseolies\Http\Contracts\RequestAbortionInterface;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\Response;
 use Phaseolies\Database\Migration\Schema;
@@ -23,6 +28,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\Console\Schedule\SchedulePool;
 use Phaseolies\Config\Config;
 use Phaseolies\Auth\Security\PasswordHashing;
+use Phaseolies\Auth\Security\Contracts\HashingInterface;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 
@@ -39,37 +45,43 @@ class FacadeLauncher extends ServiceLauncher
         // This allows the application to access configuration settings globally.
         $this->app->singleton('config', Config::class);
 
-        // Bind the 'session' service to a singleton instance of the Session class.
-        // This manages user session data throughout the application.
-        $this->app->singleton('session', Session::class);
+        // Bind the session contract to a singleton implementation and retain
+        // the existing 'session' service name as an alias.
+        $this->app->singleton(SessionInterface::class, Session::class);
+        $this->app->alias(SessionInterface::class, 'session');
 
         // Bind the 'response' service to a singleton instance of the Response class.
         // This is used to generate HTTP responses.
         $this->app->singleton('response', Response::class);
 
-        // Bind the 'hash' service to a singleton instance of the PasswordHashing class.
-        // This provides password hashing and verification functionality.
-        $this->app->singleton('hash', PasswordHashing::class);
+        // Bind the hashing contract to a singleton implementation and retain
+        // the existing 'hash' service name as an alias.
+        $this->app->singleton(HashingInterface::class, PasswordHashing::class);
+        $this->app->alias(HashingInterface::class, 'hash');
 
         // Bind the 'auth' service to a singleton instance of the GuardManager class.
         // This handles user authentication and authorization.
         $this->app->singleton('auth', ActorManager::class);
 
-        // Bind the 'crypt' service to a singleton instance of the Encryption class.
-        // This provides encryption and decryption functionality.
-        $this->app->singleton('crypt', Encryption::class);
+        // Bind the encryption contract to a singleton implementation and retain
+        // the existing 'crypt' service name as an alias.
+        $this->app->singleton(EncryptionInterface::class, Encryption::class);
+        $this->app->alias(EncryptionInterface::class, 'crypt');
 
         // Bind the 'redirect' service to a singleton instance of the RedirectResponse class.
         // This is used to generate HTTP redirect responses.
         $this->app->singleton('redirect', RedirectResponse::class);
 
-        // Bind the 'abort' service to a singleton instance of the RequestAbortion class.
-        // This is used to abort requests and return error responses.
-        $this->app->singleton('abort', RequestAbortion::class);
+        // Bind the request abortion contract to a singleton implementation and retain
+        // the existing 'abort' service name as an alias. This is used to abort requests
+        // and return error responses.
+        $this->app->singleton(RequestAbortionInterface::class, RequestAbortion::class);
+        $this->app->alias(RequestAbortionInterface::class, 'abort');
 
         // Bind the 'mail' service to a singleton instance of the MailService class.
         // This handles sending emails.
-        $this->app->singleton('mail', MailService::class);
+        $this->app->singleton(MailInterface::class, MailService::class);
+        $this->app->alias(MailInterface::class, 'mail');
 
         // Bind the URL generator contract to a singleton implementation and
         // retain the existing 'url' service name as an alias.
@@ -78,9 +90,11 @@ class FacadeLauncher extends ServiceLauncher
         });
         $this->app->alias(UrlGeneratorInterface::class, 'url');
 
-        // Bind the 'storage' service to a singleton instance of the Storage class.
-        // This handles file uploads.
-        $this->app->singleton('storage', StorageFileService::class);
+        // Bind the StorageInterface contract to a singleton StorageFileService and
+        // keep the legacy 'storage' key as an alias of it, so both resolve to the
+        // same instance. This handles file uploads.
+        $this->app->singleton(StorageInterface::class, StorageFileService::class);
+        $this->app->alias(StorageInterface::class, 'storage');
 
         // Bind the 'vite' service to a singleton instance of the Vite manager.
         // This resolves dev-server and built frontend assets.

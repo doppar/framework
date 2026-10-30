@@ -3,11 +3,12 @@
 namespace Phaseolies\Http\Support;
 
 use Phaseolies\Error\JsonErrorRenderer;
+use Phaseolies\Http\Contracts\RequestAbortionInterface;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Response;
 
-class RequestAbortion
+class RequestAbortion implements RequestAbortionInterface
 {
     /**
      * Abort the request with a specific HTTP status code and optional message.
@@ -69,14 +70,14 @@ class RequestAbortion
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers
      * @return void
      * @throws HttpException
      */
-    public function abortIf($condition, int $code, string $message = '', array $headers = []): void
+    public function abortIf(mixed $condition, int $code, string $message = '', array $headers = []): void
     {
         if ($condition) {
             $this->abort($code, $message, $headers);

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Storage;
 
+use Phaseolies\Support\Storage\IFileSystem;
 use Phaseolies\Support\Storage\LocalFileSystem;
 use Phaseolies\Support\Storage\FileNotFoundException;
 use Phaseolies\Support\File;
@@ -116,9 +117,19 @@ class LocalFileSystemTest extends TestCase
         $this->assertFalse($result);
     }
 
-    public function testStoreageBasePathReturnsConfiguredPath()
+    public function testStorageBasePathReturnsConfiguredPath()
     {
-        $this->assertEquals($this->tmpDir, $this->fs->storeageBasePath());
+        $this->assertSame($this->tmpDir, $this->fs->storageBasePath());
+    }
+
+    public function testDeprecatedStoreageBasePathAliasStillWorks()
+    {
+        $this->assertSame($this->tmpDir, $this->fs->storeageBasePath());
+    }
+
+    public function testImplementsFileSystemContract()
+    {
+        $this->assertInstanceOf(IFileSystem::class, $this->fs);
     }
 
     public function testStoreMovesFileToCorrectPath()
@@ -153,7 +164,7 @@ class LocalFileSystemTest extends TestCase
         $this->assertStringContainsString('line three', $result);
     }
 
-    public function testStoreReturnsFalseWhenSourceUploadPathDoesNotExist()
+    public function testStoreThrowsWhenSourceUploadPathDoesNotExist()
     {
         $file = new File([
             'name' => 'ghost.txt',
@@ -163,20 +174,10 @@ class LocalFileSystemTest extends TestCase
             'size' => 0,
         ]);
 
-        $warning = null;
-        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
-            $warning = $message;
-            return true;
-        }, E_WARNING);
+        $this->expectException(FileNotFoundException::class);
+        $this->expectExceptionMessage('may have been moved already');
 
-        try {
-            $this->assertFalse($this->fs->store('uploads', $file));
-        } finally {
-            restore_error_handler();
-        }
-
-        $this->assertNotNull($warning);
-        $this->assertStringContainsString('Failed to open stream', $warning);
+        $this->fs->store('uploads', $file);
     }
 
     public function testDeleteReturnsTrueForEmptyArray()

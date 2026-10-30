@@ -73,11 +73,18 @@ class FileSystem
      * @param File $file
      * @param string|null $fileName
      * @return bool
+     * @throws FileNotFoundException When the uploaded temporary file is missing
      */
     public function put(string $path, File $file, ?string $fileName = null): bool
     {
         $fileName = $fileName ?? $this->getFileName($file);
-        $stream = fopen($file->getClientOriginalPath(), 'rb');
+        $source = $file->getClientOriginalPath();
+
+        if (!is_file($source)) {
+            throw new FileNotFoundException("Uploaded file does not exist at path {$source}. It may have been moved already.");
+        }
+
+        $stream = fopen($source, 'rb');
 
         if (is_resource($stream)) {
             $this->writeStream($path, $fileName, $stream);
@@ -189,13 +196,24 @@ class FileSystem
     }
 
     /**
-     * return project base path in os
+     * Get the filesystem base path.
      *
+     * @return string
+     */
+    public function storageBasePath(): string
+    {
+        return $this->filePath;
+    }
+
+    /**
+     * Get the filesystem base path.
+     *
+     * @deprecated Misspelled name kept for backward compatibility, use storageBasePath() instead.
      * @return string
      */
     public function storeageBasePath(): string
     {
-        return $this->filePath;
+        return $this->storageBasePath();
     }
 
     /**

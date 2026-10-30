@@ -22,16 +22,6 @@ class PublicFileSystem extends FileSystem implements IFileSystem
     }
 
     /**
-     * return project base path in os
-     *
-     * @return string
-     */
-    public function storeageBasePath(): string
-    {
-        return $this->filePath;
-    }
-
-    /**
      * Get the contents of a file.
      *
      * @param string $path
@@ -56,7 +46,7 @@ class PublicFileSystem extends FileSystem implements IFileSystem
      *
      * @throws \Phaseolies\Support\Storage\FileNotFoundException
      */
-    public function content($path)
+    public function content(string $path): string
     {
         $fullPath = $this->resolvePath($path);
 
