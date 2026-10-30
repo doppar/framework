@@ -527,19 +527,7 @@ class Builder
      */
     public function whereIn(string $field, array $values): self
     {
-        $this->assertValidIdentifier($field);
-
-        if (empty($values)) {
-            return $this->where($field, '=', 'NULL');
-        }
-
-        if (strpos($field, '.') === false) {
-            $field = "{$this->table}.{$field}";
-        }
-
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['AND', $field, 'IN', $values, "($placeholders)"];
-        return $this;
+        return $this->addInCondition('AND', $field, $values, 'IN');
     }
 
     /**
@@ -551,16 +539,31 @@ class Builder
      */
     public function orWhereIn(string $field, array $values): self
     {
-        $this->assertValidIdentifier($field);
+        return $this->addInCondition('OR', $field, $values, 'IN');
+    }
 
-        if (empty($values)) {
-            $this->orWhere($field, '=', 'NULL');
-            return $this;
-        }
+    /**
+     * Add a WHERE NOT IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function whereNotIn(string $field, array $values): self
+    {
+        return $this->addInCondition('AND', $field, $values, 'NOT IN');
+    }
 
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['OR', $field, 'IN', $values, "($placeholders)"];
-        return $this;
+    /**
+     * Add a OR WHERE NOT IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function orWhereNotIn(string $field, array $values): self
+    {
+        return $this->addInCondition('OR', $field, $values, 'NOT IN');
     }
 
     /**

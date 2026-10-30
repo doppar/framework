@@ -7,6 +7,47 @@ use PDOStatement;
 trait InteractsWithConditionBinding
 {
     /**
+     * Get the name the query's FROM clause refers to its table by:
+     * the alias for "table as alias" or "table alias", else the table.
+     *
+     * @return string
+     */
+    protected function tableReference(): string
+    {
+        $table = trim($this->table);
+
+        if (preg_match('/^\S+\s+(?:as\s+)?(\S+)$/i', $table, $matches)) {
+            return $matches[1];
+        }
+
+        return $table;
+    }
+
+    /**
+     * Add an IN / NOT IN condition with the given boolean.
+     *
+     * @param string $boolean
+     * @param string $field
+     * @param array $values
+     * @param string $operator
+     * @return self
+     */
+    protected function addInCondition(string $boolean, string $field, array $values, string $operator): self
+    {
+        $this->assertValidIdentifier($field);
+
+        if (strpos($field, '.') === false) {
+            $field = "{$this->tableReference()}.{$field}";
+        }
+
+        $values = array_values($values);
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $this->conditions[] = [$boolean, $field, $operator, $values, "($placeholders)"];
+
+        return $this;
+    }
+
+    /**
      * Build the WHERE clause SQL string for any query type
      *
      * @return array [sql, bindings]

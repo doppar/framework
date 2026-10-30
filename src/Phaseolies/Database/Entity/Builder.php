@@ -2118,20 +2118,7 @@ class Builder
      */
     public function whereIn(string $field, array $values): self
     {
-        $this->assertValidIdentifier($field);
-
-        if (empty($values)) {
-            return $this->where($field, '=', 'NULL');
-        }
-
-        if (strpos($field, '.') === false) {
-            $field = "{$this->table}.{$field}";
-        }
-
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['AND', $field, 'IN', $values, "($placeholders)"];
-
-        return $this;
+        return $this->addInCondition('AND', $field, $values, 'IN');
     }
 
     /**
@@ -2143,17 +2130,7 @@ class Builder
      */
     public function orWhereIn(string $field, array $values): self
     {
-        $this->assertValidIdentifier($field);
-
-        if (empty($values)) {
-            $this->orWhere($field, '=', 'NULL');
-            return $this;
-        }
-
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['OR', $field, 'IN', $values, "($placeholders)"];
-
-        return $this;
+        return $this->addInCondition('OR', $field, $values, 'IN');
     }
 
     /**
@@ -2167,7 +2144,7 @@ class Builder
      */
     public function whereNotIn(string $field, array $values): self
     {
-        return $this->addNotInCondition('AND', $field, $values);
+        return $this->addInCondition('AND', $field, $values, 'NOT IN');
     }
 
     /**
@@ -2179,32 +2156,8 @@ class Builder
      */
     public function orWhereNotIn(string $field, array $values): self
     {
-        return $this->addNotInCondition('OR', $field, $values);
+        return $this->addInCondition('OR', $field, $values, 'NOT IN');
     }
-
-    /**
-     * Add a NOT IN condition with the given boolean
-     *
-     * @param string $boolean
-     * @param string $field
-     * @param array $values
-     * @return self
-     */
-    private function addNotInCondition(string $boolean, string $field, array $values): self
-    {
-        $this->assertValidIdentifier($field);
-
-        if (strpos($field, '.') === false) {
-            $field = "{$this->tableReference()}.{$field}";
-        }
-
-        $values = array_values($values);
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = [$boolean, $field, 'NOT IN', $values, "($placeholders)"];
-
-        return $this;
-    }
-
 
     /**
      * Load one-to-one relationships
