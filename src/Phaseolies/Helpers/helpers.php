@@ -3,7 +3,7 @@
 use Phaseolies\Utilities\Paginator;
 use Phaseolies\Translation\Translator;
 use Phaseolies\Support\Contracts\UrlGeneratorInterface;
-use Phaseolies\Support\StringService;
+use Phaseolies\Support\Contracts\StringServiceInterface;
 use Phaseolies\Support\Facades\Log;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\CookieJar;
@@ -433,11 +433,11 @@ if (!function_exists('is_auth')) {
 
 if (!function_exists('str')) {
     /**
-     * Instance of the StringService class
+     * Instance of the string service
      *
-     * @return StringService
+     * @return StringServiceInterface
      */
-    function str(): StringService
+    function str(): StringServiceInterface
     {
         return app('str');
     }

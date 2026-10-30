@@ -2,8 +2,13 @@
 
 namespace Tests\Unit;
 
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
+use Phaseolies\Launchers\FacadeLauncher;
+use Phaseolies\Support\Contracts\StringServiceInterface;
 use Phaseolies\Support\StringService;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 class StringServiceTest extends TestCase
 {
@@ -234,5 +239,33 @@ class StringServiceTest extends TestCase
         $this->assertFalse($this->stringService->isJson('{name: John}'));    // Invalid quotes
         $this->assertFalse($this->stringService->isJson('Hello World'));
         $this->assertFalse($this->stringService->isJson(''));
+    }
+
+    public function testStringServiceConformsToTheContract()
+    {
+        $this->assertInstanceOf(StringServiceInterface::class, $this->stringService);
+    }
+
+    public function testApplicationBindsTheStringContractAndLegacyServiceNameToTheSameSingleton()
+    {
+        $app = $this->getMockBuilder(Application::class)->disableOriginalConstructor()->onlyMethods([])->getMock();
+        (new ReflectionClass(Container::class))->getConstructor()->invoke($app);
+        $previous = Container::getInstance();
+        Container::setInstance($app);
+
+        try {
+            $originalAppUrl = getenv('APP_URL');
+            putenv('APP_URL=http://localhost');
+            (new FacadeLauncher($app))->register();
+
+            $contract = $app->get(StringServiceInterface::class);
+
+            $this->assertInstanceOf(StringService::class, $contract);
+            $this->assertSame($contract, $app->get('str'));
+            $this->assertSame($contract, str());
+        } finally {
+            Container::setInstance($previous);
+            $originalAppUrl === false ? putenv('APP_URL') : putenv("APP_URL={$originalAppUrl}");
+        }
     }
 }
