@@ -2407,30 +2407,6 @@ parameters:
 			path: src/Phaseolies/Support/Storage/FileSystem.php
 
 		-
-			message: '#^PHPDoc tag @method for method Phaseolies\\Support\\Storage\\StorageFileService\:\:store\(\) parameter \#2 \$file contains unknown class Phaseolies\\Support\\Storage\\File\.$#'
-			identifier: class.notFound
-			count: 1
-			path: src/Phaseolies/Support/Storage/StorageFileService.php
-
-		-
-			message: '#^PHPDoc tag @method has invalid value \(\(\)\: string\)\: Unexpected token "\\n \* ", expected type at offset 130 on line 3$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Phaseolies/Support/Storage/StorageFileService.php
-
-		-
-			message: '#^PHPDoc tag @method has invalid value \(\(string\|array \$path\)\: bool\)\: Unexpected token "\\n \* ", expected type at offset 259 on line 6$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Phaseolies/Support/Storage/StorageFileService.php
-
-		-
-			message: '#^PHPDoc tag @method has invalid value \(static get\(string \$path\)\: \?string\)\: Unexpected token "\\n \* ", expected type at offset 175 on line 4$#'
-			identifier: phpDoc.parseError
-			count: 1
-			path: src/Phaseolies/Support/Storage/StorageFileService.php
-
-		-
 			message: '#^Instanceof between Iterator and Traversable will always evaluate to true\.$#'
 			identifier: instanceof.alwaysTrue
 			count: 1

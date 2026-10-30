@@ -23,6 +23,10 @@ class StorageFileService implements StorageInterface
     {
         $path = $this->getDiskPath($name);
 
+        if ($path === null && in_array($name, ['local', 'public'], true)) {
+            throw new DiskNotFoundException("Disk [{$name}] has no root. Set filesystem.disks.{$name}.root.");
+        }
+
         return match ($name) {
             'local' => app(LocalFileSystem::class, [$path]),
             'public' => app(PublicFileSystem::class, [$path]),

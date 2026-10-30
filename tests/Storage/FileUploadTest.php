@@ -231,6 +231,27 @@ namespace Tests\Unit\Storage {
             (new StorageFileService())->disk('s3');
         }
 
+        public function testDiskThrowsDiskNotFoundWhenALocalDiskHasNoConfiguredRoot(): void
+        {
+            UploadTestConfig::reset();
+
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Disk [local] has no root');
+
+            (new StorageFileService())->disk('local');
+        }
+
+        public function testDiskThrowsDiskNotFoundWhenAPublicDiskHasNoConfiguredRoot(): void
+        {
+            UploadTestConfig::reset();
+            UploadTestConfig::set('filesystem.disks.local.root', $this->localRoot);
+
+            $this->expectException(\Phaseolies\Support\Storage\DiskNotFoundException::class);
+            $this->expectExceptionMessage('Disk [public] has no root');
+
+            (new StorageFileService())->disk('public');
+        }
+
         public function testGetDiskPathReturnsNullForUnconfiguredDisk(): void
         {
             $this->assertNull((new StorageFileService())->getDiskPath('missing-disk'));

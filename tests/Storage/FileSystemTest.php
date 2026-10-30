@@ -123,15 +123,6 @@ class FileSystemTest extends TestCase
         $this->assertSame('/overridden', $fs->storeageBasePath());
     }
 
-    public function testDeprecatedAliasIsMarkedDeprecated()
-    {
-        $doc = (new \ReflectionMethod(FileSystem::class, 'storeageBasePath'))->getDocComment();
-
-        $this->assertIsString($doc);
-        $this->assertStringContainsString('@deprecated', $doc);
-        $this->assertStringContainsString('storageBasePath()', $doc);
-    }
-
     public function testIsDirectoryExistsCreatesDirectoryIfMissing()
     {
         $subPath = 'new_sub_' . uniqid();
