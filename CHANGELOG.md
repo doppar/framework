@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.8.4 - 2026-10-31
+
+* Fix vendor:publish dumping all assets for unknown tags by [@xentixar](https://github.com/xentixar) in https://github.com/doppar/framework/pull/396
+
 ## v4.8.3 - 2026-10-31
 
 * Session Interface Contract instead of concrete Session class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/381
