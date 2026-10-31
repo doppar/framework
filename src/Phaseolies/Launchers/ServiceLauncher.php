@@ -204,6 +204,16 @@ abstract class ServiceLauncher
     }
 
     /**
+     * Get the tags (groups) this launcher registered publishable paths for.
+     *
+     * @return array<int, string>
+     */
+    public function publishTags(): array
+    {
+        return array_map('strval', array_keys($this->publishGroups));
+    }
+
+    /**
      * Get the paths for the provider or group.
      *
      * @param string|null $provider
@@ -212,15 +222,12 @@ abstract class ServiceLauncher
      */
     protected function pathsForProviderOrGroup(string|null $provider, string|null $group): ?array
     {
-        if ($provider && $group) {
+        if ($group) {
             return $this->publishGroups[$group] ?? [];
-        } elseif ($group && isset($this->publishGroups[$group])) {
-            return $this->publishGroups[$group];
-        } elseif ($provider && isset($this->publishes[$provider])) {
+        }
+
+        if ($provider && isset($this->publishes[$provider])) {
             return [$provider => $this->publishes[$provider]];
-        } elseif ($group || $provider) {
-            // Unknown tag/launcher must not fall through to "publish everything".
-            return [];
         }
 
         return null;

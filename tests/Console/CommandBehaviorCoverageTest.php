@@ -843,7 +843,11 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->invokeMethod($command, 'publishFile', [$sourceFile, $targetFile, false]);
 
         $this->assertFileExists($targetFile);
-        $this->assertContains('Skipping: File already exists at ' . $targetFile, $command->capturedWarnings);
+        $output = $this->capturedOutput($command);
+        $this->assertStringContainsString('COPIED', $output);
+        $this->assertStringContainsString('SKIPPED', $output);
+        $this->assertStringContainsString('published/config/demo.php', str_replace('\\', '/', $output));
+        $this->assertStringContainsString('already exists', $output);
     }
 
     public function testVendorPublishCommandWarnsWhenNoLaunchersArePublishable(): void
@@ -881,7 +885,7 @@ class CommandBehaviorCoverageTest extends TestCase
 
         $this->assertSame(0, $result);
         $this->assertEmpty($command->capturedChoiceQuestions);
-        $this->assertContains('Published assets from 1 launchers', $command->capturedSuccesses);
+        $this->assertContains('Published 1 file from 1 launcher.', $command->capturedSuccesses);
     }
 
     public function testVendorPublishCommandPublishesAllWhenChoiceIsAll(): void
@@ -905,7 +909,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame('All', $command->capturedChoiceQuestions[0]['default']);
         $this->assertContains(get_class($launcherA), $command->capturedChoiceQuestions[0]['choices']);
         $this->assertContains(get_class($launcherB), $command->capturedChoiceQuestions[0]['choices']);
-        $this->assertContains('Published assets from 2 launchers', $command->capturedSuccesses);
+        $this->assertContains('Published 2 files from 2 launchers.', $command->capturedSuccesses);
     }
 
     public function testVendorPublishCommandPublishesOnlyTheChosenLauncher(): void
@@ -928,8 +932,267 @@ class CommandBehaviorCoverageTest extends TestCase
         $result = $command->handle();
 
         $this->assertSame(0, $result);
-        $this->assertContains('Published assets for launcher: ' . get_class($launcherA), $command->capturedSuccesses);
-        $this->assertNotContains('Published assets for launcher: ' . get_class($launcherB), $command->capturedSuccesses);
+        $this->assertContains('Published 1 file for launcher [' . get_class($launcherA) . '].', $command->capturedSuccesses);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+    }
+
+    public function testVendorPublishTagPublishesOnlyTheMatchingGroupAndPrintsNoOtherPackage(): void
+    {
+        [$command, $alpha, $beta] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertStringContainsString('alpha/config.php', str_replace('\\', '/', $output));
+        $this->assertStringNotContainsString('beta', $output);
+        $this->assertContains('Published 1 file for tag [alpha-config].', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishUnknownTagFailsWritesNothingAndSuggestsSimilarTags(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(1, $result);
+        $this->assertContains('No publishable resources found for tag [alpha].', $command->capturedErrors);
+        $this->assertStringContainsString('Did you mean', $output);
+        $this->assertStringContainsString('alpha-config', $output);
+        $this->assertSame([], $command->capturedSuccesses);
+        $this->assertFileDoesNotExist(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+    }
+
+    public function testVendorPublishUnknownTagWithNoSimilarNameListsAvailableTags(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'zzzzzzzzzz';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(1, $result);
+        $this->assertStringNotContainsString('Did you mean', $output);
+        $this->assertStringContainsString('Available tags:', $output);
+        $this->assertStringContainsString('alpha-config', $output);
+        $this->assertStringContainsString('beta-config', $output);
+    }
+
+    public function testVendorPublishCommaSeparatedTagsPublishEachTag(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config, beta-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileExists(Env::path('published/beta/config.php'));
+        $this->assertContains('Published 2 files for 2 tags.', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishOneUnknownTagAmongValidOnesPublishesNothing(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config,nope';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertFileDoesNotExist(Env::path('published/alpha/config.php'));
+    }
+
+    public function testVendorPublishLauncherPublishesEverythingItRegisteredIncludingGroups(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileExists(Env::path('published/alpha/plain.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertContains(
+            'Published 2 files for launcher [' . get_class($alpha) . '].',
+            $command->capturedSuccesses
+        );
+    }
+
+    public function testVendorPublishLauncherWithTagPublishesThatTagFromThatLauncherOnly(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+        $command->fakeOptions['tag'] = 'alpha-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/alpha/plain.php'));
+    }
+
+    public function testVendorPublishLauncherWithATagItDoesNotOwnFails(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+        $command->fakeOptions['tag'] = 'beta-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertStringContainsString('in launcher [' . get_class($alpha) . ']', $command->capturedErrors[0]);
+    }
+
+    public function testVendorPublishUnknownLauncherFailsAndListsPublishableLaunchers(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = 'App\\Nope\\Launcher';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertContains('Unable to locate launcher: App\\Nope\\Launcher', $command->capturedErrors);
+        $this->assertStringContainsString(get_class($alpha), $this->capturedOutput($command));
+        $this->assertSame([], $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishSkipsExistingFilesUnlessForced(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config';
+        $target = Env::path('published/alpha/config.php');
+        mkdir(dirname($target), 0755, true);
+        file_put_contents($target, 'user edited');
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('user edited', file_get_contents($target));
+        $this->assertStringContainsString('Nothing published', $command->capturedInfos[0]);
+        $this->assertStringContainsString('--force', $command->capturedInfos[0]);
+
+        [$forced] = $this->makeTaggedCommand();
+        $forced->fakeOptions['tag'] = 'alpha-config';
+        $forced->fakeOptions['force'] = true;
+
+        $this->assertSame(0, $forced->handle());
+        $this->assertSame('<?php return [];', file_get_contents($target));
+        $this->assertStringContainsString('OVERWRITTEN', $this->capturedOutput($forced));
+    }
+
+    public function testVendorPublishReportsSkippedCountNextToPublishedCount(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = FakePublishableLauncherAlpha::class;
+        $existing = Env::path('published/alpha/plain.php');
+        mkdir(dirname($existing), 0755, true);
+        file_put_contents($existing, 'keep');
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('keep', file_get_contents($existing));
+        $this->assertStringContainsString(
+            'Published 1 file for launcher [' . FakePublishableLauncherAlpha::class . ']. Skipped 1 existing',
+            $command->capturedSuccesses[0]
+        );
+    }
+
+    public function testVendorPublishMissingSourceFileFailsInsteadOfPrintingAFalseSuccess(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = new FakePublishableLauncherAlpha($appStub);
+        $launcher->publishes([Env::path('vendor/gone.php') => Env::path('published/gone.php')], 'gone');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeOptions['tag'] = 'gone';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertStringContainsString('MISSING', $this->capturedOutput($command));
+        $this->assertFileDoesNotExist(Env::path('published/gone.php'));
+        $this->assertSame([], $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishDirectoryTagCopiesNestedFiles(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = new FakePublishableLauncherAlpha($appStub);
+        $sourceDir = Env::path('vendor/pkg/assets');
+        mkdir($sourceDir . '/css', 0755, true);
+        file_put_contents($sourceDir . '/app.js', 'js');
+        file_put_contents($sourceDir . '/css/app.css', 'css');
+        $launcher->publishes([$sourceDir => Env::path('public/vendor/pkg')], 'pkg-assets');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeOptions['tag'] = 'pkg-assets';
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('js', file_get_contents(Env::path('public/vendor/pkg/app.js')));
+        $this->assertSame('css', file_get_contents(Env::path('public/vendor/pkg/css/app.css')));
+        $this->assertContains('Published 2 files for tag [pkg-assets].', $command->capturedSuccesses);
+    }
+
+    /**
+     * Two launchers: alpha registers a tagged config plus an untagged file, beta a tagged config.
+     *
+     * @return array{0: VendorPublishCommand, 1: ServiceLauncher, 2: ServiceLauncher}
+     */
+    private function makeTaggedCommand(): array
+    {
+        $appStub = $this->createStub(Application::class);
+
+        $alpha = new FakePublishableLauncherAlpha($appStub);
+        $beta = new FakePublishableLauncherBeta($appStub);
+
+        foreach ([['alpha', $alpha, 'alpha-config'], ['beta', $beta, 'beta-config']] as [$label, $launcher, $tag]) {
+            $from = Env::path("vendor/{$label}/config.php");
+            @mkdir(dirname($from), 0755, true);
+            file_put_contents($from, '<?php return [];');
+            $launcher->publishes([$from => Env::path("published/{$label}/config.php")], $tag);
+        }
+
+        $plain = Env::path('vendor/alpha/plain.php');
+        file_put_contents($plain, '<?php return [];');
+        $alpha->publishes([$plain => Env::path('published/alpha/plain.php')]);
+
+        $appStub->method('getLaunchers')->willReturn([$alpha, $beta]);
+        $appStub->method('getLauncher')->willReturnCallback(
+            fn(string $class) => match ($class) {
+                get_class($alpha) => $alpha,
+                get_class($beta) => $beta,
+                default => null,
+            }
+        );
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        return [$command, $alpha, $beta];
+    }
+
+    private function capturedOutput(object $command): string
+    {
+        return implode("\n", array_map(fn(array $line) => $line[0], $command->capturedLines));
     }
 
     private function makeFakePublishableLauncher(object $app, string $label, string $className = FakePublishableLauncherAlpha::class): ServiceLauncher
