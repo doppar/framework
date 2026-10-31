@@ -209,6 +209,67 @@ class ServiceLauncherTest extends TestCase
         $this->assertEquals(['group-path'], $paths);
     }
 
+    public function testPathsToPublishWithUnknownGroupReturnsEmpty()
+    {
+        $reflection = new \ReflectionClass($this->provider);
+        $publishesProperty = $reflection->getProperty('publishes');
+        $publishGroupsProperty = $reflection->getProperty('publishGroups');
+
+        $publishesProperty->setValue($this->provider, ['other' => 'other-path']);
+        $publishGroupsProperty->setValue($this->provider, [
+            'config' => ['insight.php' => 'runtime/config/insight.php'],
+        ]);
+
+        $paths = $this->provider->pathsToPublish(null, 'missing-tag');
+        $this->assertSame([], $paths);
+    }
+
+    public function testPathsToPublishWithUnknownProviderAndGroupReturnsEmpty()
+    {
+        $reflection = new \ReflectionClass($this->provider);
+        $publishGroupsProperty = $reflection->getProperty('publishGroups');
+        $publishGroupsProperty->setValue($this->provider, [
+            'config' => ['insight.php' => 'runtime/config/insight.php'],
+        ]);
+
+        $paths = $this->provider->pathsToPublish('SomeLauncher', 'missing-tag');
+        $this->assertSame([], $paths);
+    }
+
+    public function testPathsToPublishWithLauncherClassNameStillReturnsEverythingRegistered()
+    {
+        $this->provider->publishes(['/src/a.php' => '/dest/a.php']);
+        $this->provider->publishes(['/src/b.php' => '/dest/b.php'], 'config');
+
+        // vendor:publish --launcher=<class> passes the class name as the provider.
+        $paths = $this->provider->pathsToPublish(TestServiceLauncher::class);
+
+        $this->assertSame([
+            '/src/a.php' => '/dest/a.php',
+            'config' => ['/src/b.php' => '/dest/b.php'],
+        ], $paths);
+    }
+
+    public function testPathsToPublishWithKnownGroupReturnsOnlyThatGroup()
+    {
+        $this->provider->publishes(['/src/a.php' => '/dest/a.php']);
+        $this->provider->publishes(['/src/b.php' => '/dest/b.php'], 'config');
+
+        $this->assertSame(['/src/b.php' => '/dest/b.php'], $this->provider->pathsToPublish(null, 'config'));
+        $this->assertSame([], $this->provider->pathsToPublish(null, 'other'));
+    }
+
+    public function testPublishTagsListsRegisteredGroupsOnly()
+    {
+        $this->assertSame([], $this->provider->publishTags());
+
+        $this->provider->publishes(['/src/a.php' => '/dest/a.php']);
+        $this->provider->publishes(['/src/b.php' => '/dest/b.php'], ['config', 'shared']);
+        $this->provider->publishes(['/src/c.php' => '/dest/c.php'], 'assets');
+
+        $this->assertSame(['config', 'shared', 'assets'], $this->provider->publishTags());
+    }
+
     public function testPathsToPublishWithProviderOnly()
     {
         $reflection = new \ReflectionClass($this->provider);
