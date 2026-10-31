@@ -1,5 +1,23 @@
 # Release Notes
 
+## v4.8.3 - 2026-10-31
+
+* Session Interface Contract instead of concrete Session class by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/381
+* Add a Contract for Password Hashing Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/382
+* Add a Contract for Encryption Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/383
+* Add a Contract for Request Abortion Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/384
+* Add a Contract for Mail Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/385
+* Add a Contract for Storage Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/386
+* Add a Contract for URL Generation Services by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/387
+* Address review: accept mixed in isValid, resolve url() via contract, reset builder state by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/388
+* Introduce a string service contract by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/389
+* Introduce a signal bus contract by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/390
+* Fix save() leaving the model dirty after a quiet save by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/391
+* Fix save() leaving the model dirty after an insert by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/392
+* Fix StringService edge cases: mask, isPalindrome, random, truncate and more by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/393
+* Fix validator regex alternation, array input 500s and duplicated errors by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/394
+* Fix whereIn/orWhereIn with empty lists, qualify OR columns, add whereNotIn to the query builder by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/395
+
 ## v4.8.2 - 2026-10-26
 
 * Honor overridden query() on instance calls to the model by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/380
