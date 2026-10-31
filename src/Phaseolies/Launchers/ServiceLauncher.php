@@ -213,11 +213,14 @@ abstract class ServiceLauncher
     protected function pathsForProviderOrGroup(string|null $provider, string|null $group): ?array
     {
         if ($provider && $group) {
-            return $this->publishGroups[$group] ?? null;
+            return $this->publishGroups[$group] ?? [];
         } elseif ($group && isset($this->publishGroups[$group])) {
             return $this->publishGroups[$group];
         } elseif ($provider && isset($this->publishes[$provider])) {
             return [$provider => $this->publishes[$provider]];
+        } elseif ($group || $provider) {
+            // Unknown tag/launcher must not fall through to "publish everything".
+            return [];
         }
 
         return null;

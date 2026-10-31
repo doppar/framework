@@ -209,6 +209,33 @@ class ServiceLauncherTest extends TestCase
         $this->assertEquals(['group-path'], $paths);
     }
 
+    public function testPathsToPublishWithUnknownGroupReturnsEmpty()
+    {
+        $reflection = new \ReflectionClass($this->provider);
+        $publishesProperty = $reflection->getProperty('publishes');
+        $publishGroupsProperty = $reflection->getProperty('publishGroups');
+
+        $publishesProperty->setValue($this->provider, ['other' => 'other-path']);
+        $publishGroupsProperty->setValue($this->provider, [
+            'config' => ['insight.php' => 'runtime/config/insight.php'],
+        ]);
+
+        $paths = $this->provider->pathsToPublish(null, 'missing-tag');
+        $this->assertSame([], $paths);
+    }
+
+    public function testPathsToPublishWithUnknownProviderAndGroupReturnsEmpty()
+    {
+        $reflection = new \ReflectionClass($this->provider);
+        $publishGroupsProperty = $reflection->getProperty('publishGroups');
+        $publishGroupsProperty->setValue($this->provider, [
+            'config' => ['insight.php' => 'runtime/config/insight.php'],
+        ]);
+
+        $paths = $this->provider->pathsToPublish('SomeLauncher', 'missing-tag');
+        $this->assertSame([], $paths);
+    }
+
     public function testPathsToPublishWithProviderOnly()
     {
         $reflection = new \ReflectionClass($this->provider);
