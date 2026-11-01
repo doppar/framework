@@ -38,6 +38,32 @@ Every package here is versioned and released alongside the core. Add what your a
 
 Thank you for considering contributing to the Doppar framework! The contribution guide can be found in the [Doppar documentation](https://doppar.com/versions/4.x/contributions).
 
+## Concurrent tasks
+
+Independent non-blocking operations can run together in a named task group:
+
+```php
+use Phaseolies\Support\Concurrency\Task;
+use Phaseolies\Support\Concurrency\TaskGroup;
+
+$results = TaskGroup::run([
+    'profile' => function (Task $task) use ($client) {
+        return $task->await(function ($resolve, $reject) use ($client) {
+            $request = $client->fetch('/profile', $resolve, $reject);
+
+            return fn () => $request->cancel();
+        });
+    },
+    'settings' => fn () => loadSettings(),
+], timeout: 2.0);
+```
+
+The cleanup callback returned by `Task::await()` cancels the pending operation
+when a sibling fails or the shared deadline expires. Task groups use the
+configured React `LoopInterface`; when that loop is already running, call the
+group from a Fiber so the parent Fiber can suspend without restarting or
+stopping the loop. Blocking PDO, filesystem, and HTTP calls remain blocking.
+
 ## Code of Conduct
 
 In order to ensure that the Doppar community is welcoming to all, please review and abide by the [Code of Conduct](https://doppar.com/versions/4.x/contributions#code-of-conduct).

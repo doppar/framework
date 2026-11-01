@@ -16,6 +16,9 @@ use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
 use Phaseolies\Support\DeferScope;
 use Phaseolies\Support\ExecutionContext;
+use Phaseolies\Support\Concurrency\TaskGroup;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 use Phaseolies\ApplicationBuilder;
 use Devium\Toml\Toml;
 use RuntimeException;
@@ -821,6 +824,8 @@ class Application extends Container
 
         $this->singleton('request', fn() => Request::capture());
 
+        $this->singleton(LoopInterface::class, fn() => Loop::get());
+
         $this->bindHttpGateway();
 
         $this->singleton('route', Router::class);
@@ -1547,6 +1552,8 @@ class Application extends Container
 
             $response = $this->handle($request);
 
+            TaskGroup::assertNothingPending($context->id());
+
             $response->prepare($request)->send();
 
             $this->suspendDeferScope($deferScope);
@@ -1554,6 +1561,8 @@ class Application extends Container
 
             return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
+            TaskGroup::cancelPending($e, $context->id());
+
             try {
                 Response::dispatchHttpException($e);
             } catch (\Throwable $renderFailure) {
@@ -1568,6 +1577,7 @@ class Application extends Container
 
             return new DispatchResult($this, $request, null, $e, $deferScope, $context);
         } catch (\Throwable $e) {
+            TaskGroup::cancelPending($e, $context->id());
             $this->endDeferScope($deferScope, $e);
             $this->endContext($context, $e);
 

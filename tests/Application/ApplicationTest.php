@@ -21,6 +21,11 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
+use Phaseolies\Support\Concurrency\Task;
+use Phaseolies\Support\Concurrency\TaskGroup;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
+use React\EventLoop\StreamSelectLoop;
 
 if (!class_exists('App\Http\Gateway')) {
     class_alias(Gateway::class, 'App\Http\Gateway');
@@ -448,6 +453,73 @@ final class ApplicationTest extends TestCase
         $this->assertSame($request, $captured[0]);
         $this->assertSame($response, $captured[1]);
         $this->assertNull($captured[2]);
+    }
+
+    public function testDispatchWaitsForTaskGroupsBeforeSendingTheResponse(): void
+    {
+        $request = new Request();
+        $taskFinished = false;
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+        $response->method('prepare')->willReturnSelf();
+        $response->expects($this->once())
+            ->method('send')
+            ->willReturnCallback(function () use (&$taskFinished, $response) {
+                $this->assertTrue($taskFinished);
+
+                return $response;
+            });
+
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willReturnCallback(
+            function () use ($response, &$taskFinished) {
+                $requestContext = $this->app->executionContext();
+
+                TaskGroup::run([
+                    'required-data' => function (Task $task) use (&$taskFinished, $requestContext) {
+                        $this->assertSame($requestContext, $this->app->executionContext());
+
+                        return $task->await(function ($resolve) use (&$taskFinished) {
+                            $timer = Loop::addTimer(0.001, function () use ($resolve, &$taskFinished) {
+                                $taskFinished = true;
+                                $resolve();
+                            });
+
+                            return fn () => Loop::cancelTimer($timer);
+                        });
+                    },
+                ]);
+
+                return $response;
+            }
+        );
+        $this->app->router = $router;
+
+        $this->app->dispatch($request)->terminate();
+    }
+
+    public function testApplicationBindsTheConfiguredEventLoopContract(): void
+    {
+        $this->assertSame(Loop::get(), $this->app->make(LoopInterface::class));
+    }
+
+    public function testTaskGroupsResolveAnOverriddenEventLoopContract(): void
+    {
+        $loop = new StreamSelectLoop();
+        $this->app->instance(LoopInterface::class, $loop);
+
+        $results = TaskGroup::run([
+            'configured' => function (Task $task) use ($loop) {
+                return $task->await(function ($resolve) use ($loop) {
+                    $loop->futureTick(fn () => $resolve('result'));
+                });
+            },
+        ]);
+
+        $this->assertSame(['configured' => 'result'], $results);
     }
 
     public function testDispatchStillTerminatesWhenResultIsIgnored(): void
