@@ -3,6 +3,7 @@
 namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Session\SessionManager;
 
 class ClearSessionCommand extends Command
 {
@@ -14,11 +15,11 @@ class ClearSessionCommand extends Command
     protected $name = 'session:clear';
 
     /**
-     * The name of the console command.
+     * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Clear all sessions from the Applicaion.';
+    protected $description = 'Clear all sessions from the Application.';
 
     /**
      * Execute the console command.
@@ -27,17 +28,9 @@ class ClearSessionCommand extends Command
      */
     public function handle(): int
     {
-        return $this->withTiming(function() {
-            $sessionDir = base_path('storage/framework/sessions');
+        return $this->withTiming(function () {
+            SessionManager::store()->flush();
 
-            $files = glob($sessionDir . '/*');
-            foreach ($files as $file) {
-                if (is_file($file)) {
-                    @unlink($file);
-                }
-            }
-
-            session()->flush();
             return Command::SUCCESS;
         }, 'Application sessions have been gracefully cleared.');
     }

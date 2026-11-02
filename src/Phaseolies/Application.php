@@ -11,6 +11,8 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
@@ -1547,6 +1549,8 @@ class Application extends Container
 
             $response = $this->handle($request);
 
+            $this->commitSession($request, $response);
+
             $response->prepare($request)->send();
 
             $this->suspendDeferScope($deferScope);
@@ -1555,6 +1559,8 @@ class Application extends Container
             return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
             try {
+                $this->commitSession($request);
+
                 Response::dispatchHttpException($e);
             } catch (\Throwable $renderFailure) {
                 $this->endDeferScope($deferScope, $renderFailure);
@@ -1568,10 +1574,38 @@ class Application extends Container
 
             return new DispatchResult($this, $request, null, $e, $deferScope, $context);
         } catch (\Throwable $e) {
+            // Validation failures and abort() are thrown as exceptions that carry
+            // the response to send (usually a redirect with flashed errors and
+            // old input). The global error handler sends it, so the session
+            // must be saved onto that response here, before it is rethrown.
+            if ($e instanceof HttpResponseException && $e->hasResponse()) {
+                try {
+                    $this->commitSession($request, $e->getResponse());
+                } catch (\Throwable) {
+                    // Never replace the exception that is already ending the request.
+                }
+            }
+
             $this->endDeferScope($deferScope, $e);
             $this->endContext($context, $e);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Persist the session of the request
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @return void
+     */
+    protected function commitSession(Request $request, ?Response $response = null): void
+    {
+        $session = $request->session();
+
+        if ($session instanceof CommittableSession) {
+            $session->commit($response);
         }
     }
 

@@ -3,6 +3,7 @@
 namespace Tests\Unit\Requests;
 
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\HeaderBag;
@@ -342,17 +343,20 @@ class RequestTest extends TestCase
 
     public function testSession()
     {
+        $config = ['cookie' => 'test_session', 'lifetime' => 120, 'stateless' => [], 'lottery' => [0, 100]];
+
+        $this->request->session = new Session(new ArrayStore(), $config);
         $session = $this->request->session();
 
+        $session->put('user_id', 1);
         $this->assertEquals(1, $session->get('user_id'));
 
         $session->put('test_key', 'test_value');
         $this->assertEquals('test_value', $session->get('test_key'));
 
         $emptyRequest = new Request();
-        $_SESSION = [];
-        $emptySession = $emptyRequest->session();
-        $this->assertEmpty($emptySession->all());
+        $emptyRequest->session = new Session(new ArrayStore(), $config);
+        $this->assertEmpty($emptyRequest->session()->all());
     }
 
     public function testCapture()

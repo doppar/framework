@@ -2,13 +2,15 @@
 
 namespace Phaseolies\Middleware;
 
-use Phaseolies\Support\Facades\Str;
-use Phaseolies\Middleware\Contracts\Middleware;
-use Phaseolies\Http\Response\Cookie;
-use Phaseolies\Http\Response;
-use Phaseolies\Http\Request;
-use Phaseolies\Http\Exceptions\TokenMismatchException;
 use Closure;
+use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\TokenMismatchException;
+use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Response\Cookie;
+use Phaseolies\Middleware\Contracts\Middleware;
+use Phaseolies\Session\Contracts\CommittableSession;
+use Phaseolies\Support\Facades\Str;
 
 class CsrfTokenMiddleware implements Middleware
 {
@@ -81,9 +83,13 @@ class CsrfTokenMiddleware implements Middleware
 
         $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
 
-        return is_string($request->session()->token()) &&
+        // Read the stored token instead of token(), which would create one:
+        // a request that arrives without a session must fail, not start one.
+        $stored = $request->session()->get('_token');
+
+        return is_string($stored) &&
             is_string($token) &&
-            hash_equals($request->session()->token(), $token);
+            hash_equals($stored, $token);
     }
 
     /**
@@ -96,6 +102,13 @@ class CsrfTokenMiddleware implements Middleware
     protected function addCookieToResponse($request, $response): Response
     {
         if (PHP_SAPI === 'cli' || defined('STDIN')) {
+            return $response;
+        }
+
+        $session = $request->session();
+
+        // Stateless requests have no stored session to tie the token to.
+        if ($session instanceof CommittableSession && $session->isStateless()) {
             return $response;
         }
 

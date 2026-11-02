@@ -316,7 +316,7 @@ if (!function_exists('csrf_token')) {
      */
     function csrf_token(): ?string
     {
-        return session('_token') ?? null;
+        return session()->token();
     }
 }
 

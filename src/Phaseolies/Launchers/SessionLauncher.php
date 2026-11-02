@@ -2,7 +2,7 @@
 
 namespace Phaseolies\Launchers;
 
-use Phaseolies\Session\ConfigSession as Session;
+use Phaseolies\Session\SessionManager;
 
 class SessionLauncher extends ServiceLauncher
 {
@@ -13,7 +13,7 @@ class SessionLauncher extends ServiceLauncher
      */
     public function register()
     {
-        Session::configAppSession();
+        SessionManager::initialize();
     }
 
     /**

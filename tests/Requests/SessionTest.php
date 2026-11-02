@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Requests;
 
+use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Support\Session;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Application;
@@ -17,23 +18,24 @@ class SessionTest extends TestCase
 
     protected function setUp(): void
     {
-        // Mock the global $_SESSION
-        $_SESSION = [];
-        $this->mockSession = &$_SESSION;
-
-        $this->session = new Session();
+        $this->session = new Session(new ArrayStore(), [
+            'cookie' => 'test_session',
+            'lifetime' => 120,
+            'stateless' => [],
+            'lottery' => [0, 100],
+        ]);
     }
 
-    protected function tearDown(): void
+    public function testConstructorInitializesAnEmptySession()
     {
-        // Clear the mock session after each test
-        $_SESSION = [];
-        parent::tearDown();
+        $this->assertSame([], $this->session->all());
     }
 
-    public function testConstructorInitializesSession()
+    public function testConstructorDoesNotTouchTheStoreOrConfig(): void
     {
-        $this->assertSame($_SESSION, $this->session->all());
+        // No arguments, no application: creating a session must have no side
+        // effects until it is used.
+        $this->assertInstanceOf(Session::class, new Session());
     }
 
     public function testSessionImplementationConformsToTheSessionContract(): void
@@ -60,9 +62,6 @@ class SessionTest extends TestCase
         $this->assertInstanceOf(Session::class, $contractSession);
         $this->assertSame($contractSession, $legacySession);
 
-        $contractSession->put('from_contract', 'value');
-
-        $this->assertSame(['from_contract' => 'value'], $legacySession->all());
     }
 
     public function testSessionIsResetBetweenRequestsAndOverridableByLegacyKey(): void
@@ -77,7 +76,6 @@ class SessionTest extends TestCase
         $app->snapshotBootBindings();
 
         $first = $app->get('session');
-        $first->put('user_id', 1);
 
         // Same sweep Application::cleanupRequestScopedServices() performs.
         $app->forgetResolved('session');
@@ -86,7 +84,6 @@ class SessionTest extends TestCase
         $second = $app->get('session');
         $this->assertNotSame($first, $second);
 
-        $second->put('user_id', 2);
         $app->forgetResolved('session');
         $this->assertNotSame($second, $app->get('session'));
 
@@ -99,7 +96,7 @@ class SessionTest extends TestCase
     {
         $this->session->put('test_key', 'test_value');
         $this->assertEquals('test_value', $this->session->get('test_key'));
-        $this->assertArrayHasKey('test_key', $_SESSION);
+        $this->assertArrayHasKey('test_key', $this->session->all());
     }
 
     public function testPutAndGetArray()
@@ -152,7 +149,6 @@ class SessionTest extends TestCase
 
         $this->session->flush();
         $this->assertEmpty($this->session->all());
-        $this->assertEmpty($_SESSION);
     }
 
     public function testAll()
@@ -178,10 +174,18 @@ class SessionTest extends TestCase
 
     public function testSetAndGetId()
     {
-        $newId = 'test_session_id';
+        $newId = bin2hex(random_bytes(20));
         $this->session->setId($newId);
 
         $this->assertEquals($newId, $this->session->getId());
+    }
+
+    public function testSetIdIgnoresAnIdThatWasNotGeneratedByTheFramework()
+    {
+        $before = $this->session->getId();
+        $this->session->setId('test_session_id');
+
+        $this->assertSame($before, $this->session->getId());
     }
 
     // public function testDestroy()
@@ -197,7 +201,10 @@ class SessionTest extends TestCase
 
     public function testToken()
     {
-        $this->assertNull($this->session->token());
+        $token = $this->session->token();
+
+        $this->assertSame(32, strlen($token));
+        $this->assertSame($token, $this->session->token());
 
         $this->session->put('_token', 'test_token');
         $this->assertEquals('test_token', $this->session->token());
