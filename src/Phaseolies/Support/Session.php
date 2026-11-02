@@ -6,6 +6,7 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\Cookie;
 use Phaseolies\Session\Contracts\CommittableSession;
+use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
 use Phaseolies\Session\SessionManager;
@@ -70,6 +71,21 @@ class Session implements SessionInterface, CommittableSession
      * The serialized data as it was loaded, to detect changes.
      */
     protected ?string $snapshot = null;
+
+    /**
+     * The data as it was loaded, to find what this request changed.
+     */
+    protected array $original = [];
+
+    /**
+     * Whether the stored data must be replaced instead of merged on commit.
+     */
+    protected bool $replace = false;
+
+    /**
+     * Whether the session was saved by this request.
+     */
+    protected bool $committed = false;
 
     /**
      * Whether the cookie must be expired when the session is committed.
@@ -191,10 +207,23 @@ class Session implements SessionInterface, CommittableSession
         $this->id ??= self::newId();
         $this->data['last_regenerated'] ??= time();
 
-        $changed = $this->storedId !== $this->id || serialize($this->data) !== $this->snapshot;
+        $serialized = serialize($this->data);
+        $changed = $this->storedId !== $this->id || $serialized !== $this->snapshot;
 
         if ($changed || $store->isClientSide()) {
-            $value = $store->write($this->id, $this->data);
+            if ($store instanceof LockableSessionStore && $this->storedId !== null) {
+                // Another request may have saved this session since it was
+                // loaded. Apply only what this request changed on top of it.
+                $value = $store->synchronized($this->storedId, function () use ($store): string {
+                    $this->mergeConcurrentChanges($store);
+
+                    return $store->write($this->id, $this->data);
+                });
+
+                $serialized = serialize($this->data);
+            } else {
+                $value = $store->write($this->id, $this->data);
+            }
         } else {
             $store->touch($this->id);
             $value = $this->id;
@@ -206,11 +235,82 @@ class Session implements SessionInterface, CommittableSession
 
         $this->storedId = $this->id;
         $this->previousId = null;
-        $this->snapshot = serialize($this->data);
+        $this->snapshot = $serialized;
+        $this->original = $this->data;
+        $this->replace = false;
+        $this->committed = true;
 
         $this->queueCookie($response, $this->makeCookie($value, $config));
+    }
 
-        $this->sweep($store, $config);
+    /**
+     * Run the housekeeping that must not delay the response.
+     *
+     * @return void
+     */
+    public function terminate(): void
+    {
+        if ($this->committed) {
+            $this->committed = false;
+
+            $this->sweep($this->store(), $this->config());
+        }
+    }
+
+    /**
+     * Apply this request's changes on top of the session as currently stored.
+     *
+     * @param SessionStoreInterface $store
+     * @return void
+     */
+    protected function mergeConcurrentChanges(SessionStoreInterface $store): void
+    {
+        if ($this->replace) {
+            return;
+        }
+
+        $record = $store->read($this->storedId);
+
+        if ($record === null || serialize($record['data']) === $this->snapshot) {
+            return;
+        }
+
+        $this->data = $this->mergeChanges($record['data'], $this->original, $this->data);
+    }
+
+    /**
+     * Copy what changed between $original and $current onto $stored.
+     *
+     * @param array $stored
+     * @param array $original
+     * @param array $current
+     * @return array
+     */
+    protected function mergeChanges(array $stored, array $original, array $current): array
+    {
+        foreach ($original as $key => $value) {
+            if (!array_key_exists($key, $current)) {
+                unset($stored[$key]);
+            }
+        }
+
+        foreach ($current as $key => $value) {
+            $known = array_key_exists($key, $original);
+
+            if ($known && $original[$key] === $value) {
+                continue;
+            }
+
+            if ($known && is_array($value) && is_array($original[$key]) && isset($stored[$key]) && is_array($stored[$key])) {
+                $stored[$key] = $this->mergeChanges($stored[$key], $original[$key], $value);
+
+                continue;
+            }
+
+            $stored[$key] = $value;
+        }
+
+        return $stored;
     }
 
     /**
@@ -232,7 +332,7 @@ class Session implements SessionInterface, CommittableSession
 
             if ($record !== null) {
                 $this->id = $this->storedId = $record['id'];
-                $this->data = $record['data'];
+                $this->data = $this->original = $record['data'];
                 $this->snapshot = serialize($this->data);
 
                 if ($this->shouldRotate()) {
@@ -315,16 +415,20 @@ class Session implements SessionInterface, CommittableSession
      */
     protected function expiredCookie(array $config): Cookie
     {
+        $cookie = $this->makeCookie('', $config);
+
+        // Same attributes as the cookie being removed, or browsers ignore it:
+        // Chrome rejects SameSite=None without Secure, deletions included.
         return new Cookie(
-            $config['cookie'],
+            $cookie->getName(),
             '',
             1,
-            $config['path'],
-            $config['domain'],
-            (bool) ($config['secure'] ?? false),
-            (bool) $config['http_only'],
+            $cookie->getPath(),
+            $cookie->getDomain(),
+            $cookie->isSecure(),
+            $cookie->isHttpOnly(),
             false,
-            strtolower((string) ($config['same_site'] ?: 'lax'))
+            $cookie->getSameSite()
         );
     }
 
@@ -512,6 +616,7 @@ class Session implements SessionInterface, CommittableSession
         $this->load();
 
         $this->data = [];
+        $this->replace = true;
     }
 
     /**
@@ -572,8 +677,13 @@ class Session implements SessionInterface, CommittableSession
 
         $store = $this->store();
 
+        // Switching ids must not leave the old session valid.
+        if ($this->storedId !== null && $this->storedId !== $id) {
+            $this->previousId ??= $this->storedId;
+        }
+
         if (!$store->isClientSide() && !$this->isStateless() && ($record = $store->read($id)) !== null) {
-            $this->data = $record['data'];
+            $this->data = $this->original = $record['data'];
             $this->storedId = $record['id'];
             $this->snapshot = serialize($this->data);
         }
@@ -592,6 +702,7 @@ class Session implements SessionInterface, CommittableSession
 
         $this->previousId ??= $this->storedId;
         $this->storedId = $this->id = $this->snapshot = null;
+        $this->original = [];
         $this->forgetCookie = true;
         $this->data = [];
         $this->peek = [];

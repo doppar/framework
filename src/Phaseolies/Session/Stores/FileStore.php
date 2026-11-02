@@ -2,10 +2,10 @@
 
 namespace Phaseolies\Session\Stores;
 
-use Phaseolies\Session\Contracts\SessionStoreInterface;
+use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Exceptions\SessionException;
 
-class FileStore implements SessionStoreInterface
+class FileStore implements LockableSessionStore
 {
     /**
      * Pattern every generated session id matches.
@@ -43,7 +43,8 @@ class FileStore implements SessionStoreInterface
 
         // No lock is taken: writes replace the file atomically, so a reader
         // sees either the old or the new session. File locks are mandatory on
-        // Windows and would only make readers and writers collide.
+        // Windows and would only make readers and writers collide. Concurrent
+        // writers are merged under synchronized() instead.
         // PHP caches stat results; long-lived workers must not see stale times.
         clearstatcache(true, $file);
 
@@ -112,6 +113,47 @@ class FileStore implements SessionStoreInterface
         }
 
         return $id;
+    }
+
+    /**
+     * Run a callback while no other request can save a session of the same shard
+     *
+     * @param string $id
+     * @param callable $callback
+     * @return mixed
+     */
+    public function synchronized(string $id, callable $callback): mixed
+    {
+        $directory = $this->path . '/.locks';
+
+        if (!self::isValidId($id) || (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory))) {
+            return $callback();
+        }
+
+        $handle = @fopen($directory . '/' . substr($id, 0, 2), 'c');
+
+        if ($handle === false) {
+            return $callback();
+        }
+
+        $deadline = microtime(true) + 2;
+
+        while (!flock($handle, LOCK_EX | LOCK_NB)) {
+            if (microtime(true) > $deadline) {
+                fclose($handle);
+
+                return $callback();
+            }
+
+            usleep(5000);
+        }
+
+        try {
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     /**

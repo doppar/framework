@@ -144,4 +144,37 @@ final class DispatchSessionTest extends TestCase
 
         $this->app->dispatch($request);
     }
+
+    public function testAFailingSessionSaveDoesNotTurnAnHttpExceptionIntoAnError(): void
+    {
+        $request = $this->request();
+        $request->session = new Session(new class extends ArrayStore {
+            public function write(string $id, array $data): string
+            {
+                throw new RuntimeException('store down');
+            }
+        }, ['cookie' => self::COOKIE, 'lifetime' => 120, 'stateless' => [], 'lottery' => [0, 100]]);
+        $request->session->attach($request);
+
+        $this->routeTo(function () use ($request) {
+            $request->session()->put('a', 1);
+
+            throw new HttpException(404, 'Not found');
+        });
+
+        // The error page is rendered for real; keep it out of the test output.
+        ob_start();
+        set_error_handler(static fn() => true);
+
+        try {
+            $this->app->dispatch($request);
+        } catch (RuntimeException $e) {
+            $this->assertNotSame('store down', $e->getMessage());
+        } finally {
+            restore_error_handler();
+            ob_end_clean();
+        }
+
+        $this->addToAssertionCount(1);
+    }
 }

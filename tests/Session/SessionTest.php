@@ -387,4 +387,126 @@ class SessionTest extends TestCase
 
         $this->assertSame(1, $next->get('a'));
     }
+
+    public function test_the_deletion_cookie_is_secure_too_when_samesite_is_none(): void
+    {
+        $this->config['same_site'] = 'none';
+        $this->config['secure'] = false;
+        $session = $this->session();
+        $session->put('a', 1);
+        $cookie = $this->sessionCookie($this->commit($session));
+
+        $next = $this->session($this->request('/', [self::COOKIE => $cookie->getValue()]));
+        $next->invalidate();
+        $expired = $this->sessionCookie($this->commit($next));
+
+        $this->assertLessThan(time(), $expired->getExpiresTime());
+        $this->assertTrue($expired->isSecure());
+        $this->assertSame('none', strtolower((string) $expired->getSameSite()));
+    }
+
+    private function twoRequestsOnOneSession(): array
+    {
+        $first = $this->session();
+        $first->put('user', 1);
+        $first->put('_flash', ['kept' => 'yes']);
+        $cookie = $this->sessionCookie($this->commit($first))->getValue();
+
+        $make = fn() => $this->session($this->request('/', [self::COOKIE => $cookie]));
+        $a = $make();
+        $b = $make();
+        $a->get('user');
+        $b->get('user');
+
+        return [$cookie, $a, $b];
+    }
+
+    public function test_concurrent_requests_do_not_overwrite_each_others_changes(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOnOneSession();
+
+        $a->put('cart', ['apple']);
+        $a->put('_flash', ['kept' => 'yes', 'from_a' => 'a']);
+        $b->put('wishlist', ['pear']);
+        $b->put('_flash', ['kept' => 'yes', 'from_b' => 'b']);
+        $b->forget('user');
+
+        $this->commit($a);
+        $this->commit($b);
+
+        $merged = $this->session($this->request('/', [self::COOKIE => $cookie]))->all();
+
+        $this->assertSame(['apple'], $merged['cart']);
+        $this->assertSame(['pear'], $merged['wishlist']);
+        $this->assertArrayNotHasKey('user', $merged);
+        $this->assertSame(['kept' => 'yes', 'from_a' => 'a', 'from_b' => 'b'], $merged['_flash']);
+    }
+
+    public function test_the_last_writer_wins_for_the_same_key(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOnOneSession();
+
+        $a->put('user', 2);
+        $b->put('user', 3);
+        $this->commit($a);
+        $this->commit($b);
+
+        $this->assertSame(3, $this->session($this->request('/', [self::COOKIE => $cookie]))->get('user'));
+    }
+
+    public function test_an_invalidated_session_is_not_merged_with_concurrent_changes(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOnOneSession();
+
+        $a->put('cart', ['apple']);
+        $this->commit($a);
+
+        $b->invalidate();
+        $this->commit($b);
+
+        $this->assertNull($this->session($this->request('/', [self::COOKIE => $cookie]))->get('cart'));
+        $this->assertSame([], $this->storedFiles());
+    }
+
+    public function test_set_id_removes_the_session_it_replaces(): void
+    {
+        $session = $this->session();
+        $session->put('a', 1);
+        $old = $this->sessionCookie($this->commit($session))->getValue();
+
+        $next = $this->session($this->request('/', [self::COOKIE => $old]));
+        $new = bin2hex(random_bytes(20));
+        $next->setId($new);
+        $next->put('b', 2);
+        $this->commit($next);
+
+        $this->assertNull($this->store()->read($old));
+        $this->assertNotNull($this->store()->read($new));
+    }
+
+    public function test_the_sweep_runs_after_the_response_not_while_saving(): void
+    {
+        $this->config['lottery'] = [1, 1];
+        $store = new class($this->path, 7200) extends FileStore {
+            public int $sweeps = 0;
+
+            public function sweep(int $maxLifetime): int
+            {
+                $this->sweeps++;
+
+                return 0;
+            }
+        };
+
+        $session = $this->session(null, $store);
+        $session->put('a', 1);
+        $this->commit($session);
+
+        $this->assertSame(0, $store->sweeps);
+
+        $session->terminate();
+        $session->terminate();
+
+        $this->assertSame(1, $store->sweeps);
+    }
 }

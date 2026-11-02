@@ -112,6 +112,13 @@ class CsrfTokenMiddleware implements Middleware
             return $response;
         }
 
+        // Do not create the token just to hand it out: that would make every
+        // anonymous visit worth a stored session. A page that renders a form
+        // or reads csrf_token() has created it by now.
+        if (!$session->has('_token')) {
+            return $response;
+        }
+
         $config = config('session');
 
         $response->headers->setCookie($this->addCookie($request, $config));

@@ -43,4 +43,11 @@ interface CommittableSession
      * @return bool
      */
     public function isLoaded(): bool;
+
+    /**
+     * Run the housekeeping that must not delay the response
+     *
+     * @return void
+     */
+    public function terminate(): void;
 }

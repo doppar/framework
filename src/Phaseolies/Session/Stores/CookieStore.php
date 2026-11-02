@@ -76,22 +76,44 @@ class CookieStore implements SessionStoreInterface
     {
         $payload = ['id' => $id, 'exp' => time() + $this->lifetime, 'data' => $data];
 
-        if (json_encode($payload) === false) {
-            throw new SessionException('Session data cannot be stored in a cookie because it is not JSON serializable.');
-        }
+        $this->assertJsonSafe($data);
 
         $value = $this->encrypter->encrypt($payload);
 
-        if (strlen($value) > self::MAX_COOKIE_BYTES) {
+        // Browsers count the cookie as it is sent, after percent-encoding.
+        $size = strlen(rawurlencode($value));
+
+        if ($size > self::MAX_COOKIE_BYTES) {
             throw new SessionException(sprintf(
                 'Session data is too large for the cookie session driver (%d of %d bytes). Largest keys: %s. Store less in the session or use the file driver.',
-                strlen($value),
+                $size,
                 self::MAX_COOKIE_BYTES,
                 $this->largestKeys($data)
             ));
         }
 
         return $value;
+    }
+
+    /**
+     * Make sure the data comes back from the cookie exactly as it went in
+     *
+     * @param array $data
+     * @return void
+     * @throws SessionException
+     */
+    protected function assertJsonSafe(array $data): void
+    {
+        foreach ($data as $key => $value) {
+            $json = json_encode($value);
+
+            if ($json === false || json_decode($json, true) !== $value) {
+                throw new SessionException(sprintf(
+                    'Session key "%s" cannot be stored by the cookie session driver. It must contain only strings (valid UTF-8), numbers, booleans, null and arrays, not objects or binary data. Convert it first or use the file driver.',
+                    $key
+                ));
+            }
+        }
     }
 
     /**

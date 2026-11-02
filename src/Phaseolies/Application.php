@@ -1212,7 +1212,7 @@ class Application extends Container
         if (!$scope instanceof DeferScope) {
             throw new \LogicException(
                 'defer() was called outside an active execution scope. '
-                . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
+                    . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
             );
         }
 
@@ -1553,13 +1553,18 @@ class Application extends Container
 
             $response->prepare($request)->send();
 
+            $this->terminateSession($request);
+
             $this->suspendDeferScope($deferScope);
             $this->suspendContext($context);
 
             return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
             try {
-                $this->commitSession($request);
+                try {
+                    $this->commitSession($request);
+                } catch (\Throwable) {
+                }
 
                 Response::dispatchHttpException($e);
             } catch (\Throwable $renderFailure) {
@@ -1606,6 +1611,24 @@ class Application extends Container
 
         if ($session instanceof CommittableSession) {
             $session->commit($response);
+        }
+    }
+
+    /**
+     * Run the session housekeeping once the response has been sent
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function terminateSession(Request $request): void
+    {
+        $session = $request->session();
+
+        if ($session instanceof CommittableSession) {
+            try {
+                $session->terminate();
+            } catch (\Throwable) {
+            }
         }
     }
 
