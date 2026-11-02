@@ -174,8 +174,9 @@ class FileStoreTest extends TestCase
 
     public function test_a_storage_path_containing_glob_characters_still_works(): void
     {
-        // [ ] { } * ? are legal in directory names on every OS and make glob() match nothing.
-        $path = $this->path . '/we[ir]d {dir} *?';
+        // [ ] { } are legal in directory names on every OS and make glob() match nothing.
+        // * and ? are only added off Windows, where they are not valid in file names.
+        $path = $this->path . '/we[ir]d {dir}' . (DIRECTORY_SEPARATOR === '\\' ? '' : ' *?');
         $store = new FileStore($path, 60);
 
         $fresh = $this->id('aa');
