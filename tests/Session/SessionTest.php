@@ -317,8 +317,11 @@ class SessionTest extends TestCase
         $new = $this->sessionCookie($this->commit($session))->getValue();
 
         $this->assertNotSame($id, $new);
-        $this->assertNull($this->store()->read($id));
         $this->assertSame(7, $this->store()->read($new)['data']['user']);
+
+        // The old id only leads to the new one for a short while.
+        $this->assertSame($new, $this->store()->read($id)['data']['_rotated_to']);
+        $this->assertSame(7, $this->session($this->request('/', [self::COOKIE => $id]))->get('user'));
     }
 
     public function test_an_unchanged_session_is_not_rewritten(): void
@@ -711,6 +714,46 @@ class SessionTest extends TestCase
 
         $this->assertNull($this->store()->read($old));
         $this->assertNotNull($this->store()->read($new));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('disabledLotteries')]
+    public function test_a_disabled_lottery_never_sweeps(mixed $lottery): void
+    {
+        $this->config['lottery'] = $lottery;
+        $store = new class($this->path, 7200) extends FileStore {
+            public int $sweeps = 0;
+
+            public function sweep(int $maxLifetime): int
+            {
+                $this->sweeps++;
+
+                return 0;
+            }
+        };
+
+        for ($i = 0; $i < 60; $i++) {
+            $session = $this->session(null, $store);
+            $session->put('a', $i);
+            $this->commit($session);
+            $session->terminate();
+        }
+
+        $this->assertSame(0, $store->sweeps, 'The sweep ran although the lottery is switched off.');
+    }
+
+    public static function disabledLotteries(): array
+    {
+        return ['null' => [null], 'empty array' => [[]], 'false' => [false], 'zero chances' => [[0, 100]]];
+    }
+
+    public function test_set_id_ignores_an_id_that_ends_in_a_newline(): void
+    {
+        $session = $this->session();
+        $before = $session->getId();
+
+        $session->setId(bin2hex(random_bytes(20)) . "\n");
+
+        $this->assertSame($before, $session->getId());
     }
 
     public function test_the_sweep_runs_after_the_response_not_while_saving(): void

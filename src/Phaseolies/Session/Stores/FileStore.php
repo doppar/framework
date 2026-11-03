@@ -13,7 +13,18 @@ class FileStore implements LockableSessionStore
      * Anything else coming from a cookie is rejected before it can reach the
      * filesystem, which rules out path traversal and fixation with crafted ids.
      */
-    public const ID_PATTERN = '/^[a-f0-9]{40}$/';
+    public const ID_PATTERN = '/^[a-f0-9]{40}\z/';
+
+    /**
+     * The shards this instance holds the lock of right now.
+     *
+     * A callback that runs under a lock may call back into the store, for
+     * example to destroy the session it is looking at. Taking the same lock a
+     * second time would only wait for itself, so a nested call reuses it.
+     *
+     * @var array<string, true>
+     */
+    private array $held = [];
 
     /**
      * @param string $path
@@ -134,13 +145,19 @@ class FileStore implements LockableSessionStore
             return $callback();
         }
 
+        $shard = substr($id, 0, 2);
+
+        if (isset($this->held[$shard])) {
+            return $callback();
+        }
+
         if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
             $this->report('Session locking is unavailable: the lock directory could not be created. Saving without a lock.');
 
             return $callback();
         }
 
-        $handle = @fopen($directory . '/' . substr($id, 0, 2), 'c');
+        $handle = @fopen($directory . '/' . $shard, 'c');
 
         if ($handle === false) {
             $this->report('Session locking is unavailable: the lock file could not be opened. Saving without a lock.');
@@ -165,9 +182,13 @@ class FileStore implements LockableSessionStore
             usleep(5000);
         }
 
+        $this->held[$shard] = true;
+
         try {
             return $callback();
         } finally {
+            unset($this->held[$shard]);
+
             flock($handle, LOCK_UN);
             fclose($handle);
         }
@@ -260,7 +281,7 @@ class FileStore implements LockableSessionStore
         foreach (new \FilesystemIterator($this->path, \FilesystemIterator::SKIP_DOTS) as $entry) {
             $name = $entry->getFilename();
 
-            if ($entry->isDir() && preg_match('/^[a-f0-9]{2}$/', $name) === 1) {
+            if ($entry->isDir() && preg_match('/^[a-f0-9]{2}\z/', $name) === 1) {
                 $removed += $this->sweepDirectory($entry->getPathname(), $cutoff);
             } elseif ($entry->isFile() && str_starts_with($name, 'sess_') && $entry->getMTime() <= $cutoff && @unlink($entry->getPathname())) {
                 // Left behind by the native PHP session handler this store replaced.

@@ -83,8 +83,27 @@ class SessionManager
 
         $config['lifetime'] = max(1, (int) $config['lifetime']);
         $config['cookie'] = self::cookieName((string) $config['cookie']);
+        $config['lottery'] = self::lottery($config['lottery']);
 
         return $config;
+    }
+
+    /**
+     * Turn the lottery option into [chances, out of].
+     *
+     * @param mixed $value
+     * @return array{0: int, 1: int}
+     */
+    public static function lottery(mixed $value): array
+    {
+        if (!is_array($value) || $value === []) {
+            return [0, 100];
+        }
+
+        $value = array_values($value);
+        $total = (int) ($value[1] ?? 100);
+
+        return [max(0, (int) $value[0]), $total > 0 ? $total : 100];
     }
 
     /**

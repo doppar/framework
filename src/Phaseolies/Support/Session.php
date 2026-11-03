@@ -22,6 +22,24 @@ class Session implements SessionInterface, CommittableSession
     protected const INTERNAL_KEYS = ['last_regenerated' => true];
 
     /**
+     * Keys of the pointer an automatically rotated id leaves behind.
+     *
+     */
+    protected const ROTATED_TO = '_rotated_to';
+
+    protected const ROTATED_UNTIL = '_rotated_until';
+
+    /**
+     * Seconds the old id of an automatic rotation keeps leading to the new one.
+     */
+    protected const ROTATION_GRACE = 60;
+
+    /**
+     * The most pointers followed before giving up, which only matters for a loop.
+     */
+    protected const MAX_HOPS = 3;
+
+    /**
      * The session data.
      *
      * @var array
@@ -91,6 +109,11 @@ class Session implements SessionInterface, CommittableSession
      * Whether the cookie must be expired when the session is committed.
      */
     protected bool $forgetCookie = false;
+
+    /**
+     * Whether the stored session was due for an automatic rotation when loaded.
+     */
+    protected bool $rotationDue = false;
 
     /**
      * The request the session belongs to.
@@ -165,7 +188,7 @@ class Session implements SessionInterface, CommittableSession
         foreach ($patterns as $pattern) {
             $regex = str_replace('\\*', '.*', preg_quote(trim((string) $pattern, '/'), '#'));
 
-            if (preg_match('#^' . $regex . '$#i', $path) === 1) {
+            if (preg_match('#^' . $regex . '\z#i', $path) === 1) {
                 return $this->disabled = true;
             }
         }
@@ -189,17 +212,7 @@ class Session implements SessionInterface, CommittableSession
         $config = $this->config();
 
         if ($this->isBlank()) {
-            $stale = $this->previousId ?? $this->storedId;
-
-            if ($stale !== null) {
-                $store->destroy($stale);
-            }
-
-            if ($stale !== null || $this->forgetCookie || $this->incomingCookie() !== null) {
-                $this->queueCookie($response, $this->expiredCookie($config));
-            }
-
-            $this->storedId = $this->previousId = null;
+            $this->commitBlank($store, $config, $response);
 
             return;
         }
@@ -208,40 +221,49 @@ class Session implements SessionInterface, CommittableSession
         $this->data['last_regenerated'] ??= time();
 
         $serialized = serialize($this->data);
-        $changed = $this->storedId !== $this->id || $serialized !== $this->snapshot;
+        $changed = $this->storedId !== $this->id || $serialized !== $this->snapshot || $this->rotationDue;
 
         if ($changed || $store->isClientSide()) {
             if ($store instanceof LockableSessionStore && $this->storedId !== null) {
-                // Another request may have saved this session since it was
-                // loaded. Apply only what this request changed on top of it.
-                $value = $store->synchronized($this->storedId, function () use ($store): ?string {
-                    if (!$this->mergeConcurrentChanges($store)) {
-                        return null;
-                    }
-
-                    return $store->write($this->id, $this->data);
-                });
+                // Another request may have saved, rotated or ended this session
+                // since it was loaded. Apply only what this request changed on
+                // top of what is stored now.
+                $value = $this->saveLocked($store);
 
                 if ($value === null) {
-                    // Logged out, destroyed or rotated by another request while
+                    // Logged out, destroyed or expired by another request while
                     // this one was running. Writing it back would undo that, and
                     // sending its cookie would replace the one that request issued.
                     $this->abandon();
 
                     return;
                 }
-
-                $serialized = serialize($this->data);
             } else {
+                if ($this->rotationDue) {
+                    // No lock to coordinate with, so rotate on the spot.
+                    $this->previousId ??= $this->storedId;
+                    $this->id = self::newId();
+                    $this->data['last_regenerated'] = time();
+                }
+
                 $value = $store->write($this->id, $this->data);
             }
+
+            $serialized = serialize($this->data);
+        } elseif (!$this->stillCurrent($store)) {
+            // Unchanged, but another request rotated or ended the session while
+            // this one ran. Sending its id again would overwrite the cookie that
+            // request issued with one that no longer works.
+            $this->abandon();
+
+            return;
         } else {
             $store->touch($this->id);
             $value = $this->id;
         }
 
         if ($this->previousId !== null && $this->previousId !== $this->id) {
-            $store->destroy($this->previousId);
+            $this->destroyLineage($store, $this->previousId);
         }
 
         $this->storedId = $this->id;
@@ -249,9 +271,55 @@ class Session implements SessionInterface, CommittableSession
         $this->snapshot = $serialized;
         $this->original = $this->data;
         $this->replace = false;
+        $this->rotationDue = false;
         $this->committed = true;
 
         $this->queueCookie($response, $this->makeCookie($value, $config));
+    }
+
+    /**
+     * Commit a session that holds nothing: end whatever is stored for it.
+     *
+     * @param SessionStoreInterface $store
+     * @param array $config
+     * @param Response|null $response
+     * @return void
+     */
+    protected function commitBlank(SessionStoreInterface $store, array $config, ?Response $response): void
+    {
+        $ids = array_values(array_unique(array_filter([$this->previousId, $this->storedId])));
+
+        foreach ($ids as $id) {
+            $this->destroyLineage($store, $id);
+        }
+
+        // Only a session this request actually ended has its cookie expired. A
+        // cookie that merely names an unknown session is left alone: the browser
+        // may already hold a newer one from a request that finished first, and
+        // expiring it would sign the user out.
+        if ($ids !== [] || $this->forgetCookie) {
+            $this->queueCookie($response, $this->expiredCookie($config));
+        }
+
+        $this->storedId = $this->previousId = null;
+        $this->rotationDue = false;
+    }
+
+    /**
+     * Whether the stored session is still the one this request loaded.
+     *
+     * @param SessionStoreInterface $store
+     * @return bool
+     */
+    protected function stillCurrent(SessionStoreInterface $store): bool
+    {
+        if (!$store instanceof LockableSessionStore || $this->storedId === null) {
+            return true;
+        }
+
+        $record = $store->read($this->storedId);
+
+        return $record !== null && !array_key_exists(self::ROTATED_TO, $record['data']);
     }
 
     /**
@@ -277,34 +345,215 @@ class Session implements SessionInterface, CommittableSession
     {
         $this->storedId = $this->previousId = $this->snapshot = null;
         $this->original = [];
-        $this->replace = $this->committed = false;
+        $this->replace = $this->committed = $this->rotationDue = false;
     }
 
     /**
-     * Apply this request's changes on top of the session as currently stored.
+     * Save the session while it is locked, following it if it was rotated.
      *
-     * @param SessionStoreInterface $store
-     * @return bool
+     * @param LockableSessionStore $store
+     * @return string|null
      */
-    protected function mergeConcurrentChanges(SessionStoreInterface $store): bool
+    protected function saveLocked(LockableSessionStore $store): ?string
+    {
+        for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
+            // Only one lock is held at a time: when the session turns out to
+            // have moved, the lock is released and the next one is taken.
+            $result = $store->synchronized($this->storedId, fn () => $this->saveUnderLock($store));
+
+            if (!is_array($result)) {
+                return null;
+            }
+
+            [$value, $moved] = $result;
+
+            if (!$moved) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Save the session. Must run while the session is locked.
+     *
+     * @param LockableSessionStore $store
+     * @return array{0: string|null, 1: bool}
+     */
+    protected function saveUnderLock(LockableSessionStore $store): array
     {
         $record = $store->read($this->storedId);
 
+        if ($record !== null && array_key_exists(self::ROTATED_TO, $record['data'])) {
+            $target = $this->pointerTarget($record['data']);
+
+            if ($target !== null) {
+                // Another request rotated the id. Carry on with the new one, so
+                // this request's changes land in the one live session.
+                $this->follow($target);
+
+                return [null, true];
+            }
+
+            // A pointer past its time is a session that is gone.
+            $record = null;
+        }
+
         if ($record === null) {
-            // The record this request loaded no longer exists: another request
-            // logged out, destroyed or expired it. Saving under the same id
-            // would resurrect it, while a new id (regenerate, setId) is a new
-            // session and is simply created.
-            return $this->id !== $this->storedId;
+            // The session this request loaded no longer exists: another request
+            // logged out, destroyed or expired it. Writing it back would undo that.
+            // Only data this request built from scratch (flush, invalidate) may
+            // create a session again, because none of it comes from the old one.
+            return [$this->replace ? $this->persist($store, false) : null, false];
         }
 
-        if ($this->replace || serialize($record['data']) === $this->snapshot) {
-            return true;
+        if (!$this->replace && serialize($record['data']) !== $this->snapshot) {
+            $this->data = $this->mergeChanges($record['data'], $this->original, $this->data);
         }
 
-        $this->data = $this->mergeChanges($record['data'], $this->original, $this->data);
+        return [$this->persist($store, true), false];
+    }
 
-        return true;
+    /**
+     * Write the session, rotating its id first when that is due.
+     *
+     * @param LockableSessionStore $store
+     * @param bool $live
+     * @return string
+     */
+    protected function persist(LockableSessionStore $store, bool $live): string
+    {
+        if (!$live || !$this->rotationDue || $this->replace || $this->id !== $this->storedId || !$this->isDue($this->data)) {
+            return $store->write($this->id, $this->data);
+        }
+
+        // Rotate under the lock: write the session under its new id, then turn
+        // the old one into a pointer for a short time. Requests already running
+        // on the old id follow it, so none of them splits the session or loses
+        // its changes, and none is signed out.
+        $old = $this->storedId;
+        $new = self::newId();
+
+        $this->data['last_regenerated'] = time();
+
+        $store->write($new, $this->data);
+        $store->write($old, [self::ROTATED_TO => $new, self::ROTATED_UNTIL => time() + self::ROTATION_GRACE]);
+
+        return $this->id = $new;
+    }
+
+    /**
+     * Move this request on to the session an automatic rotation created.
+     *
+     * @param string $to
+     * @return void
+     */
+    protected function follow(string $to): void
+    {
+        $from = $this->storedId;
+
+        $this->id = $this->id === $from ? $to : $this->id;
+        $this->previousId = $this->previousId === $from ? $to : $this->previousId;
+        $this->storedId = $to;
+    }
+
+    /**
+     * The id an old id leads to, while it is still allowed to.
+     *
+     * @param array $data
+     * @param bool $honourExpiry
+     * @return string|null
+     */
+    protected function pointerTarget(array $data, bool $honourExpiry = true): ?string
+    {
+        $target = $data[self::ROTATED_TO] ?? null;
+
+        if (!is_string($target) || !FileStore::isValidId($target)) {
+            return null;
+        }
+
+        if ($honourExpiry && (int) ($data[self::ROTATED_UNTIL] ?? 0) < time()) {
+            return null;
+        }
+
+        return $target;
+    }
+
+    /**
+     * Read a session by id, following the pointer of an automatically rotated one.
+     *
+     * @param SessionStoreInterface $store
+     * @param string $id
+     * @return array{id: string, data: array}|null
+     */
+    protected function readFollowing(SessionStoreInterface $store, string $id): ?array
+    {
+        for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
+            $record = $store->read($id);
+
+            if ($record === null || !array_key_exists(self::ROTATED_TO, $record['data'])) {
+                return $record;
+            }
+
+            $target = $this->pointerTarget($record['data']);
+
+            if ($target === null) {
+                $store->destroy($id);
+
+                return null;
+            }
+
+            $id = $target;
+        }
+
+        return null;
+    }
+
+    /**
+     * End a session and every session an automatic rotation made from it.
+     *
+     * @param SessionStoreInterface $store
+     * @param string $id
+     * @return void
+     */
+    protected function destroyLineage(SessionStoreInterface $store, string $id): void
+    {
+        for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
+            if (!$store instanceof LockableSessionStore) {
+                $store->destroy($id);
+
+                return;
+            }
+
+            // Read and destroy under one lock, so a rotation cannot slip in
+            // between and leave a live successor behind.
+            $next = $store->synchronized($id, function () use ($store, $id): ?string {
+                $record = $store->read($id);
+
+                $store->destroy($id);
+
+                return $record === null ? null : $this->pointerTarget($record['data'], false);
+            });
+
+            if (!is_string($next)) {
+                return;
+            }
+
+            $id = $next;
+        }
+    }
+
+    /**
+     * Whether the id is due for an automatic rotation.
+     *
+     * @param array $data
+     * @return bool
+     */
+    protected function isDue(array $data): bool
+    {
+        return !isset($data['last_regenerated'])
+            || (time() - (int) $data['last_regenerated']) > ($this->config()['lifetime'] * 60);
     }
 
     /**
@@ -459,31 +708,20 @@ class Session implements SessionInterface, CommittableSession
 
         if (!$this->isStateless()) {
             $value = $this->incomingCookie();
-            $record = $value === null ? null : $this->store()->read($value);
+            $record = $value === null ? null : $this->readFollowing($this->store(), $value);
 
             if ($record !== null) {
                 $this->id = $this->storedId = $record['id'];
                 $this->data = $this->original = $record['data'];
                 $this->snapshot = serialize($this->data);
 
-                if ($this->shouldRotate()) {
-                    $this->regenerate(true);
-                }
+                // Rotated when saved, under the lock, not here: several requests
+                // loading the same session must not each pick their own new id.
+                $this->rotationDue = $this->isDue($this->data);
             }
         }
 
         $this->peek = array_replace($this->data, $this->peek);
-    }
-
-    /**
-     * Whether the session id is due for rotation.
-     *
-     * @return bool
-     */
-    protected function shouldRotate(): bool
-    {
-        return !isset($this->data['last_regenerated'])
-            || (time() - (int) $this->data['last_regenerated']) > ($this->config()['lifetime'] * 60);
     }
 
     /**
@@ -766,6 +1004,7 @@ class Session implements SessionInterface, CommittableSession
 
         $this->id = self::newId();
         $this->data['last_regenerated'] = time();
+        $this->rotationDue = false;
     }
 
     /**
@@ -813,7 +1052,7 @@ class Session implements SessionInterface, CommittableSession
             $this->previousId ??= $this->storedId;
         }
 
-        if (!$store->isClientSide() && !$this->isStateless() && ($record = $store->read($id)) !== null) {
+        if (!$store->isClientSide() && !$this->isStateless() && ($record = $this->readFollowing($store, $id)) !== null) {
             $this->data = $this->original = $record['data'];
             $this->storedId = $record['id'];
             $this->snapshot = serialize($this->data);

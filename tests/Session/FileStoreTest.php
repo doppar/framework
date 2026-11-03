@@ -397,4 +397,56 @@ class FileStoreTest extends TestCase
 
     /** @var array{0: resource, 1: array}|null */
     private ?array $process = null;
+
+    public function test_an_id_that_ends_in_a_newline_is_not_a_valid_id(): void
+    {
+        // "$" lets a trailing newline through, which "\z" does not.
+        $store = new FileStore($this->path);
+        $id = $this->id();
+        $store->write($id, ['a' => 1]);
+
+        $this->assertTrue(FileStore::isValidId($id));
+        $this->assertFalse(FileStore::isValidId($id . "\n"));
+        $this->assertNull($store->read($id . "\n"));
+
+        $store->destroy($id . "\n");
+        $this->assertNotNull($store->read($id), 'A look-alike id destroyed the real session.');
+
+        $this->expectException(SessionException::class);
+        $store->write($id . "\n", ['a' => 1]);
+    }
+
+    public function test_a_callback_under_a_lock_can_use_the_store_without_waiting_for_itself(): void
+    {
+        $store = $this->loggingStore(5.0);
+        $id = $this->id();
+        $store->write($id, ['a' => 1]);
+
+        $started = microtime(true);
+
+        $store->synchronized($id, function () use ($store, $id) {
+            // Nested, same session: must reuse the lock instead of waiting out the timeout.
+            $store->synchronized($id, fn () => null);
+            $store->destroy($id);
+        });
+
+        $this->assertLessThan(1.0, microtime(true) - $started, 'The nested call waited for the lock it already holds.');
+        $this->assertNull($store->read($id));
+        $this->assertSame([], $store->reports);
+    }
+
+    public function test_the_lock_is_free_again_after_a_nested_call(): void
+    {
+        $store = $this->loggingStore(0.05);
+        $id = $this->id();
+
+        $store->synchronized($id, fn () => $store->synchronized($id, fn () => null));
+
+        $held = $this->holdLockOf($id);
+        flock($held, LOCK_UN);
+        fclose($held);
+
+        $this->assertSame('ok', $store->synchronized($id, fn () => 'ok'));
+        $this->assertSame([], $store->reports);
+    }
 }

@@ -32,4 +32,33 @@ class SessionManagerTest extends TestCase
             'only junk falls back' => ['   ', 'doppar_session'],
         ];
     }
+
+    #[DataProvider('lotteries')]
+    public function test_the_lottery_option_is_normalized(mixed $input, array $expected): void
+    {
+        $this->assertSame($expected, SessionManager::lottery($input));
+        $this->assertSame($expected, SessionManager::normalize(['lottery' => $input])['lottery']);
+    }
+
+    public static function lotteries(): array
+    {
+        return [
+            'default' => [[2, 100], [2, 100]],
+            'null never sweeps' => [null, [0, 100]],
+            'false never sweeps' => [false, [0, 100]],
+            'empty array never sweeps' => [[], [0, 100]],
+            'zero chances never sweeps' => [[0, 100], [0, 100]],
+            'not an array never sweeps' => ['2/100', [0, 100]],
+            'a single number keeps the default total' => [[5], [5, 100]],
+            'a bad total falls back' => [[2, 0], [2, 100]],
+            'negative chances never sweep' => [[-3, 100], [0, 100]],
+            'string numbers are read' => [['3', '50'], [3, 50]],
+            'every request' => [[1, 1], [1, 1]],
+        ];
+    }
+
+    public function test_a_config_without_a_lottery_gets_the_default(): void
+    {
+        $this->assertSame([2, 100], SessionManager::normalize([])['lottery']);
+    }
 }
