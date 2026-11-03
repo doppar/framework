@@ -18,9 +18,13 @@ class FileStore implements LockableSessionStore
     /**
      * @param string $path
      * @param int $lifetime
+     * @param float $lockTimeout
      */
-    public function __construct(protected string $path, protected int $lifetime = 7200)
-    {
+    public function __construct(
+        protected string $path,
+        protected int $lifetime = 7200,
+        protected float $lockTimeout = 2.0
+    ) {
         $trimmed = rtrim($path, '/\\');
 
         // Keep a filesystem root ("/" or "C:\") intact instead of trimming it away.
@@ -116,7 +120,7 @@ class FileStore implements LockableSessionStore
     }
 
     /**
-     * Run a callback while no other request can save a session of the same shard
+     * Run a callback while no other request can save or destroy a session of the same shard
      *
      * @param string $id
      * @param callable $callback
@@ -126,21 +130,34 @@ class FileStore implements LockableSessionStore
     {
         $directory = $this->path . '/.locks';
 
-        if (!self::isValidId($id) || (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory))) {
+        if (!self::isValidId($id)) {
+            return $callback();
+        }
+
+        if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) {
+            $this->report('Session locking is unavailable: the lock directory could not be created. Saving without a lock.');
+
             return $callback();
         }
 
         $handle = @fopen($directory . '/' . substr($id, 0, 2), 'c');
 
         if ($handle === false) {
+            $this->report('Session locking is unavailable: the lock file could not be opened. Saving without a lock.');
+
             return $callback();
         }
 
-        $deadline = microtime(true) + 2;
+        $deadline = microtime(true) + $this->lockTimeout;
 
         while (!flock($handle, LOCK_EX | LOCK_NB)) {
             if (microtime(true) > $deadline) {
                 fclose($handle);
+
+                $this->report(sprintf(
+                    'Session lock was not acquired within %s seconds. Saving without a lock, so concurrent changes to this session may be lost.',
+                    rtrim(rtrim(number_format($this->lockTimeout, 3, '.', ''), '0'), '.')
+                ));
 
                 return $callback();
             }
@@ -153,6 +170,23 @@ class FileStore implements LockableSessionStore
         } finally {
             flock($handle, LOCK_UN);
             fclose($handle);
+        }
+    }
+
+    /**
+     * Report a condition that does not stop the request but should not go unnoticed.
+     *
+     * @param string $message
+     * @return void
+     */
+    protected function report(string $message): void
+    {
+        try {
+            if (function_exists('warning')) {
+                warning('[Doppar] ' . $message);
+            }
+        } catch (\Throwable) {
+            // Logging must never break a request, least of all while it is saving.
         }
     }
 
@@ -192,16 +226,18 @@ class FileStore implements LockableSessionStore
             return;
         }
 
-        $file = $this->file($id);
+        $this->synchronized($id, function () use ($id): void {
+            $file = $this->file($id);
 
-        if (@unlink($file) || !file_exists($file)) {
-            return;
-        }
+            if (@unlink($file) || !file_exists($file)) {
+                return;
+            }
 
-        // Windows refuses to delete a file another process has open. The
-        // session must still stop working, so empty it: an empty file reads
-        // as an unknown session and gc() removes it later.
-        @file_put_contents($file, '');
+            // Windows refuses to delete a file another process has open. The
+            // session must still stop working, so empty it: an empty file reads
+            // as an unknown session and gc() removes it later.
+            @file_put_contents($file, '');
+        });
     }
 
     /**

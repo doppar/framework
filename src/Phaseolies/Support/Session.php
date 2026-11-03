@@ -214,11 +214,22 @@ class Session implements SessionInterface, CommittableSession
             if ($store instanceof LockableSessionStore && $this->storedId !== null) {
                 // Another request may have saved this session since it was
                 // loaded. Apply only what this request changed on top of it.
-                $value = $store->synchronized($this->storedId, function () use ($store): string {
-                    $this->mergeConcurrentChanges($store);
+                $value = $store->synchronized($this->storedId, function () use ($store): ?string {
+                    if (!$this->mergeConcurrentChanges($store)) {
+                        return null;
+                    }
 
                     return $store->write($this->id, $this->data);
                 });
+
+                if ($value === null) {
+                    // Logged out, destroyed or rotated by another request while
+                    // this one was running. Writing it back would undo that, and
+                    // sending its cookie would replace the one that request issued.
+                    $this->abandon();
+
+                    return;
+                }
 
                 $serialized = serialize($this->data);
             } else {
@@ -258,24 +269,42 @@ class Session implements SessionInterface, CommittableSession
     }
 
     /**
+     * Forget that this session is stored, without touching the store or the cookie.
+     *
+     * @return void
+     */
+    protected function abandon(): void
+    {
+        $this->storedId = $this->previousId = $this->snapshot = null;
+        $this->original = [];
+        $this->replace = $this->committed = false;
+    }
+
+    /**
      * Apply this request's changes on top of the session as currently stored.
      *
      * @param SessionStoreInterface $store
-     * @return void
+     * @return bool
      */
-    protected function mergeConcurrentChanges(SessionStoreInterface $store): void
+    protected function mergeConcurrentChanges(SessionStoreInterface $store): bool
     {
-        if ($this->replace) {
-            return;
-        }
-
         $record = $store->read($this->storedId);
 
-        if ($record === null || serialize($record['data']) === $this->snapshot) {
-            return;
+        if ($record === null) {
+            // The record this request loaded no longer exists: another request
+            // logged out, destroyed or expired it. Saving under the same id
+            // would resurrect it, while a new id (regenerate, setId) is a new
+            // session and is simply created.
+            return $this->id !== $this->storedId;
+        }
+
+        if ($this->replace || serialize($record['data']) === $this->snapshot) {
+            return true;
         }
 
         $this->data = $this->mergeChanges($record['data'], $this->original, $this->data);
+
+        return true;
     }
 
     /**
@@ -301,8 +330,10 @@ class Session implements SessionInterface, CommittableSession
                 continue;
             }
 
-            if ($known && is_array($value) && is_array($original[$key]) && isset($stored[$key]) && is_array($stored[$key])) {
-                $stored[$key] = $this->mergeChanges($stored[$key], $original[$key], $value);
+            $base = $known ? $original[$key] : [];
+
+            if (is_array($value) && is_array($base) && isset($stored[$key]) && is_array($stored[$key])) {
+                $stored[$key] = $this->mergeValues($stored[$key], $base, $value);
 
                 continue;
             }
@@ -311,6 +342,106 @@ class Session implements SessionInterface, CommittableSession
         }
 
         return $stored;
+    }
+
+    /**
+     * Merge two versions of an array value.
+     *
+     * @param array $stored
+     * @param array $original
+     * @param array $current
+     * @return array
+     */
+    protected function mergeValues(array $stored, array $original, array $current): array
+    {
+        if (array_is_list($stored) && array_is_list($original) && array_is_list($current)) {
+            return $this->mergeLists($stored, $original, $current);
+        }
+
+        return $this->mergeChanges($stored, $original, $current);
+    }
+
+    /**
+     * Merge two versions of a list by what each request added and removed.
+     *
+     * @param array $stored
+     * @param array $original
+     * @param array $current
+     * @return array
+     */
+    protected function mergeLists(array $stored, array $original, array $current): array
+    {
+        if ($this->sameList($stored, $original)) {
+            // Nobody else touched the list, so this request's version stands.
+            return $current;
+        }
+
+        $removed = $this->missingFrom($original, $current);
+        $added = $this->missingFrom($current, $original);
+
+        foreach ($removed as $item) {
+            foreach ($stored as $index => $candidate) {
+                if ($this->sameItem($candidate, $item)) {
+                    unset($stored[$index]);
+
+                    break;
+                }
+            }
+        }
+
+        return array_values(array_merge($stored, $added));
+    }
+
+    /**
+     * The items of $items that have no counterpart in $other, counting duplicates.
+     *
+     * @param array $items
+     * @param array $other
+     * @return array
+     */
+    protected function missingFrom(array $items, array $other): array
+    {
+        $missing = [];
+
+        foreach ($items as $item) {
+            foreach ($other as $index => $candidate) {
+                if ($this->sameItem($item, $candidate)) {
+                    unset($other[$index]);
+
+                    continue 2;
+                }
+            }
+
+            $missing[] = $item;
+        }
+
+        return $missing;
+    }
+
+    /**
+     * @param array $first
+     * @param array $second
+     * @return bool
+     */
+    protected function sameList(array $first, array $second): bool
+    {
+        return serialize($first) === serialize($second);
+    }
+
+    /**
+     * Whether two list items are identical.
+     *
+     * @param mixed $first
+     * @param mixed $second
+     * @return bool
+     */
+    protected function sameItem(mixed $first, mixed $second): bool
+    {
+        if (is_scalar($first) || $first === null || is_scalar($second) || $second === null) {
+            return $first === $second;
+        }
+
+        return serialize($first) === serialize($second);
     }
 
     /**

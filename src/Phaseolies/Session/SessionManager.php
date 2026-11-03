@@ -30,6 +30,7 @@ class SessionManager
         'same_site' => 'lax',
         'stateless' => [],
         'lottery' => [2, 100],
+        'always_send_xsrf_cookie' => false,
     ];
 
     /**

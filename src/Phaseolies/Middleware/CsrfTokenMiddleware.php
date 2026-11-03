@@ -105,25 +105,45 @@ class CsrfTokenMiddleware implements Middleware
             return $response;
         }
 
+        if (!$this->shouldIssueCookie($request)) {
+            return $response;
+        }
+
+        $response->headers->setCookie($this->addCookie($request, config('session')));
+
+        return $response;
+    }
+
+    /**
+     * Decide whether this response should carry the XSRF-TOKEN cookie
+     *
+     * @param \Phaseolies\Http\Request $request
+     * @return bool
+     */
+    protected function shouldIssueCookie($request): bool
+    {
         $session = $request->session();
 
         // Stateless requests have no stored session to tie the token to.
         if ($session instanceof CommittableSession && $session->isStateless()) {
-            return $response;
+            return false;
         }
 
-        // Do not create the token just to hand it out: that would make every
-        // anonymous visit worth a stored session. A page that renders a form
-        // or reads csrf_token() has created it by now.
-        if (!$session->has('_token')) {
-            return $response;
+        if ($session->has('_token')) {
+            return true;
         }
 
-        $config = config('session');
+        return $this->alwaysSendsCookie();
+    }
 
-        $response->headers->setCookie($this->addCookie($request, $config));
-
-        return $response;
+    /**
+     * Whether the cookie is sent even before a token exists.
+     *
+     * @return bool
+     */
+    protected function alwaysSendsCookie(): bool
+    {
+        return (bool) (((array) config('session'))['always_send_xsrf_cookie'] ?? false);
     }
 
     /**

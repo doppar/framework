@@ -271,4 +271,130 @@ class FileStoreTest extends TestCase
 
         $this->assertSame('/', $reflection->getValue($store));
     }
+
+    private function loggingStore(float $timeout = 0.05): FileStore
+    {
+        return new class($this->path, 7200, $timeout) extends FileStore {
+            /** @var string[] */
+            public array $reports = [];
+
+            protected function report(string $message): void
+            {
+                $this->reports[] = $message;
+            }
+        };
+    }
+
+    /**
+     * Take the lock of the shard an id belongs to from outside the store.
+     *
+     * @return resource
+     */
+    private function holdLockOf(string $id)
+    {
+        $directory = $this->path . '/.locks';
+        is_dir($directory) || mkdir($directory, 0700, true);
+
+        $handle = fopen($directory . '/' . substr($id, 0, 2), 'c');
+        $this->assertTrue(flock($handle, LOCK_EX | LOCK_NB), 'The test could not take the lock.');
+
+        return $handle;
+    }
+
+    public function test_giving_up_on_a_session_lock_is_logged_and_the_callback_still_runs(): void
+    {
+        $store = $this->loggingStore(0.05);
+        $id = $this->id();
+        $held = $this->holdLockOf($id);
+
+        $ran = $store->synchronized($id, fn () => 'ran');
+
+        flock($held, LOCK_UN);
+        fclose($held);
+
+        $this->assertSame('ran', $ran);
+        $this->assertCount(1, $store->reports);
+        $this->assertStringContainsString('not acquired', $store->reports[0]);
+        $this->assertStringContainsString('0.05', $store->reports[0]);
+    }
+
+    public function test_a_lock_that_is_acquired_normally_logs_nothing(): void
+    {
+        $store = $this->loggingStore();
+
+        $this->assertSame('ok', $store->synchronized($this->id(), fn () => 'ok'));
+        $this->assertSame([], $store->reports);
+    }
+
+    public function test_an_unusable_lock_directory_is_logged_and_the_callback_still_runs(): void
+    {
+        // A file where the lock directory should be makes it impossible to create.
+        mkdir($this->path, 0700, true);
+        file_put_contents($this->path . '/.locks', 'in the way');
+
+        $store = $this->loggingStore();
+
+        $this->assertSame('ran', $store->synchronized($this->id(), fn () => 'ran'));
+        $this->assertCount(1, $store->reports);
+        $this->assertStringContainsString('lock directory', $store->reports[0]);
+
+        unlink($this->path . '/.locks');
+    }
+
+    public function test_the_lock_is_released_when_the_callback_throws(): void
+    {
+        $store = $this->loggingStore();
+        $id = $this->id();
+
+        try {
+            $store->synchronized($id, function () {
+                throw new \RuntimeException('boom');
+            });
+        } catch (\RuntimeException) {
+        }
+
+        $this->assertSame('free', $store->synchronized($id, fn () => 'free'));
+        $this->assertSame([], $store->reports);
+    }
+
+    public function test_destroy_waits_for_the_session_lock(): void
+    {
+        $id = $this->id();
+        $store = new FileStore($this->path);
+        $store->write($id, ['user' => 1]);
+
+        // A request is saving the session. A logout must wait for it, or the
+        // save could land after the destroy and bring the session back.
+        $stored = null;
+
+        $store->synchronized($id, function () use ($id, &$stored) {
+            $script = sprintf(
+                'require %s; (new Phaseolies\\Session\\Stores\\FileStore(%s, 7200, 10))->destroy(%s);',
+                var_export(dirname(__DIR__, 2) . '/vendor/autoload.php', true),
+                var_export($this->path, true),
+                var_export($id, true)
+            );
+
+            $process = proc_open([PHP_BINARY, '-r', $script], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            $this->assertIsResource($process);
+
+            // Give the child time to reach the lock and block on it.
+            usleep(600000);
+
+            $stored = file_exists($this->path . '/' . substr($id, 0, 2) . '/' . $id);
+
+            $this->process = [$process, $pipes];
+        });
+
+        [$process, $pipes] = $this->process;
+        stream_get_contents($pipes[1]);
+        stream_get_contents($pipes[2]);
+        proc_close($process);
+
+        $this->assertTrue($stored, 'destroy() removed the session while another request held its lock.');
+        $this->assertNull($store->read($id), 'destroy() never ran once the lock was released.');
+    }
+
+    /** @var array{0: resource, 1: array}|null */
+    private ?array $process = null;
 }

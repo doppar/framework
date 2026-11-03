@@ -468,6 +468,235 @@ class SessionTest extends TestCase
         $this->assertSame([], $this->storedFiles());
     }
 
+    /**
+     * Two requests that loaded the same stored session, which already holds the given data.
+     */
+    private function twoRequestsOn(array $data): array
+    {
+        $first = $this->session();
+        $first->put($data);
+        $cookie = $this->sessionCookie($this->commit($first))->getValue();
+
+        $make = fn() => $this->session($this->request('/', [self::COOKIE => $cookie]));
+        $a = $make();
+        $b = $make();
+        $a->all();
+        $b->all();
+
+        return [$cookie, $a, $b];
+    }
+
+    private function stored(string $cookie): array
+    {
+        return $this->session($this->request('/', [self::COOKIE => $cookie]))->all();
+    }
+
+    public function test_concurrent_appends_to_the_same_list_are_all_kept(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => ['x']]);
+
+        $a->put('cart', ['x', 'apple']);
+        $b->put('cart', ['x', 'pear']);
+        $this->commit($a);
+        $this->commit($b);
+
+        $cart = $this->stored($cookie)['cart'];
+
+        $this->assertTrue(array_is_list($cart));
+        $this->assertSame(['apple', 'pear', 'x'], $this->sorted($cart));
+    }
+
+    public function test_concurrent_appends_are_kept_whichever_request_saves_first(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => ['x']]);
+
+        $a->put('cart', ['x', 'apple']);
+        $b->put('cart', ['x', 'pear']);
+        $this->commit($b);
+        $this->commit($a);
+
+        $this->assertSame(['apple', 'pear', 'x'], $this->sorted($this->stored($cookie)['cart']));
+    }
+
+    public function test_a_concurrent_removal_and_append_on_a_list_are_both_applied(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => ['x', 'y']]);
+
+        $a->put('cart', ['y']);
+        $b->put('cart', ['x', 'y', 'z']);
+        $this->commit($a);
+        $this->commit($b);
+
+        $this->assertSame(['y', 'z'], $this->sorted($this->stored($cookie)['cart']));
+    }
+
+    public function test_concurrent_appends_of_arrays_to_a_list_are_all_kept(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => [['id' => 1, 'qty' => 1]]]);
+
+        $a->put('cart', [['id' => 1, 'qty' => 1], ['id' => 2, 'qty' => 1]]);
+        $b->put('cart', [['id' => 1, 'qty' => 1], ['id' => 3, 'qty' => 1]]);
+        $this->commit($a);
+        $this->commit($b);
+
+        $ids = array_column($this->stored($cookie)['cart'], 'id');
+        sort($ids);
+
+        $this->assertSame([1, 2, 3], $ids);
+    }
+
+    public function test_concurrent_appends_of_objects_to_a_list_are_all_kept(): void
+    {
+        // Objects read back from storage are new instances, so they must be
+        // matched by content and not by identity.
+        $item = fn (int $id) => (object) ['id' => $id];
+
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => [$item(1)]]);
+
+        $a->put('cart', [$a->get('cart')[0], $item(2)]);
+        $b->put('cart', [$b->get('cart')[0], $item(3)]);
+        $this->commit($a);
+        $this->commit($b);
+
+        $ids = array_map(fn ($o) => $o->id, $this->stored($cookie)['cart']);
+        sort($ids);
+
+        $this->assertSame([1, 2, 3], $ids);
+    }
+
+    public function test_two_requests_appending_the_same_value_each_add_it(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => ['apple']]);
+
+        $a->put('cart', ['apple', 'apple']);
+        $b->put('cart', ['apple', 'apple']);
+        $this->commit($a);
+        $this->commit($b);
+
+        $this->assertSame(['apple', 'apple', 'apple'], $this->stored($cookie)['cart']);
+    }
+
+    public function test_two_requests_that_both_create_a_list_keep_both_items(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['user' => 1]);
+
+        $a->put('basket', ['apple']);
+        $b->put('basket', ['pear']);
+        $this->commit($a);
+        $this->commit($b);
+
+        $this->assertSame(['apple', 'pear'], $this->sorted($this->stored($cookie)['basket']));
+    }
+
+    public function test_a_list_nested_in_an_array_is_merged_the_same_way(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['basket' => ['items' => ['x'], 'currency' => 'usd']]);
+
+        $a->put('basket', ['items' => ['x', 'apple'], 'currency' => 'usd']);
+        $b->put('basket', ['items' => ['x', 'pear'], 'currency' => 'eur']);
+        $this->commit($a);
+        $this->commit($b);
+
+        $basket = $this->stored($cookie)['basket'];
+
+        $this->assertSame(['apple', 'pear', 'x'], $this->sorted($basket['items']));
+        $this->assertSame('eur', $basket['currency']);
+    }
+
+    public function test_a_list_changed_by_one_request_only_is_written_as_that_request_left_it(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['cart' => ['x'], 'other' => 1]);
+
+        $a->put('cart', ['z', 'x']);
+        $b->put('other', 2);
+        $this->commit($b);
+        $this->commit($a);
+
+        $stored = $this->stored($cookie);
+
+        $this->assertSame(['z', 'x'], $stored['cart']);
+        $this->assertSame(2, $stored['other']);
+    }
+
+    public function test_a_request_that_finishes_after_logout_does_not_bring_the_session_back(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['user' => 1]);
+
+        // A is the logout request, B was already running on the same session.
+        $a->invalidate();
+        $this->commit($a);
+
+        $b->put('cart', ['apple']);
+        $late = $this->commit($b);
+
+        $this->assertNull($this->store()->read($cookie), 'The destroyed session was written back.');
+        $this->assertSame([], $this->storedFiles());
+        $this->assertNull($this->sessionCookie($late), 'The old session cookie was sent again.');
+        $this->assertSame([], $this->stored($cookie));
+    }
+
+    public function test_a_request_that_finishes_after_logout_does_not_bring_the_session_back_either_way_round(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['user' => 1]);
+
+        $b->put('cart', ['apple']);
+        $this->commit($b);
+
+        $a->invalidate();
+        $this->commit($a);
+
+        $this->assertNull($this->store()->read($cookie));
+        $this->assertSame([], $this->storedFiles());
+    }
+
+    public function test_a_request_on_a_session_that_was_destroyed_meanwhile_does_not_recreate_it(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['user' => 1]);
+
+        $a->destroy();
+        $this->commit($a);
+
+        $b->put('flash', 'late');
+        $this->commit($b);
+
+        $this->assertNull($this->store()->read($cookie));
+        $this->assertSame([], $this->storedFiles());
+    }
+
+    public function test_a_request_that_finishes_after_the_id_was_rotated_does_not_clobber_the_new_session(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['user' => 1]);
+
+        // A is a login style request that rotates the id, B is still on the old one.
+        $a->regenerate();
+        $a->put('rotated', true);
+        $rotated = $this->sessionCookie($this->commit($a))->getValue();
+
+        $b->put('cart', ['apple']);
+        $late = $this->commit($b);
+
+        $this->assertNull($this->store()->read($cookie), 'The rotated-away id came back.');
+        $this->assertNotNull($this->store()->read($rotated));
+        $this->assertTrue($this->stored($rotated)['rotated']);
+
+        // B must not send a cookie, which would replace or expire the one A issued.
+        $this->assertNull($this->sessionCookie($late));
+    }
+
+    public function test_an_unchanged_request_still_slides_the_session(): void
+    {
+        [$cookie, $a] = $this->twoRequestsOn(['user' => 1]);
+
+        $this->assertSame($cookie, $this->sessionCookie($this->commit($a))->getValue());
+    }
+
+    private function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
+    }
+
     public function test_set_id_removes_the_session_it_replaces(): void
     {
         $session = $this->session();

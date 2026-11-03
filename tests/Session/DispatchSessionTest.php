@@ -168,7 +168,10 @@ final class DispatchSessionTest extends TestCase
 
         try {
             $this->app->dispatch($request);
-        } catch (RuntimeException $e) {
+        } catch (\Throwable $e) {
+            // Rendering the error page needs a bootstrapped application, so it may
+            // raise something here. Whatever it raises, it must not be the failure
+            // of the session store, which would have replaced the original error.
             $this->assertNotSame('store down', $e->getMessage());
         } finally {
             restore_error_handler();
