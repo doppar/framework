@@ -700,6 +700,97 @@ class SessionTest extends TestCase
         return $values;
     }
 
+    public function test_a_request_that_empties_the_session_does_not_delete_a_concurrent_save(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['url.intended' => '/x']);
+
+        // A consumes the only key, so its session looks empty. B logs in and saves first.
+        $a->forget('url.intended');
+        $b->put('user', 7);
+        $this->commit($b);
+
+        $late = $this->commit($a);
+
+        $this->assertSame(7, $this->stored($cookie)['user'] ?? null, 'The concurrent login was deleted.');
+        $this->assertArrayNotHasKey('url.intended', $this->stored($cookie));
+
+        $cookieSent = $this->sessionCookie($late);
+        $this->assertNotNull($cookieSent);
+        $this->assertGreaterThan(time(), $cookieSent->getExpiresTime(), 'The late request expired the cookie.');
+    }
+
+    public function test_a_request_that_empties_an_unchanged_session_still_removes_it(): void
+    {
+        [$cookie, $a] = $this->twoRequestsOn(['url.intended' => '/x']);
+
+        $a->forget('url.intended');
+        $response = $this->commit($a);
+
+        $this->assertNull($this->store()->read($cookie), 'An emptied session was kept.');
+        $this->assertSame([], $this->storedFiles());
+        $this->assertLessThan(time(), $this->sessionCookie($response)->getExpiresTime());
+    }
+
+    public function test_a_request_that_empties_the_session_while_another_creates_a_list_keeps_the_list(): void
+    {
+        [$cookie, $a, $b] = $this->twoRequestsOn(['flash' => 'once']);
+
+        // A consumes the flash message, which leaves its session empty. B adds a cart.
+        $a->forget('flash');
+        $b->put('cart', ['apple']);
+        $this->commit($b);
+        $this->commit($a);
+
+        $stored = $this->stored($cookie);
+
+        $this->assertArrayNotHasKey('flash', $stored);
+        $this->assertSame(['apple'], $stored['cart'] ?? null);
+    }
+
+    public function test_regenerate_after_set_id_ends_both_sessions_it_replaced(): void
+    {
+        $first = $this->session();
+        $first->put('a', 1);
+        $a = $this->sessionCookie($this->commit($first))->getValue();
+
+        $second = $this->session();
+        $second->put('b', 2);
+        $b = $this->sessionCookie($this->commit($second))->getValue();
+
+        // Load A, switch to B, then regenerate: neither old id may stay valid.
+        $session = $this->session($this->request('/', [self::COOKIE => $a]));
+        $session->all();
+        $session->setId($b);
+        $session->regenerate();
+        $new = $this->sessionCookie($this->commit($session))->getValue();
+
+        $this->assertNotContains($new, [$a, $b]);
+        $this->assertNull($this->store()->read($a), 'The first id is still valid.');
+        $this->assertNull($this->store()->read($b), 'The id that was switched to is still valid.');
+        $this->assertNotNull($this->store()->read($new));
+    }
+
+    public function test_set_id_on_a_rotated_id_uses_the_live_id(): void
+    {
+        // X was rotated to Y, so X only holds a pointer.
+        $y = bin2hex(random_bytes(20));
+        $x = bin2hex(random_bytes(20));
+        $this->store()->write($y, ['user' => 7, 'last_regenerated' => time()]);
+        $this->store()->write($x, ['_rotated_to' => $y, '_rotated_until' => time() + 60]);
+
+        $session = $this->session();
+        $session->setId($x);
+
+        $this->assertSame($y, $session->getId(), 'getId() returned the pointer instead of the live session.');
+        $this->assertSame(7, $session->get('user'));
+
+        $session->put('seen', true);
+        $cookie = $this->sessionCookie($this->commit($session))->getValue();
+
+        $this->assertSame($y, $cookie);
+        $this->assertTrue($this->stored($y)['seen']);
+    }
+
     public function test_set_id_removes_the_session_it_replaces(): void
     {
         $session = $this->session();

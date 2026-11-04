@@ -24,6 +24,14 @@ interface CommittableSession
     public function commit(?Response $response = null): void;
 
     /**
+     * Apply only what ends the session, for a request that is failing
+     *
+     * @param Response|null $response
+     * @return void
+     */
+    public function commitEnd(?Response $response = null): void;
+
+    /**
      * Turn persistence off for the rest of the request
      *
      * @return void

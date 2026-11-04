@@ -1561,12 +1561,7 @@ class Application extends Container
             return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
             try {
-                try {
-                    $this->commitSession($request);
-                } catch (\Throwable) {
-                }
-
-                Response::dispatchHttpException($e);
+                $this->renderHttpException($request, $e);
             } catch (\Throwable $renderFailure) {
                 $this->endDeferScope($deferScope, $renderFailure);
                 $this->endContext($context, $renderFailure);
@@ -1584,11 +1579,9 @@ class Application extends Container
             // old input). The global error handler sends it, so the session
             // must be saved onto that response here, before it is rethrown.
             if ($e instanceof HttpResponseException && $e->hasResponse()) {
-                try {
-                    $this->commitSession($request, $e->getResponse());
-                } catch (\Throwable) {
-                    // Never replace the exception that is already ending the request.
-                }
+                $this->commitSessionSafely($request, $e->getResponse());
+            } else {
+                $this->endSessionSafely($request);
             }
 
             $this->endDeferScope($deferScope, $e);
@@ -1615,6 +1608,88 @@ class Application extends Container
     }
 
     /**
+     * Render the error page of an HTTP exception, then save the session.
+     *
+     * @param Request $request
+     * @param HttpException $exception
+     * @return void
+     */
+    protected function renderHttpException(Request $request, HttpException $exception): void
+    {
+        $level = ob_get_level();
+
+        ob_start();
+
+        try {
+            Response::dispatchHttpException($exception);
+        } catch (\Throwable $failure) {
+            $this->commitSessionSafely($request);
+
+            while (ob_get_level() > $level) {
+                ob_end_clean();
+            }
+
+            throw $failure;
+        }
+
+        $this->commitSessionSafely($request);
+
+        while (ob_get_level() > $level) {
+            ob_end_flush();
+        }
+    }
+
+    /**
+     * Persist the session without ever replacing the exception that is already ending the request
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @return void
+     */
+    protected function commitSessionSafely(Request $request, ?Response $response = null): void
+    {
+        try {
+            $this->commitSession($request, $response);
+        } catch (\Throwable $failure) {
+            $this->reportSessionFailure($failure);
+        }
+    }
+
+    /**
+     * Apply a logout of a request that is failing, ignoring everything else.
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function endSessionSafely(Request $request): void
+    {
+        try {
+            $session = $request->session();
+
+            if ($session instanceof CommittableSession) {
+                $session->commitEnd();
+            }
+        } catch (\Throwable $failure) {
+            $this->reportSessionFailure($failure);
+        }
+    }
+
+    /**
+     * Log a session operation that failed after the request could no longer be told about it
+     *
+     * @param \Throwable $failure
+     * @return void
+     */
+    protected function reportSessionFailure(\Throwable $failure): void
+    {
+        try {
+            error('[Doppar] A session operation failed and its changes were lost: ' . $failure->getMessage(), ['exception' => $failure]);
+        } catch (\Throwable) {
+            // Logging must never turn a lost save into a second failure.
+        }
+    }
+
+    /**
      * Run the session housekeeping once the response has been sent
      *
      * @param Request $request
@@ -1627,7 +1702,8 @@ class Application extends Container
         if ($session instanceof CommittableSession) {
             try {
                 $session->terminate();
-            } catch (\Throwable) {
+            } catch (\Throwable $failure) {
+                $this->reportSessionFailure($failure);
             }
         }
     }
