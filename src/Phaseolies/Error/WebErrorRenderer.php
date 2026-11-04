@@ -85,8 +85,10 @@ class WebErrorRenderer
             'current_route_name' => \Phaseolies\Support\Facades\Route::currentRouteName(),
             'current_route_action' => \Phaseolies\Support\Facades\Route::currentRouteAction(),
             'current_route_params' => request()->getRouteParams()
-        ]);
+        ], true);
 
+        // Rendered to a string (not echoed) so the status code and headers of
+        // the response are still applied when it is sent.
         return response($content, $this->resolveStatusCode($exception))
             ->setOriginal($content)
             ->setStatusCode($this->resolveStatusCode($exception));

@@ -4,6 +4,7 @@ namespace Phaseolies\Http;
 
 use Phaseolies\Utilities\IpUtils;
 use Phaseolies\Support\Session;
+use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Support\File;
 use Phaseolies\Support\Facades\Str;
@@ -164,6 +165,10 @@ class Request
         $this->session = $container->has(SessionInterface::class)
             ? $container->get(SessionInterface::class)
             : new Session();
+
+        if ($this->session instanceof CommittableSession) {
+            $this->session->attach($this);
+        }
         $this->files = $files;
         $this->content = $content;
         $this->requestUri = $this->getPath();

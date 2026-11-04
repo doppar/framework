@@ -3,6 +3,7 @@
 namespace Phaseolies\Http\Support;
 
 use Phaseolies\Utilities\IpUtils;
+use Phaseolies\Utilities\PathMatcher;
 
 trait RequestParser
 {
@@ -305,11 +306,7 @@ trait RequestParser
      */
     public static function is(string $pattern): bool
     {
-        $path = request()->uri();
-
-        $pattern = str_replace('\*', '.*', preg_quote($pattern, '#'));
-
-        return (bool) preg_match('#^' . $pattern . '$#i', $path);
+        return PathMatcher::matches($pattern, request()->uri());
     }
 
     /**

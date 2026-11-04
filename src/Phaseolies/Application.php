@@ -11,6 +11,8 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
@@ -1210,7 +1212,7 @@ class Application extends Container
         if (!$scope instanceof DeferScope) {
             throw new \LogicException(
                 'defer() was called outside an active execution scope. '
-                . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
+                    . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
             );
         }
 
@@ -1547,7 +1549,11 @@ class Application extends Container
 
             $response = $this->handle($request);
 
+            $this->commitSession($request, $response);
+
             $response->prepare($request)->send();
+
+            $this->terminateSession($request);
 
             $this->suspendDeferScope($deferScope);
             $this->suspendContext($context);
@@ -1555,7 +1561,7 @@ class Application extends Container
             return new DispatchResult($this, $request, $response, null, $deferScope, $context);
         } catch (HttpException $e) {
             try {
-                Response::dispatchHttpException($e);
+                $this->renderHttpException($request, $e);
             } catch (\Throwable $renderFailure) {
                 $this->endDeferScope($deferScope, $renderFailure);
                 $this->endContext($context, $renderFailure);
@@ -1568,10 +1574,137 @@ class Application extends Container
 
             return new DispatchResult($this, $request, null, $e, $deferScope, $context);
         } catch (\Throwable $e) {
+            // Validation failures and abort() are thrown as exceptions that carry
+            // the response to send (usually a redirect with flashed errors and
+            // old input). The global error handler sends it, so the session
+            // must be saved onto that response here, before it is rethrown.
+            if ($e instanceof HttpResponseException && $e->hasResponse()) {
+                $this->commitSessionSafely($request, $e->getResponse());
+            } else {
+                $this->endSessionSafely($request);
+            }
+
             $this->endDeferScope($deferScope, $e);
             $this->endContext($context, $e);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Persist the session of the request
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @return void
+     */
+    protected function commitSession(Request $request, ?Response $response = null): void
+    {
+        $session = $request->session();
+
+        if ($session instanceof CommittableSession) {
+            $session->commit($response);
+        }
+    }
+
+    /**
+     * Render the error page of an HTTP exception, then save the session.
+     *
+     * @param Request $request
+     * @param HttpException $exception
+     * @return void
+     */
+    protected function renderHttpException(Request $request, HttpException $exception): void
+    {
+        $level = ob_get_level();
+
+        ob_start();
+
+        try {
+            Response::dispatchHttpException($exception);
+        } catch (\Throwable $failure) {
+            $this->commitSessionSafely($request);
+
+            while (ob_get_level() > $level) {
+                ob_end_clean();
+            }
+
+            throw $failure;
+        }
+
+        $this->commitSessionSafely($request);
+
+        while (ob_get_level() > $level) {
+            ob_end_flush();
+        }
+    }
+
+    /**
+     * Persist the session without ever replacing the exception that is already ending the request
+     *
+     * @param Request $request
+     * @param Response|null $response
+     * @return void
+     */
+    protected function commitSessionSafely(Request $request, ?Response $response = null): void
+    {
+        try {
+            $this->commitSession($request, $response);
+        } catch (\Throwable $failure) {
+            $this->reportSessionFailure($failure);
+        }
+    }
+
+    /**
+     * Apply a logout of a request that is failing, ignoring everything else.
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function endSessionSafely(Request $request): void
+    {
+        try {
+            $session = $request->session();
+
+            if ($session instanceof CommittableSession) {
+                $session->commitEnd();
+            }
+        } catch (\Throwable $failure) {
+            $this->reportSessionFailure($failure);
+        }
+    }
+
+    /**
+     * Log a session operation that failed after the request could no longer be told about it
+     *
+     * @param \Throwable $failure
+     * @return void
+     */
+    protected function reportSessionFailure(\Throwable $failure): void
+    {
+        try {
+            error('[Doppar] A session operation failed and its changes were lost: ' . $failure->getMessage(), ['exception' => $failure]);
+        } catch (\Throwable) {
+            // Logging must never turn a lost save into a second failure.
+        }
+    }
+
+    /**
+     * Run the session housekeeping once the response has been sent
+     *
+     * @param Request $request
+     * @return void
+     */
+    protected function terminateSession(Request $request): void
+    {
+        $session = $request->session();
+
+        if ($session instanceof CommittableSession) {
+            try {
+                $session->terminate();
+            } catch (\Throwable $failure) {
+                $this->reportSessionFailure($failure);
+            }
         }
     }
 

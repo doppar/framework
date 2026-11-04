@@ -2,13 +2,15 @@
 
 namespace Phaseolies\Middleware;
 
-use Phaseolies\Support\Facades\Str;
-use Phaseolies\Middleware\Contracts\Middleware;
-use Phaseolies\Http\Response\Cookie;
-use Phaseolies\Http\Response;
-use Phaseolies\Http\Request;
-use Phaseolies\Http\Exceptions\TokenMismatchException;
 use Closure;
+use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\TokenMismatchException;
+use Phaseolies\Http\Request;
+use Phaseolies\Http\Response;
+use Phaseolies\Http\Response\Cookie;
+use Phaseolies\Middleware\Contracts\Middleware;
+use Phaseolies\Session\Contracts\CommittableSession;
+use Phaseolies\Support\Facades\Str;
 
 class CsrfTokenMiddleware implements Middleware
 {
@@ -81,9 +83,13 @@ class CsrfTokenMiddleware implements Middleware
 
         $token = $request->input('_token') ?: $request->header('X-CSRF-TOKEN');
 
-        return is_string($request->session()->token()) &&
+        // Read the stored token instead of token(), which would create one:
+        // a request that arrives without a session must fail, not start one.
+        $stored = $request->session()->get('_token');
+
+        return is_string($stored) &&
             is_string($token) &&
-            hash_equals($request->session()->token(), $token);
+            hash_equals($stored, $token);
     }
 
     /**
@@ -99,11 +105,45 @@ class CsrfTokenMiddleware implements Middleware
             return $response;
         }
 
-        $config = config('session');
+        if (!$this->shouldIssueCookie($request)) {
+            return $response;
+        }
 
-        $response->headers->setCookie($this->addCookie($request, $config));
+        $response->headers->setCookie($this->addCookie($request, config('session')));
 
         return $response;
+    }
+
+    /**
+     * Decide whether this response should carry the XSRF-TOKEN cookie
+     *
+     * @param \Phaseolies\Http\Request $request
+     * @return bool
+     */
+    protected function shouldIssueCookie($request): bool
+    {
+        $session = $request->session();
+
+        // Stateless requests have no stored session to tie the token to.
+        if ($session instanceof CommittableSession && $session->isStateless()) {
+            return false;
+        }
+
+        if ($session->has('_token')) {
+            return true;
+        }
+
+        return $this->alwaysSendsCookie();
+    }
+
+    /**
+     * Whether the cookie is sent even before a token exists.
+     *
+     * @return bool
+     */
+    protected function alwaysSendsCookie(): bool
+    {
+        return (bool) (((array) config('session'))['always_send_xsrf_cookie'] ?? false);
     }
 
     /**
