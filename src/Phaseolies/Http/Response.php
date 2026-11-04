@@ -8,6 +8,7 @@ use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Controllers\Controller;
+use Phaseolies\Error\JsonErrorRenderer;
 use Phaseolies\Database\Entity\Builder;
 
 class Response implements HttpStatus
@@ -628,10 +629,37 @@ class Response implements HttpStatus
     {
         $statusCode = $exception->getStatusCode();
         $message = $exception->getMessage() ?: 'An error occurred.';
+        $request = static::currentRequest();
+
+        if ($request !== null && ($request->isAjax() || $request->isApiRequest())) {
+            (new JsonErrorRenderer())
+                ->render($exception, $statusCode, $message)
+                ->withHeaders($exception->getHeaders())
+                ->prepare($request)
+                ->send(false);
+
+            return;
+        }
 
         http_response_code($statusCode);
 
         self::renderErrorPage($statusCode, $message);
+    }
+
+    /**
+     * Get the current request, if one can be resolved.
+     *
+     * @return Request|null
+     */
+    protected static function currentRequest(): ?Request
+    {
+        try {
+            $request = app('request');
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $request instanceof Request ? $request : null;
     }
 
     /**

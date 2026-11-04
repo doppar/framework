@@ -707,13 +707,37 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
+     * Number of jsonSerialize() calls in progress (nested relations included).
+     *
+     * @var int
+     */
+    private static int $jsonSerializationDepth = 0;
+
+    /**
      * Serializes the model to an array for JSON representation.
      *
      * @return array
      */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        self::$jsonSerializationDepth++;
+
+        try {
+            return $this->toArray();
+        } finally {
+            self::$jsonSerializationDepth--;
+        }
+    }
+
+    /**
+     * Serialize a related model for toArray(): through jsonSerialize() while
+     *
+     * @param Model $model
+     * @return array
+     */
+    protected function serializeRelatedModel(Model $model): array
+    {
+        return self::$jsonSerializationDepth > 0 ? $model->jsonSerialize() : $model->toArray();
     }
 
     /**
@@ -1315,10 +1339,10 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             if ($relation === null) {
                 $attributes[$key] = null;
             } elseif ($relation instanceof Model) {
-                $attributes[$key] = $relation->toArray();
+                $attributes[$key] = $this->serializeRelatedModel($relation);
             } elseif ($relation instanceof Collection) {
                 $attributes[$key] = $relation->map(function ($item) {
-                    $result = $item instanceof Model ? $item->toArray() : (array)$item;
+                    $result = $item instanceof Model ? $this->serializeRelatedModel($item) : (array)$item;
                     if (isset($item->pivot)) {
                         $result['pivot'] = (array)$item->pivot;
                     }

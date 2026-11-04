@@ -200,7 +200,11 @@ class RequestTest extends TestCase
     {
         $this->assertEquals('GET', $this->request->getMethod());
 
+        // Method overrides only apply to real POST requests
         $this->request->headers->set('X-HTTP-METHOD-OVERRIDE', 'PUT');
+        $this->assertEquals('GET', $this->request->getMethod());
+
+        $this->request->server->set('REQUEST_METHOD', 'POST');
         $this->assertEquals('PUT', $this->request->getMethod());
     }
 

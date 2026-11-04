@@ -607,7 +607,6 @@ class Request
      *
      * The _method request parameter can also be used to determine the HTTP method,
      * but only if enableHttpMethodParameterOverride() has been called.
-     *
      * The method is always an uppercased string.
      * @return string
      * @throws BadRequestHttpException
@@ -620,28 +619,48 @@ class Request
             return $this->method;
         }
 
-        if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
-            $method = strtoupper($this->headers->get("X-HTTP-METHOD-OVERRIDE"));
-            $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
-            self::$httpMethodParameterOverride = true;
-        } elseif ($this->request->has("_method")) {
-            $method = strtoupper($this->request->get("_method"));
-            $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
-            self::$httpMethodParameterOverride = true;
-        } else {
-            $method = $this->method;
+        if ($this->method !== self::METHOD_POST) {
+            return $this->validatedMethod($this->method);
         }
 
-        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
-            $this->method = $method;
+        if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
+            $override = $this->headers->get("X-HTTP-METHOD-OVERRIDE");
+        } elseif ($this->request->has("_method")) {
+            $override = $this->request->get("_method");
+        } else {
             return $this->method;
         }
 
-        throw new BadRequestHttpException(
-            $method === $this->method
-                ? "Unsupported HTTP method: $method."
-                : "Invalid HTTP method override: $method."
-        );
+        // e.g. "_method[]=PUT" arrives as an array
+        if (!is_string($override)) {
+            throw new BadRequestHttpException("Invalid HTTP method override.");
+        }
+
+        $method = strtoupper($override);
+        $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
+        self::$httpMethodParameterOverride = true;
+
+        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
+            return $this->method = $method;
+        }
+
+        throw new BadRequestHttpException("Invalid HTTP method override: $method.");
+    }
+
+    /**
+     * Ensure a real (non-overridden) request method is supported.
+     *
+     * @param string $method
+     * @return string
+     * @throws BadRequestHttpException
+     */
+    private function validatedMethod(string $method): string
+    {
+        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
+            return $method;
+        }
+
+        throw new BadRequestHttpException("Unsupported HTTP method: $method.");
     }
 
     /**

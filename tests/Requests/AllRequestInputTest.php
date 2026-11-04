@@ -1735,6 +1735,62 @@ class AllRequestInputTest extends TestCase
         $this->assertSame('PUT', $request->getMethod());
     }
 
+    public function testArrayMethodOverrideIsABadRequestNotATypeError()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = ['_method' => ['PUT']];
+
+        $request = Request::createFromGlobals();
+
+        $error = $request->getMalformedRequestError();
+        $this->assertInstanceOf(\Phaseolies\Http\Exceptions\BadRequestHttpException::class, $error);
+        $this->assertSame('Invalid HTTP method override.', $error->getMessage());
+        $this->assertSame('POST', $request->getMethod());
+    }
+
+    public function testQueryStringMethodOverrideIsIgnoredOnGetRequests()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['_method' => 'DELETE'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('GET', $request->getMethod());
+        $this->assertSame('get', $request->method());
+        $this->assertNull($request->getMalformedRequestError());
+    }
+
+    public function testOverrideHeaderIsIgnoredOnNonPostRequests()
+    {
+        foreach (['GET', 'PUT', 'DELETE', 'PATCH'] as $realMethod) {
+            $_SERVER['REQUEST_METHOD'] = $realMethod;
+            $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] = 'BOGUS';
+
+            $request = Request::createFromGlobals();
+
+            $this->assertSame($realMethod, $request->getMethod());
+            $this->assertNull($request->getMalformedRequestError());
+        }
+    }
+
+    public function testOverrideHeaderStillAppliesOnPostRequests()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] = 'patch';
+
+        $this->assertSame('PATCH', Request::createFromGlobals()->getMethod());
+    }
+
+    public function testUnsupportedRealMethodIsABadRequest()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'BREW';
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('Unsupported HTTP method: BREW.', $request->getMalformedRequestError()?->getMessage());
+        $this->assertSame('BREW', $request->getMethod());
+    }
+
     /**
      * Build a request whose protected body parser can be invoked directly.
      *

@@ -557,6 +557,96 @@ class ResponseTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $html);
     }
 
+    public function testJsonHonoursCustomJsonSerializeOfRelatedModels()
+    {
+        $user = new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+        };
+        $user->setRelation('profile', $this->modelWithHiddenSecret());
+        $user->setRelation('posts', new \Phaseolies\Support\Collection(
+            \Phaseolies\Database\Entity\Model::class,
+            [$this->modelWithHiddenSecret()]
+        ));
+
+        $json = (new JsonResponse($user))->getBody();
+
+        $this->assertSame('{"profile":{"name":"Doppar"},"posts":[{"name":"Doppar"}]}', $json);
+        $this->assertStringNotContainsString('secret', $json);
+
+        // toArray() itself still serializes relations with toArray()
+        $this->assertSame('secret', $user->toArray()['profile']['password']);
+        $this->assertSame('secret', $user->toArray()['posts'][0]['password']);
+    }
+
+    public function testJsonForModelsThatOverrideOnlyToArrayIsUnchanged()
+    {
+        $model = new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+
+            public function toArray(): array
+            {
+                return ['shaped' => true];
+            }
+        };
+
+        $this->assertSame('{"shaped":true}', (new JsonResponse($model))->getBody());
+    }
+
+    public function testHttpExceptionOnApiRouteRendersJsonEvenWhenAnErrorViewExists()
+    {
+        $output = $this->dispatchHttpExceptionFor(['REQUEST_URI' => '/api/users']);
+
+        $this->assertJson($output);
+        $this->assertSame('Invalid JSON data in request body.', json_decode($output, true)['message']);
+        $this->assertStringNotContainsString('<!DOCTYPE html>', $output);
+    }
+
+    public function testHttpExceptionOnAjaxRequestRendersJson()
+    {
+        $output = $this->dispatchHttpExceptionFor([
+            'REQUEST_URI' => '/profile',
+            'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest',
+        ]);
+
+        $this->assertJson($output);
+        $this->assertSame('Invalid JSON data in request body.', json_decode($output, true)['message']);
+    }
+
+    /**
+     * Dispatch a 400 (which has a bundled HTML view) for a request and capture the output.
+     *
+     * @param array<string, string> $server
+     */
+    private function dispatchHttpExceptionFor(array $server): string
+    {
+        $container = new Container();
+        Container::setInstance($container);
+        $container->instance('request', new Request(server: ['REQUEST_METHOD' => 'POST'] + $server));
+        $container->instance('translator', new class {
+            public function trans(string $key, array $replace = [], ?string $locale = null): string
+            {
+                return $key;
+            }
+        });
+
+        ob_start();
+
+        try {
+            Response::dispatchHttpException(
+                new \Phaseolies\Http\Exceptions\BadRequestHttpException('Invalid JSON data in request body.')
+            );
+        } finally {
+            $output = ob_get_clean();
+            Container::forgetInstance();
+        }
+
+        return $output;
+    }
+
     /**
      * A model whose toArray() exposes a field that its jsonSerialize() hides.
      */
