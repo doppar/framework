@@ -25,34 +25,9 @@ class RequestAbortion implements RequestAbortionInterface
         $shouldJsonResponse = $request->isAjax() || $request->isApiRequest();
         $httpException = HttpException::fromStatusCode($code, $message, null, $headers);
 
-        $customPath =
-            base_path(
-                'templates'
-                    . DIRECTORY_SEPARATOR . 'views'
-                    . DIRECTORY_SEPARATOR . 'errors'
-                    . DIRECTORY_SEPARATOR . "{$code}.odo.php"
-            );
-
-        $packagePath =
-            base_path(
-                'vendor'
-                    . DIRECTORY_SEPARATOR . 'doppar'
-                    . DIRECTORY_SEPARATOR . 'framework'
-                    . DIRECTORY_SEPARATOR . 'src'
-                    . DIRECTORY_SEPARATOR . 'Phaseolies'
-                    . DIRECTORY_SEPARATOR . 'Support'
-                    . DIRECTORY_SEPARATOR . 'View'
-                    . DIRECTORY_SEPARATOR . 'errors'
-                    . DIRECTORY_SEPARATOR . "{$code}.odo.php"
-            );
-
-        if (!$shouldJsonResponse) {
-            $viewPath = file_exists($customPath) ? $customPath : (file_exists($packagePath) ? $packagePath : null);
-
-            if ($viewPath) {
-                throw (new HttpResponseException($message, $code, $httpException))
-                    ->setResponse($this->buildErrorViewResponse($viewPath, $code, $message, $headers, $httpException));
-            }
+        if (!$shouldJsonResponse && ($viewPath = Response::resolveErrorView($code)) !== null) {
+            throw (new HttpResponseException($message, $code, $httpException))
+                ->setResponse($this->buildErrorViewResponse($viewPath, $code, $message, $headers, $httpException));
         }
 
         if ($shouldJsonResponse) {

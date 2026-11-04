@@ -3,74 +3,79 @@
 namespace Phaseolies\Support\Facades;
 
 /**
- * @method static setBody(?string $body): static
- * @method static getBody(): ?string
- * @method static setOriginal($original): static
- * @method static getOriginal()
- * @method static setCharset(string $charset): static
- * @method static getCharset(): ?string
- * @method static setException($exception): static
- * @method static setStatusCode(int $statusCode, ?string $text = null): static
- * @method static getStatusCode(): int
- * @method static setHeader(string $name, string $value, $replace = true): Response
- * @method static withHeaders(array $headers): Response
- * @method static withException(Throwable $e)
- * @method static isInformational(): bool
- * @method static isEmpty(): bool
- * @method static setProtocolVersion(string $version): static
- * @method static getProtocolVersion(): string
- * @method static prepare(Request $request): static
- * @method static sendHeaders(?int $statusCode = null): static
- * @method static getStatusCodeText(int $statusCode): string
- * @method static sendContent(): static
- * @method static send(bool $flush = true): static
- * @method static closeOutputBuffers(int $targetLevel, bool $flush): void
- * @method static dispatchHttpException(HttpException $exception): void
- * @method static render(): string
- * @method static view(string $view, array $data = [], array $headers = []): Response
- * @method static renderView(string $view, array $data = []): string
- * @method static json(mixed $data, int $statusCode = 200, array $headers = []): JsonResponse
- * @method static text(string $content, int $statusCode = 200, array $headers = []): Response
- * @method static isCacheable(): bool
- * @method static isFresh(): bool
- * @method static isValidateable(): bool
- * @method static setPrivate(): static
- * @method static setPublic(): static
- * @method static setImmutable(bool $immutable = true): static
- * @method static isImmutable(): bool
- * @method static mustRevalidate(): bool
- * @method static getDate(): ?\DateTimeImmutable
- * @method static setDate(\DateTimeInterface $date): static
- * @method static getAge(): int
- * @method static expire(): static
- * @method static getExpires(): ?\DateTimeImmutable
- * @method static setExpires(?\DateTimeInterface $date): static
- * @method static getMaxAge(): ?int
- * @method static setMaxAge(int $value): static
- * @method static setStaleIfError(int $value): static
- * @method static setStaleWhileRevalidate(int $value): static
- * @method static setSharedMaxAge(int $value): static
- * @method static getTtl(): ?int
- * @method static setTtl(int $seconds): static
- * @method static setClientTtl(int $seconds): static
- * @method static getLastModified(): ?\DateTimeImmutable
- * @method static getEtag(): ?string
- * @method static setEtag(?string $etag, bool $weak = false): static
- * @method static setCache(array $options): static
- * @method static setNotModified(): static
- * @method static hasVary(): bool
- * @method static getVary(): array
- * @method static setVary(string|array $headers, bool $replace = true): static
- * @method static isNotModified(Request $request): bool
- * @method static isInvalid(): bool
- * @method static isSuccessful(): bool
- * @method static isRedirection(): bool
- * @method static isServerError(): bool
- * @method static isOk(): bool
- * @method static isForbidden(): bool
- * @method static isNotFound(): bool
- * @method static isRedirect(?string $location = null): bool
- * @method statis setContentSafe(bool $safe = true): void
+ * @method static \Phaseolies\Http\Response setBody(?string $body)
+ * @method static string|null getBody()
+ * @method static \Phaseolies\Http\Response setOriginal(mixed $original)
+ * @method static mixed getOriginal()
+ * @method static \Phaseolies\Http\Response setCharset(string $charset)
+ * @method static string|null getCharset()
+ * @method static \Phaseolies\Http\Response setException(?\Throwable $exception)
+ * @method static \Phaseolies\Http\Response setStatusCode(int $statusCode, ?string $text = null)
+ * @method static int getStatusCode()
+ * @method static \Phaseolies\Http\Response setHeader(string $name, string $value, bool $replace = true)
+ * @method static \Phaseolies\Http\Response withHeaders(array|\Phaseolies\Http\HeaderBag $headers)
+ * @method static \Phaseolies\Http\Response withException(\Throwable $e)
+ * @method static bool isInformational()
+ * @method static bool isEmpty()
+ * @method static \Phaseolies\Http\Response setProtocolVersion(string $version)
+ * @method static string getProtocolVersion()
+ * @method static \Phaseolies\Http\Response prepare(\Phaseolies\Http\Request $request)
+ * @method static \Phaseolies\Http\Response sendHeaders(?int $statusCode = null)
+ * @method static string getStatusCodeText(int $statusCode)
+ * @method static \Phaseolies\Http\Response sendContent()
+ * @method static \Phaseolies\Http\Response send(bool $flush = true)
+ * @method static void closeOutputBuffers(int $targetLevel, bool $flush)
+ * @method static void dispatchHttpException(\Phaseolies\Http\Exceptions\HttpException $exception)
+ * @method static string|null resolveErrorView(int $status)
+ * @method static string render()
+ * @method static \Phaseolies\Http\Response view(string $view, array $data = [], array $headers = [])
+ * @method static string renderView(string $view, array $data = [])
+ * @method static \Phaseolies\Http\Response\JsonResponse json(mixed $data, int $status = 200, array $headers = [])
+ * @method static \Phaseolies\Http\Response text(string $content, int $status = 200, array $headers = [])
+ * @method static bool shouldBeJson(mixed $content)
+ * @method static mixed toSerializable(mixed $content)
+ * @method static bool isCacheable()
+ * @method static bool isFresh()
+ * @method static bool isValidateable()
+ * @method static \Phaseolies\Http\Response setPrivate()
+ * @method static \Phaseolies\Http\Response setPublic()
+ * @method static \Phaseolies\Http\Response setImmutable(bool $immutable = true)
+ * @method static bool isImmutable()
+ * @method static bool mustRevalidate()
+ * @method static \DateTimeImmutable|null getDate()
+ * @method static \Phaseolies\Http\Response setDate(\DateTimeInterface $date)
+ * @method static int getAge()
+ * @method static \Phaseolies\Http\Response expire()
+ * @method static \DateTimeImmutable|null getExpires()
+ * @method static \Phaseolies\Http\Response setExpires(?\DateTimeInterface $date)
+ * @method static int|null getMaxAge()
+ * @method static \Phaseolies\Http\Response setMaxAge(int $value)
+ * @method static \Phaseolies\Http\Response setStaleIfError(int $value)
+ * @method static \Phaseolies\Http\Response setStaleWhileRevalidate(int $value)
+ * @method static \Phaseolies\Http\Response setSharedMaxAge(int $value)
+ * @method static int|null getTtl()
+ * @method static \Phaseolies\Http\Response setTtl(int $seconds)
+ * @method static \Phaseolies\Http\Response setClientTtl(int $seconds)
+ * @method static \DateTimeImmutable|null getLastModified()
+ * @method static \Phaseolies\Http\Response setLastModified(?\DateTimeInterface $date)
+ * @method static string|null getEtag()
+ * @method static \Phaseolies\Http\Response setEtag(?string $etag, bool $weak = false)
+ * @method static \Phaseolies\Http\Response setCache(array $options)
+ * @method static \Phaseolies\Http\Response setNotModified()
+ * @method static bool hasVary()
+ * @method static array getVary()
+ * @method static \Phaseolies\Http\Response setVary(string|array $headers, bool $replace = true)
+ * @method static bool isNotModified(\Phaseolies\Http\Request $request)
+ * @method static bool isInvalid()
+ * @method static bool isSuccessful()
+ * @method static bool isRedirection()
+ * @method static bool isClientError()
+ * @method static bool isServerError()
+ * @method static bool isOk()
+ * @method static bool isForbidden()
+ * @method static bool isNotFound()
+ * @method static bool isRedirect(?string $location = null)
+ * @method static void setContentSafe(bool $safe = true)
  *
  * @see \Phaseolies\Http\Response
  */

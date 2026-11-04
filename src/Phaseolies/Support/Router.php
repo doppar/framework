@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Support;
 
-use Ramsey\Collection\Collection;
 use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Router\Plan\ActionPlanStore;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
@@ -14,7 +13,6 @@ use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Entity\Model;
-use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
 use Phaseolies\Http\Contracts\GatewayInterface;
 
@@ -35,6 +33,13 @@ class Router
      * @var ActionPlanStore|null
      */
     private ?ActionPlanStore $actionPlans = null;
+
+    /**
+     * Route table resolved per HEAD request (HEAD or GET fallback)
+     *
+     * @var \WeakMap<Request, string>|null
+     */
+    private ?\WeakMap $resolvedRouteMethods = null;
 
     /**
      * Holds the registered routes.
@@ -1166,8 +1171,46 @@ class Router
      */
     public function getCallback($request): mixed
     {
+        return $this->matchRoute($this->resolveRouteMethod($request), $request);
+    }
+
+    /**
+     * Resolve which route table serves the request.
+     *
+     * HEAD requests are served by an explicit HEAD route when one matches,
+     * otherwise by the GET route for the same path (RFC 9110 §9.3.2). Every
+     * route lookup (callback, middleware, route name) goes through this so a
+     * HEAD request always runs the same route, with the same middleware, as GET.
+     *
+     * @param Request $request
+     * @return string
+     */
+    protected function resolveRouteMethod($request): string
+    {
         $method = $request->getMethod();
-        $url    = $request->getPath();
+
+        if ($method !== Request::METHOD_HEAD) {
+            return $method;
+        }
+
+        $this->resolvedRouteMethods ??= new \WeakMap();
+
+        return $this->resolvedRouteMethods[$request] ??=
+            $this->matchRoute(Request::METHOD_HEAD, $request) !== false
+                ? Request::METHOD_HEAD
+                : Request::METHOD_GET;
+    }
+
+    /**
+     * Find the route callback registered for a method that matches the request path.
+     *
+     * @param string $method
+     * @param Request $request
+     * @return mixed The route callback or false if not found.
+     */
+    protected function matchRoute(string $method, $request): mixed
+    {
+        $url = $request->getPath();
 
         $url = ($url !== '/') ? rtrim($url, '/') : $url;
 
@@ -1327,7 +1370,7 @@ class Router
     public function getCurrentRouteMiddleware($request): ?array
     {
         $url = $request->getPath();
-        $method = $request->getMethod();
+        $method = $this->resolveRouteMethod($request);
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $callback) {
@@ -1814,8 +1857,8 @@ class Router
     /**
      * Resolve form request class
      *
-     * @param Application $app The application instance
-     * @param string $typeName The class name to resolve
+     * @param Application $app
+     * @param string $typeName
      * @return mixed
      */
     private function resolveFormRequestValidationClass($app, $typeName): mixed
@@ -1849,61 +1892,15 @@ class Router
         $response = response()->make();
         $response->setOriginal($result);
 
-        if ($this->shouldBeJson($result)) {
+        if (Response::shouldBeJson($result)) {
             $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
-            $result = $this->convertToSerializable($result);
-            $response->setBody(json_encode($result, JSON_THROW_ON_ERROR));
+            $response->setBody(json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR));
         } else {
             $response->setBody($result ?? '');
         }
 
         return $response;
-    }
-
-    /**
-     * Determine if the given data should be returned as JSON.
-     *
-     * @param mixed $data
-     * @return bool
-     */
-    protected function shouldBeJson($data): bool
-    {
-        return is_array($data) ||
-            is_object($data) ||
-            $data instanceof \JsonSerializable ||
-            $data instanceof Model ||
-            $data instanceof Collection ||
-            $data instanceof Builder ||
-            $data instanceof \stdClass ||
-            $data instanceof \ArrayObject;
-    }
-
-    /**
-     * Convert various data types into a format suitable for serialization
-     *
-     * @param mixed $data
-     * @return mixed
-     */
-    protected function convertToSerializable($data)
-    {
-        if ($data instanceof Model || $data instanceof Collection) {
-            return $data->toArray();
-        }
-
-        if ($data instanceof Builder) {
-            return $data->get()->toArray();
-        }
-
-        if ($data instanceof \JsonSerializable) {
-            return $data->jsonSerialize();
-        }
-
-        if ($data instanceof \stdClass || $data instanceof \ArrayObject) {
-            return (array) $data;
-        }
-
-        return $data;
     }
 
     /**

@@ -1500,4 +1500,179 @@ class AllRequestInputTest extends TestCase
 
         $this->assertTrue($request->isFromTrustedProxy());
     }
+
+    public function testIpUsesForwardedForOnlyFromTrustedProxies()
+    {
+        Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_X_FORWARDED_FOR);
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1';
+
+        $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
+        $trusted = Request::createFromGlobals();
+
+        $_SERVER['REMOTE_ADDR'] = '198.51.100.7';
+        $untrusted = Request::createFromGlobals();
+
+        $this->assertSame('203.0.113.1', $trusted->ip());
+        $this->assertSame(['203.0.113.1'], $trusted->ips());
+        $this->assertSame('198.51.100.7', $untrusted->ip());
+        $this->assertSame(['198.51.100.7'], $untrusted->ips());
+    }
+
+    public function testSchemeMatchesGetSchemeBehindTrustedProxy()
+    {
+        Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_X_FORWARDED_PROTO);
+
+        $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
+        $_SERVER['HTTP_X_FORWARDED_PROTO'] = 'https';
+        $_SERVER['HTTPS'] = 'off';
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('https', $request->scheme());
+        $this->assertSame($request->getScheme(), $request->scheme());
+    }
+
+    public function testGetRouteParamReadsRouteParamsThenAttributes()
+    {
+        $request = new Request(attributes: ['locale' => 'en'], server: $this->defaultServerData);
+        $request->setRouteParams(['id' => '42']);
+
+        $this->assertSame('42', $request->getRouteParam('id'));
+        $this->assertSame('en', $request->getRouteParam('locale'));
+        $this->assertSame('fallback', $request->getRouteParam('missing', 'fallback'));
+    }
+
+    public function testInputWithoutKeyReturnsAllInput()
+    {
+        $_POST = ['name' => 'Doppar', 'role' => 'framework'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame($request->all(), $request->input());
+        $this->assertSame('Doppar', $request->input()['name']);
+    }
+
+    public function testInputReflectsChangesMadeDirectlyToTheRequestBag()
+    {
+        $_POST = ['status' => 'draft'];
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('draft', $request->input('status'));
+
+        $request->request->set('status', 'published');
+
+        $this->assertSame('published', $request->input('status'));
+        $this->assertTrue($request->has('status'));
+    }
+
+    public function testEmptyJsonBodyDoesNotThrow()
+    {
+        $request = $this->bodyParsingRequest('POST', 'application/json', '');
+
+        $this->assertSame([], $request->parse());
+    }
+
+    public function testScalarJsonBodyIsIgnored()
+    {
+        $request = $this->bodyParsingRequest('POST', 'application/json', '"just a string"');
+
+        $this->assertSame([], $request->parse());
+    }
+
+    public function testCreateFromGlobalsKeepsAUsableRequestWhenTheBodyIsInvalid()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['CONTENT_TYPE'] = 'application/json';
+        $_POST = ['kept' => 'yes'];
+
+        $class = get_class(new class extends Request {
+            public function getContent(bool $asResource = false)
+            {
+                return '{invalid';
+            }
+        });
+
+        $request = $class::createFromGlobals();
+
+        $this->assertInstanceOf(\RuntimeException::class, $request->getBodyParseError());
+        $this->assertSame('Invalid JSON data in request body.', $request->getBodyParseError()->getMessage());
+        $this->assertSame(['kept' => 'yes'], $request->all());
+    }
+
+    public function testCreateFromGlobalsHasNoBodyParseErrorForValidRequests()
+    {
+        $this->assertNull(Request::createFromGlobals()->getBodyParseError());
+    }
+
+    public function testInvalidJsonBodyStillThrows()
+    {
+        $request = $this->bodyParsingRequest('POST', 'application/json', '{invalid');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Invalid JSON data in request body.');
+
+        $request->parse();
+    }
+
+    public function testUrlEncodedBodyKeepsQueryParametersLikeJsonBodies()
+    {
+        $urlEncoded = $this->bodyParsingRequest('PUT', 'application/x-www-form-urlencoded', 'name=doppar', ['page' => '2']);
+        $json = $this->bodyParsingRequest('PUT', 'application/json', '{"name":"doppar"}', ['page' => '2']);
+
+        $this->assertSame(['page' => '2', 'name' => 'doppar'], $urlEncoded->parse());
+        $this->assertSame($json->parse(), $urlEncoded->parse());
+    }
+
+    public function testHasFilesDetectsSingleAndMultipleUploads()
+    {
+        $_FILES = [
+            'avatar' => ['name' => 'a.png', 'type' => 'image/png', 'tmp_name' => '/tmp/a', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0],
+            'docs' => [
+                'name' => ['a.pdf', 'b.pdf'],
+                'type' => ['application/pdf', 'application/pdf'],
+                'tmp_name' => ['/tmp/x', '/tmp/y'],
+                'error' => [UPLOAD_ERR_NO_FILE, UPLOAD_ERR_OK],
+                'size' => [0, 10],
+            ],
+        ];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertFalse($request->hasFile('avatar'));
+        $this->assertTrue($request->hasFile('docs'));
+        $this->assertFalse($request->hasFile('missing'));
+        $this->assertTrue($request->hasFiles());
+    }
+
+    public function testBearerTokenIsExtractedFromAuthorizationHeader()
+    {
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer secret-token';
+        $withToken = Request::createFromGlobals();
+
+        unset($_SERVER['HTTP_AUTHORIZATION']);
+        $withoutToken = Request::createFromGlobals();
+
+        $this->assertSame('secret-token', $withToken->bearerToken());
+        $this->assertNull($withoutToken->bearerToken());
+    }
+
+    /**
+     * Build a request whose protected body parser can be invoked directly.
+     *
+     * @param array<string, string> $query
+     */
+    private function bodyParsingRequest(string $method, string $contentType, string $content, array $query = []): Request
+    {
+        $server = array_merge($this->defaultServerData, [
+            'REQUEST_METHOD' => $method,
+            'CONTENT_TYPE' => $contentType,
+        ]);
+
+        return new class ($query, [], [], [], [], $server, $content) extends Request {
+            public function parse(): array
+            {
+                return $this->parseRequestBody();
+            }
+        };
+    }
 }

@@ -94,10 +94,7 @@ class RedirectResponse extends Response
      */
     public function to(string $url, int $statusCode = 302, array $headers = [], ?bool $secure = null): RedirectResponse
     {
-        $this->setStatusCode($statusCode);
-        foreach ($headers as $name => $value) {
-            $this->headers->set($name, $value);
-        }
+        $this->setStatusCode($statusCode)->withHeaders($headers);
 
         if ($secure !== null) {
             $url = $this->ensureScheme($url, $secure);
@@ -110,19 +107,18 @@ class RedirectResponse extends Response
 
     /**
      * Redirect back to the previous page.
+     *
      * @param int $status
      * @param array $headers
-     * @param bool $fallback
+     * @param string|bool|null $fallback
      * @return RedirectResponse
      */
-    public function back($status = 302, $headers = [], ?bool $fallback = false): RedirectResponse
+    public function back($status = 302, $headers = [], string|bool|null $fallback = false): RedirectResponse
     {
-        $url = request()->headers->get('referer') ?? '/';
-        $this->setStatusCode($status);
-        foreach ($headers as $name => $value) {
-            $this->headers->set($name, $value);
-        }
+        $fallbackUrl = is_string($fallback) && $fallback !== '' ? $fallback : '/';
+        $url = request()->headers->get('referer') ?? $fallbackUrl;
 
+        $this->setStatusCode($status)->withHeaders($headers);
         $this->setTargetUrl($url);
 
         return $this;
@@ -137,12 +133,13 @@ class RedirectResponse extends Response
      */
     protected function ensureScheme(string $url, bool $secure): string
     {
+        $scheme = $secure ? 'https' : 'http';
+
         // If the URL is already absolute (contains ://), parse it
         if (strpos($url, '://') !== false) {
             $parsedUrl = parse_url($url);
 
             // Rebuild the URL with the new scheme
-            $scheme = $secure ? 'https' : 'http';
             $url = $scheme . '://';
 
             // Add the host if it exists
@@ -171,8 +168,7 @@ class RedirectResponse extends Response
             }
         } else {
             // For relative URLs, prepend the current host and scheme
-            $scheme = $secure ? 'https' : 'http';
-            $host = request()->headers->get('host') ?? $_SERVER['HTTP_HOST'];
+            $host = request()->headers->get('host') ?? ($_SERVER['HTTP_HOST'] ?? '');
             $url = $scheme . '://' . $host . $url;
         }
 

@@ -11,6 +11,7 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\BadRequestHttpException;
 use Phaseolies\Http\Exceptions\HttpResponseException;
 use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Error\ErrorHandler;
@@ -1519,16 +1520,15 @@ class Application extends Container
      *
      * @param Request $request
      * @return Response
+     * @throws BadRequestHttpException
      */
     public function handle(Request $request): Response
     {
-        $response = $this->router->resolve($this, $request);
-
-        if (!$response instanceof Response) {
-            $response = $response->setBody((string) $response);
+        if ($bodyParseError = $request->getBodyParseError()) {
+            throw new BadRequestHttpException($bodyParseError->getMessage(), $bodyParseError);
         }
 
-        return $response;
+        return $this->router->resolve($this, $request);
     }
 
     /**

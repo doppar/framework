@@ -22,7 +22,7 @@ trait InteractsWithCurrentRouter
     public function getCurrentMiddlewareNames(): ?array
     {
         $url = request()->getPath();
-        $method = request()->getMethod();
+        $method = $this->resolveRouteMethod(request());
 
         if (isset(self::$routeMiddlewares[$method][$url])) {
             return self::$routeMiddlewares[$method][$url];
@@ -82,7 +82,7 @@ trait InteractsWithCurrentRouter
     public function currentRouteName(): ?string
     {
         $currentPath = request()->getPath();
-        $currentMethod = request()->getMethod();
+        $currentMethod = $this->resolveRouteMethod(request());
 
         foreach (self::$namedRoutes as $name => $path) {
             if ($currentPath === $path) {

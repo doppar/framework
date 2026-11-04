@@ -11,6 +11,7 @@
 
 namespace Phaseolies\Http\Response\Stream;
 
+use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\Stream\StreamedResponse;
 
 /**
@@ -46,6 +47,8 @@ use Phaseolies\Http\Response\Stream\StreamedResponse;
  */
 class StreamedJsonResponse extends StreamedResponse
 {
+    public const DEFAULT_ENCODING_OPTIONS = JsonResponse::DEFAULT_ENCODING_OPTIONS;
+
     private const PLACEHOLDER = '__symfony_json__';
 
     /**

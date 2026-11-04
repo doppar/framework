@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Http\Support;
 
-use Phaseolies\Utilities\IpUtils;
 use Phaseolies\Utilities\PathMatcher;
 
 trait RequestParser
@@ -10,82 +9,24 @@ trait RequestParser
     /**
      * Retrieves the client's IP address.
      *
+     * Forwarded headers are only honoured when the request comes from a trusted proxy.
+     *
      * @return string|null
      */
     public function ip(): ?string
     {
-        if ($this->trustedHeaderSet & self::HEADER_FORWARDED) {
-            $forwarded = $this->headers->get('FORWARDED');
-            if ($forwarded) {
-                $parts = explode(';', $forwarded);
-                foreach ($parts as $part) {
-                    $keyValue = explode('=', trim($part), 2);
-                    if (count($keyValue) === 2 && $keyValue[0] === 'for') {
-                        return $keyValue[1];
-                    }
-                }
-            }
-        }
-
-        if ($this->trustedHeaderSet & self::HEADER_X_FORWARDED_FOR) {
-            $xForwardedFor = $this->headers->get('X_FORWARDED_FOR');
-            if ($xForwardedFor) {
-                $ips = explode(',', $xForwardedFor);
-                return trim($ips[0]);
-            }
-        }
-
-        return $this->server->get('REMOTE_ADDR');
+        return $this->getClientIp();
     }
 
     /**
-     * Get all client IP addresses, including those forwarded by proxies.
-     * The original client IP will be at the end of the array.
+     * Get all client IP addresses, with trusted proxies stripped.
+     * The original client IP is the first element of the array.
      *
-     * @return array
+     * @return array<int, string>
      */
     public function ips(): array
     {
-        $ips = [];
-
-        $remoteAddr = $this->server->get('REMOTE_ADDR');
-
-        if ($this->isFromTrustedProxy()) {
-            if ($this->trustedHeaderSet & self::HEADER_X_FORWARDED_FOR) {
-                $xForwardedFor = $this->headers->get('X_FORWARDED_FOR');
-                if ($xForwardedFor) {
-                    $forwardedIps = array_map('trim', explode(',', $xForwardedFor));
-                    $ips = array_merge($ips, $forwardedIps);
-                }
-            }
-
-            if ($this->trustedHeaderSet & self::HEADER_FORWARDED) {
-                $forwarded = $this->headers->get('FORWARDED');
-                if ($forwarded) {
-                    $parts = explode(';', $forwarded);
-                    foreach ($parts as $part) {
-                        $keyValue = explode('=', trim($part), 2);
-                        if (count($keyValue) === 2 && $keyValue[0] === 'for') {
-                            $ips[] = trim($keyValue[1], '"\'');
-                        }
-                    }
-                }
-            }
-        }
-
-        if ($remoteAddr) {
-            $ips[] = $remoteAddr;
-        }
-
-        $ips = array_filter($ips, function ($ip) {
-            return filter_var($ip, FILTER_VALIDATE_IP);
-        });
-
-        $ips = array_filter($ips, function ($ip) {
-            return !IpUtils::checkIp($ip, self::$trustedProxies);
-        });
-
-        return array_values($ips);
+        return array_values(array_filter($this->getClientIps(), fn($ip) => $ip !== null && $ip !== ''));
     }
 
     /**
@@ -136,7 +77,7 @@ trait RequestParser
      */
     public function scheme(): string
     {
-        return $this->server->get('HTTPS') === 'on' ? 'https' : 'http';
+        return $this->getScheme();
     }
 
     /**
@@ -271,7 +212,7 @@ trait RequestParser
      *
      * @return bool
      */
-    public function isPjax()
+    public function isPjax(): bool
     {
         return $this->headers->get('X-PJAX') == true;
     }
@@ -316,11 +257,7 @@ trait RequestParser
      */
     public function isApiRequest(): bool
     {
-        if ($this->is('/api/*')) {
-            return true;
-        }
-
-        return false;
+        return $this->is('/api/*');
     }
 
     /**
@@ -336,6 +273,6 @@ trait RequestParser
             return $routeName;
         }
 
-        return $routeName === $name ? true : false;
+        return $routeName === $name;
     }
 }

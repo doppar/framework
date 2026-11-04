@@ -26,13 +26,6 @@ trait RequestHelper
     public array $errors = [];
 
     /**
-     * Stores the input data.
-     *
-     * @var array<string, mixed>
-     */
-    public ?array $input = [];
-
-    /**
      * Retrieves all input data except for the specified keys.
      *
      * @param array|string $keys
@@ -97,13 +90,13 @@ trait RequestHelper
     }
 
     /**
-     * Retrieves the validation errors, excluding the `csrf_token` field.
+     * Retrieves all validation errors.
      *
      * @return array<string, mixed>
      */
-    public function failed(array $excludeKeys = ['csrf_token']): array
+    public function failed(): array
     {
-        return $this->errors ?? [];
+        return $this->errors;
     }
 
     /**
@@ -151,11 +144,13 @@ trait RequestHelper
      */
     public function input(?string $key = null, $default = null): mixed
     {
-        if (empty($this->input)) {
-            $this->input = $this->all();
+        $input = $this->all();
+
+        if ($key === null) {
+            return $input;
         }
 
-        return $this->input[$key] ?? $default;
+        return $input[$key] ?? $default;
     }
 
     /**
@@ -166,21 +161,19 @@ trait RequestHelper
      */
     public function has(string $param): bool
     {
-        if (empty($this->input)) {
-            $this->input = $this->all();
-        }
+        $input = $this->all();
 
-        return array_key_exists($param, $this->input) && $this->input[$param] !== '';
+        return array_key_exists($param, $input) && $input[$param] !== '';
     }
 
     /**
-     * Get the authenticated user.
+     * Get the authenticated user (alias of user()).
      *
      * @return Model|null
      */
     public function auth(): ?Model
     {
-        return app('auth')->user() ?? null;
+        return $this->user();
     }
 
     /**
@@ -190,7 +183,7 @@ trait RequestHelper
      */
     public function user(): ?Model
     {
-        return app('auth')->user() ?? null;
+        return app('auth')->user();
     }
 
     /**
@@ -264,7 +257,6 @@ trait RequestHelper
         });
 
         $this->request->replace($data);
-        $this->input = [];
 
         return $this;
     }
@@ -307,14 +299,8 @@ trait RequestHelper
      */
     public function filled(string $key): bool
     {
-        $value = $this->input($key);
-
-        // Check if the value exists and is not empty
-        // - empty strings
-        // - null values
-        // - empty arrays
-        // are considered "not filled"
-        return !empty($value);
+        // Any PHP "empty" value (null, '', '0', 0, false, []) is considered "not filled".
+        return !empty($this->input($key));
     }
 
     /**

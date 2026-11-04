@@ -398,6 +398,29 @@ final class ApplicationTest extends TestCase
         $this->assertSame($response, $handled);
     }
 
+    public function testHandleRejectsUnparseableBodyWithBadRequest(): void
+    {
+        $request = new class () extends Request {
+            public function __construct()
+            {
+                parent::__construct();
+                $this->bodyParseError = new \RuntimeException('Invalid JSON data in request body.');
+            }
+        };
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->never())->method('resolve');
+        $this->app->router = $router;
+
+        try {
+            $this->app->handle($request);
+            $this->fail('Expected a 400 Bad Request exception.');
+        } catch (\Phaseolies\Http\Exceptions\BadRequestHttpException $e) {
+            $this->assertSame(400, $e->getStatusCode());
+            $this->assertSame('Invalid JSON data in request body.', $e->getMessage());
+        }
+    }
+
     public function testDispatchReturnsTerminableResult(): void
     {
         $request = new Request();

@@ -360,7 +360,7 @@ final class DispatchSessionTest extends TestCase
 
     public function testASessionChangedBeforeAnHttpErrorIsStillSavedWhenTheErrorPageCannotRender(): void
     {
-        // Rendering the page needs a bootstrapped application, so here it fails.
+        // 418 has no error view, so rendering falls back to abort() and fails.
         // The session is saved around it, and no output buffer is left behind.
         $id = $this->seed();
         $request = $this->requestOn($id);
@@ -368,7 +368,7 @@ final class DispatchSessionTest extends TestCase
         $this->routeTo(function () use ($request) {
             $request->session()->put('flash', 'kept');
 
-            throw new HttpException(403, 'Forbidden');
+            throw new HttpException(418, "I'm a teapot");
         });
 
         $level = ob_get_level();

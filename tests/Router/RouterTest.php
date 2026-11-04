@@ -450,6 +450,61 @@ class RouterTest extends TestCase
         $this->assertFalse($result);
     }
 
+    // =========================================================================
+    // HEAD Requests
+    // =========================================================================
+
+    public function testHeadRequestFallsBackToGetRoute(): void
+    {
+        $callback = fn() => 'user profile';
+        $this->router->get('/users/{id}', $callback);
+
+        $request = new TestRequestStub('HEAD', '/users/7', 'localhost');
+
+        $this->assertSame($callback, $this->router->getCallback($request));
+        $this->assertEquals(['id' => '7'], $request->getRouteParams());
+    }
+
+    public function testExplicitHeadRouteTakesPrecedenceOverGetRoute(): void
+    {
+        $getCallback = fn() => 'get';
+        $headCallback = fn() => 'head';
+        $this->router->get('/status', $getCallback);
+        $this->router->head('/status', $headCallback);
+
+        $request = new TestRequestStub('HEAD', '/status', 'localhost');
+
+        $this->assertSame($headCallback, $this->router->getCallback($request));
+    }
+
+    public function testHeadRequestDoesNotFallBackToNonGetRoutes(): void
+    {
+        $this->router->post('/submit', fn() => 'post');
+
+        $request = new TestRequestStub('HEAD', '/submit', 'localhost');
+
+        $this->assertFalse($this->router->getCallback($request));
+    }
+
+    public function testHeadRequestUsesTheGetRouteMiddleware(): void
+    {
+        $this->router->get('/admin', fn() => 'admin')->middleware('auth', 'admin');
+
+        $request = new TestRequestStub('HEAD', '/admin', 'localhost');
+
+        $this->assertEquals(['auth', 'admin'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testHeadRequestUsesTheExplicitHeadRouteMiddleware(): void
+    {
+        $this->router->get('/report', fn() => 'get')->middleware('auth');
+        $this->router->head('/report', fn() => 'head')->middleware('throttle:10,1');
+
+        $request = new TestRequestStub('HEAD', '/report', 'localhost');
+
+        $this->assertEquals(['throttle:10,1'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
     public function testResolveUsesFreshResponseForScalarRouteResults(): void
     {
         $freshRouter = new TestableRouter(new Gateway());
