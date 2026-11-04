@@ -1418,18 +1418,6 @@ class AllRequestInputTest extends TestCase
         $this->assertContains('203.0.113.1', $clientIps);
     }
 
-    public function testItValidatesRequestsFromTrustedProxies()
-    {
-        Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_X_FORWARDED_FOR);
-
-        $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '203.0.113.1';
-
-        $request = Request::createFromGlobals();
-
-        $this->assertTrue($request->isValidRequest());
-    }
-
     public function testItHandlesForwardedHeaderRfc7239()
     {
         Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_FORWARDED);
@@ -1594,14 +1582,14 @@ class AllRequestInputTest extends TestCase
 
         $request = $class::createFromGlobals();
 
-        $this->assertInstanceOf(\RuntimeException::class, $request->getBodyParseError());
-        $this->assertSame('Invalid JSON data in request body.', $request->getBodyParseError()->getMessage());
+        $this->assertInstanceOf(\RuntimeException::class, $request->getMalformedRequestError());
+        $this->assertSame('Invalid JSON data in request body.', $request->getMalformedRequestError()->getMessage());
         $this->assertSame(['kept' => 'yes'], $request->all());
     }
 
-    public function testCreateFromGlobalsHasNoBodyParseErrorForValidRequests()
+    public function testCreateFromGlobalsHasNoMalformedRequestErrorForValidRequests()
     {
-        $this->assertNull(Request::createFromGlobals()->getBodyParseError());
+        $this->assertNull(Request::createFromGlobals()->getMalformedRequestError());
     }
 
     public function testInvalidJsonBodyStillThrows()
@@ -1654,6 +1642,97 @@ class AllRequestInputTest extends TestCase
 
         $this->assertSame('secret-token', $withToken->bearerToken());
         $this->assertNull($withoutToken->bearerToken());
+    }
+
+    public function testUrlEncodedBodyKeepsNumericKeys()
+    {
+        // A form POST arrives both in $_POST and in the raw body
+        $server = array_merge($this->defaultServerData, [
+            'REQUEST_METHOD' => 'POST',
+            'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+        ]);
+        $request = new class ([], ['10' => 'a', '20' => 'b'], [], [], [], $server, '10=a&20=b') extends Request {
+            public function parse(): array
+            {
+                return $this->parseRequestBody();
+            }
+        };
+
+        $this->assertSame([10 => 'a', 20 => 'b'], $request->parse());
+    }
+
+    public function testJsonBodyKeepsNumericKeys()
+    {
+        $request = $this->bodyParsingRequest('POST', 'application/json', '{"10":"a","20":"b"}', ['5' => 'q']);
+
+        $this->assertSame([5 => 'q', 10 => 'a', 20 => 'b'], $request->parse());
+    }
+
+    public function testMergeKeepsNumericKeys()
+    {
+        $_POST = ['10' => 'a'];
+        $request = Request::createFromGlobals();
+
+        $request->merge(['20' => 'b']);
+
+        $this->assertSame([10 => 'a', 20 => 'b'], $request->all());
+    }
+
+    public function testConflictingTrustedForwardingHeadersAreABadRequest()
+    {
+        Request::setTrustedProxies(['192.168.1.1'], Request::HEADER_FORWARDED | Request::HEADER_X_FORWARDED_FOR);
+
+        $_SERVER['REMOTE_ADDR'] = '192.168.1.1';
+        $_SERVER['HTTP_FORWARDED'] = 'for=203.0.113.1';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7';
+
+        $request = Request::createFromGlobals();
+
+        try {
+            $request->ip();
+            $this->fail('Expected conflicting forwarding headers to be rejected.');
+        } catch (\Phaseolies\Http\Exceptions\ConflictingHeadersException $e) {
+            $this->assertSame(400, $e->getStatusCode());
+        }
+
+        // Error handling can still read an address: the connecting one, not 0.0.0.0
+        $this->assertSame('192.168.1.1', $request->ip());
+    }
+
+    public function testInvalidMethodOverrideIsRecordedInsteadOfThrown()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'] = 'BOGUS';
+
+        $request = Request::createFromGlobals();
+
+        $error = $request->getMalformedRequestError();
+        $this->assertInstanceOf(\Phaseolies\Http\Exceptions\BadRequestHttpException::class, $error);
+        $this->assertSame(400, $error->getStatusCode());
+        $this->assertSame('Invalid HTTP method override: BOGUS.', $error->getMessage());
+        $this->assertSame('POST', $request->getMethod());
+    }
+
+    public function testInvalidMethodOverrideInTheBodyIsRecordedInsteadOfThrown()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = ['_method' => 'BOGUS'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertInstanceOf(\Phaseolies\Http\Exceptions\BadRequestHttpException::class, $request->getMalformedRequestError());
+        $this->assertSame('POST', $request->getMethod());
+    }
+
+    public function testValidMethodOverrideStillApplies()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_POST = ['_method' => 'PUT'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertNull($request->getMalformedRequestError());
+        $this->assertSame('PUT', $request->getMethod());
     }
 
     /**

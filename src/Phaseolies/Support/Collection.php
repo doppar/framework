@@ -147,7 +147,10 @@ class Collection extends RamseyCollection implements IteratorAggregate, ArrayAcc
      */
     public function jsonSerialize(): array
     {
-        return $this->toArray();
+        return array_map(
+            fn($item) => $item instanceof JsonSerializable ? $item->jsonSerialize() : $item,
+            $this->data
+        );
     }
 
     /**

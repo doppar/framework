@@ -35,11 +35,11 @@ class Router
     private ?ActionPlanStore $actionPlans = null;
 
     /**
-     * Route table resolved per HEAD request (HEAD or GET fallback)
+     * The route dispatched for each request by getCallback()
      *
-     * @var \WeakMap<Request, string>|null
+     * @var \WeakMap<Request, array{method: string, route: string, callback: mixed}>|null
      */
-    private ?\WeakMap $resolvedRouteMethods = null;
+    private ?\WeakMap $dispatchedRoutes = null;
 
     /**
      * Holds the registered routes.
@@ -1171,44 +1171,66 @@ class Router
      */
     public function getCallback($request): mixed
     {
-        return $this->matchRoute($this->resolveRouteMethod($request), $request);
+        $match = $this->findRoute($request);
+
+        $this->dispatchedRoutes ??= new \WeakMap();
+
+        if ($match === null) {
+            unset($this->dispatchedRoutes[$request]);
+
+            return false;
+        }
+
+        $this->dispatchedRoutes[$request] = $match;
+
+        return $match['callback'];
     }
 
     /**
-     * Resolve which route table serves the request.
+     * Find the route that serves the request in the current route tables.
      *
      * HEAD requests are served by an explicit HEAD route when one matches,
-     * otherwise by the GET route for the same path (RFC 9110 §9.3.2). Every
-     * route lookup (callback, middleware, route name) goes through this so a
-     * HEAD request always runs the same route, with the same middleware, as GET.
+     * otherwise by the GET route for the same path (RFC 9110 §9.3.2).
      *
      * @param Request $request
-     * @return string
+     * @return array{method: string, route: string, callback: mixed}|null
      */
-    protected function resolveRouteMethod($request): string
+    protected function findRoute($request): ?array
     {
         $method = $request->getMethod();
 
-        if ($method !== Request::METHOD_HEAD) {
-            return $method;
+        $candidates = $method === Request::METHOD_HEAD
+            ? [Request::METHOD_HEAD, Request::METHOD_GET]
+            : [$method];
+
+        foreach ($candidates as $candidate) {
+            if (($match = $this->matchRoute($candidate, $request)) !== null) {
+                return $match;
+            }
         }
 
-        $this->resolvedRouteMethods ??= new \WeakMap();
-
-        return $this->resolvedRouteMethods[$request] ??=
-            $this->matchRoute(Request::METHOD_HEAD, $request) !== false
-                ? Request::METHOD_HEAD
-                : Request::METHOD_GET;
+        return null;
     }
 
     /**
-     * Find the route callback registered for a method that matches the request path.
+     * Get the route serving the request: the one getCallback() dispatched
+     *
+     * @param Request $request
+     * @return array{method: string, route: string, callback: mixed}|null
+     */
+    protected function routeFor($request): ?array
+    {
+        return $this->dispatchedRoutes[$request] ?? $this->findRoute($request);
+    }
+
+    /**
+     * Find the route registered for a method that matches the request path.
      *
      * @param string $method
      * @param Request $request
-     * @return mixed The route callback or false if not found.
+     * @return array{method: string, route: string, callback: mixed}|null
      */
-    protected function matchRoute(string $method, $request): mixed
+    protected function matchRoute(string $method, $request): ?array
     {
         $url = $request->getPath();
 
@@ -1224,14 +1246,11 @@ class Router
                 continue;
             }
 
-            // Exact match
-            if ($route === $url) {
-                return $callback;
-            }
+            $match = ['method' => $method, 'route' => (string) $route, 'callback' => $callback];
 
-            // Catch-all wildcard
-            if ($route === '(.*)') {
-                return $callback;
+            // Exact match, or the catch-all wildcard
+            if ($route === $url || $route === '(.*)') {
+                return $match;
             }
 
             // Pattern match with named parameters
@@ -1240,15 +1259,14 @@ class Router
             if (preg_match($routeRegex, $url, $matches)) {
                 $params = $this->extractRouteParameters($route, $matches);
                 if ($params !== false) {
-                    $existing = $request->getRouteParams();
-                    $merged = array_merge($existing, $params);
-                    $request->setRouteParams($merged);
-                    return $callback;
+                    $request->setRouteParams(array_merge($request->getRouteParams(), $params));
+
+                    return $match;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -1369,22 +1387,13 @@ class Router
      */
     public function getCurrentRouteMiddleware($request): ?array
     {
-        $url = $request->getPath();
-        $method = $this->resolveRouteMethod($request);
-        $routes = self::$routes[$method] ?? [];
+        $match = $this->routeFor($request);
 
-        foreach ($routes as $route => $callback) {
-            $routeRegex = "@^" . preg_replace_callback(
-                self::PARAM_PATTERN,
-                fn(array $m) => '(' . (isset($m[2]) ? $this->constraintRegex($m[2]) : '[^/]+') . ')',
-                $route
-            ) . "$@";
-            if (preg_match($routeRegex, $url)) {
-                return self::$routeMiddlewares[$method][$route] ?? null;
-            }
+        if ($match === null) {
+            return null;
         }
 
-        return null;
+        return self::$routeMiddlewares[$match['method']][$match['route']] ?? null;
     }
 
     /**

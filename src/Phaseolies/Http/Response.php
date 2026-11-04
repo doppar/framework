@@ -9,8 +9,6 @@ use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Database\Entity\Builder;
-use Phaseolies\Database\Entity\Model;
-use Phaseolies\Support\Collection;
 
 class Response implements HttpStatus
 {
@@ -1580,19 +1578,15 @@ class Response implements HttpStatus
     public static function toSerializable(mixed $content): mixed
     {
         if ($content instanceof Builder) {
-            return $content->get()->toArray();
-        }
-
-        if ($content instanceof Model || $content instanceof Collection) {
-            return $content->toArray();
-        }
-
-        if ($content instanceof \ArrayObject) {
-            return $content->getArrayCopy();
+            return $content->get();
         }
 
         if ($content instanceof \JsonSerializable || $content instanceof \stdClass) {
             return $content;
+        }
+
+        if ($content instanceof \ArrayObject) {
+            return $content->getArrayCopy();
         }
 
         if (is_object($content) && method_exists($content, 'toArray')) {

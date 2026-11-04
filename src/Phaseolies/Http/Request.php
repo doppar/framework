@@ -19,6 +19,8 @@ use Phaseolies\Http\Response\AcceptHeader;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
+use Phaseolies\Http\Exceptions\BadRequestHttpException;
+use Phaseolies\Http\Exceptions\ConflictingHeadersException;
 
 /**
  * @phpstan-consistent-constructor
@@ -146,7 +148,8 @@ class Request
     protected ?array $charsets = null;
     protected ?array $encodings = null;
     protected array $routeParams = [];
-    protected ?\RuntimeException $bodyParseError = null;
+    protected ?\RuntimeException $malformedRequestError = null;
+    private bool $ignoreMethodOverride = false;
 
     /**
      * Creates a Request from explicit parameter values.
@@ -186,7 +189,23 @@ class Request
         $this->content = $content;
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
-        $this->getMethod();
+        $this->validateMethodOverride();
+    }
+
+    /**
+     * Resolve the request method once, recording an invalid method instead of throwing.
+     *
+     * @return void
+     */
+    private function validateMethodOverride(): void
+    {
+        try {
+            $this->getMethod();
+        } catch (BadRequestHttpException $e) {
+            $this->malformedRequestError ??= $e;
+            $this->ignoreMethodOverride = true;
+            $this->method = $this->getRealMethod();
+        }
     }
 
     /**
@@ -240,16 +259,16 @@ class Request
                 throw new \RuntimeException("Invalid JSON data in request body.");
             }
 
-            return is_array($jsonData) ? array_merge($request, $jsonData) : $request;
+            return is_array($jsonData) ? array_replace($request, $jsonData) : $request;
         }
 
         if ($isUrlEncoded) {
             parse_str($rawContent, $data);
 
-            return array_merge($request, $data);
+            return array_replace($request, $data);
         }
 
-        return array_merge($request, $this->parseMultipartFormData($rawContent));
+        return array_replace($request, $this->parseMultipartFormData($rawContent));
     }
 
     /**
@@ -422,34 +441,6 @@ class Request
         return $method !== self::METHOD_ANY && in_array($method, self::VALID_HTTP_METHODS, true);
     }
 
-    /**
-     * Validates that a request coming from a trusted proxy carries every trusted header.
-     *
-     * @return bool
-     */
-    public function isValidRequest(): bool
-    {
-        if (!$this->isFromTrustedProxy()) {
-            return true;
-        }
-
-        if (self::$trustedHeaderSet <= 0) {
-            // No trusted headers set, all requests are valid.
-            return true;
-        }
-
-        foreach (self::TRUSTED_HEADERS as $headerBit => $headerName) {
-            if ((self::$trustedHeaderSet & $headerBit) === $headerBit) {
-                if (!$this->server->has("HTTP_" . $headerName)) {
-                    // Required trusted header is missing.
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
     public function __toString(): string
     {
         $content = $this->getContent();
@@ -591,7 +582,7 @@ class Request
      */
     public function merge(array $input): self
     {
-        $this->request->replace(array_merge($this->request->all(), $input));
+        $this->request->replace(array_replace($this->request->all(), $input));
 
         return $this;
     }
@@ -619,11 +610,15 @@ class Request
      *
      * The method is always an uppercased string.
      * @return string
-     * @@throws \InvalidArgumentException
+     * @throws BadRequestHttpException
      */
     public function getMethod(): string
     {
-        $this->method = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
+        $this->method = $this->getRealMethod();
+
+        if ($this->ignoreMethodOverride) {
+            return $this->method;
+        }
 
         if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
             $method = strtoupper($this->headers->get("X-HTTP-METHOD-OVERRIDE"));
@@ -642,7 +637,11 @@ class Request
             return $this->method;
         }
 
-        throw new \InvalidArgumentException("Invalid HTTP method override: $method.");
+        throw new BadRequestHttpException(
+            $method === $this->method
+                ? "Unsupported HTTP method: $method."
+                : "Invalid HTTP method override: $method."
+        );
     }
 
     /**
@@ -1226,12 +1225,14 @@ class Request
             return $this->trustedValuesCache[$cacheKey] = $clientValues;
         }
 
+        // After the conflict has been reported once, fall back to the connecting
+        // address so error handling (logging, rendering) can still read the IP.
         if (!$this->isForwardedValid) {
-            return $this->trustedValuesCache[$cacheKey] = null !== $ip ? ['0.0.0.0', $ip] : [];
+            return $this->trustedValuesCache[$cacheKey] = null !== $ip ? [$ip] : [];
         }
         $this->isForwardedValid = false;
 
-        throw new \Exception(\sprintf('The request has both a trusted "%s" header and a trusted "%s" header, conflicting with each other. You should either configure your proxy to remove one of them, or configure your project to distrust the offending one.', self::TRUSTED_HEADERS[self::HEADER_FORWARDED], self::TRUSTED_HEADERS[$type]));
+        throw new ConflictingHeadersException(\sprintf('The request has both a trusted "%s" header and a trusted "%s" header, conflicting with each other. You should either configure your proxy to remove one of them, or configure your project to distrust the offending one.', self::TRUSTED_HEADERS[self::HEADER_FORWARDED], self::TRUSTED_HEADERS[$type]));
     }
 
     /**
@@ -1459,20 +1460,22 @@ class Request
         try {
             $request->request = new InputBag($request->parseRequestBody());
         } catch (\RuntimeException $e) {
-            $request->bodyParseError = $e;
+            $request->malformedRequestError ??= $e;
         }
+
+        $request->validateMethodOverride();
 
         return $request;
     }
 
     /**
-     * Get the error raised while parsing the request body, if any.
+     * Get the error that makes this request malformed, if any.
      *
      * @return \RuntimeException|null
      */
-    public function getBodyParseError(): ?\RuntimeException
+    public function getMalformedRequestError(): ?\RuntimeException
     {
-        return $this->bodyParseError;
+        return $this->malformedRequestError;
     }
 
     /**

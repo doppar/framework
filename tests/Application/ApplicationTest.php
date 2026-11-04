@@ -404,7 +404,7 @@ final class ApplicationTest extends TestCase
             public function __construct()
             {
                 parent::__construct();
-                $this->bodyParseError = new \RuntimeException('Invalid JSON data in request body.');
+                $this->malformedRequestError = new \RuntimeException('Invalid JSON data in request body.');
             }
         };
 
@@ -418,6 +418,23 @@ final class ApplicationTest extends TestCase
         } catch (\Phaseolies\Http\Exceptions\BadRequestHttpException $e) {
             $this->assertSame(400, $e->getStatusCode());
             $this->assertSame('Invalid JSON data in request body.', $e->getMessage());
+        }
+    }
+
+    public function testHandleRethrowsAnInvalidMethodOverrideAsIs(): void
+    {
+        $request = new Request(server: ['REQUEST_METHOD' => 'POST', 'HTTP_X_HTTP_METHOD_OVERRIDE' => 'BOGUS']);
+
+        $router = $this->createMock(Router::class);
+        $router->expects($this->never())->method('resolve');
+        $this->app->router = $router;
+
+        try {
+            $this->app->handle($request);
+            $this->fail('Expected a 400 Bad Request exception.');
+        } catch (\Phaseolies\Http\Exceptions\BadRequestHttpException $e) {
+            $this->assertSame($request->getMalformedRequestError(), $e);
+            $this->assertSame('Invalid HTTP method override: BOGUS.', $e->getMessage());
         }
     }
 

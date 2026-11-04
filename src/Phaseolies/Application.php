@@ -1524,8 +1524,10 @@ class Application extends Container
      */
     public function handle(Request $request): Response
     {
-        if ($bodyParseError = $request->getBodyParseError()) {
-            throw new BadRequestHttpException($bodyParseError->getMessage(), $bodyParseError);
+        if ($error = $request->getMalformedRequestError()) {
+            throw $error instanceof BadRequestHttpException
+                ? $error
+                : new BadRequestHttpException($error->getMessage(), $error);
         }
 
         return $this->router->resolve($this, $request);

@@ -505,6 +505,56 @@ class RouterTest extends TestCase
         $this->assertEquals(['throttle:10,1'], $this->router->getCurrentRouteMiddleware($request));
     }
 
+    public function testHeadRouteIsFoundAfterTheRouteTablesChange(): void
+    {
+        // Cached apps reload closure routes from the route files after a miss
+        // (getOriginalClosure); a HEAD lookup must not remember the first miss.
+        $request = new TestRequestStub('HEAD', '/ping', 'localhost');
+        $this->assertFalse($this->router->getCallback($request));
+
+        $headCallback = fn() => 'pong';
+        $this->router->head('/ping', $headCallback);
+
+        $this->assertSame($headCallback, $this->router->getCallback($request));
+    }
+
+    public function testTrailingSlashDoesNotBypassRouteMiddleware(): void
+    {
+        $callback = fn() => 'admin';
+        $this->router->get('/admin', $callback)->middleware('auth');
+
+        $request = new TestRequestStub('GET', '/admin/', 'localhost');
+
+        $this->assertSame($callback, $this->router->getCallback($request));
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testTrailingSlashOnParameterizedRouteKeepsMiddleware(): void
+    {
+        $this->router->get('/posts/{id}/edit', fn() => 'edit')->middleware('auth');
+
+        $request = new TestRequestStub('GET', '/posts/5/edit/', 'localhost');
+
+        $this->assertNotFalse($this->router->getCallback($request));
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testMiddlewareIsReadFromTheDispatchedRouteAfterTablesAreRestored(): void
+    {
+        // A closure route found only after reloading the route files keeps its
+        // middleware once the cached tables are restored.
+        $reflection = new \ReflectionClass(Router::class);
+        $routesProperty = $reflection->getProperty('routes');
+
+        $this->router->get('/reports', fn() => 'reports')->middleware('auth');
+        $request = new TestRequestStub('GET', '/reports', 'localhost');
+        $this->assertNotFalse($this->router->getCallback($request));
+
+        $routesProperty->setValue(null, []);
+
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
     public function testResolveUsesFreshResponseForScalarRouteResults(): void
     {
         $freshRouter = new TestableRouter(new Gateway());

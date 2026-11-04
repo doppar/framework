@@ -21,21 +21,7 @@ trait InteractsWithCurrentRouter
      */
     public function getCurrentMiddlewareNames(): ?array
     {
-        $url = request()->getPath();
-        $method = $this->resolveRouteMethod(request());
-
-        if (isset(self::$routeMiddlewares[$method][$url])) {
-            return self::$routeMiddlewares[$method][$url];
-        }
-
-        foreach (self::$routeMiddlewares[$method] as $route => $middlewares) {
-            $routeRegex = $this->convertRouteToRegex($route);
-            if (preg_match($routeRegex, $url)) {
-                return $middlewares;
-            }
-        }
-
-        return null;
+        return $this->getCurrentRouteMiddleware(request());
     }
 
     /**
@@ -81,23 +67,15 @@ trait InteractsWithCurrentRouter
      */
     public function currentRouteName(): ?string
     {
-        $currentPath = request()->getPath();
-        $currentMethod = $this->resolveRouteMethod(request());
+        $match = $this->routeFor(request());
 
-        foreach (self::$namedRoutes as $name => $path) {
-            if ($currentPath === $path) {
-                if (isset(self::$routes[$currentMethod][$path])) {
-                    return $name;
-                }
-            }
-
-            $routeRegex = $this->convertRouteToRegex($path);
-            if (preg_match($routeRegex, $currentPath) && isset(self::$routes[$currentMethod][$path])) {
-                return $name;
-            }
+        if ($match === null) {
+            return null;
         }
 
-        return null;
+        $name = array_search($match['route'], self::$namedRoutes, true);
+
+        return $name === false ? null : $name;
     }
 
     /**

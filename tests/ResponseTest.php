@@ -530,4 +530,52 @@ class ResponseTest extends TestCase
         $this->assertSame('first', $first->getBody());
         $this->assertSame(200, $first->getStatusCode());
     }
+
+    public function testJsonHonoursCustomJsonSerializeOverToArray()
+    {
+        $model = $this->modelWithHiddenSecret();
+
+        $direct = new JsonResponse($model);
+        $collection = new JsonResponse(new \Phaseolies\Support\Collection(\Phaseolies\Database\Entity\Model::class, [$model]));
+
+        $this->assertSame('{"name":"Doppar"}', $direct->getBody());
+        $this->assertSame('[{"name":"Doppar"}]', $collection->getBody());
+        // The router path (json_encode of toSerializable()) behaves the same way
+        $this->assertSame('{"name":"Doppar"}', json_encode(Response::toSerializable($model)));
+    }
+
+    public function testBundledBadRequestViewEscapesTheMessage()
+    {
+        $message = '<script>alert(1)</script>';
+
+        ob_start();
+        include dirname(__DIR__) . '/src/Phaseolies/Support/View/errors/400.odo.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('400', $html);
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+    }
+
+    /**
+     * A model whose toArray() exposes a field that its jsonSerialize() hides.
+     */
+    private function modelWithHiddenSecret(): \Phaseolies\Database\Entity\Model
+    {
+        return new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+
+            public function toArray(): array
+            {
+                return ['name' => 'Doppar', 'password' => 'secret'];
+            }
+
+            public function jsonSerialize(): array
+            {
+                return ['name' => 'Doppar'];
+            }
+        };
+    }
 }

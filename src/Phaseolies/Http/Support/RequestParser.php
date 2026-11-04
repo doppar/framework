@@ -7,11 +7,14 @@ use Phaseolies\Utilities\PathMatcher;
 trait RequestParser
 {
     /**
-     * Retrieves the client's IP address.
+     * Retrieves the client's IP address (alias of getClientIp()).
      *
-     * Forwarded headers are only honoured when the request comes from a trusted proxy.
+     * Forwarded headers are only honoured when the request comes from a trusted
+     * proxy. The result is the first address in ips(): the closest hop that is
+     * not a trusted proxy.
      *
      * @return string|null
+     * @throws \Phaseolies\Http\Exceptions\ConflictingHeadersException
      */
     public function ip(): ?string
     {
@@ -19,10 +22,15 @@ trait RequestParser
     }
 
     /**
-     * Get all client IP addresses, with trusted proxies stripped.
-     * The original client IP is the first element of the array.
+     * Get the IP addresses of the request's forwarding chain, with trusted proxies stripped.
+     *
+     * Ordered from the most trusted to the least trusted address: the first
+     * element is the closest hop that is not a trusted proxy (what ip() returns),
+     * and the last is the originating client as reported by the forwarding
+     * headers, which an untrusted hop could have forged.
      *
      * @return array<int, string>
+     * @throws \Phaseolies\Http\Exceptions\ConflictingHeadersException
      */
     public function ips(): array
     {
