@@ -24,14 +24,6 @@ class Session implements SessionInterface, CommittableSession
     protected const INTERNAL_KEYS = ['last_regenerated' => true];
 
     /**
-     * Keys of the pointer an automatically rotated id leaves behind.
-     *
-     */
-    protected const ROTATED_TO = RotationPointer::TO;
-
-    protected const ROTATED_UNTIL = RotationPointer::UNTIL;
-
-    /**
      * Seconds the old id of an automatic rotation keeps leading to the new one.
      */
     protected const ROTATION_GRACE = 60;
@@ -1095,6 +1087,102 @@ class Session implements SessionInterface, CommittableSession
         $this->load();
 
         return $this->storedId;
+    }
+
+    /**
+     * Run a callback while no other request can save this session.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function exclusively(callable $callback): mixed
+    {
+        $this->load();
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || !$store instanceof LockableSessionStore) {
+            return $callback();
+        }
+
+        return $store->synchronized($this->storedId, $callback);
+    }
+
+    /**
+     * A value as the stored session holds it
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function storedValue(string $key, mixed $default = null): mixed
+    {
+        $this->load();
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || $store->isClientSide()) {
+            return $this->data[$key] ?? $default;
+        }
+
+        $record = $this->readFollowing($store, $this->storedId);
+
+        return $record['data'][$key] ?? $default;
+    }
+
+    /**
+     * Put a value, and save it into the stored session right away
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function putThrough(string $key, mixed $value): void
+    {
+        $this->put($key, $value);
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || $store->isClientSide()) {
+            return;
+        }
+
+        $id = $this->storedId;
+
+        for ($hop = 0; is_string($id) && $hop <= self::MAX_HOPS; $hop++) {
+            $id = $this->writeStoredValue($store, $id, $key, $value);
+        }
+    }
+
+    /**
+     * Write one value into a stored session, or return where a rotation moved it.
+     *
+     * @param SessionStoreInterface $store
+     * @param string $id
+     * @param string $key
+     * @param mixed $value
+     * @return string|null
+     */
+    protected function writeStoredValue(SessionStoreInterface $store, string $id, string $key, mixed $value): ?string
+    {
+        $write = function () use ($store, $id, $key, $value): ?string {
+            $record = $store->read($id);
+
+            if ($record === null) {
+                return null;
+            }
+
+            if (RotationPointer::isPointer($record['data'])) {
+                return $this->pointerTarget($record['data']);
+            }
+
+            $record['data'][$key] = $value;
+            $store->write($id, $record['data']);
+
+            return null;
+        };
+
+        return $store instanceof LockableSessionStore ? $store->synchronized($id, $write) : $write();
     }
 
     /**

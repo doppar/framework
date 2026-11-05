@@ -461,6 +461,105 @@ class LogoutOtherDevicesTest extends TestCase
         $this->assertTrue($this->isCurrentAndSignedIn($laptop));
     }
 
+    /**
+     * @return array<string, array{0: \Closure(): SessionStoreInterface}>
+     */
+    public static function serverSideStores(): array
+    {
+        return [
+            'database' => [fn (self $test) => $test->databaseStore()],
+            'array' => [fn () => new ArrayStore(7200)],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
+    public function test_a_parallel_request_of_this_device_does_not_sign_it_out(\Closure $store): void
+    {
+        $this->useStore($store($this));
+
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): bool {
+            $result = $auth->logoutOtherDevices(self::PASSWORD);
+
+            // Another request of the laptop runs before this one saves its session.
+            [, $signedIn] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): bool {
+                $signedIn = null;
+
+                (new AuthenticateSession())($request, function () use (&$signedIn): Response {
+                    $signedIn = app('auth')->check();
+
+                    return new Response();
+                });
+
+                return $signedIn;
+            });
+
+            $this->backTo($request);
+            $this->assertTrue($signedIn, 'The parallel request is still signed in.');
+
+            return $result;
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+        $this->assertFalse($this->isCurrentAndSignedIn($phone));
+    }
+
+    public function test_a_parallel_request_that_read_the_user_before_the_change_does_not_sign_this_device_out(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        // A request of the laptop has loaded its user, then this device signs the others out.
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): void {
+            $auth->user();
+
+            $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
+            $this->backTo($request);
+
+            $this->assertTrue($auth->isSessionCurrent(), 'It checks again against what is stored now.');
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_signing_others_out_through_another_actor_keeps_both_actors_signed_in(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): bool {
+            $admin = app('auth')->actor('admin');
+            $admin->login(DeviceUser::find(1));
+
+            return $admin->logoutOtherDevices(self::PASSWORD);
+        });
+
+        [, $both] = $this->onDevice($laptop, function (Authenticate $auth): array {
+            $admin = app('auth')->actor('admin');
+
+            return [$auth->isSessionCurrent() && $auth->check(), $admin->isSessionCurrent() && $admin->check()];
+        });
+
+        $this->assertSame([true, true], $both);
+    }
+
+    public function test_signing_out_a_session_from_before_fingerprints_keeps_its_other_data(): void
+    {
+        $this->useStore(new ArrayStore(7200));
+
+        $laptop = $this->signIn('Laptop');
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request): void {
+            $request->session()->forget('password_hash_web');
+            $request->session()->put('cart', [42]);
+        });
+
+        [$laptop, $current] = $this->onDevice($laptop, fn (Authenticate $auth) => $auth->isSessionCurrent());
+        [, $after] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request) => [$auth->check(), $request->session()->get('cart')]);
+
+        $this->assertFalse($current);
+        $this->assertSame([false, [42]], $after);
+    }
+
     public function test_a_model_that_only_overrides_get_auth_password_is_refused(): void
     {
         $pdo = Database::getPdoInstance(self::CONNECTION);
@@ -678,6 +777,16 @@ class LogoutOtherDevicesTest extends TestCase
         return [$sessionCookie, $result];
     }
 
+    /**
+     * Carry on with a request after another one ran in the middle of it.
+     */
+    private function backTo(Request $request): void
+    {
+        Container::getInstance()->instance('request', $request);
+        Container::getInstance()->instance('session', $request->session);
+        $_COOKIE = [];
+    }
+
     private function isSignedIn(?string $sessionCookie): bool
     {
         return $this->onDevice($sessionCookie, fn (Authenticate $auth) => $auth->check())[1];
@@ -704,7 +813,7 @@ class LogoutOtherDevicesTest extends TestCase
         return $result;
     }
 
-    private function databaseStore(): DatabaseStore
+    public function databaseStore(): DatabaseStore
     {
         return new DatabaseStore(
             static fn (): PDO => Database::getPdoInstance(self::CONNECTION),

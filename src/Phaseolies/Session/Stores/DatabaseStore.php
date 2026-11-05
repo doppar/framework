@@ -226,9 +226,11 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
             return;
         }
 
+        $metadata = $this->metadata();
+
         $this->attempt('touch', fn() => $this->execute(
-            "UPDATE {$this->table()} SET last_activity = ? WHERE id = ? AND last_activity < ?",
-            [$now, $id, $now - $threshold]
+            "UPDATE {$this->table()} SET last_activity = ?, ip_address = ?, user_agent = ? WHERE id = ? AND last_activity < ?",
+            [$now, $metadata['ip_address'], $metadata['user_agent'], $id, $now - $threshold]
         ));
 
         $this->remember($id, $now);
@@ -725,16 +727,13 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
      */
     protected function table(): string
     {
-        if ($this->quotedTable !== '') {
-            return $this->quotedTable;
+        if ($this->quotedTable === '') {
+            $quote = $this->driver() === 'mysql' ? '`' : '"';
+
+            $this->quotedTable = $quote . $this->table . $quote;
         }
 
-        $quote = $this->driver() === 'mysql' ? '`' : '"';
-
-        return $this->quotedTable = implode('.', array_map(
-            static fn(string $part): string => $quote . $part . $quote,
-            explode('.', $this->table)
-        ));
+        return $this->quotedTable;
     }
 
     /**

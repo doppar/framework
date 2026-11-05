@@ -463,29 +463,37 @@ class Authenticate
             ));
         }
 
-        $changes = [$passwordName => Hash::make($password)];
+        $hash = Hash::make($password);
+        $changes = [$passwordName => $hash];
+
+        $actors = $this->actorsSignedInAs($user);
 
         $tokenName = $user->getRememberTokenName();
 
         if (array_key_exists($tokenName, $user->getAttributes())) {
-            if ($this->hasValidRememberCookie($user)) {
-                $this->issueRememberToken($user);
-            } else {
-                $user->setRememberToken(null);
+            $remembered = array_values(array_filter(
+                $actors,
+                static fn (self $actor): bool => $actor->hasValidRememberCookie($user)
+            ));
 
-                if (cookie()->has($this->getRememberCookieName())) {
-                    $this->expireRememberCookie();
+            if ($remembered === []) {
+                $user->setRememberToken(null);
+            } else {
+                $token = $this->newRememberToken($user);
+
+                foreach ($remembered as $actor) {
+                    $actor->sendRememberCookie($user, $token);
                 }
+            }
+
+            if (!in_array($this, $remembered, true) && cookie()->has($this->getRememberCookieName())) {
+                $this->expireRememberCookie();
             }
 
             $changes[$tokenName] = $user->getRememberToken();
         }
 
-        $this->persistCredentials($user, $changes);
-
-        if (session()->has($this->getSessionKey())) {
-            session()->put($this->getPasswordFingerprintKey(), $this->passwordFingerprint($user));
-        }
+        $this->replaceCredentials($user, $changes, $actors, $this->fingerprintOf($hash));
 
         $store = $this->sessionStore();
         $id = $user->getAuthIdentifier();
@@ -518,7 +526,7 @@ class Authenticate
         $stored = session($this->getPasswordFingerprintKey());
 
         if (!is_string($stored)) {
-            $this->endSession(false);
+            $this->signOutKeepingSession();
 
             $user = $this->user();
 
@@ -539,9 +547,52 @@ class Authenticate
             return true;
         }
 
+        $current = $this->fingerprintStoredSince();
+
+        if ($current !== null) {
+            session()->put($this->getPasswordFingerprintKey(), $current);
+            $this->checkedFingerprint = $current;
+
+            return true;
+        }
+
         $this->endSession();
 
         return false;
+    }
+
+    /**
+     * The fingerprint this device's session holds now, when it matches the
+     * password in the database now.
+     *
+     * @return string|null
+     */
+    protected function fingerprintStoredSince(): ?string
+    {
+        $session = session();
+
+        if (!$session instanceof CommittableSession) {
+            return null;
+        }
+
+        return $session->exclusively(function () use ($session): ?string {
+            $stored = $session->storedValue($this->getPasswordFingerprintKey());
+            $user = $this->getModel()::find(session($this->getSessionKey()));
+
+            if (!is_string($stored) || !$user instanceof Authable) {
+                return null;
+            }
+
+            $fingerprint = $this->passwordFingerprint($user);
+
+            if (!hash_equals($fingerprint, $stored)) {
+                return null;
+            }
+
+            $this->resolvedUser = $user;
+
+            return $fingerprint;
+        });
     }
 
     /**
@@ -625,6 +676,94 @@ class Authenticate
     }
 
     /**
+     * Save the new credentials, and the new fingerprint of every actor
+     *
+     * @param Authable $user
+     * @param array<string, mixed> $changes
+     * @param array<int, self> $actors
+     * @param string $fingerprint
+     * @return void
+     */
+    protected function replaceCredentials(Authable $user, array $changes, array $actors, string $fingerprint): void
+    {
+        $session = session();
+
+        $put = static function (string $key, mixed $value) use ($session): void {
+            $session instanceof CommittableSession ? $session->putThrough($key, $value) : $session->put($key, $value);
+        };
+
+        $replace = function () use ($user, $changes, $actors, $fingerprint, $put): void {
+            $previous = [];
+
+            foreach ($actors as $actor) {
+                if (session()->has($actor->getSessionKey())) {
+                    $key = $actor->getPasswordFingerprintKey();
+                    $previous[$key] = session($key);
+                    $put($key, $fingerprint);
+                }
+            }
+
+            try {
+                $this->persistCredentials($user, $changes);
+            } catch (\Throwable $e) {
+                foreach ($previous as $key => $value) {
+                    $put($key, $value);
+                }
+
+                throw $e;
+            }
+        };
+
+        $session instanceof CommittableSession ? $session->exclusively($replace) : $replace();
+    }
+
+    /**
+     * The actors this device is signed in to as the user, this one first.
+     *
+     * @param Authable $user
+     * @return array<int, self>
+     */
+    protected function actorsSignedInAs(Authable $user): array
+    {
+        $actors = [$this];
+        $id = (string) $user->getAuthIdentifier();
+
+        foreach (array_keys((array) config('auth.actors', [])) as $name) {
+            if ($name === $this->actorName) {
+                continue;
+            }
+
+            $actor = app('auth')->actor($name);
+
+            if (
+                $actor instanceof self
+                && (string) session($actor->getSessionKey()) === $id
+                && $actor->getModel()->getTable() === $user->getTable()
+            ) {
+                $actors[] = $actor;
+            }
+        }
+
+        return $actors;
+    }
+
+    /**
+     * Sign this actor out without ending the session, keeping its other data.
+     *
+     * @return void
+     */
+    protected function signOutKeepingSession(): void
+    {
+        $this->resolvedUser = null;
+        $this->checkedFingerprint = null;
+
+        session()->forget($this->getSessionKey());
+        session()->forget($this->getViaRememberKey());
+        session()->forget($this->getPasswordFingerprintKey());
+        session()->regenerate();
+    }
+
+    /**
      * Write credential columns straight to the user's row.
      *
      * @param Authable $user
@@ -652,7 +791,18 @@ class Authenticate
      */
     protected function passwordFingerprint(Authable $user): string
     {
-        return hash_hmac('sha256', (string) $user->getAuthPassword(), (string) config('app.key', ''));
+        return $this->fingerprintOf($user->getAuthPassword());
+    }
+
+    /**
+     * A fingerprint of a password hash, safe to keep in the session.
+     *
+     * @param string|null $hash
+     * @return string
+     */
+    protected function fingerprintOf(?string $hash): string
+    {
+        return hash_hmac('sha256', (string) $hash, (string) config('app.key', ''));
     }
 
     /**

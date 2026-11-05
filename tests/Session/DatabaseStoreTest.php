@@ -193,6 +193,31 @@ class DatabaseStoreTest extends TestCase
         $this->assertNull($this->store()->read($corrupt));
     }
 
+    public function test_touch_records_the_client_again(): void
+    {
+        $client = ['ip_address' => '203.0.113.1', 'user_agent' => 'Laptop'];
+        $store = $this->store(client: function () use (&$client): array {
+            return $client;
+        });
+
+        $store->write($id = $this->id(), ['x' => 1]);
+        $this->setActivity($id, time() - 3600);
+
+        $client = ['ip_address' => '198.51.100.7', 'user_agent' => 'Laptop on another network'];
+        $this->store(client: fn (): array => $client)->touch($id);
+
+        $this->assertSame('198.51.100.7', $this->row($id)['ip_address']);
+        $this->assertSame('Laptop on another network', $this->row($id)['user_agent']);
+    }
+
+    public function test_last_activity_holds_times_after_2038(): void
+    {
+        $this->store()->write($id = $this->id(), ['x' => 1]);
+        $this->setActivity($id, 4102444800); // 2100-01-01
+
+        $this->assertSame(4102444800, (int) $this->row($id)['last_activity']);
+    }
+
     public function test_touch_refreshes_a_stale_session_and_skips_a_fresh_one(): void
     {
         $store = $this->store(lifetime: 7200);

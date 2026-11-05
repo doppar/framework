@@ -109,6 +109,8 @@ namespace Tests\Unit\Auth {
 
     use Phaseolies\Auth\Authable;
     use Phaseolies\Auth\Security\Authenticate;
+    use Phaseolies\DI\Container;
+    use Tests\Support\MockContainer;
     use PHPUnit\Framework\TestCase;
 
     class FakeAuthableModel extends Authable
@@ -160,6 +162,8 @@ namespace Tests\Unit\Auth {
         protected function tearDown(): void
         {
             $GLOBALS['authenticateStubsActive'] = false;
+
+            (new \ReflectionClass(Container::class))->getProperty('instance')->setValue(null, null);
         }
 
         protected function setUp(): void
@@ -167,6 +171,9 @@ namespace Tests\Unit\Auth {
             global $authenticateSessionStore;
 
             $GLOBALS['authenticateStubsActive'] = true;
+
+            // Logins fingerprint the password with the app key, read through config().
+            Container::setInstance(new MockContainer());
 
             $authenticateSessionStore = new \Phaseolies\Auth\Security\TestSessionStore();
             FakeAuthableModel::$resolvedUser = null;
