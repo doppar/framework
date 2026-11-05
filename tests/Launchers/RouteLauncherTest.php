@@ -30,6 +30,13 @@ class RouteLauncherTest extends TestCase
             'root' => ['/', null],
             'root with query' => ['/?next=/', null],
             'only slashes' => ['//', null],
+            'tab before a host' => ["/\t/evil.com/", null],
+            'newline before a host' => ["/\n/evil.com/", null],
+            'carriage return before a host' => ["/\r/evil.com/", null],
+            'tab between leading slashes' => ["/\t\t//evil.com/foo/", null],
+            'control character in the query' => ["/users/?next=\t/", null],
+            'delete character' => ["/\x7F/evil.com/", null],
+            'encoded tab is not a control character' => ['/%09/evil.com/', '/%09/evil.com'],
         ];
     }
 

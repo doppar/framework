@@ -26,12 +26,18 @@ class RouteLauncher extends ServiceLauncher
      *
      * The URI comes from the client. Browsers treat a Location that starts with
      * "//" or "/\" as another host, so it must start with exactly one slash.
+     * They also drop tabs and newlines, so "/<tab>/host" would become "//host":
+     * a URI with control characters is never redirected.
      *
      * @param string $uri
      * @return string|null
      */
     protected function trailingSlashRedirect(string $uri): ?string
     {
+        if (preg_match('/[\x00-\x1F\x7F]/', $uri) === 1) {
+            return null;
+        }
+
         [$path, $query] = array_pad(explode('?', $uri, 2), 2, null);
 
         $target = '/' . ltrim(rtrim($path, '/'), '/\\');
