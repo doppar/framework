@@ -516,7 +516,31 @@ class ResponseTest extends TestCase
     {
         $existing = new Response('body', 201);
 
-        $this->assertSame($existing, (new \Phaseolies\Http\ResponseFactory())->make($existing));
+        $made = (new \Phaseolies\Http\ResponseFactory())->make($existing);
+
+        // The default status (200) does not overwrite the response's own status
+        $this->assertSame($existing, $made);
+        $this->assertSame(201, $made->getStatusCode());
+    }
+
+    public function testResponseFactoryMakeAppliesStatusAndHeadersToExistingResponse()
+    {
+        $existing = new Response('maintenance');
+
+        $made = (new \Phaseolies\Http\ResponseFactory())->make($existing, 503, ['Retry-After' => '10']);
+
+        $this->assertSame($existing, $made);
+        $this->assertSame(503, $made->getStatusCode());
+        $this->assertSame('10', $made->headers->get('Retry-After'));
+        $this->assertStringContainsString('503 Service Unavailable', (string) $made);
+    }
+
+    public function testResponseHelperAppliesStatusAndHeadersToExistingResponse()
+    {
+        $made = response(new Response('maintenance'), 503, ['Retry-After' => '10']);
+
+        $this->assertSame(503, $made->getStatusCode());
+        $this->assertSame('10', $made->headers->get('Retry-After'));
     }
 
     public function testResponseFactoryTextDoesNotShareState()

@@ -22,7 +22,11 @@ class ResponseFactory extends Response
     public function make($content = '', $status = 200, array $headers = []): Response
     {
         if ($content instanceof Response) {
-            return $content;
+            if ((int) $status !== 200) {
+                $content->setStatusCode((int) $status);
+            }
+
+            return $content->withHeaders($headers);
         }
 
         if (static::shouldBeJson($content)) {

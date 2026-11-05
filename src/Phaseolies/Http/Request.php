@@ -226,7 +226,10 @@ class Request
      */
     protected function parseRequestBody(): array
     {
-        $request = $this->request->all() + $this->query->all();
+        $query = $this->query->all();
+        unset($query['_method']);
+
+        $request = $this->request->all() + $query;
 
         $contentType = (string) $this->server->get("CONTENT_TYPE", "");
         $requestMethod = $this->getRealMethod();
@@ -273,10 +276,6 @@ class Request
 
     /**
      * Parses a raw multipart/form-data request body into an associative array.
-     *
-     * This method extracts the boundary from the Content-Type header, splits the body
-     * into individual parts, parses each part's headers, and collects the form field
-     * values.
      *
      * @param string $rawContent
      * @return array

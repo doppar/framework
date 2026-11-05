@@ -1760,6 +1760,42 @@ class AllRequestInputTest extends TestCase
         $this->assertNull($request->getMalformedRequestError());
     }
 
+    public function testQueryStringMethodOverrideIsIgnoredOnPostRequests()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = ['_method' => 'DELETE', 'page' => '2'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertNull($request->getMalformedRequestError());
+        // Other query parameters are still merged into the input
+        $this->assertSame('2', $request->input('page'));
+        $this->assertArrayNotHasKey('_method', $request->all());
+        // The raw query string value remains readable from the query bag
+        $this->assertSame('DELETE', $request->query->get('_method'));
+    }
+
+    public function testInvalidQueryStringMethodOverrideIsNotABadRequest()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = ['_method' => 'garbage'];
+
+        $request = Request::createFromGlobals();
+
+        $this->assertSame('POST', $request->getMethod());
+        $this->assertNull($request->getMalformedRequestError());
+    }
+
+    public function testBodyMethodOverrideWinsOverQueryString()
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = ['_method' => 'DELETE'];
+        $_POST = ['_method' => 'PUT'];
+
+        $this->assertSame('PUT', Request::createFromGlobals()->getMethod());
+    }
+
     public function testOverrideHeaderIsIgnoredOnNonPostRequests()
     {
         foreach (['GET', 'PUT', 'DELETE', 'PATCH'] as $realMethod) {
