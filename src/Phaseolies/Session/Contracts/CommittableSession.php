@@ -53,6 +53,13 @@ interface CommittableSession
     public function isLoaded(): bool;
 
     /**
+     * The id the session is stored under right now, if it is stored
+     *
+     * @return string|null
+     */
+    public function storedId(): ?string;
+
+    /**
      * Run the housekeeping that must not delay the response
      *
      * @return void

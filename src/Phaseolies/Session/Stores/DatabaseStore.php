@@ -9,6 +9,7 @@ use PDOStatement;
 use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Contracts\UserSessionStore;
 use Phaseolies\Session\Exceptions\SessionException;
+use Phaseolies\Session\RotationPointer;
 
 class DatabaseStore implements LockableSessionStore, UserSessionStore
 {
@@ -31,6 +32,11 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
      * Namespace of the PostgreSQL advisory locks taken for sessions.
      */
     protected const PGSQL_LOCK_NAMESPACE = 'doppar_session';
+
+    /**
+     * Most rotation pointers followed from one session, which only matters for a loop.
+     */
+    protected const MAX_HOPS = 3;
 
     /**
      * The connection prepared statements belong to.
@@ -95,9 +101,20 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
         protected ?Closure $metadataResolver = null,
         protected float $lockTimeout = 2.0
     ) {
-        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?\z/', $table) !== 1) {
+        if (!self::isValidTableName($table)) {
             throw new SessionException("Invalid session table name [{$table}].");
         }
+    }
+
+    /**
+     * Whether a session table name is a plain identifier the store and the migration quote the same way.
+     *
+     * @param string $table
+     * @return bool
+     */
+    public static function isValidTableName(string $table): bool
+    {
+        return preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $table) === 1;
     }
 
     /**
@@ -331,14 +348,14 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
     }
 
     /**
-     * End every session of a user, except the one given
+     * End every session of a user, except the ones given and what they were rotated into
      *
      * @param int|string $userId
-     * @param string|null $exceptId
+     * @param array<int, string> $keep
      * @return int
      * @throws SessionException
      */
-    public function destroyUserSessions(int|string $userId, ?string $exceptId = null): int
+    public function destroyUserSessions(int|string $userId, array $keep = []): int
     {
         $ids = $this->attempt('destroy', function () use ($userId): array {
             $statement = $this->execute("SELECT id FROM {$this->table()} WHERE user_id = ?", [$userId]);
@@ -349,19 +366,69 @@ class DatabaseStore implements LockableSessionStore, UserSessionStore
             return $ids;
         });
 
+        $keep = $this->lineage($keep);
+
         $ended = 0;
 
-        // One by one, each under its own lock: a single bulk DELETE could race
-        // with a request of that device that is saving its session right now,
-        // which would write the session back after it was deleted.
         foreach ($ids as $id) {
-            if ($id !== $exceptId) {
-                $this->destroy((string) $id);
+            $id = (string) $id;
+
+            if (!isset($keep[$id])) {
+                $this->destroyFollowing($id, $keep);
                 $ended++;
             }
         }
 
         return $ended;
+    }
+
+    /**
+     * The given sessions and every session their rotation pointers lead to.
+     *
+     * @param array<int, string> $ids
+     * @return array<string, true>
+     */
+    protected function lineage(array $ids): array
+    {
+        $lineage = [];
+
+        foreach ($ids as $id) {
+            for ($hop = 0; is_string($id) && FileStore::isValidId($id) && !isset($lineage[$id]) && $hop <= self::MAX_HOPS; $hop++) {
+                $lineage[$id] = true;
+
+                $record = $this->read($id);
+
+                $id = $record === null ? null : RotationPointer::target($record['data'], false);
+            }
+        }
+
+        return $lineage;
+    }
+
+    /**
+     * End a session and the sessions a rotation made of it, stopping at a kept one.
+     *
+     * @param string $id
+     * @param array<string, true> $keep
+     * @return void
+     */
+    protected function destroyFollowing(string $id, array $keep): void
+    {
+        for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
+            $next = $this->synchronized($id, function () use ($id): ?string {
+                $record = $this->read($id);
+
+                $this->destroy($id);
+
+                return $record === null ? null : RotationPointer::target($record['data'], false);
+            });
+
+            if (!is_string($next) || isset($keep[$next])) {
+                return;
+            }
+
+            $id = $next;
+        }
     }
 
     /**

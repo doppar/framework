@@ -13,7 +13,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('{{ table }}', function (Blueprint $table) {
+        {{ schema }}create('{{ table }}', function (Blueprint $table) {
             $table->string('id', 128)->primary();
             // For UUID or ULID user keys, use: $table->string('user_id', 36)->nullable()->index();
             $table->unsignedBigInteger('user_id')->nullable()->index();
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('{{ table }}');
+        {{ schema }}dropIfExists('{{ table }}');
     }
 };

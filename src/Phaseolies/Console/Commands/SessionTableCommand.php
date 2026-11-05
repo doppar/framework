@@ -4,6 +4,7 @@ namespace Phaseolies\Console\Commands;
 
 use Phaseolies\Console\Schedule\Command;
 use Phaseolies\Session\SessionManager;
+use Phaseolies\Session\Stores\DatabaseStore;
 
 class SessionTableCommand extends Command
 {
@@ -29,16 +30,18 @@ class SessionTableCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function (): int {
-            $table = (string) SessionManager::config()['table'];
+            $config = SessionManager::config();
+            $table = (string) $config['table'];
+            $connection = is_string($config['connection']) && $config['connection'] !== '' ? $config['connection'] : null;
 
-            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?\z/', $table) !== 1) {
+            if (!DatabaseStore::isValidTableName($table)) {
                 $this->displayError("Invalid session table name [{$table}].");
 
                 return Command::FAILURE;
             }
 
             $directory = $this->migrationPath();
-            $name = 'create_' . str_replace('.', '_', $table) . '_table';
+            $name = 'create_' . $table . '_table';
 
             if ($existing = $this->existingMigration($directory, $name)) {
                 $this->displayError('A migration for the session table already exists.');
@@ -56,13 +59,34 @@ class SessionTableCommand extends Command
             $file = $directory . '/' . date('Y_m_d_His') . '_' . $name . '.php';
             $stub = (string) file_get_contents(__DIR__ . '/stubs/session/create_sessions_table.stub');
 
-            file_put_contents($file, str_replace('{{ table }}', $table, $stub));
+            file_put_contents($file, str_replace(
+                ['{{ schema }}', '{{ table }}'],
+                [$this->schemaAccessor($connection), $table],
+                $stub
+            ));
 
             $this->displaySuccess('Session table migration created successfully.');
             $this->line("<fg=yellow>📁 File:</> <fg=white>{$file}</>");
 
+            if ($connection !== null && $connection !== config('database.default')) {
+                $this->line("<fg=yellow>ℹ Run it on the session connection:</> <fg=white>php pool migrate --connection={$connection}</>");
+            }
+
             return Command::SUCCESS;
         });
+    }
+
+    /**
+     * The schema call that targets the connection the sessions are stored on.
+     *
+     * @param string|null $connection
+     * @return string
+     */
+    protected function schemaAccessor(?string $connection): string
+    {
+        return $connection === null
+            ? 'Schema::'
+            : 'Schema::connection(' . var_export($connection, true) . ')->';
     }
 
     /**

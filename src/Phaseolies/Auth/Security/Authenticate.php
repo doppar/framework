@@ -5,6 +5,7 @@ namespace Phaseolies\Auth\Security;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Auth\Authable;
+use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
 use Phaseolies\Session\Contracts\UserSessionStore;
 use Phaseolies\Session\SessionManager;
@@ -45,6 +46,13 @@ class Authenticate
      * @var Authable|null
      */
     private ?Authable $resolvedUser = null;
+
+    /**
+     * Fingerprint of the signed-in user's password when isSessionCurrent() checked it
+     *
+     * @var string|null
+     */
+    private ?string $checkedFingerprint = null;
 
     /**
      * Create a new actor instance.
@@ -295,38 +303,10 @@ class Authenticate
         }
 
         if (cookie()->has($this->getRememberCookieName())) {
-            try {
-                /**
-                 * @var string
-                 */
-                $rememberToken = Crypt::decrypt(cookie()->get($this->getRememberCookieName()));
-            } catch (\Exception $e) {
-                $this->expireRememberCookie();
-                return null;
-            }
+            $remembered = $this->readRememberCookie();
+            $user = $remembered === null ? null : $authModel::find($remembered[0]);
 
-            $segments = explode('|', $rememberToken);
-
-            if (count($segments) !== 3) {
-                $this->expireRememberCookie();
-                return null;
-            }
-
-            [$id, $token, $hash] = $segments;
-
-            if (!Hash::check($id . $token, $hash)) {
-                $this->expireRememberCookie();
-                return null;
-            }
-
-            $user = $authModel::find($id);
-
-            if (!$user || !$user->getRememberToken()) {
-                $this->expireRememberCookie();
-                return null;
-            }
-
-            if (Hash::check($token, $user->getRememberToken())) {
+            if ($user && $this->rememberTokenMatches($user, $remembered[1])) {
                 if ($this->hasTwoFactorEnabled($user)) {
                     session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
                     session()->put($this->getTwoFactorRememberKey(), true);
@@ -337,13 +317,69 @@ class Authenticate
                 return $this->resolvedUser = $user;
             }
 
-            // Token didn't match - possible theft attempt
             $this->expireRememberCookie();
-            $user->setRememberToken(null);
-            $user->save();
         }
 
         return null;
+    }
+
+    /**
+     * Read this device's remember cookie.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    protected function readRememberCookie(): ?array
+    {
+        $value = cookie()->get($this->getRememberCookieName());
+
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+
+        try {
+            $plain = Crypt::decrypt($value);
+        } catch (\Exception) {
+            return null;
+        }
+
+        $segments = is_string($plain) ? explode('|', $plain) : [];
+
+        if (count($segments) !== 3) {
+            return null;
+        }
+
+        [$id, $token, $hash] = $segments;
+
+        return Hash::check($id . $token, $hash) ? [$id, $token] : null;
+    }
+
+    /**
+     * Whether a remember token is the one the user currently holds.
+     *
+     * @param Authable $user
+     * @param string $token
+     * @return bool
+     */
+    protected function rememberTokenMatches(Authable $user, string $token): bool
+    {
+        $stored = $user->getRememberToken();
+
+        return is_string($stored) && $stored !== '' && Hash::check($token, $stored);
+    }
+
+    /**
+     * Whether this device's remember cookie is valid for the user.
+     *
+     * @param Authable $user
+     * @return bool
+     */
+    protected function hasValidRememberCookie(Authable $user): bool
+    {
+        $remembered = $this->readRememberCookie();
+
+        return $remembered !== null
+            && $remembered[0] === (string) $user->getAuthIdentifier()
+            && $this->rememberTokenMatches($user, $remembered[1]);
     }
 
     /**
@@ -377,12 +413,14 @@ class Authenticate
     /**
      * Sign this device out, leaving the user's other devices alone.
      *
+     * @param bool $expireRememberCookie
      * @return void
      */
-    protected function endSession(): void
+    protected function endSession(bool $expireRememberCookie = true): void
     {
         $this->resolvedUser  = null;
         $this->statelessUser = null;
+        $this->checkedFingerprint = null;
 
         session()->forget($this->getSessionKey());
         session()->forget($this->getViaRememberKey());
@@ -395,7 +433,7 @@ class Authenticate
             session()->regenerateToken();
         }
 
-        if (cookie()->has($this->getRememberCookieName())) {
+        if ($expireRememberCookie && cookie()->has($this->getRememberCookieName())) {
             $this->expireRememberCookie();
         }
     }
@@ -405,6 +443,7 @@ class Authenticate
      *
      * @param string $password
      * @return bool
+     * @throws \LogicException
      */
     public function logoutOtherDevices(string $password): bool
     {
@@ -414,15 +453,29 @@ class Authenticate
             return false;
         }
 
-        $changes = [$user->getAuthPasswordName() => Hash::make($password)];
+        $passwordName = $user->getAuthPasswordName();
+
+        if ($user->{$passwordName} !== $user->getAuthPassword()) {
+            throw new \LogicException(sprintf(
+                '%s overrides getAuthPassword() but not getAuthPasswordName(), which still names [%s]. Override getAuthPasswordName() to return the password attribute.',
+                $user::class,
+                $passwordName
+            ));
+        }
+
+        $changes = [$passwordName => Hash::make($password)];
 
         $tokenName = $user->getRememberTokenName();
 
         if (array_key_exists($tokenName, $user->getAttributes())) {
-            if (cookie()->has($this->getRememberCookieName())) {
+            if ($this->hasValidRememberCookie($user)) {
                 $this->issueRememberToken($user);
             } else {
                 $user->setRememberToken(null);
+
+                if (cookie()->has($this->getRememberCookieName())) {
+                    $this->expireRememberCookie();
+                }
             }
 
             $changes[$tokenName] = $user->getRememberToken();
@@ -430,14 +483,16 @@ class Authenticate
 
         $this->persistCredentials($user, $changes);
 
-        $this->refreshSessionFingerprint();
+        if (session()->has($this->getSessionKey())) {
+            session()->put($this->getPasswordFingerprintKey(), $this->passwordFingerprint($user));
+        }
 
         $store = $this->sessionStore();
         $id = $user->getAuthIdentifier();
 
         if ($id !== null && $this->tracksUsersIn($store)) {
             /** @var UserSessionStore $store */
-            $store->destroyUserSessions($id, session()->getId());
+            $store->destroyUserSessions($id, $this->currentSessionIds());
         }
 
         return true;
@@ -463,12 +518,24 @@ class Authenticate
         $stored = session($this->getPasswordFingerprintKey());
 
         if (!is_string($stored)) {
-            $this->refreshSessionFingerprint();
+            $this->endSession(false);
+
+            $user = $this->user();
+
+            if ($user === null) {
+                return false;
+            }
+
+            $this->checkedFingerprint = $this->passwordFingerprint($user);
 
             return true;
         }
 
-        if (hash_equals($this->passwordFingerprint($user), $stored)) {
+        $fingerprint = $this->passwordFingerprint($user);
+
+        if (hash_equals($fingerprint, $stored)) {
+            $this->checkedFingerprint = $fingerprint;
+
             return true;
         }
 
@@ -478,15 +545,32 @@ class Authenticate
     }
 
     /**
-     * Record the current password of the signed-in user in this device's session.
+     * Record the user's current password in this device's session, after this request changed it.
      *
+     * @param bool $reload
      * @return void
      */
-    public function refreshSessionFingerprint(): void
+    public function refreshSessionFingerprint(bool $reload = true): void
     {
-        $user = $this->resolvedUser;
+        if (!session()->has($this->getSessionKey())) {
+            return;
+        }
 
-        if ($user === null || !session()->has($this->getSessionKey())) {
+        if ($reload) {
+            $user = $this->getModel()::find(session($this->getSessionKey()));
+        } else {
+            $user = $this->resolvedUser;
+
+            if ($user === null || $this->checkedFingerprint === null || !is_string(session($this->getPasswordFingerprintKey()))) {
+                return;
+            }
+
+            if (hash_equals($this->checkedFingerprint, $this->passwordFingerprint($user))) {
+                return;
+            }
+        }
+
+        if (!$user instanceof Authable) {
             return;
         }
 
@@ -512,15 +596,32 @@ class Authenticate
             return [];
         }
 
-        $current = session()->getId();
+        $current = $this->currentSessionIds();
 
         /** @var UserSessionStore $store */
         return array_map(static fn (array $session): array => [
             'ip_address' => $session['ip_address'],
             'user_agent' => $session['user_agent'],
             'last_activity' => $session['last_activity'],
-            'is_current' => hash_equals($session['id'], $current),
+            'is_current' => in_array($session['id'], $current, true),
         ], $store->userSessions($id));
+    }
+
+    /**
+     * The ids this device's session goes by
+     *
+     * @return array<int, string>
+     */
+    protected function currentSessionIds(): array
+    {
+        $session = session();
+        $ids = [$session->getId()];
+
+        if ($session instanceof CommittableSession && ($stored = $session->storedId()) !== null) {
+            $ids[] = $stored;
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

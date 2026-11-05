@@ -69,6 +69,43 @@ class SessionTableCommandTest extends TestCase
         $this->assertCount(1, glob($this->dir . '/*.php'));
     }
 
+    public function test_it_creates_the_table_on_the_configured_session_connection(): void
+    {
+        Config::set('database.default', 'mysql');
+        Config::set('session.connection', 'sessions_db');
+
+        $tester = $this->run_();
+        $migration = (string) file_get_contents(glob($this->dir . '/*_create_sessions_table.php')[0]);
+
+        $this->assertStringContainsString("Schema::connection('sessions_db')->create('sessions'", $migration);
+        $this->assertStringContainsString("Schema::connection('sessions_db')->dropIfExists('sessions')", $migration);
+        $this->assertStringNotContainsString('{{ schema }}', $migration);
+        $this->assertStringContainsString('migrate --connection=sessions_db', $tester->getDisplay());
+
+        // The pattern the migrator assigns a migration to its connection by.
+        $this->assertMatchesRegularExpression("/Schema::connection\(\s*['\"]sessions_db['\"]\s*\)/i", $migration);
+    }
+
+    public function test_it_uses_the_default_connection_when_none_is_configured(): void
+    {
+        $this->run_();
+
+        $migration = (string) file_get_contents(glob($this->dir . '/*_create_sessions_table.php')[0]);
+
+        $this->assertStringContainsString("Schema::create('sessions'", $migration);
+        $this->assertStringNotContainsString('Schema::connection', $migration);
+    }
+
+    public function test_it_rejects_a_schema_qualified_table_name(): void
+    {
+        Config::set('session.table', 'app.sessions');
+
+        $tester = $this->run_();
+
+        $this->assertSame(1, $tester->getStatusCode());
+        $this->assertSame([], glob($this->dir . '/*.php') ?: []);
+    }
+
     public function test_it_rejects_an_unsafe_table_name(): void
     {
         Config::set('session.table', 'sessions; DROP TABLE users');

@@ -27,8 +27,7 @@ class AuthenticateSession implements Middleware
 
         $response = $next($request);
 
-        // Keep this device signed in when this request changed the password.
-        $auth->refreshSessionFingerprint();
+        $auth->refreshSessionFingerprint(false);
 
         return $response;
     }

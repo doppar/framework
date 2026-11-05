@@ -18,6 +18,7 @@ use Phaseolies\Http\Response;
 use Phaseolies\Http\ServerBag;
 use Phaseolies\Middleware\AuthenticateSession;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
+use Phaseolies\Session\RotationPointer;
 use Phaseolies\Session\SessionManager;
 use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Session\Stores\DatabaseStore;
@@ -70,6 +71,21 @@ class LockedDownUser extends Authable
     protected $timeStamps = false;
 
     protected $creatable = ['email'];
+}
+
+/**
+ * A model that reads its password from another column, but only overrides getAuthPassword().
+ */
+class RenamedPasswordUser extends Authable
+{
+    protected $table = 'users';
+
+    protected $timeStamps = false;
+
+    public function getAuthPassword(): ?string
+    {
+        return $this->passwd;
+    }
 }
 
 /**
@@ -266,17 +282,217 @@ class LogoutOtherDevicesTest extends TestCase
         $this->assertFalse($this->isCurrentAndSignedIn($phone));
     }
 
-    public function test_a_session_from_before_fingerprints_is_accepted_and_fingerprinted(): void
+    public function test_a_session_from_before_fingerprints_does_not_survive_signing_others_out(): void
     {
+        $this->useStore(new ArrayStore(7200));
+
         $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+        $this->onDevice($phone, fn (Authenticate $auth, Request $request) => $request->session()->forget('password_hash_web'));
 
-        $this->onDevice($laptop, fn (Authenticate $auth, Request $request) => $request->session()->forget('password_hash_web'));
+        $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
 
-        [, $current] = $this->onDevice($laptop, fn (Authenticate $auth) => $auth->isSessionCurrent());
-        [, $fingerprinted] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request) => $request->session()->has('password_hash_web'));
+        [, $current] = $this->onDevice($phone, fn (Authenticate $auth) => $auth->isSessionCurrent());
+
+        $this->assertFalse($current);
+        $this->assertFalse($this->isSignedIn($phone));
+    }
+
+    public function test_a_session_from_before_fingerprints_with_a_valid_remember_cookie_signs_back_in(): void
+    {
+        $this->useStore(new ArrayStore(7200));
+
+        [$laptop, $remember] = $this->signInRemembered('Laptop');
+        $this->onDevice($laptop, fn (Authenticate $auth, Request $request) => $request->session()->forget('password_hash_web'), $remember);
+
+        [$laptop, $current] = $this->onDevice($laptop, fn (Authenticate $auth) => $auth->isSessionCurrent(), $remember);
+        [, $fingerprinted] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request) => $request->session()->has('password_hash_web'), $remember);
 
         $this->assertTrue($current);
         $this->assertTrue($fingerprinted);
+        $this->assertNotNull($this->storedRememberToken(), 'The remember token was left alone.');
+    }
+
+    public function test_a_session_from_before_fingerprints_with_a_replaced_remember_cookie_is_signed_out(): void
+    {
+        $this->useStore(new ArrayStore(7200));
+
+        $laptop = $this->signIn('Laptop');
+        [$phone, $phoneRemember] = $this->signInRemembered('Phone');
+        $this->onDevice($phone, fn (Authenticate $auth, Request $request) => $request->session()->forget('password_hash_web'), $phoneRemember);
+
+        $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
+
+        [, $current] = $this->onDevice($phone, fn (Authenticate $auth) => $auth->isSessionCurrent() && $auth->check(), $phoneRemember);
+
+        $this->assertFalse($current);
+    }
+
+    public function test_a_stale_remember_cookie_does_not_sign_out_the_device_holding_the_current_one(): void
+    {
+        // One token per user: the laptop, remembered last, holds the current one.
+        [, $phoneRemember] = $this->signInRemembered('Phone');
+        [$laptop, $laptopRemember] = $this->signInRemembered('Laptop');
+
+        $issued = [];
+        $this->onDevice($laptop, function (Authenticate $auth) use (&$issued): bool {
+            return $this->capturingCookies($issued, fn () => $auth->logoutOtherDevices(self::PASSWORD));
+        }, $laptopRemember);
+
+        // The phone comes back with its old remember cookie.
+        [, $phoneSignedIn] = $this->onDevice(null, fn (Authenticate $auth) => $auth->check(), $phoneRemember);
+
+        $this->assertFalse($phoneSignedIn);
+        $this->assertNotNull($this->storedRememberToken(), 'The current remember token survives.');
+
+        [, $laptopSignedIn] = $this->onDevice(null, fn (Authenticate $auth) => $auth->check(), $issued);
+
+        $this->assertTrue($laptopSignedIn, "The laptop's new remember cookie still works.");
+    }
+
+    public function test_signing_others_out_right_after_regenerating_the_session_keeps_this_device(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): bool {
+            $request->session()->regenerate();
+
+            return $auth->logoutOtherDevices(self::PASSWORD);
+        });
+
+        $this->assertTrue($this->isSignedIn($laptop));
+        $this->assertFalse($this->isSignedIn($phone));
+        $this->assertSame(1, $this->sessionRows());
+    }
+
+    public function test_signing_others_out_right_after_signing_in_again_keeps_this_device(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): bool {
+            $auth->login(DeviceUser::find(1));
+
+            return $auth->logoutOtherDevices(self::PASSWORD);
+        });
+
+        $this->assertTrue($this->isSignedIn($laptop));
+        $this->assertFalse($this->isSignedIn($phone));
+    }
+
+    public function test_signing_others_out_keeps_this_device_when_a_concurrent_request_rotated_its_id(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+        $rotated = bin2hex(random_bytes(20));
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop, $rotated): bool {
+            $auth->user();
+
+            // Another request of the laptop rotates its id meanwhile and hands
+            // the browser a cookie for the new one.
+            $this->store->write($rotated, $this->store->read($laptop)['data']);
+            $this->store->write($laptop, RotationPointer::make($rotated, time() + 60));
+
+            return $auth->logoutOtherDevices(self::PASSWORD);
+        });
+
+        $this->assertTrue($this->isSignedIn($rotated));
+        $this->assertFalse($this->isSignedIn($phone));
+    }
+
+    public function test_sessions_marks_this_device_as_current_after_regenerating(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $this->signIn('Phone');
+
+        [, $sessions] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): array {
+            $request->session()->regenerate();
+
+            return $auth->sessions();
+        });
+
+        $this->assertSame(['Laptop'], array_column(array_filter($sessions, fn (array $s) => $s['is_current']), 'user_agent'));
+    }
+
+    public function test_a_password_changed_with_a_query_keeps_this_device_after_refreshing_the_fingerprint(): void
+    {
+        $this->useStore(new ArrayStore(7200));
+
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request): void {
+            (new AuthenticateSession())($request, function (): Response {
+                DeviceUser::where('id', 1)->update(['password' => password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4])]);
+                app('auth')->refreshSessionFingerprint();
+
+                return new Response();
+            });
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+        $this->assertFalse($this->isCurrentAndSignedIn($phone));
+    }
+
+    public function test_the_middleware_does_not_adopt_a_password_another_device_changed_meanwhile(): void
+    {
+        $this->useStore(new ArrayStore(7200));
+
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        // A request of the phone is running while the laptop signs it out.
+        $this->onDevice($phone, function (Authenticate $auth, Request $request) use ($laptop): void {
+            (new AuthenticateSession())($request, function () use ($laptop, $request): Response {
+                $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
+
+                // Back to the phone's request.
+                Container::getInstance()->instance('request', $request);
+                Container::getInstance()->instance('session', $request->session);
+                $_COOKIE = [];
+
+                return new Response();
+            });
+        });
+
+        $this->assertFalse($this->isCurrentAndSignedIn($phone));
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_a_model_that_only_overrides_get_auth_password_is_refused(): void
+    {
+        $pdo = Database::getPdoInstance(self::CONNECTION);
+        $pdo->exec('ALTER TABLE users ADD COLUMN passwd TEXT');
+        $pdo->exec("UPDATE users SET passwd = password, password = 'not the password'");
+        Config::set('auth.actors.web.model', RenamedPasswordUser::class);
+
+        $laptop = $this->onDevice(null, fn (Authenticate $auth) => $auth->login(RenamedPasswordUser::find(1)))[0];
+        $before = $this->storedPassword();
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('getAuthPasswordName()');
+
+        try {
+            $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
+        } finally {
+            $this->assertSame($before, $this->storedPassword(), 'Nothing was written.');
+        }
+    }
+
+    public function test_an_invalid_remember_cookie_does_not_earn_a_new_remember_token(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $forged = ['remember_doppar_web_' . sha1('doppar') => \Phaseolies\Support\Facades\Crypt::encrypt('1|nottherealtoken|' . password_hash('1nottherealtoken', PASSWORD_BCRYPT, ['cost' => 4]))];
+
+        $issued = [];
+        $this->onDevice($laptop, function (Authenticate $auth) use (&$issued): bool {
+            return $this->capturingCookies($issued, fn () => $auth->logoutOtherDevices(self::PASSWORD));
+        }, $forged);
+
+        $this->assertSame([], $issued, 'No remember cookie was issued.');
+        $this->assertNull($this->storedRememberToken());
     }
 
     public function test_the_fingerprint_does_not_reveal_the_password_hash(): void

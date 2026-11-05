@@ -9,6 +9,7 @@ use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
+use Phaseolies\Session\RotationPointer;
 use Phaseolies\Session\SessionManager;
 use Phaseolies\Session\Stores\FileStore;
 use Phaseolies\Utilities\PathMatcher;
@@ -26,9 +27,9 @@ class Session implements SessionInterface, CommittableSession
      * Keys of the pointer an automatically rotated id leaves behind.
      *
      */
-    protected const ROTATED_TO = '_rotated_to';
+    protected const ROTATED_TO = RotationPointer::TO;
 
-    protected const ROTATED_UNTIL = '_rotated_until';
+    protected const ROTATED_UNTIL = RotationPointer::UNTIL;
 
     /**
      * Seconds the old id of an automatic rotation keeps leading to the new one.
@@ -363,7 +364,7 @@ class Session implements SessionInterface, CommittableSession
 
         $record = $store->read($this->storedId);
 
-        return $record !== null && !array_key_exists(self::ROTATED_TO, $record['data']);
+        return $record !== null && !RotationPointer::isPointer($record['data']);
     }
 
     /**
@@ -441,7 +442,7 @@ class Session implements SessionInterface, CommittableSession
     {
         $record = $store->read($this->storedId);
 
-        if ($record !== null && array_key_exists(self::ROTATED_TO, $record['data'])) {
+        if ($record !== null && RotationPointer::isPointer($record['data'])) {
             $target = $this->pointerTarget($record['data']);
 
             if ($target !== null) {
@@ -500,7 +501,7 @@ class Session implements SessionInterface, CommittableSession
         $this->data['last_regenerated'] = time();
 
         $store->write($new, $this->data);
-        $store->write($old, [self::ROTATED_TO => $new, self::ROTATED_UNTIL => time() + self::ROTATION_GRACE]);
+        $store->write($old, RotationPointer::make($new, time() + self::ROTATION_GRACE));
 
         return $this->id = $new;
     }
@@ -529,17 +530,7 @@ class Session implements SessionInterface, CommittableSession
      */
     protected function pointerTarget(array $data, bool $honourExpiry = true): ?string
     {
-        $target = $data[self::ROTATED_TO] ?? null;
-
-        if (!is_string($target) || !FileStore::isValidId($target)) {
-            return null;
-        }
-
-        if ($honourExpiry && (int) ($data[self::ROTATED_UNTIL] ?? 0) < time()) {
-            return null;
-        }
-
-        return $target;
+        return RotationPointer::target($data, $honourExpiry);
     }
 
     /**
@@ -554,7 +545,7 @@ class Session implements SessionInterface, CommittableSession
         for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
             $record = $store->read($id);
 
-            if ($record === null || !array_key_exists(self::ROTATED_TO, $record['data'])) {
+            if ($record === null || !RotationPointer::isPointer($record['data'])) {
                 return $record;
             }
 
@@ -1092,6 +1083,18 @@ class Session implements SessionInterface, CommittableSession
         $this->load();
 
         return $this->id ??= self::newId();
+    }
+
+    /**
+     * The id the session is stored under right now, if it is stored.
+     *
+     * @return string|null
+     */
+    public function storedId(): ?string
+    {
+        $this->load();
+
+        return $this->storedId;
     }
 
     /**

@@ -9,6 +9,7 @@ use Phaseolies\Database\Database;
 use Phaseolies\Database\Migration\Schema;
 use Phaseolies\DI\Container;
 use Phaseolies\Session\Exceptions\SessionException;
+use Phaseolies\Session\RotationPointer;
 use Phaseolies\Session\Stores\DatabaseStore;
 use Phaseolies\Support\Facades\Facade;
 use Tests\Support\MockContainer;
@@ -278,12 +279,71 @@ class DatabaseStoreTest extends TestCase
         $store->write($phone = $this->id(), ['user' => 5]);
         $store->write($someoneElse = $this->id(), ['user' => 6]);
 
-        $this->assertSame(2, $store->destroyUserSessions(5, $current));
+        $this->assertSame(2, $store->destroyUserSessions(5, [$current]));
 
         $this->assertNotNull($store->read($current));
         $this->assertNull($store->read($laptop));
         $this->assertNull($store->read($phone));
         $this->assertNotNull($store->read($someoneElse));
+    }
+
+    public function test_destroy_user_sessions_keeps_what_a_kept_session_was_rotated_into(): void
+    {
+        $store = $this->store(user: fn (array $data) => $data['user'] ?? null);
+
+        // This device's id was rotated by a concurrent request: the old id is
+        // a pointer and the session lives on under the new id.
+        $store->write($new = $this->id(), ['user' => 5]);
+        $store->write($old = $this->id(), RotationPointer::make($new, time() + 60));
+        $store->write($phone = $this->id(), ['user' => 5]);
+
+        $this->assertSame(1, $store->destroyUserSessions(5, [$old]));
+
+        $this->assertNotNull($store->read($new));
+        $this->assertNull($store->read($phone));
+    }
+
+    public function test_destroy_user_sessions_follows_a_rotation_that_happens_while_it_runs(): void
+    {
+        $phone = $this->id();
+        $rotated = $this->id();
+
+        // Rotates the phone's session after the sessions were listed and
+        // before they are destroyed.
+        $store = new class (fn () => $this->pdo(), static::TABLE, $phone, $rotated) extends DatabaseStore {
+            public function __construct(\Closure $connection, string $table, private string $phone, private string $rotated)
+            {
+                parent::__construct($connection, $table, 7200, fn (array $data) => $data['user'] ?? null);
+            }
+
+            protected function lineage(array $ids): array
+            {
+                $this->write($this->rotated, ['user' => 5]);
+                $this->write($this->phone, RotationPointer::make($this->rotated, time() + 60));
+
+                return parent::lineage($ids);
+            }
+        };
+
+        $store->write($current = $this->id(), ['user' => 5]);
+        $store->write($phone, ['user' => 5]);
+
+        $store->destroyUserSessions(5, [$current]);
+
+        $this->assertNull($store->read($phone));
+        $this->assertNull($store->read($rotated), 'The session the phone was rotated into is ended too.');
+        $this->assertNotNull($store->read($current));
+    }
+
+    public function test_a_schema_qualified_table_name_is_rejected(): void
+    {
+        // The migration would quote it as one identifier and the store as two.
+        $this->assertFalse(DatabaseStore::isValidTableName('app.sessions'));
+        $this->assertTrue(DatabaseStore::isValidTableName('user_sessions'));
+
+        $this->expectException(SessionException::class);
+
+        new DatabaseStore(fn () => $this->pdo(), 'app.sessions');
     }
 
     public function test_a_callback_under_a_lock_can_use_the_store_without_waiting_for_itself(): void
@@ -471,7 +531,12 @@ class DatabaseStoreTest extends TestCase
         $stub = (string) file_get_contents(dirname(__DIR__, 2) . '/src/Phaseolies/Console/Commands/stubs/session/create_sessions_table.stub');
         $file = $this->dir . '/create_sessions_table.php';
 
-        file_put_contents($file, str_replace('{{ table }}', static::TABLE, $stub));
+        // As generated for a configured session.connection.
+        file_put_contents($file, str_replace(
+            ['{{ schema }}', '{{ table }}'],
+            ["Schema::connection('" . static::CONNECTION . "')->", static::TABLE],
+            $stub
+        ));
 
         (require $file)->up();
     }

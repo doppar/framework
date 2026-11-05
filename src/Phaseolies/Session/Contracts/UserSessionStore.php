@@ -13,11 +13,11 @@ interface UserSessionStore extends SessionStoreInterface
     public function userSessions(int|string $userId): array;
 
     /**
-     * End every session of a user, except the one given.
+     * End every session of a user, except the ones given and what they were rotated into.
      *
      * @param int|string $userId
-     * @param string|null $exceptId
-     * @return int Number of ended sessions
+     * @param array<int, string> $keep
+     * @return int
      */
-    public function destroyUserSessions(int|string $userId, ?string $exceptId = null): int;
+    public function destroyUserSessions(int|string $userId, array $keep = []): int;
 }

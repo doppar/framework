@@ -5,6 +5,7 @@ namespace Phaseolies\Support\Facades;
 use Phaseolies\Facade\BaseFacade;
 
 /**
+ * @method static \Phaseolies\Database\Migration\Schema connection(?string $connection)
  * @method static void create(string $table, callable $callback)
  * @method static void table(string $table, callable $callback)
  * @method static void drop(string $table)
