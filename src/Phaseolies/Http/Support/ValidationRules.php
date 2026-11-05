@@ -515,6 +515,11 @@ trait ValidationRules
     {
         $value = $input[$fieldName] ?? '';
 
+        // filter_var() ignores surrounding whitespace, which is not part of an integer.
+        if (is_string($value) && $value !== trim($value)) {
+            return false;
+        }
+
         return filter_var($value, FILTER_VALIDATE_INT) !== false;
     }
 
@@ -588,7 +593,9 @@ trait ValidationRules
     {
         $date = $input[$fieldName] ?? '';
 
-        return strtotime($date) !== false;
+        // strtotime() rolls impossible dates over (February 30 becomes March 2);
+        // date_parse() reports them as a warning.
+        return strtotime($date) !== false && date_parse($date)['warning_count'] === 0;
     }
 
     /**
@@ -869,7 +876,7 @@ trait ValidationRules
             return empty($value);
         }
 
-        return $value === '';
+        return is_string($value) && trim($value) === '';
     }
 
     /**
@@ -882,7 +889,7 @@ trait ValidationRules
      */
     protected function isLessThanMin(array $input, string $fieldName, int $value): bool
     {
-        return strlen($input[$fieldName]) < $value;
+        return mb_strlen((string) $input[$fieldName]) < $value;
     }
 
     /**
@@ -895,7 +902,7 @@ trait ValidationRules
      */
     protected function isMoreThanMax(array $input, string $fieldName, int $value): bool
     {
-        return strlen($input[$fieldName]) > $value;
+        return mb_strlen((string) $input[$fieldName]) > $value;
     }
 
     /**
@@ -987,7 +994,7 @@ trait ValidationRules
      */
     protected function isAlpha(array $input, string $fieldName): bool
     {
-        return (bool) preg_match('/^[a-zA-Z]+$/', $input[$fieldName] ?? '');
+        return (bool) preg_match('/^[a-zA-Z]+\z/', $input[$fieldName] ?? '');
     }
 
     /**
@@ -999,7 +1006,7 @@ trait ValidationRules
      */
     protected function isAlphaNum(array $input, string $fieldName): bool
     {
-        return (bool) preg_match('/^[a-zA-Z0-9]+$/', $input[$fieldName] ?? '');
+        return (bool) preg_match('/^[a-zA-Z0-9]+\z/', $input[$fieldName] ?? '');
     }
 
     /**
@@ -1011,7 +1018,7 @@ trait ValidationRules
      */
     protected function isAlphaDash(array $input, string $fieldName): bool
     {
-        return (bool) preg_match('/^[a-zA-Z0-9_\-]+$/', $input[$fieldName] ?? '');
+        return (bool) preg_match('/^[a-zA-Z0-9_\-]+\z/', $input[$fieldName] ?? '');
     }
 
     /**
@@ -1023,7 +1030,10 @@ trait ValidationRules
      */
     protected function isNumeric(array $input, string $fieldName): bool
     {
-        return is_numeric($input[$fieldName] ?? '');
+        $value = $input[$fieldName] ?? '';
+
+        // is_numeric() ignores surrounding whitespace, which is not part of a number.
+        return is_numeric($value) && (!is_string($value) || $value === trim($value));
     }
 
     /**
@@ -1134,6 +1144,19 @@ trait ValidationRules
     }
 
     /**
+     * The form of a value to compare with a rule's list, which holds only strings.
+     *
+     * A JSON body sends numbers as numbers, and 1 must match "1".
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function listValue(mixed $value): mixed
+    {
+        return is_int($value) || is_float($value) ? (string) $value : $value;
+    }
+
+    /**
      * Check if the field value is one of the allowed values
      *
      * @param array $input
@@ -1145,7 +1168,7 @@ trait ValidationRules
     {
         $list = array_map('trim', explode(',', $ruleValue));
 
-        return in_array($input[$fieldName] ?? '', $list, true);
+        return in_array($this->listValue($input[$fieldName] ?? ''), $list, true);
     }
 
     /**
@@ -1160,7 +1183,7 @@ trait ValidationRules
     {
         $list = array_map('trim', explode(',', $ruleValue));
 
-        return !in_array($input[$fieldName] ?? '', $list, true);
+        return !in_array($this->listValue($input[$fieldName] ?? ''), $list, true);
     }
 
     /**
@@ -1189,7 +1212,7 @@ trait ValidationRules
     {
         $value = $input[$fieldName] ?? '';
 
-        return (bool) preg_match('/^\+?[0-9\s\-\(\)]{7,20}$/', $value);
+        return (bool) preg_match('/^\+?[0-9 \-\(\)]{7,20}\z/', $value);
     }
 
     /**
@@ -1204,7 +1227,7 @@ trait ValidationRules
     {
         $value = (string)($input[$fieldName] ?? '');
 
-        return (bool) preg_match('/^\d{' . $digits . '}$/', $value);
+        return (bool) preg_match('/^\d{' . $digits . '}\z/', $value);
     }
 
     /**
@@ -1219,7 +1242,7 @@ trait ValidationRules
     {
         $value = (string)($input[$fieldName] ?? '');
 
-        return (bool) preg_match('/^\d+$/', $value) && strlen($value) >= $min;
+        return (bool) preg_match('/^\d+\z/', $value) && strlen($value) >= $min;
     }
 
     /**
@@ -1234,7 +1257,7 @@ trait ValidationRules
     {
         $value = (string)($input[$fieldName] ?? '');
 
-        return (bool) preg_match('/^\d+$/', $value) && strlen($value) <= $max;
+        return (bool) preg_match('/^\d+\z/', $value) && strlen($value) <= $max;
     }
 
     /**
@@ -1254,7 +1277,7 @@ trait ValidationRules
             return count($value) === $size;
         }
 
-        return strlen((string)$value) === $size;
+        return mb_strlen((string) $value) === $size;
     }
 
     /**
@@ -1295,7 +1318,7 @@ trait ValidationRules
         $value = $input[$fieldName] ?? '';
 
         return (bool) preg_match(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i',
             $value
         );
     }
@@ -1360,7 +1383,7 @@ trait ValidationRules
     {
         $value = $input[$fieldName] ?? '';
 
-        return (bool) preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $value);
+        return (bool) preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value);
     }
 
     /**

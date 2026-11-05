@@ -25,7 +25,7 @@ class WebErrorHandler implements ErrorHandlerInterface
 
         $renderer = new WebErrorRenderer();
 
-        if (env('APP_DEBUG', false)) {
+        if (app_debug()) {
             $response = $renderer->renderDebug($exception);
         } else {
             $response = $renderer->renderProduction($exception);

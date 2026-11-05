@@ -73,9 +73,19 @@ trait InteractsWithCurrentRouter
             return null;
         }
 
-        $name = array_search($match['route'], self::$namedRoutes, true);
+        // Several methods can share a path, each with its own name. A name with
+        // no recorded methods comes from a route cache written before they were.
+        foreach (self::$namedRoutes as $name => $path) {
+            $routePath = isset(self::$namedRouteMethods[$name])
+                ? self::$namedRouteMethods[$name][$match['method']] ?? null
+                : $path;
 
-        return $name === false ? null : $name;
+            if ($routePath === $match['route']) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -85,7 +95,9 @@ trait InteractsWithCurrentRouter
      */
     public function currentRouteAction(): string|array|null
     {
-        $callback = $this->getCallback(request());
+        // Not getCallback(): that matches again and would forget the dispatched
+        // route, which on a cached app may only exist in the uncached tables.
+        $callback = $this->routeFor(request())['callback'] ?? null;
 
         if (is_array($callback)) {
             return $callback[0] . '@' . $callback[1];
