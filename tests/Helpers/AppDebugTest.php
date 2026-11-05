@@ -1,13 +1,11 @@
 <?php
 
-namespace Tests\Unit\Error;
+namespace Tests\Unit\Helpers;
 
-use Phaseolies\Error\Handlers\WebErrorHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use ReflectionMethod;
 
-class WebErrorHandlerTest extends TestCase
+class AppDebugTest extends TestCase
 {
     protected function tearDown(): void
     {
@@ -34,8 +32,6 @@ class WebErrorHandlerTest extends TestCase
     {
         $_ENV['APP_DEBUG'] = $value;
 
-        $method = new ReflectionMethod(WebErrorHandler::class, 'isDebugging');
-
-        $this->assertSame($expected, $method->invoke(new WebErrorHandler()));
+        $this->assertSame($expected, app_debug());
     }
 }

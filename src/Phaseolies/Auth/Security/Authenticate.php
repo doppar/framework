@@ -314,13 +314,9 @@ class Authenticate
             }
 
             if (Hash::check($token, $user->getRememberToken())) {
-                // The cookie replaces the password, not the second factor: like
-                // login(), leave the user signed out until the code is verified.
-                if ($this->hasTwoFactorEnabled($user) && !$this->isApiRequest()) {
+                if ($this->hasTwoFactorEnabled($user)) {
                     session()->put($this->getTwoFactorUserKey(), $user->getAuthIdentifier());
                     session()->put($this->getTwoFactorRememberKey(), true);
-
-                    return null;
                 }
 
                 $this->setUser($user);

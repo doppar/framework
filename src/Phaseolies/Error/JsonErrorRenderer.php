@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Error;
 
+use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\TokenMismatchException;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\JsonResponse;
 use Throwable;
@@ -25,42 +27,45 @@ class JsonErrorRenderer
             Response::HTTP_UNAUTHORIZED         => trans('validation.unauthorized.message'),
         ];
 
-        $message = $messages[$statusCode] ?? $exception->getMessage();
+        // Some callers pass the exception's own message, which is not extra detail.
+        $errorDetails = $errorDetails === $exception->getMessage() ? null : $errorDetails;
 
         $response = isset($messages[$statusCode])
             ? [
-                'message' => $message,
-                'errors'  => $errorDetails ?? $exception->getMessage(),
+                'message' => $messages[$statusCode],
+                'errors'  => $errorDetails ?? $this->publicMessage($exception),
             ]
-            : $this->exceptionPayload($exception, $statusCode, $errorDetails);
+            : [
+                'message' => $errorDetails ?? $this->publicMessage($exception),
+                'errors'  => app_debug()
+                    ? [
+                        'file'  => $exception->getFile(),
+                        'line'  => $exception->getLine(),
+                        'trace' => $exception->getTraceAsString(),
+                    ]
+                    : [],
+            ];
 
         return response()->json($response, $statusCode);
     }
 
     /**
-     * Describe an exception, leaving out its internals unless debugging.
+     * The exception message, when it is safe to show to the client.
+     *
+     * The status of a non-HTTP exception comes from its code, so the decision
+     * is made by exception type and not by status number.
      *
      * @param Throwable $exception
-     * @param int $statusCode
-     * @param mixed|null $errorDetails
-     * @return array
+     * @return string
      */
-    protected function exceptionPayload(Throwable $exception, int $statusCode, mixed $errorDetails): array
+    protected function publicMessage(Throwable $exception): string
     {
-        if (filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN)) {
-            return [
-                'message' => $errorDetails ?? $exception->getMessage(),
-                'errors'  => [
-                    'file'  => $exception->getFile(),
-                    'line'  => $exception->getLine(),
-                    'trace' => $exception->getTraceAsString(),
-                ],
-            ];
-        }
+        $isClientError = $exception instanceof TokenMismatchException || (
+            $exception instanceof HttpException &&
+            $exception->getStatusCode() >= 400 &&
+            $exception->getStatusCode() < 500
+        );
 
-        return [
-            'message' => $errorDetails ?? ($statusCode >= 500 ? 'Something went wrong' : $exception->getMessage()),
-            'errors'  => [],
-        ];
+        return app_debug() || $isClientError ? $exception->getMessage() : 'Something went wrong';
     }
 }
