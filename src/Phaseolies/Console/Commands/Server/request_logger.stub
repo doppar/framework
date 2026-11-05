@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * Prepended to every request served by `server:start`.
+ */
+(static function (): void {
+    if (PHP_SAPI !== 'cli-server') {
+        return;
+    }
+
+    $uri = urldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
+
+    // Static files are handled and logged by PHP itself.
+    if ($uri !== '/' && is_file(($_SERVER['DOCUMENT_ROOT'] ?? '') . $uri)) {
+        return;
+    }
+
+    $start = $_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true);
+
+    register_shutdown_function(static function () use ($start): void {
+        $line = sprintf(
+            "DOPPAR_REQUEST\t%s:%s\t%d\t%s\t%s\t%.4f\n",
+            $_SERVER['REMOTE_ADDR'] ?? '',
+            $_SERVER['REMOTE_PORT'] ?? '',
+            http_response_code() ?: 200,
+            $_SERVER['REQUEST_METHOD'] ?? 'GET',
+            $_SERVER['REQUEST_URI'] ?? '/',
+            (microtime(true) - $start) * 1000
+        );
+
+        @file_put_contents('php://stderr', $line);
+    });
+})();

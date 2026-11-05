@@ -86,4 +86,21 @@ class Console extends SymfonyApplication
 
         $command->registerCommands($this);
     }
+
+    /**
+     * Run a command inside its own defer scope.
+     *
+     * @param Command $command
+     * @param InputInterface $input
+     * @param OutputInterface $output
+     * @return int
+     */
+    protected function doRunCommand(Command $command, InputInterface $input, OutputInterface $output): int
+    {
+        return $this->app->runInContext(
+            'console',
+            ['command' => $command->getName()],
+            fn() => $this->app->runInDeferScope(fn() => parent::doRunCommand($command, $input, $output))
+        );
+    }
 }

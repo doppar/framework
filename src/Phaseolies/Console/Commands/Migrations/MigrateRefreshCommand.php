@@ -3,25 +3,26 @@
 namespace Phaseolies\Console\Commands\Migrations;
 
 use Phaseolies\Console\Schedule\Command;
-use Phaseolies\Support\Facades\Schema;
-use Phaseolies\Support\Facades\DB;
+use Phaseolies\Console\Support\InteractsWithMigrations;
 use Phaseolies\Database\Migration\Migrator;
 
 class MigrateRefreshCommand extends Command
 {
+    use InteractsWithMigrations;
+
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'migrate:fresh {--connection=}';
+    protected $name = 'migrate:refresh {--connection=} {--step=} {--seed} {--force}';
 
     /**
      * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Drop all tables and re-run all migrations for the specified or default connection';
+    protected $description = 'Roll back all migrations (or the last --step=N) and run them again';
 
     /**
      * The migrator instance.
@@ -36,7 +37,6 @@ class MigrateRefreshCommand extends Command
     public function __construct()
     {
         parent::__construct();
-
         $this->migrator = app('migrator');
     }
 
@@ -48,43 +48,49 @@ class MigrateRefreshCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $connection = $this->option('connection') ?: config('database.default');
-
-            $this->displayWarning("This will drop all tables from database connection: <fg=white>{$connection}</>");
-            $this->line('Are you sure you want to proceed? (yes/no) [no]');
-            $response = trim(fgets(STDIN));
-
-            if (strtolower($response) !== 'yes') {
-                $this->displayInfo('Command cancelled');
-                return Command::SUCCESS;
-            }
-
-            $this->newLine();
-            $this->line("<fg=yellow>♻️  Refreshing database on connection: {$connection}</>");
+            $connection = $this->resolveConnection();
 
             try {
-                Schema::connection($connection)->disableForeignKeyConstraints();
+                $step = $this->integerOption('step');
+            } catch (\RuntimeException $e) {
+                $this->displayError($e->getMessage());
 
-                $tablesDropped = DB::connection($connection)->dropAllTables();
+                return Command::FAILURE;
+            }
 
-                Schema::connection($connection)->enableForeignKeyConstraints();
+            $scope = $step === null ? 'every migration' : "the last {$step} migration(s)";
+
+            if (!$this->confirmToProceed("This will roll back {$scope} on connection: {$connection} and run them again", true)) {
+                return Command::FAILURE;
+            }
+
+            $progress = $this->progressReporter();
+
+            try {
+                $this->line("<fg=yellow>⏪ Rolling back on connection: {$connection}</>");
+                $this->newLine();
+
+                $rolledBack = $step === null
+                    ? $this->migrator->reset($connection, ['progress' => $progress])
+                    : $this->migrator->rollback($connection, ['step' => $step, 'progress' => $progress]);
 
                 $this->newLine();
-                $this->line("<fg=green>✔ Dropped {$tablesDropped} tables from {$connection}</>");
+                $this->line('<fg=yellow>🔁 Running migrations</>');
+                $this->newLine();
+
+                $migrated = $this->migrator->run($connection, null, ['progress' => $progress]);
             } catch (\Throwable $e) {
-                $this->displayError("Failed to refresh database [{$connection}]: {$e->getMessage()}");
+                $this->newLine();
+                $this->displayError($e->getMessage());
+
                 return Command::FAILURE;
             }
 
             $this->newLine();
-            $this->line('<fg=yellow>🔁 Running migrations</>');
-            $this->newLine();
-            $migrations = $this->migrator->run($connection);
+            $this->displaySuccess(sprintf('Refreshed (%d rolled back, %d executed)', count($rolledBack), count($migrated)));
 
-            $this->displaySuccess('Database refresh completed');
-            $this->line('<fg=yellow>📊 Migrations Executed:</>');
-            foreach ($migrations as $migration) {
-                $this->line('- <fg=white>' . $migration . '</>');
+            if ($this->option('seed')) {
+                return $this->runSeeders();
             }
 
             return Command::SUCCESS;

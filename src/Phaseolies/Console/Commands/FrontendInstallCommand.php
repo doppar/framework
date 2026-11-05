@@ -129,7 +129,7 @@ class FrontendInstallCommand extends Command
                 client_path(),
                 client_path('css'),
                 client_path('js'),
-                resource_path('views/layouts'),
+                template_path('views/layouts'),
                 storage_path('framework'),
             ] as $directory
         ) {
@@ -159,8 +159,8 @@ class FrontendInstallCommand extends Command
             client_path('css/app.css') => $this->clientCss($cssStack),
             client_path('js/' . $this->bootstrapFilename($typescript)) => $this->bootstrapFile($cssStack, $typescript, $htmx),
             client_path('js/' . $this->entryFilename($framework, $typescript)) => $this->entryFile($framework, $cssStack, $typescript),
-            base_path('resources/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
-            base_path('resources/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
+            base_path('templates/views/layouts/app.odo.php') => $this->appLayoutView($framework, $typescript),
+            base_path('templates/views/welcome.odo.php') => $this->welcomeView($framework, $typescript),
         ];
 
         if ($cssStack === 'tailwind') {
@@ -278,9 +278,9 @@ class FrontendInstallCommand extends Command
     protected function trackedFrontendDirectories(): array
     {
         return [
-            $this->projectPath('resources/client'),
-            $this->projectPath('resources/client/css'),
-            $this->projectPath('resources/client/js'),
+            $this->projectPath('templates/client'),
+            $this->projectPath('templates/client/css'),
+            $this->projectPath('templates/client/js'),
             $this->projectPath('public/build'),
         ];
     }
@@ -293,9 +293,7 @@ class FrontendInstallCommand extends Command
      */
     protected function projectPath(string $path = ''): string
     {
-        $basePath = defined('BASE_PATH')
-            ? rtrim(BASE_PATH, DIRECTORY_SEPARATOR)
-            : rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
+        $basePath = rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
 
         $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
 
@@ -313,7 +311,7 @@ class FrontendInstallCommand extends Command
      */
     protected function entryFilePath(string $framework, bool $typescript): string
     {
-        return 'resources/client/js/' . $this->entryFilename($framework, $typescript);
+        return 'templates/client/js/' . $this->entryFilename($framework, $typescript);
     }
 
     /**

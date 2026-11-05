@@ -31,41 +31,26 @@ class MySQLDriver implements DriverInterface
             PDO::ATTR_STRINGIFY_FETCHES => false,
         ];
 
-        $sslCa = $this->mysqlAttr('ATTR_SSL_CA', 'MYSQL_ATTR_SSL_CA');
+        $configured = $config['options'] ?? [];
 
-        if ($sslCa !== null && !empty($config['options'][$sslCa])) {
-            $options[$sslCa] = $config['options'][$sslCa];
+        if (!empty($configured[Mysql::ATTR_SSL_CA])) {
+            $options[Mysql::ATTR_SSL_CA] = $configured[Mysql::ATTR_SSL_CA];
+            $options[Mysql::ATTR_SSL_VERIFY_SERVER_CERT] = false;
 
-            $verify = $this->mysqlAttr(
-                'ATTR_SSL_VERIFY_SERVER_CERT',
-                'MYSQL_ATTR_SSL_VERIFY_SERVER_CERT'
-            );
-
-            if ($verify !== null) {
-                $options[$verify] = false;
-            }
-
-            foreach (
-                [
-                    ['ATTR_SSL_CERT', 'MYSQL_ATTR_SSL_CERT'],
-                    ['ATTR_SSL_KEY', 'MYSQL_ATTR_SSL_KEY'],
-                    ['ATTR_SSL_CAPATH', 'MYSQL_ATTR_SSL_CAPATH'],
-                    ['ATTR_SSL_CIPHER', 'MYSQL_ATTR_SSL_CIPHER'],
-                ] as [$new, $old]
-            ) {
-
-                $attr = $this->mysqlAttr($new, $old);
-
-                if ($attr !== null && isset($config['options'][$attr])) {
-                    $options[$attr] = $config['options'][$attr];
+            foreach ([
+                Mysql::ATTR_SSL_CERT,
+                Mysql::ATTR_SSL_KEY,
+                Mysql::ATTR_SSL_CAPATH,
+                Mysql::ATTR_SSL_CIPHER,
+            ] as $attr) {
+                if (isset($configured[$attr])) {
+                    $options[$attr] = $configured[$attr];
                 }
             }
         }
 
-        $attr = $this->mysqlAttr('ATTR_INIT_COMMAND', 'MYSQL_ATTR_INIT_COMMAND');
-
-        if ($attr !== null && isset($config['options'][$attr])) {
-            $options[$attr] = $config['options'][$attr];
+        if (isset($configured[Mysql::ATTR_INIT_COMMAND])) {
+            $options[Mysql::ATTR_INIT_COMMAND] = $configured[Mysql::ATTR_INIT_COMMAND];
         }
 
         $pdo = new PDO(
@@ -253,35 +238,5 @@ class MySQLDriver implements DriverInterface
     public function deleteAll(PDO $pdo, string $table): int
     {
         return (int) $pdo->exec("DELETE FROM {$table}");
-    }
-
-    /**
-     * Resolve a MySQL PDO attribute constant in a version-compatible way
-     *
-     * PHP 8.5 moved MySQL-specific PDO constants from PDO::MYSQL_ATTR_*
-     * to the namespaced Pdo\Mysql::ATTR_* class and deprecated the old ones.
-     *
-     * This helper safely resolves the correct constant for:
-     *  - PHP 8.5+ (Pdo\Mysql::ATTR_*)
-     *  - PHP 8.3 / 8.4 (PDO::MYSQL_ATTR_*)
-     *
-     * If neither constant exists (e.g., extension not available),
-     * null is returned.
-     *
-     * @param string $new The new constant name (e.g. 'ATTR_SSL_CA')
-     * @param string $old The legacy constant name (e.g. 'MYSQL_ATTR_SSL_CA')
-     * @return int|null
-     */
-    private function mysqlAttr(string $new, string $old): ?int
-    {
-        if (class_exists(Mysql::class) && defined("Pdo\\Mysql::$new")) {
-            return constant("Pdo\\Mysql::$new");
-        }
-
-        if (defined("PDO::$old")) {
-            return constant("PDO::$old");
-        }
-
-        return null;
     }
 }

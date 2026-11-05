@@ -119,50 +119,106 @@ class File extends \SplFileInfo
     }
 
     /**
-     * Generate a unique name for an uploaded file.
+     * Generate a unique, filesystem-safe name for an uploaded file.
      *
      * @return string
      */
     public function generateUniqueName(): string
     {
-        return time() . '_' . $this->getClientOriginalName();
+        return time() . '_' . $this->sanitizeFileName($this->getClientOriginalName());
     }
 
     /**
-     * Checks if the uploaded file is of a specific MIME type.
+     * Produces a filesystem-safe basename from an arbitrary file name
+     *
+     * @param string $name
+     * @return string
+     */
+    protected function sanitizeFileName(string $name): string
+    {
+        $name = str_replace("\0", '', $name);
+        $name = basename(str_replace('\\', '/', $name));
+        $name = preg_replace('/[\x00-\x1F<>:"|?*]/u', '_', $name) ?? '_';
+        $name = trim($name, " .\t\n\r\0\x0B");
+
+        if ($name === '' || $name === '.' || $name === '..') {
+            $name = 'file';
+        }
+
+        $extension = pathinfo($name, PATHINFO_EXTENSION);
+        $basename = pathinfo($name, PATHINFO_FILENAME);
+
+        if (preg_match('/^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$/i', $basename)) {
+            $basename = '_' . $basename;
+        }
+
+        if (strlen($basename) > 150) {
+            $basename = substr($basename, 0, 150);
+        }
+
+        return $extension !== '' ? "{$basename}.{$extension}" : $basename;
+    }
+
+    /**
+     * Moves the file's temporary source to an absolute destination path
+     *
+     * @param string $destination
+     * @return bool
+     */
+    protected function moveTo(string $destination): bool
+    {
+        $source = $this->getClientOriginalPath();
+
+        if (is_uploaded_file($source)) {
+            return move_uploaded_file($source, $destination);
+        }
+
+        return rename($source, $destination);
+    }
+
+    /**
+     * Checks if the uploaded file's actual content is of a specific MIME.
      *
      * @param string|array $mimeType
      * @return bool
      */
     public function isMimeType(string|array $mimeType): bool
     {
-        $fileMimeType = $this->getClientOriginalType();
+        $detected = $this->getMimeTypeByFileInfo();
 
-        if (is_array($mimeType)) {
-            return in_array($fileMimeType, $mimeType);
+        if ($detected === false) {
+            return false;
         }
 
-        return $fileMimeType === $mimeType;
+        if (is_array($mimeType)) {
+            return in_array($detected, $mimeType, true);
+        }
+
+        return $detected === $mimeType;
     }
 
     /**
-     * Check if the uploaded file is an image.
+     * Check if the uploaded file's actual content is an image.
      *
      * @return bool
      */
     public function isImage(): bool
     {
-        return strpos($this->getClientOriginalType(), 'image/') === 0;
+        $detected = $this->getMimeTypeByFileInfo();
+
+        return $detected !== false && str_starts_with($detected, 'image/');
     }
 
     /**
-     * Check if the uploaded file is a video.
+     * Check if the uploaded file's actual content is a video.
      *
      * @return bool
      */
     public function isVideo(): bool
     {
-        return strpos($this->getClientOriginalType(), 'video/') === 0;
+        $detected = $this->getMimeTypeByFileInfo();
+
+        return $detected !== false && str_starts_with($detected, 'video/');
     }
 
     /**
@@ -200,14 +256,14 @@ class File extends \SplFileInfo
             return false;
         }
 
-        $fileName = $fileName ?? $this->getClientOriginalName();
+        $fileName = $this->sanitizeFileName($fileName ?? $this->getClientOriginalName());
         $destinationPath = rtrim($destination, '/') . '/' . $fileName;
 
         if (!is_dir(dirname($destinationPath))) {
-            mkdir(dirname($destinationPath), 0777, true);
+            mkdir(dirname($destinationPath), 0755, true);
         }
 
-        return move_uploaded_file($this->getClientOriginalPath(), $destinationPath);
+        return $this->moveTo($destinationPath);
     }
 
     /**
@@ -222,10 +278,12 @@ class File extends \SplFileInfo
         }
 
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime = finfo_file($finfo, $this->getClientOriginalPath());
-        finfo_close($finfo);
 
-        return $mime;
+        if ($finfo === false) {
+            return false;
+        }
+
+        return finfo_file($finfo, $this->getClientOriginalPath());
     }
 
     /**
@@ -261,7 +319,7 @@ class File extends \SplFileInfo
             $disk = 'public';
         }
 
-        return $this->storeAs($path, $this->generateUniqueName($this->getClientOriginalName()), $disk);
+        return $this->storeAs($path, $this->generateUniqueName(), $disk) !== false;
     }
 
     /**
@@ -287,12 +345,16 @@ class File extends \SplFileInfo
             }
         }
 
-        $fileName = $fileName ?: $this->generateUniqueName($this->getClientOriginalName());
+        $fileName = $fileName !== '' ? $this->sanitizeFileName($fileName) : $this->generateUniqueName();
 
         $path = trim($path, '/');
-        $fileName = trim($fileName, '/');
 
         $storagePath = Storage::getDiskPath($disk);
+
+        if (empty($storagePath)) {
+            return false;
+        }
+
         $fullPath = $storagePath . '/' . $path . '/' . $fileName;
 
         $directory = dirname($fullPath);
@@ -300,7 +362,7 @@ class File extends \SplFileInfo
             mkdir($directory, 0755, true);
         }
 
-        if (move_uploaded_file($this->getClientOriginalPath(), $fullPath)) {
+        if ($this->moveTo($fullPath)) {
             return $path . '/' . $fileName;
         }
 

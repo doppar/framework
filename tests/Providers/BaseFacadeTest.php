@@ -45,7 +45,12 @@ class BaseFacadeTest extends TestCase
 
     protected function setUp(): void
     {
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for
+        // BaseFacade::resolveInstance()'s Container::getInstance() fallback
+        // to see it.
         $this->container = new Container();
+        Container::setInstance($this->container);
         $this->app = new MockApplication($this->container);
 
         $this->container->bind('test-service', function () {
@@ -53,6 +58,11 @@ class BaseFacadeTest extends TestCase
         });
 
         TestFacade::setFacadeApplication(null);
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     protected function callResolveInstance($facadeClass)

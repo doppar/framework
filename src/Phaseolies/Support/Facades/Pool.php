@@ -2,15 +2,15 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Console\Schedule\SchedulePool call(string $command, bool $background = true): array
- * @method static \Phaseolies\Console\Schedule\SchedulePool isProcessRunning(int $pid): bool
- * @method static \Phaseolies\Console\Schedule\SchedulePool getRunningProcesses(): array
- * @see \Phaseolies\Console\Schedule\SchedulePool
- */
-
 use Phaseolies\Facade\BaseFacade;
 
+/**
+ * @method static array call(string $command, bool $background = true)
+ * @method static bool isProcessRunning(int $pid)
+ * @method static array getRunningProcesses()
+ *
+ * @see \Phaseolies\Console\Schedule\SchedulePool
+ */
 class Pool extends BaseFacade
 {
     protected static function getFacadeAccessor()

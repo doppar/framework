@@ -129,7 +129,7 @@ class MakeControllerCommand extends Command
         string $routeName
     ): string {
         $baseNamespace = 'App\\Http\\Controllers';
-        $basePath = 'app/Http/Controllers/';
+        $basePath = 'src/Http/Controllers/';
 
         // Normalize route view name
         $routeView = str_replace(['\\', '/'], '.', $routeName);
@@ -201,7 +201,7 @@ class MakeControllerCommand extends Command
         $namespace = $baseNamespace . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
 
         $filePath = $this->generatedFilePath(
-            'app/Http/Controllers' . ($isApi ? '/API' : ''),
+            'src/Http/Controllers' . ($isApi ? '/API' : ''),
             $name
         );
 
@@ -236,7 +236,7 @@ class MakeControllerCommand extends Command
         $layoutDir = base_path(str_replace(
             ['/', '\\'],
             DIRECTORY_SEPARATOR,
-            'resources/views/' . $this->normalizeGeneratedName($routeName)
+            'templates/views/' . $this->normalizeGeneratedName($routeName)
         ));
         $this->createDirIfMissing($layoutDir);
         $layoutPath = $layoutDir . '/default.odo.php';

@@ -12,9 +12,9 @@ class Installer
 
         $io->write("<info>🎉 Setting up doppar skeleton application...</info>");
 
-        if (!file_exists('.env')) {
-            copy('.env.example', '.env');
-            $io->write("<comment>  ✓ Created .env file from .env.example</comment>");
+        if (!file_exists('env.toml')) {
+            copy('env.toml.example', 'env.toml');
+            $io->write("<comment>  ✓ Created env.toml file from env.toml.example</comment>");
         }
     }
 }

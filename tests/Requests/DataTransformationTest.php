@@ -3,7 +3,6 @@
 namespace Tests\Unit\Requests;
 
 use Tests\Support\MockContainer;
-use Tests\Support\Kernel;
 use Phaseolies\Support\StringService;
 use Phaseolies\Http\Request;
 use Phaseolies\DI\Container;
@@ -19,7 +18,7 @@ class DataTransformationTest extends TestCase
     {
         $container = new Container();
         Container::setInstance(new MockContainer());
-        $this->request = new Request();
+        $this->request = Request::createFromGlobals();
         $container->bind('str', StringService::class);
 
         $this->defaultServerData = [
@@ -39,7 +38,7 @@ class DataTransformationTest extends TestCase
 
         $this->resetGlobals();
         $_SERVER = $this->defaultServerData;
-        $this->request = new Request();
+        $this->request = Request::createFromGlobals();
     }
 
     protected function tearDown(): void
@@ -63,7 +62,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => '  john doe  '];
         
-        $request = new Request();
+        $request = Request::createFromGlobals();
         
         $result = $request->pipe('name', 'trim');
         
@@ -74,7 +73,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['count' => 5];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $captured = null;
         $result = $request->tapInput('count', function($value) use (&$captured) {
@@ -89,7 +88,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'John', 'empty' => ''];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $executed = false;
         $request->ifFilled('name', function() use (&$executed) {
@@ -108,7 +107,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'JOHN', 'email' => 'JOHN@EXAMPLE.COM'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $transformed = $request->transform([
             'name' => fn($v) => strtolower($v),
@@ -123,7 +122,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['age' => 25];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $result = $request->ensure('age', fn($v) => is_numeric($v) && $v >= 18);
 
@@ -136,7 +135,7 @@ class DataTransformationTest extends TestCase
 
         $_POST = ['age' => 15];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $request->ensure('age', fn($v) => $v >= 18);
     }
 
@@ -144,7 +143,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['count' => 5];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $request->contextual(function($data) {
             return ['count' => $data['count'] * 2, 'processed' => true];
@@ -158,7 +157,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'John', 'email' => 'john@example.com'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $result = $request->extract(function($req) {
             return $req->only('name');
@@ -177,7 +176,7 @@ class DataTransformationTest extends TestCase
             'zero' => '0'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $request->nullifyBlanks();
 
         $this->assertEquals('John', $request->input('name'));
@@ -195,7 +194,7 @@ class DataTransformationTest extends TestCase
             'email' => 'JOHN@EXAMPLE.COM'
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $cleansed = $request->cleanse([
             'name' => 'trim',
@@ -219,7 +218,7 @@ class DataTransformationTest extends TestCase
             ]
         ];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $cleansed = $request->cleanse([
             'user.name' => 'trim',
@@ -234,7 +233,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['count' => 10];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $result = $request->mapIf(true, fn($data) => ['count' => $data['count'] * 2]);
         $this->assertEquals(20, $result['count']);
@@ -247,7 +246,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['tags' => '1,2,3,4,5'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $array = $request->asArray('tags');
 
@@ -260,7 +259,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'John', 'email' => 'john@example.com', 'age' => 30];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $dto = new class {
             public $name;
@@ -279,7 +278,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'John', 'nonexistent' => 'value'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $dto = new class {
             public $name;
@@ -295,7 +294,7 @@ class DataTransformationTest extends TestCase
     {
         $_POST = ['name' => 'John', 'extra' => 'value'];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $dto = new #[\AllowDynamicProperties] class {
             public $name;

@@ -7,14 +7,17 @@ class ForeignKeyDefinition
     /** @var Blueprint The table blueprint that contains this foreign key */
     protected Blueprint $blueprint;
 
-    /** @var string The column name that will be the foreign key */
-    protected string $column;
+    /** @var string|array The column name(s) that will be the foreign key */
+    protected string|array $column;
 
     /** @var string The referenced table name */
-    protected string $on;
+    protected string $on = '';
 
-    /** @var string The referenced column name (default: 'id') */
-    protected string $references = 'id';
+    /** @var string|array The referenced column name(s) (default: 'id') */
+    protected string|array $references = 'id';
+
+    /** @var string|null Custom constraint name */
+    protected ?string $name = null;
 
     /** @var string|null The ON DELETE action (e.g., CASCADE, SET NULL) */
     protected ?string $onDelete = null;
@@ -26,21 +29,21 @@ class ForeignKeyDefinition
      * Create a new foreign key definition instance.
      *
      * @param Blueprint $blueprint
-     * @param string $column
+     * @param string|array $column
      */
-    public function __construct(Blueprint $blueprint, string $column)
+    public function __construct(Blueprint $blueprint, string|array $column)
     {
         $this->blueprint = $blueprint;
         $this->column = $column;
     }
 
     /**
-     * Set the referenced column name in the foreign table.
+     * Set the referenced column name(s) in the foreign table.
      *
-     * @param string $column
+     * @param string|array $column
      * @return self
      */
-    public function references(string $column): self
+    public function references(string|array $column): self
     {
         $this->references = $column;
 
@@ -84,6 +87,39 @@ class ForeignKeyDefinition
         $this->onUpdate = strtoupper($action);
 
         return $this;
+    }
+
+    /**
+     * Set a custom name for the foreign key constraint.
+     *
+     * @param string $name
+     * @return self
+     */
+    public function name(string $name): self
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * Set ON DELETE to NO ACTION.
+     *
+     * @return self
+     */
+    public function noActionOnDelete(): self
+    {
+        return $this->onDelete('NO ACTION');
+    }
+
+    /**
+     * Set ON UPDATE to NO ACTION.
+     *
+     * @return self
+     */
+    public function noActionOnUpdate(): self
+    {
+        return $this->onUpdate('NO ACTION');
     }
 
     /**
@@ -147,6 +183,44 @@ class ForeignKeyDefinition
     }
 
     /**
+     * Get the constraint name.
+     *
+     * @return string
+     */
+    public function getName(): string
+    {
+        return $this->name ?? $this->getConstraintName();
+    }
+
+    /**
+     * Convert the constraint to its table level SQL fragment.
+     *
+     * @return string
+     * @throws \RuntimeException
+     */
+    public function toConstraintSql(): string
+    {
+        if (!$this->references || !$this->on) {
+            throw new \RuntimeException('Foreign key constraint is incomplete. Missing references or on table.');
+        }
+
+        $columns = implode(', ', (array) $this->column);
+        $references = implode(', ', (array) $this->references);
+
+        $sql = "CONSTRAINT {$this->getName()} FOREIGN KEY ({$columns}) REFERENCES {$this->on} ({$references})";
+
+        if ($this->onDelete) {
+            $sql .= " ON DELETE {$this->onDelete}";
+        }
+
+        if ($this->onUpdate) {
+            $sql .= " ON UPDATE {$this->onUpdate}";
+        }
+
+        return $sql;
+    }
+
+    /**
      * Convert the foreign key definition to its SQL representation.
      *
      * @return string
@@ -154,28 +228,7 @@ class ForeignKeyDefinition
      */
     public function toSql(): string
     {
-        if (!$this->references || !$this->on) {
-            throw new \RuntimeException('Foreign key constraint is incomplete. Missing references or on table.');
-        }
-
-        // Generate constraint name
-        $constraintName = $this->getConstraintName();
-
-        // Build the base ALTER TABLE statement
-        $sql = "ALTER TABLE {$this->blueprint->table} ADD CONSTRAINT {$constraintName} ";
-        $sql .= "FOREIGN KEY ({$this->column}) REFERENCES {$this->on} ({$this->references})";
-
-        // Add ON DELETE clause if specified
-        if ($this->onDelete) {
-            $sql .= " ON DELETE {$this->onDelete}";
-        }
-
-        // Add ON UPDATE clause if specified
-        if ($this->onUpdate) {
-            $sql .= " ON UPDATE {$this->onUpdate}";
-        }
-
-        return $sql;
+        return "ALTER TABLE {$this->blueprint->table} ADD " . $this->toConstraintSql();
     }
 
     /**
@@ -185,6 +238,6 @@ class ForeignKeyDefinition
      */
     protected function getConstraintName(): string
     {
-        return "fk_{$this->blueprint->table}_{$this->column}";
+        return 'fk_' . $this->blueprint->table . '_' . implode('_', (array) $this->column);
     }
 }

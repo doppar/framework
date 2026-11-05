@@ -2,13 +2,14 @@
 
 use Phaseolies\Utilities\Paginator;
 use Phaseolies\Translation\Translator;
-use Phaseolies\Support\UrlGenerator;
-use Phaseolies\Support\StringService;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
+use Phaseolies\Support\Contracts\StringServiceInterface;
 use Phaseolies\Support\Facades\Log;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Support\Collection;
 use Phaseolies\Session\MessageBag;
+use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\ResponseFactory;
 use Phaseolies\Http\Response;
@@ -45,7 +46,15 @@ if (!function_exists('dopparEnv')) {
      */
     function dopparEnv(string $key, string|float|int|bool|null $default = null): string|float|int|bool|null
     {
-        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+        if (array_key_exists($key, $_ENV)) {
+            return $_ENV[$key];
+        }
+
+        if (array_key_exists($key, $_SERVER)) {
+            return $_SERVER[$key];
+        }
+
+        $value = getenv($key);
 
         return $value !== false ? $value : $default;
     }
@@ -66,6 +75,50 @@ if (!function_exists('app')) {
         }
 
         return Container::getInstance()->get($abstract, $parameters);
+    }
+}
+
+if (!function_exists('defer')) {
+    /**
+     * Register a callback to run when the current execution ends (LIFO).
+     *
+     * @param callable $callback
+     * @return \Phaseolies\Application
+     */
+    function defer(callable $callback)
+    {
+        return app()->defer($callback);
+    }
+}
+
+if (!function_exists('signal')) {
+    /**
+     * Get the signal bus, or emit a signal when one is given
+     *
+     * @param object|null $signal
+     * @return \Phaseolies\Signals\Contracts\SignalBusInterface|void
+     */
+    function signal(?object $signal = null)
+    {
+        $bus = app('signal');
+
+        if ($signal === null) {
+            return $bus;
+        }
+
+        $bus->emit($signal);
+    }
+}
+
+if (!function_exists('execution')) {
+    /**
+     * Get the execution service, the accessor for the active execution context
+     *
+     * @return \Phaseolies\Support\ExecutionService
+     */
+    function execution()
+    {
+        return app('execution');
     }
 }
 
@@ -141,11 +194,11 @@ if (!function_exists('url')) {
      * @param string|null $path
      * @param mixed $parameters
      * @param bool|null $secure
-     * @return ($path is null ? \Phaseolies\Support\UrlGenerator : string)
+     * @return ($path is null ? \Phaseolies\Support\Contracts\UrlGeneratorInterface : string)
      */
     function url(?string $path = null, $parameters = [], ?bool $secure = null)
     {
-        $urlGenerator = app(UrlGenerator::class);
+        $urlGenerator = app(UrlGeneratorInterface::class);
 
         if (is_null($path)) {
             return $urlGenerator;
@@ -225,7 +278,7 @@ if (!function_exists('back')) {
      * @param int $status
      * @param array $headers
      * @param mixed $fallback
-     * @return \Phaseolies\Http\RedirectResponse
+     * @return \Phaseolies\Http\Response\RedirectResponse
      */
     function back($status = 302, $headers = [], $fallback = false)
     {
@@ -235,11 +288,11 @@ if (!function_exists('back')) {
 
 if (!function_exists('session')) {
     /**
-     * Creates a new Session instance
+     * Gets the current session instance or a value from it.
      *
      * @param mixed $key
      * @param mixed $default
-     * @return mixed
+     * @return ($key is null ? SessionInterface : mixed)
      */
     function session($key = null, $default = null): mixed
     {
@@ -326,10 +379,10 @@ if (!function_exists('config')) {
      * Retrieve a configuration value by key.
      *
      * @param string $key
-     * @param string $default
+     * @param mixed $default
      * @return mixed
      */
-    function config(string|array $key, ?string $default = null): mixed
+    function config(string|array $key, mixed $default = null): mixed
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
@@ -380,11 +433,11 @@ if (!function_exists('is_auth')) {
 
 if (!function_exists('str')) {
     /**
-     * Instance of the StringService class
+     * Instance of the string service
      *
-     * @return StringService
+     * @return StringServiceInterface
      */
-    function str(): StringService
+    function str(): StringServiceInterface
     {
         return app('str');
     }
@@ -411,27 +464,7 @@ if (!function_exists('base_path')) {
      */
     function base_path(string $path = ''): string
     {
-        static $basePath = null;
-
-        if ($basePath === null) {
-            if (app()->runningInConsole()) {
-                $basePath = rtrim(getcwd(), DIRECTORY_SEPARATOR);
-            } elseif (defined('BASE_PATH')) {
-                $basePath = rtrim(BASE_PATH, DIRECTORY_SEPARATOR);
-            } else {
-                $basePath = rtrim(dirname($_SERVER['SCRIPT_FILENAME'] ?? ''), DIRECTORY_SEPARATOR);
-            }
-        }
-
-        if ($path === '') {
-            return $basePath;
-        }
-
-        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
-
-        return $normalizedPath === ''
-            ? $basePath
-            : $basePath . DIRECTORY_SEPARATOR . $normalizedPath;
+        return app()->basePath($path);
     }
 }
 
@@ -500,7 +533,7 @@ if (!function_exists('detect_scheme')) {
     function detect_scheme(): string
     {
         // Force HTTPS via environment variable
-        if (getenv('FORCE_HTTPS') === 'true') {
+        if (env('FORCE_HTTPS') === true || env('FORCE_HTTPS') === 'true') {
             return 'https';
         }
 
@@ -728,16 +761,16 @@ if (!function_exists('public_path')) {
     }
 }
 
-if (!function_exists('resource_path')) {
+if (!function_exists('template_path')) {
     /**
-     * Get the resources path of the application.
+     * Get the template path of the application.
      *
      * @param string $path
      * @return string
      */
-    function resource_path(string $path = ''): string
+    function template_path(string $path = ''): string
     {
-        return app()->resourcesPath($path);
+        return app()->templatesPath($path);
     }
 }
 
@@ -767,16 +800,16 @@ if (!function_exists('config_path')) {
     }
 }
 
-if (!function_exists('database_path')) {
+if (!function_exists('schema_path')) {
     /**
-     * Get the database path of the application.
+     * Get the schema path of the application.
      *
      * @param string $path
      * @return string
      */
-    function database_path(string $path = ''): string
+    function schema_path(string $path = ''): string
     {
-        return app()->databasePath($path);
+        return app()->schemaPath($path);
     }
 }
 
@@ -850,7 +883,6 @@ if (!function_exists('abort')) {
     /**
      * Abort the request with a specific HTTP status code and optional message.
      *
-     * @param int
      * @param int $code
      * @param string $message
      * @param array $headers
@@ -866,7 +898,7 @@ if (!function_exists('abort_if')) {
     /**
      * Abort the request if a condition is true.
      *
-     * @param bool $condition
+     * @param mixed $condition
      * @param int $code
      * @param string $message
      * @param array $headers
@@ -1166,6 +1198,160 @@ if (!function_exists('tap')) {
         $callback($value);
 
         return $value;
+    }
+}
+
+if (!function_exists('blank')) {
+    /**
+     * Determine if the given value is "blank"
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    function blank(mixed $value): bool
+    {
+        if (is_null($value)) {
+            return true;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+
+        if (is_numeric($value) || is_bool($value)) {
+            return false;
+        }
+
+        if ($value instanceof Countable) {
+            return count($value) === 0;
+        }
+
+        if (is_array($value)) {
+            return $value === [];
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('filled')) {
+    /**
+     * Determine if the given value is not "blank"
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    function filled(mixed $value): bool
+    {
+        return !blank($value);
+    }
+}
+
+if (!function_exists('with')) {
+    /**
+     * Pass a value through a callback and return the result
+     *
+     * @param mixed $value
+     * @param callable|null $callback
+     * @return mixed
+     */
+    function with(mixed $value, ?callable $callback = null): mixed
+    {
+        return is_null($callback) ? $value : $callback($value);
+    }
+}
+
+if (!function_exists('rescue')) {
+    /**
+     * Run a callback and return a default value if it throws
+     *
+     * @param callable $callback
+     * @param mixed $default
+     * @param bool $report
+     * @return mixed
+     */
+    function rescue(callable $callback, mixed $default = null, bool $report = true): mixed
+    {
+        try {
+            return $callback();
+        } catch (Throwable $e) {
+            if ($report) {
+                try {
+                    Log::error($e->getMessage(), ['exception' => $e]);
+                } catch (Throwable) {
+                    // A broken logger must not hide the fallback value
+                }
+            }
+
+            return $default instanceof Closure ? $default($e) : $default;
+        }
+    }
+}
+
+if (!function_exists('retry')) {
+    /**
+     * Run a callback up to $times attempts, retrying when it throws
+     *
+     * @param int $times
+     * @param callable $callback
+     * @param int|Closure $sleepMs
+     * @param callable|null $when
+     * @return mixed
+     * @throws InvalidArgumentException
+     * @throws Throwable
+     */
+    function retry(int $times, callable $callback, int|Closure $sleepMs = 0, ?callable $when = null): mixed
+    {
+        if ($times < 1) {
+            throw new InvalidArgumentException('retry() requires at least one attempt.');
+        }
+
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            try {
+                return $callback($attempt);
+            } catch (Throwable $e) {
+                if ($attempt >= $times || ($when !== null && !$when($e))) {
+                    throw $e;
+                }
+
+                $delay = $sleepMs instanceof Closure ? $sleepMs($attempt) : $sleepMs;
+
+                if ($delay > 0) {
+                    usleep($delay * 1000);
+                }
+            }
+        }
+    }
+}
+
+if (!function_exists('benchmark')) {
+    /**
+     * Measure the execution time and memory use of a callback
+     *
+     * @param callable $callback
+     * @return array{result: mixed, time_ms: float, memory_bytes: int, peak_memory_bytes: int}
+     */
+    function benchmark(callable $callback): array
+    {
+        memory_reset_peak_usage();
+
+        $memoryBefore = memory_get_usage();
+        $start = hrtime(true);
+
+        $result = $callback();
+
+        $time = (hrtime(true) - $start) / 1e6;
+
+        return [
+            'result' => $result,
+            'time_ms' => $time,
+            'memory_bytes' => memory_get_usage() - $memoryBefore,
+            'peak_memory_bytes' => max(0, memory_get_peak_usage() - $memoryBefore),
+        ];
     }
 }
 

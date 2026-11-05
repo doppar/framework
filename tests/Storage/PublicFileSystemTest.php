@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Storage;
 
+use Phaseolies\Support\Storage\IFileSystem;
 use Phaseolies\Support\Storage\PublicFileSystem;
 use PHPUnit\Framework\TestCase;
 
@@ -82,4 +83,42 @@ class PublicFileSystemTest extends TestCase
 
         $this->assertFalse($result);
     }
+
+    // ==================== PATH TRAVERSAL TESTS ====================
+
+    public function testGetRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->get('../../etc/passwd');
+    }
+
+    public function testContentRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->content('../../etc/passwd');
+    }
+
+    public function testDeleteRejectsPathTraversal(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->delete('../../etc/passwd');
+    }
+    public function testStorageBasePathReturnsConfiguredPath()
+    {
+        $this->assertSame($this->tmpDir, $this->fs->storageBasePath());
+    }
+
+    public function testDeprecatedStoreageBasePathAliasStillWorks()
+    {
+        $this->assertSame($this->tmpDir, $this->fs->storeageBasePath());
+    }
+
+    public function testImplementsFileSystemContract()
+    {
+        $this->assertInstanceOf(IFileSystem::class, $this->fs);
+    }
+
 }

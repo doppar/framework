@@ -14,7 +14,59 @@ class PostgreSQLGrammar extends Grammar
      */
     public function getTypeDefinition(ColumnDefinition $column): string
     {
-        return $this->mapType($column->type, $column->attributes);
+        $type = $this->mapType($column->type, $column->attributes);
+
+        if ($column->type === 'enum') {
+            $values = $this->getEnumAllowedValues($column->attributes);
+            $type .= ' ' . $this->compileEnumCheckClause($column->name, $values);
+        }
+
+        return $type . $this->compileTypeSuffix($column);
+    }
+
+    /**
+     * Collation names are case sensitive in PostgreSQL and must be quoted.
+     *
+     * @param string $collation
+     * @return string
+     */
+    protected function formatCollation(string $collation): string
+    {
+        return $this->quoteIdentifier($this->safeKeyword($collation));
+    }
+
+    /**
+     * Get the SERIAL type backing an incrementing column.
+     *
+     * @param string $type
+     * @return string
+     */
+    protected function serialType(string $type): string
+    {
+        return match ($type) {
+            'tinyIncrements', 'smallIncrements' => 'SMALLSERIAL',
+            'increments', 'integerIncrements', 'mediumIncrements' => 'SERIAL',
+            default => 'BIGSERIAL',
+        };
+    }
+
+    public function compileColumnComment(string $table, ColumnDefinition $column): array
+    {
+        if (!isset($column->attributes['comment'])) {
+            return [];
+        }
+
+        return ["COMMENT ON COLUMN {$this->quoteIdentifier($table)}.{$this->quoteIdentifier($column->name)} IS "
+            . $this->quoteString($column->attributes['comment'])];
+    }
+
+    public function compileTableOptionStatements(string $table): array
+    {
+        if (!isset($this->tableOptions['comment'])) {
+            return [];
+        }
+
+        return ["COMMENT ON TABLE {$this->quoteIdentifier($table)} IS " . $this->quoteString($this->tableOptions['comment'])];
     }
 
     /**
@@ -33,10 +85,11 @@ class PostgreSQLGrammar extends Grammar
         foreach ($columns as $column) {
             $columnSql = $column->toSql();
 
-            if ($column->type === 'id' || $column->type === 'bigIncrements') {
+            if ($this->isIncrementing($column->type)) {
                 $columnSql = sprintf(
-                    '"%s" BIGSERIAL NOT NULL',
-                    $column->name
+                    '"%s" %s NOT NULL',
+                    $column->name,
+                    $this->serialType($column->type)
                 );
                 $primaryKeyColumns[] = trim($column->name, '"');
             } elseif ($column->type === 'uuid' && !empty($column->attributes['primary'])) {
@@ -58,7 +111,7 @@ class PostgreSQLGrammar extends Grammar
             $primaryKeySql = ', PRIMARY KEY ("' . implode('", "', $primaryKeyColumns) . '")';
         }
 
-        return "CREATE TABLE \"{$table}\" (" . implode(', ', $columnDefinitions) . $primaryKeySql . ")";
+        return $this->createTableKeyword() . " \"{$table}\" (" . implode(', ', $columnDefinitions) . $primaryKeySql . ')';
     }
 
     /**
@@ -78,13 +131,12 @@ class PostgreSQLGrammar extends Grammar
      *
      * @param string $table
      * @param string $column
+     * @param string|null $name
      * @return string
      */
-    public function compileCreateIndex(string $table, string $column): string
+    public function compileCreateIndex(string $table, string $column, ?string $name = null): string
     {
-        $indexName = "idx_{$table}_{$column}";
-
-        return "CREATE INDEX \"{$indexName}\" ON \"{$table}\" (\"{$column}\")";
+        return $this->compileCreateIndexSql($table, $name ?? $this->indexName($table, [$column]), [$column]);
     }
 
     /**
@@ -92,13 +144,79 @@ class PostgreSQLGrammar extends Grammar
      *
      * @param string $table
      * @param string $column
+     * @param string|null $name
      * @return string
      */
-    public function compileCreateUnique(string $table, string $column): string
+    public function compileCreateUnique(string $table, string $column, ?string $name = null): string
     {
-        $constraintName = "{$table}_{$column}_unique";
+        return $this->compileCreateUniqueSql($table, $name ?? $this->indexName($table, [$column], 'unique'), [$column]);
+    }
 
-        return "ALTER TABLE \"{$table}\" ADD CONSTRAINT \"{$constraintName}\" UNIQUE (\"{$column}\")";
+    protected function compileFullTextIndex(string $table, string $name, array $columns): string
+    {
+        $vector = implode(" || ' ' || ", array_map(
+            fn($column) => "coalesce({$this->quoteIdentifier($column)}, '')",
+            $columns
+        ));
+
+        return "CREATE INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "USING GIN (to_tsvector('english', {$vector}))";
+    }
+
+    protected function compileSpatialIndex(string $table, string $name, array $columns): string
+    {
+        return "CREATE INDEX {$this->quoteIdentifier($name)} ON {$this->quoteIdentifier($table)} "
+            . "USING GIST ({$this->quoteColumns($columns)})";
+    }
+
+    protected function compileDropPrimary(string $table): string
+    {
+        return "ALTER TABLE {$this->quoteIdentifier($table)} DROP CONSTRAINT {$this->quoteIdentifier($table . '_pkey')}";
+    }
+
+    public function compileRenameIndex(string $table, string $from, string $to): string
+    {
+        return "ALTER INDEX {$this->quoteIdentifier($from)} RENAME TO {$this->quoteIdentifier($to)}";
+    }
+
+    public function compileChangeColumn(string $table, ColumnDefinition $column): array
+    {
+        $t = $this->quoteIdentifier($table);
+        $c = $this->quoteIdentifier($column->name);
+        $type = $this->mapType($column->type, $column->attributes);
+
+        if ($this->isIncrementing($column->type)) {
+            $type = match ($column->type) {
+                'tinyIncrements', 'smallIncrements' => 'SMALLINT',
+                'increments', 'integerIncrements', 'mediumIncrements' => 'INTEGER',
+                default => 'BIGINT',
+            };
+        } elseif (!empty($column->attributes['autoIncrement'])) {
+            $type = $this->mapType($column->type, array_diff_key($column->attributes, ['autoIncrement' => 1]));
+        }
+
+        $statements = ["ALTER TABLE {$t} ALTER COLUMN {$c} TYPE {$type} USING {$c}::{$type}"];
+
+        $statements[] = "ALTER TABLE {$t} ALTER COLUMN {$c} "
+            . (!empty($column->attributes['nullable']) ? 'DROP NOT NULL' : 'SET NOT NULL');
+
+        $default = $column->getDefaultSql();
+
+        $statements[] = "ALTER TABLE {$t} ALTER COLUMN {$c} "
+            . ($default !== null ? "SET DEFAULT {$default}" : 'DROP DEFAULT');
+
+        return array_merge($statements, $this->compileColumnComment($table, $column));
+    }
+
+    public function compileGetColumns(): string
+    {
+        return 'SELECT column_name FROM information_schema.columns '
+            . 'WHERE table_schema = current_schema() AND table_name = ? ORDER BY ordinal_position';
+    }
+
+    public function compileGetIndexes(): string
+    {
+        return 'SELECT indexname FROM pg_indexes WHERE schemaname = current_schema() AND tablename = ?';
     }
 
     /**
@@ -146,6 +264,29 @@ class PostgreSQLGrammar extends Grammar
                 return 'DECIMAL(' . ($attributes['precision'] ?? 10) . ',' . ($attributes['scale'] ?? 2) . ')';
             case 'double':
                 return 'DOUBLE PRECISION';
+            case 'timestamp':
+                return 'TIMESTAMP' . $this->getTimePrecision($attributes);
+            case 'timestampTz':
+                return 'TIMESTAMPTZ' . $this->getTimePrecision($attributes);
+            case 'dateTime':
+                return 'TIMESTAMP' . $this->getTimePrecision($attributes);
+            case 'dateTimeTz':
+                return 'TIMESTAMPTZ' . $this->getTimePrecision($attributes);
+            case 'time':
+                return 'TIME' . $this->getTimePrecision($attributes);
+            case 'timeTz':
+                return 'TIMETZ' . $this->getTimePrecision($attributes);
+            case 'integer':
+            case 'bigInteger':
+            case 'smallInteger':
+                if (!empty($attributes['autoIncrement'])) {
+                    return match ($type) {
+                        'bigInteger' => 'BIGSERIAL',
+                        'smallInteger' => 'SMALLSERIAL',
+                        default => 'SERIAL',
+                    };
+                }
+                break;
             case 'jsonb':
                 return 'JSONB';
         }
@@ -156,6 +297,10 @@ class PostgreSQLGrammar extends Grammar
             'bigIncrements' => 'BIGSERIAL',
             'increments' => 'SERIAL',
             'integerIncrements' => 'SERIAL',
+            'tinyIncrements' => 'SMALLSERIAL',
+            'smallIncrements' => 'SMALLSERIAL',
+            'mediumIncrements' => 'SERIAL',
+            'ulid' => 'CHAR(26)',
             'text' => 'TEXT',
             'mediumText' => 'TEXT',
             'longText' => 'TEXT',
@@ -202,65 +347,27 @@ class PostgreSQLGrammar extends Grammar
     }
 
     /**
-     * Create an ENUM type definition for PostgreSQL
+     * Get the fractional seconds precision suffix, e.g. (3).
+     *
+     * @param array $attributes
+     * @return string
+     */
+    protected function getTimePrecision(array $attributes): string
+    {
+        return isset($attributes['precision']) ? '(' . (int) $attributes['precision'] . ')' : '';
+    }
+
+    /**
+     * Create an ENUM type definition for 
      *
      * @param array $attributes
      * @return string
      */
     protected function createEnumType(array $attributes): string
     {
-        $values = $attributes['allowed'] ?? $attributes['values'] ?? null;
-
-        if (!$values || !is_array($values)) {
-            throw new \InvalidArgumentException('Enum type requires an array of allowed values');
-        }
+        $this->getEnumAllowedValues($attributes);
 
         return 'TEXT';
-    }
-
-    /**
-     * Compile a CHECK constraint for an enum column
-     *
-     * @param string $table
-     * @param string $column
-     * @param array $values
-     * @return string
-     */
-    public function compileAddEnumCheckConstraint(string $table, string $column, array $values): string
-    {
-        $constraintName = "chk_{$table}_{$column}_enum";
-        $quotedValues = array_map(function ($value) {
-            return "'" . str_replace("'", "''", $value) . "'";
-        }, $values);
-
-        return "ALTER TABLE \"{$table}\" ADD CONSTRAINT \"{$constraintName}\" CHECK (\"{$column}\" IN (" . implode(', ', $quotedValues) . "))";
-    }
-
-    /**
-     * Compile a statement to create an enum type (alternative approach)
-     *
-     * @param string $typeName
-     * @param array $values
-     * @return string
-     */
-    public function compileCreateEnumType(string $typeName, array $values): string
-    {
-        $quotedValues = array_map(function ($value) {
-            return "'" . str_replace("'", "''", $value) . "'";
-        }, $values);
-
-        return "CREATE TYPE {$typeName} AS ENUM (" . implode(', ', $quotedValues) . ")";
-    }
-
-    /**
-     * Compile a statement to drop an enum type
-     *
-     * @param string $typeName
-     * @return string
-     */
-    public function compileDropEnumType(string $typeName): string
-    {
-        return "DROP TYPE IF EXISTS {$typeName}";
     }
 
     /**

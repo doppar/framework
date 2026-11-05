@@ -19,7 +19,7 @@ class KeyGenerateCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Generate a new application key and set it in the .env file';
+    protected $description = 'Generate a new application key and set it in the env.toml file';
 
     /**
      * Execute the console command.
@@ -30,21 +30,21 @@ class KeyGenerateCommand extends Command
     {
         return $this->executeWithTiming(function() {
             $randomKey = base64_encode(random_bytes(32));
-            $envPath = base_path() . '/.env';
+            $envPath = base_path() . '/env.toml';
 
             if (!file_exists($envPath)) {
-                throw new RuntimeException('.env file not found!');
+                throw new RuntimeException('env.toml file not found!');
             }
 
             $envContent = file_get_contents($envPath);
             $newEnvContent = preg_replace(
-                '/^APP_KEY=.*$/m',
-                "APP_KEY=base64:$randomKey",
+                '/^APP_KEY\s*=.*$/m',
+                "APP_KEY = \"base64:$randomKey\"",
                 $envContent
             );
 
             if (file_put_contents($envPath, $newEnvContent) === false) {
-                throw new RuntimeException('Failed to update .env file.');
+                throw new RuntimeException('Failed to update env.toml file.');
             }
 
             $this->displaySuccess('Application key set successfully');

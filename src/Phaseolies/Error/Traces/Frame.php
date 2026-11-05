@@ -3,6 +3,7 @@
 namespace Phaseolies\Error\Traces;
 
 use Phaseolies\Error\Utils\Highlighter;
+use Phaseolies\Error\Utils\PathResolver;
 
 class Frame
 {
@@ -74,15 +75,14 @@ class Frame
     }
 
     /**
-     * Get the file path relative to the application's base path.
+     * Get the file path as a namespace-style path (e.g. "App/Http/Controllers/HomeController.php"),
+     * falling back to a path relative to the application's base path.
      *
      * @return string
      */
     public function getShortFile(): string
     {
-        $basePath = base_path();
-
-        return str_replace($basePath . '/', '', $this->file);
+        return PathResolver::toDisplayPath($this->file);
     }
 
     /**
@@ -142,7 +142,9 @@ class Frame
      */
     public function isVendor(): bool
     {
-        return strpos($this->file, 'doppar/framework') !== false;
+        return strpos($this->file, '/vendor/') !== false
+            || strpos($this->file, 'doppar/framework') !== false
+            || strpos($this->file, 'package/doppar/src') !== false;
     }
 
     /**
@@ -239,7 +241,7 @@ class Frame
     public function getCodeLinesContent(): string
     {
         if (!$this->fileExists() || $this->getLine() <= 0) {
-            return '<div class="text-neutral-500 text-sm p-2">No code available</div>';
+            return '<div class="frame-no-code">No source available for this frame.</div>';
         }
 
         $fileLines = file($this->getFile());
@@ -252,18 +254,11 @@ class Frame
         for ($i = $start; $i < $end; $i++) {
             $number = $i + 1;
 
-            $highlight = $number === $this->getLine();
-
-            $classes = $highlight
-                ? 'bg-red-500/10 border-l-2 border-l-red-500 text-red-700 dark:text-red-400'
-                : 'text-neutral-600 dark:text-neutral-400';
+            $class = $number === $this->getLine() ? 'code-line-error' : 'code-line';
 
             $output[] = sprintf(
-                '<div class="flex py-0.5 px-2 %s">
-                <span class="inline-block w-10 text-right pr-3 text-neutral-400 select-none shrink-0">%d</span>
-                <code class="flex-1 whitespace-pre font-mono text-xs">%s</code>
-            </div>',
-                $classes,
+                '<div class="%s"><span class="code-line-number">%d</span><span class="code-line-content">%s</span></div>',
+                $class,
                 $number,
                 Highlighter::make($fileLines[$i])
             );

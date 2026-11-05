@@ -22,16 +22,6 @@ class PublicFileSystem extends FileSystem implements IFileSystem
     }
 
     /**
-     * return project base path in os
-     *
-     * @return string
-     */
-    public function storeageBasePath(): string
-    {
-        return $this->filePath;
-    }
-
-    /**
      * Get the contents of a file.
      *
      * @param string $path
@@ -39,7 +29,7 @@ class PublicFileSystem extends FileSystem implements IFileSystem
      */
     public function get(string $path): ?string
     {
-        $fullPath = $this->filePath . '/' . $path;
+        $fullPath = $this->resolvePath($path);
 
         if ($this->isFile($fullPath)) {
             return $fullPath;
@@ -56,12 +46,12 @@ class PublicFileSystem extends FileSystem implements IFileSystem
      *
      * @throws \Phaseolies\Support\Storage\FileNotFoundException
      */
-    public function content($path)
+    public function content(string $path): string
     {
-        $fullPath = $this->filePath . '/' . $path;
+        $fullPath = $this->resolvePath($path);
 
         if ($this->isFile($fullPath)) {
-            $file = new \SplFileObject($path, 'r');
+            $file = new \SplFileObject($fullPath, 'r');
             $contents = '';
             while (!$file->eof()) {
                 $contents .= $file->fgets();
@@ -83,7 +73,7 @@ class PublicFileSystem extends FileSystem implements IFileSystem
         $success = true;
 
         foreach ((array) $path as $filePath) {
-            $fullPath = $this->filePath . '/' . $filePath;
+            $fullPath = $this->resolvePath($filePath);
 
             if (file_exists($fullPath)) {
                 if (!unlink($fullPath)) {

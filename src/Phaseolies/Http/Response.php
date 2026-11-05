@@ -7,6 +7,7 @@ use Phaseolies\Http\Response\ResponseHeaderBag;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Controllers\Controller;
 
 class Response implements HttpStatus
 {
@@ -662,7 +663,7 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $status, string $message): void
     {
-        $customPath = base_path("resources/views/errors/{$status}.odo.php");
+        $customPath = base_path("templates/views/errors/{$status}.odo.php");
         $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$status}.odo.php");
 
         if (file_exists($customPath)) {
@@ -728,15 +729,7 @@ class Response implements HttpStatus
      */
     public function renderView(string $view, array $data = []): string
     {
-        $viewPath = str_replace('.', '/', $view);
-
-        extract($data);
-
-        ob_start();
-
-        include base_path("resources/views/{$viewPath}.odo.php");
-
-        return ob_get_clean();
+        return app(Controller::class)->render($view, $data, true);
     }
 
     /**
@@ -1631,6 +1624,11 @@ class Response implements HttpStatus
         // Fallback
         if (!headers_sent()) {
             http_response_code($status);
+        }
+
+        // Track application 404 errors
+        if (class_exists($class = \Doppar\Insight\Support\ErrorHistoryRecorder::class)) {
+            app($class)->record($exception);
         }
 
         return $this;

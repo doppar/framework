@@ -57,9 +57,9 @@ class MakeAuthCommand extends Command
     protected function createDirectories(): void
     {
         $paths = [
-            base_path('app/Http/Controllers/Auth/'),
-            base_path('resources/views/auth/'),
-            base_path('resources/views/layouts/'),
+            base_path('src/Http/Controllers/Auth/'),
+            base_path('templates/views/auth/'),
+            base_path('templates/views/layouts/'),
         ];
 
         foreach ($paths as $path) {
@@ -75,27 +75,27 @@ class MakeAuthCommand extends Command
     protected function generateControllers(): void
     {
         $this->createFile(
-            base_path('app/Http/Controllers/Auth/LoginController.php'),
+            base_path('src/Http/Controllers/Auth/LoginController.php'),
             $this->getStubContent('LoginController.stub')
         );
 
         $this->createFile(
-            base_path('app/Http/Controllers/Auth/RegisterController.php'),
+            base_path('src/Http/Controllers/Auth/RegisterController.php'),
             $this->getStubContent('RegisterController.stub')
         );
 
         $this->createFile(
-            base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
+            base_path('src/Http/Controllers/Auth/TwoFactorAuthController.php'),
             $this->getStubContent('TwoFactorAuthController.stub')
         );
 
         $this->createFile(
-            base_path('app/Http/Controllers/HomeController.php'),
+            base_path('src/Http/Controllers/HomeController.php'),
             $this->getStubContent('HomeController.stub')
         );
 
         $this->createFile(
-            base_path('app/Http/Controllers/ProfileController.php'),
+            base_path('src/Http/Controllers/ProfileController.php'),
             $this->getStubContent('ProfileController.stub')
         );
     }
@@ -115,7 +115,7 @@ class MakeAuthCommand extends Command
         ];
 
         foreach ($views as $destination => $stubFile) {
-            $destinationPath = base_path('resources/views/' . $destination);
+            $destinationPath = base_path('templates/views/' . $destination);
             $content = $this->getStubContent($stubFile);
             $this->createFile($destinationPath, $content);
         }
@@ -126,7 +126,7 @@ class MakeAuthCommand extends Command
      */
     protected function appendRoutes(): void
     {
-        $routesPath = base_path('routes/web.php');
+        $routesPath = base_path('runtime/routes/web.php');
 
         if (!file_exists($routesPath)) {
             throw new RuntimeException('Routes file not found: ' . $routesPath);
@@ -167,17 +167,17 @@ class MakeAuthCommand extends Command
     protected function authFilesExist(): bool
     {
         $filesToCheck = [
-            base_path('app/Http/Controllers/Auth/LoginController.php'),
-            base_path('app/Http/Controllers/Auth/RegisterController.php'),
-            base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
-            base_path('app/Http/Controllers/HomeController.php'),
-            base_path('app/Http/Controllers/ProfileController.php'),
-            base_path('resources/views/auth/login.odo.php'),
-            base_path('resources/views/auth/2fa.odo.php'),
-            base_path('resources/views/auth/register.odo.php'),
-            base_path('resources/views/layouts/app.odo.php'),
-            base_path('resources/views/home.odo.php'),
-            base_path('resources/views/profile.odo.php'),
+            base_path('src/Http/Controllers/Auth/LoginController.php'),
+            base_path('src/Http/Controllers/Auth/RegisterController.php'),
+            base_path('src/Http/Controllers/Auth/TwoFactorAuthController.php'),
+            base_path('src/Http/Controllers/HomeController.php'),
+            base_path('src/Http/Controllers/ProfileController.php'),
+            base_path('templates/views/auth/login.odo.php'),
+            base_path('templates/views/auth/2fa.odo.php'),
+            base_path('templates/views/auth/register.odo.php'),
+            base_path('templates/views/layouts/app.odo.php'),
+            base_path('templates/views/home.odo.php'),
+            base_path('templates/views/profile.odo.php'),
         ];
 
         foreach ($filesToCheck as $file) {
@@ -196,19 +196,19 @@ class MakeAuthCommand extends Command
     {
         $files = [
             'Controllers' => [
-                base_path('app/Http/Controllers/Auth/LoginController.php'),
-                base_path('app/Http/Controllers/Auth/RegisterController.php'),
-                base_path('app/Http/Controllers/Auth/TwoFactorAuthController.php'),
-                base_path('app/Http/Controllers/HomeController.php'),
-                base_path('app/Http/Controllers/ProfileController.php'),
+                base_path('src/Http/Controllers/Auth/LoginController.php'),
+                base_path('src/Http/Controllers/Auth/RegisterController.php'),
+                base_path('src/Http/Controllers/Auth/TwoFactorAuthController.php'),
+                base_path('src/Http/Controllers/HomeController.php'),
+                base_path('src/Http/Controllers/ProfileController.php'),
             ],
             'Views' => [
-                base_path('resources/views/auth/login.odo.php'),
-                base_path('resources/views/auth/register.odo.php'),
-                base_path('resources/views/auth/2fa.odo.php'),
-                base_path('resources/views/layouts/app.odo.php'),
-                base_path('resources/views/home.odo.php'),
-                base_path('resources/views/profile.odo.php'),
+                base_path('templates/views/auth/login.odo.php'),
+                base_path('templates/views/auth/register.odo.php'),
+                base_path('templates/views/auth/2fa.odo.php'),
+                base_path('templates/views/layouts/app.odo.php'),
+                base_path('templates/views/home.odo.php'),
+                base_path('templates/views/profile.odo.php'),
             ]
         ];
 

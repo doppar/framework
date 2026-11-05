@@ -10,9 +10,11 @@ final class Temporal
     /**
      * @param string $suffix
      * @param bool $trackActor
+     * @param bool $branches
      */
     public function __construct(
         public readonly string $suffix = '_history',
         public readonly bool $trackActor = false,
+        public readonly bool $branches = false,
     ) {}
 }

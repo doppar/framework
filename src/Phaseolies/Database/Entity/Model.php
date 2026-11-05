@@ -9,13 +9,23 @@ use Phaseolies\Database\Entity\Casts\InteractsWithCasting;
 use Phaseolies\Database\Temporal\InteractsWithTemporal;
 use Phaseolies\Database\Entity\Watches\InteractsWithWatches;
 use Phaseolies\Database\Entity\Computed\InteractsWithComputedProperties;
+use Phaseolies\Database\Entity\SoftDeletes\InteractsWithSoftDeletes;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Contracts\Support\Jsonable;
 use Phaseolies\Database\Entity\Attributes\Hook;
+use Phaseolies\Database\Entity\Relations\BindTo;
+use Phaseolies\Database\Entity\Relations\BindToMany;
+use Phaseolies\Database\Entity\Relations\LinkMany;
+use Phaseolies\Database\Entity\Relations\LinkOne;
 
+/**
+ * @phpstan-consistent-constructor
+ * @property string $__branch Temporal history metadata.
+ * @method static \Phaseolies\Database\Entity\Builder withoutHook()
+ */
 abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stringable
 {
-    use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties;
+    use InteractsWithModelQueryProcessing, InteractsWithTemporal, InteractsWithCasting, InteractsWithWatches, InteractsWithComputedProperties, InteractsWithSoftDeletes;
 
     /**
      * The name of the database table associated with the model.
@@ -762,30 +772,40 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     /**
      * Delete the model from the database.
      *
+     * A #[SoftDeletes] model is soft-deleted; use forceDelete() to remove the row.
+     *
      * @return bool
      */
     public function delete(): bool
     {
         if (!isset($this->attributes[$this->primaryKey])) {
+            $this->hooksSuppressed = false;
+
             return false;
         }
 
         try {
-            if (self::$isHookShouldBeCalled && $this->fireBeforeHooks('deleted') === false) {
+            if (! $this->hooksSuppressed && $this->fireBeforeHooks('deleted') === false) {
                 return false;
             }
 
-            $result = $this->newQuery()
-                ->where($this->primaryKey, $this->attributes[$this->primaryKey])
-                ->delete();
+            if ($this->usesSoftDeletes() && !$this->forceDeleting) {
+                $result = $this->performSoftDelete();
+            } else {
+                $query = $this->newQuery()
+                    ->withoutSoftDeleteScope()
+                    ->where($this->primaryKey, $this->attributes[$this->primaryKey]);
 
-            if ($result && self::$isHookShouldBeCalled) {
+                $result = $this->usesSoftDeletes() ? $query->forceDelete() : $query->delete();
+            }
+
+            if ($result && ! $this->hooksSuppressed) {
                 $this->fireAfterHooks('deleted');
             }
 
             return $result;
         } finally {
-            self::$isHookShouldBeCalled = true;
+            $this->hooksSuppressed = false;
         }
     }
 
@@ -813,81 +833,105 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      * Define a one-to-one relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return LinkOne
      */
-    public function linkOne(string $related, string $foreignKey, string $localKey)
+    public function linkOne(string $related, ?string $foreignKey = null, ?string $localKey = null): LinkOne
     {
-        $this->lastRelationType = 'linkOne';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
+        $foreignKey ??= $this->defaultForeignKey();
+        $localKey ??= $this->getKeyName();
 
-        $relatedInstance = app($related);
+        $this->rememberRelation('linkOne', $related, $foreignKey, $localKey);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $query = $this->newRelationBuilder(LinkOne::class, $related);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationParent($this, $foreignKey, $localKey);
+
+        return $query;
     }
 
     /**
-     * Define a one-to-one relationship
+     * Define the inverse of a one-to-one or one-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return BindTo
      */
-    public function bindTo(string $related, string $foreignKey, string $localKey)
+    public function bindTo(string $related, ?string $foreignKey = null, ?string $localKey = null): BindTo
     {
-        $this->lastRelationType = 'bindTo';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
-
         $relatedInstance = app($related);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $foreignKey ??= $relatedInstance->getKeyName();
+        $localKey ??= self::snakeCase(class_basename($related)) . '_' . $relatedInstance->getKeyName();
+
+        $this->rememberRelation('bindTo', $related, $foreignKey, $localKey);
+
+        $query = $this->newRelationBuilder(BindTo::class, $related);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationChild($this, $localKey, $foreignKey);
+
+        return $query;
     }
 
     /**
      * Define a one-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $localKey
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $localKey
+     * @return LinkMany
      */
-    public function linkMany(string $related, string $foreignKey, string $localKey)
+    public function linkMany(string $related, ?string $foreignKey = null, ?string $localKey = null): LinkMany
     {
-        $this->lastRelationType = 'linkMany';
-        $this->lastRelatedModel = $related;
-        $this->lastForeignKey = $foreignKey;
-        $this->lastLocalKey = $localKey;
+        $foreignKey ??= $this->defaultForeignKey();
+        $localKey ??= $this->getKeyName();
 
-        $relatedInstance = app($related);
+        $this->rememberRelation('linkMany', $related, $foreignKey, $localKey);
 
-        return $relatedInstance->query()->where($foreignKey, '=', $this->$localKey);
+        $query = $this->newRelationBuilder(LinkMany::class, $related);
+        $this->constrainRelation($query, $foreignKey, $this->$localKey);
+        $query->setRelationParent($this, $foreignKey, $localKey);
+
+        return $query;
     }
 
     /**
      * Define a many-to-many relationship
      *
      * @param string $related
-     * @param string $foreignKey
-     * @param string $relatedKey
-     * @param string $pivotTable
-     * @return \Phaseolies\Database\Entity\Builder
+     * @param string|null $foreignKey
+     * @param string|null $relatedKey
+     * @param string|null $pivotTable
+     * @return BindToMany
      */
-    public function bindToMany(string $related, string $foreignKey, string $relatedKey, string $pivotTable)
-    {
+    public function bindToMany(
+        string $related,
+        ?string $foreignKey = null,
+        ?string $relatedKey = null,
+        ?string $pivotTable = null
+    ): BindToMany {
+        $relatedModel = app($related);
+
+        $thisName = self::snakeCase(class_basename(static::class));
+        $relatedName = self::snakeCase(class_basename($related));
+
+        $foreignKey ??= $this->defaultForeignKey();
+        $relatedKey ??= $relatedName . '_' . $relatedModel->getKeyName();
+        if ($pivotTable === null) {
+            $names = [$thisName, $relatedName];
+            sort($names);
+            $pivotTable = implode('_', $names);
+        }
+
         $this->lastRelationType = 'bindToMany';
         $this->lastRelatedModel = $related;
         $this->lastForeignKey = $foreignKey;
         $this->lastRelatedKey = $relatedKey;
         $this->lastPivotTable = $pivotTable;
 
-        $relatedModel = app($related);
-        $query = $relatedModel->query();
+        $query = $this->newRelationBuilder(BindToMany::class, $related);
 
         $query->setRelationInfo([
             'type' => 'bindToMany',
@@ -897,7 +941,118 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
             'parentKey' => $this->getKey()
         ]);
 
+        $query->constrainToPivot($pivotTable, $foreignKey, $relatedKey, $relatedModel->getKeyName(), $this->getKey());
+
         return $query;
+    }
+
+    /**
+     * Limit a relation query to the rows that point at this model
+     *
+     * @param Builder $query
+     * @param string $foreignKey
+     * @param mixed $value
+     * @return void
+     */
+    private function constrainRelation(Builder $query, string $foreignKey, mixed $value): void
+    {
+        $query->constrainToColumn($foreignKey, $value);
+    }
+
+    /**
+     * Remember the relationship that was just defined, for eager loading
+     *
+     * @param string $type
+     * @param string $related
+     * @param string $foreignKey
+     * @param string $localKey
+     * @return void
+     */
+    private function rememberRelation(string $type, string $related, string $foreignKey, string $localKey): void
+    {
+        $this->lastRelationType = $type;
+        $this->lastRelatedModel = $related;
+        $this->lastForeignKey = $foreignKey;
+        $this->lastLocalKey = $localKey;
+    }
+
+    /**
+     * The conventional foreign key that points at this model, for example user_id
+     *
+     * @return string
+     */
+    private function defaultForeignKey(): string
+    {
+        return self::snakeCase(class_basename(static::class)) . '_' . $this->getKeyName();
+    }
+
+    /**
+     * Create a query on the related model that has the given relationship type
+     *
+     * @template T of Builder
+     * @param class-string<T> $builder
+     * @param string $related
+     * @return T
+     */
+    private function newRelationBuilder(string $builder, string $related): Builder
+    {
+        $relatedInstance = app($related);
+        $connection = $relatedInstance->connection;
+
+        $relation = new $builder(
+            Database::getPdoInstance($connection),
+            $relatedInstance->getTable(),
+            $related,
+            $relatedInstance->pageSize,
+            $connection
+        );
+
+        $source = $related::query();
+
+        foreach (self::builderProperties() as $property) {
+            if ($property->isInitialized($source)) {
+                $property->setValue($relation, $property->getValue($source));
+            }
+        }
+
+        return $relation;
+    }
+
+    /**
+     * The instance properties of the query builder, read once
+     *
+     * @return array<int, \ReflectionProperty>
+     */
+    private static function builderProperties(): array
+    {
+        static $properties = null;
+
+        return $properties ??= array_values(array_filter(
+            (new \ReflectionClass(Builder::class))->getProperties(),
+            fn (\ReflectionProperty $property) => !$property->isStatic()
+        ));
+    }
+
+    /**
+     * Convert a string to snake_case.
+     *
+     * @param string $value
+     * @return string
+     */
+    private static function snakeCase(string $value): string
+    {
+        return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $value));
+    }
+
+    /**
+     * Whether an attribute is listed in the model's $creatable whitelist
+     *
+     * @param string $attribute
+     * @return bool
+     */
+    public function isCreatable(string $attribute): bool
+    {
+        return in_array($attribute, $this->creatable, true);
     }
 
     /**
@@ -1008,96 +1163,88 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function __get($name)
     {
-        try {
-            if (array_key_exists($name, $this->attributes)) {
-                return $this->castForGet($name, $this->attributes[$name]);
-            }
-
-            if (array_key_exists($name, $this->relations)) {
-                return $this->relations[$name];
-            }
-
-            if ($this->isComputed($name)) {
-                return $this->resolveComputed($name);
-            }
-
-            if (method_exists($this, $name)) {
-                $relation = $this->$name();
-
-                if ($relation instanceof Builder) {
-                    $relationType = $this->getLastRelationType();
-
-                    switch ($relationType) {
-                        case 'linkOne':
-                            $result = $relation->first();
-                            $this->setRelation($name, $result);
-                            return $result;
-
-                        case 'bindTo':
-                            $result = $relation->first();
-                            $this->setRelation($name, $result);
-                            return $result;
-
-                        case 'linkMany':
-                            $results = $relation->get();
-                            $this->setRelation($name, $results);
-                            return $results;
-
-                        case 'bindToMany':
-                            $relatedModel = app($this->getLastRelatedModel());
-                            $relatedModelClass = get_class($relatedModel);
-                            $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
-                            $pivotTable = $this->getLastPivotTable();
-                            $pivotSelects = array_map(function ($column) use ($pivotTable) {
-                                return "{$pivotTable}.{$column} as pivot_{$column}";
-                            }, $pivotColumns);
-
-                            $query = $relatedModel->query()
-                                ->select(array_merge(
-                                    ["{$relatedModel->getTable()}.*"],
-                                    $pivotSelects
-                                ))
-                                ->join(
-                                    $this->getLastPivotTable(),
-                                    "{$this->getLastPivotTable()}.{$this->getLastRelatedKey()}",
-                                    '=',
-                                    "{$relatedModel->getTable()}.{$relatedModel->getKeyName()}"
-                                )
-                                ->where("{$this->getLastPivotTable()}.{$this->getLastForeignKey()}", '=', $this->getKey());
-
-                            $results = $query->get();
-                            $grouped = [];
-                            foreach ($results as $result) {
-                                $pivot = [];
-                                foreach ($pivotColumns as $column) {
-                                    $pivot[$column] = $result["pivot_{$column}"];
-                                    unset($result["pivot_{$column}"]);
-                                }
-                                $pivotObj = (object) $pivot;
-                                $result->pivot = $pivotObj;
-                                $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
-                            }
-
-                            $this->setRelation(
-                                $name,
-                                new Collection($relatedModelClass, $grouped[$this->getKey()] ?? [])
-                            );
-
-                            return $results;
-                    }
-                }
-
-                return $relation;
-            }
-
-            if (!isset($this->attributes[$name])) {
-                throw new \Exception("Property or relation '$name' does not exist on " . static::class);
-            }
-
-            return $this->attributes[$name];
-        } catch (\Throwable) {
-            return;
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->castForGet($name, $this->attributes[$name]);
         }
+
+        if (array_key_exists($name, $this->relations)) {
+            return $this->relations[$name];
+        }
+
+        if ($this->isComputed($name)) {
+            return $this->resolveComputed($name);
+        }
+
+        if (method_exists($this, $name)) {
+            $relation = $this->$name();
+
+            if ($relation instanceof Builder) {
+                $relationType = $this->getLastRelationType();
+
+                switch ($relationType) {
+                    case 'linkOne':
+                        $result = $relation->first();
+                        $this->setRelation($name, $result);
+                        return $result;
+
+                    case 'bindTo':
+                        $result = $relation->first();
+                        $this->setRelation($name, $result);
+                        return $result;
+
+                    case 'linkMany':
+                        $results = $relation->get();
+                        $this->setRelation($name, $results);
+                        return $results;
+
+                    case 'bindToMany':
+                        $relatedModel = app($this->getLastRelatedModel());
+                        $relatedModelClass = get_class($relatedModel);
+                        $pivotColumns = app('db')->getTableColumns($this->getLastPivotTable());
+                        $pivotTable = $this->getLastPivotTable();
+                        $pivotSelects = array_map(function ($column) use ($pivotTable) {
+                            return "{$pivotTable}.{$column} as pivot_{$column}";
+                        }, $pivotColumns);
+
+                        $query = $relatedModel->query()
+                            ->select(array_merge(
+                                ["{$relatedModel->getTable()}.*"],
+                                $pivotSelects
+                            ))
+                            ->join(
+                                $this->getLastPivotTable(),
+                                "{$this->getLastPivotTable()}.{$this->getLastRelatedKey()}",
+                                '=',
+                                "{$relatedModel->getTable()}.{$relatedModel->getKeyName()}"
+                            )
+                            ->where("{$this->getLastPivotTable()}.{$this->getLastForeignKey()}", '=', $this->getKey());
+
+                        $results = $query->get();
+                        $grouped = [];
+                        foreach ($results as $result) {
+                            $pivot = [];
+                            foreach ($pivotColumns as $column) {
+                                $pivot[$column] = $result["pivot_{$column}"];
+                                unset($result["pivot_{$column}"]);
+                            }
+                            $pivotObj = (object) $pivot;
+                            $result->pivot = $pivotObj;
+                            $grouped[$pivot[$this->getLastForeignKey()]][] = $result;
+                        }
+
+                        $this->setRelation(
+                            $name,
+                            new Collection($relatedModelClass, $grouped[$this->getKey()] ?? [])
+                        );
+
+                        return $results;
+                }
+            }
+
+            return $relation;
+        }
+
+        return null;
     }
 
     /**
@@ -1143,16 +1290,6 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function getRelationValue(string $relation)
     {
         return $this->getRelation($relation);
-    }
-
-    /**
-     * Get the authentication key name used for identifying the user.
-     *
-     * @return string
-     */
-    public function getAuthKeyName(): string
-    {
-        return "email";
     }
 
     /**
@@ -1206,6 +1343,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function increment(string $column, int $amount = 1, array $extra = []): int
     {
         $result = $this->newQuery()
+            ->withoutSoftDeleteScope()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->increment($column, $amount, $extra);
 
@@ -1231,6 +1369,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     public function decrement(string $column, int $amount = 1, array $extra = []): int
     {
         $result = $this->newQuery()
+            ->withoutSoftDeleteScope()
             ->where($this->getKeyName(), '=', $this->getKey())
             ->decrement($column, $amount, $extra);
 
@@ -1254,6 +1393,14 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function __call($method, $parameters)
     {
-        return $this->newQuery()->$method(...$parameters);
+        // withoutHook() skips hooks for the next write on this instance only
+        // and returns the instance, so $model->withoutHook()->save() is safe.
+        if ($method === 'withoutHook') {
+            $this->hooksSuppressed = true;
+
+            return $this;
+        }
+
+        return static::query($this->connection)->$method(...$parameters);
     }
 }

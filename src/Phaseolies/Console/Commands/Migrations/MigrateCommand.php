@@ -3,16 +3,19 @@
 namespace Phaseolies\Console\Commands\Migrations;
 
 use Phaseolies\Console\Schedule\Command;
+use Phaseolies\Console\Support\InteractsWithMigrations;
 use Phaseolies\Database\Migration\Migrator;
 
 class MigrateCommand extends Command
 {
+    use InteractsWithMigrations;
+
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $name = 'migrate {--path=} {--connection=}';
+    protected $name = 'migrate {--path=} {--connection=} {--step} {--pretend} {--force} {--seed}';
 
     /**
      * The description of the console command.
@@ -45,28 +48,38 @@ class MigrateCommand extends Command
     public function handle(): int
     {
         return $this->executeWithTiming(function () {
-            $connection = $this->option('connection') ?: config('database.default');
+            $connection = $this->resolveConnection();
+            $pretend = (bool) $this->option('pretend');
 
-            $path = $this->option('path');
+            if (!$this->confirmToProceed('Running migrations in production')) {
+                return Command::FAILURE;
+            }
 
-            $this->line("<fg=yellow>🔁 Running migrations on connection: {$connection}</>");
+            $this->line("<fg=yellow>🔁 " . ($pretend ? 'Previewing' : 'Running') . " migrations on connection: {$connection}</>");
             $this->newLine();
 
-            if ($path) {
-                $migrations = $this->migrator->run($connection, $path);
-            } else {
-                $migrations = $this->migrator->run($connection);
+            try {
+                $migrations = $this->migrator->run($connection, $this->option('path') ?: null, [
+                    'step' => (bool) $this->option('step'),
+                    'pretend' => $pretend,
+                    'progress' => $this->progressReporter(),
+                ]);
+            } catch (\Throwable $e) {
+                $this->newLine();
+                $this->displayError($e->getMessage());
+
+                return Command::FAILURE;
             }
 
             if (empty($migrations)) {
-                $this->newLine();
                 $this->displayInfo('Nothing to migrate');
-            } else {
-                $this->displaySuccess('Database migrated successfully');
-                $this->line('<fg=yellow>📊 Migrations Executed:</>');
-                foreach ($migrations as $migration) {
-                    $this->line('- <fg=white>' . $migration . '</>');
-                }
+            } elseif (!$pretend) {
+                $this->newLine();
+                $this->displaySuccess(count($migrations) . ' ' . (count($migrations) === 1 ? 'migration' : 'migrations') . ' executed');
+            }
+
+            if ($this->option('seed') && !$pretend) {
+                return $this->runSeeders();
             }
 
             return Command::SUCCESS;

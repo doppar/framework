@@ -5,9 +5,11 @@ namespace Tests\Unit\Builder;
 use PDO;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderJoinsFromOmitTest extends TestCase
 {
     private $database;
@@ -16,7 +18,7 @@ class DatabaseBuilderJoinsFromOmitTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -43,7 +45,7 @@ class DatabaseBuilderJoinsFromOmitTest extends TestCase
     private function setBuilderDriver(string $driver): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn($driver);
+        $this->pdoMock->method('getAttribute')->willReturn($driver);
     }
 
     public function testJoinClausesInToSql()
@@ -72,14 +74,14 @@ class DatabaseBuilderJoinsFromOmitTest extends TestCase
     {
         // DESCRIBE users -> columns id,name,email
         $describeStmt = $this->createMock(PDOStatement::class);
-        $describeStmt->method('fetchAll')->with($this->anything())->willReturn([
+        $describeStmt->expects($this->once())->method('fetchAll')->with($this->anything())->willReturn([
             ['Field' => 'id'],
             ['Field' => 'name'],
             ['Field' => 'email'],
         ]);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('query')->willReturn($describeStmt);
 
         $builder = $this->createBuilder();

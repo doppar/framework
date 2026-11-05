@@ -3,8 +3,8 @@
 namespace Tests\Unit\Router;
 
 use Tests\Support\MockContainer;
-use Tests\Support\Kernel;
-use Phaseolies\Utilities\Attributes\Middleware;
+use Tests\Support\Gateway;
+use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
@@ -14,8 +14,8 @@ use Phaseolies\Application;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class TestRequestStub extends Request
@@ -42,6 +42,16 @@ class TestRequestStub extends Request
         return $this->testPath;
     }
 
+    public function getRequestUri(): string
+    {
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php) and needs a working
+        // uri()/isApiRequest(), which the real Request derives from
+        // $this->server — never initialized here since this stub skips
+        // Request::__construct().
+        return $this->testPath;
+    }
+
     public function getHost(): string
     {
         return $this->testHost;
@@ -57,6 +67,22 @@ class TestRequestStub extends Request
         $this->testRouteParams = $params;
 
         return $this;
+    }
+}
+
+/**
+ * A route middleware that just counts how many times it actually ran —
+ * see testRouteMiddlewareDoesNotAccumulateAcrossDispatches().
+ */
+class WorkerModeCountingMiddleware implements \Phaseolies\Middleware\Contracts\Middleware
+{
+    public static int $count = 0;
+
+    public function __invoke($request, $next)
+    {
+        self::$count++;
+
+        return $next($request);
     }
 }
 
@@ -84,7 +110,7 @@ class RouterTest extends TestCase
         $this->request = new Request();
 
         $this->app = $this->createMock(Application::class);
-        $this->router = new Router($this->app);
+        $this->router = new Router(new Gateway());
 
         // Clear static properties before each test
         $reflection = new \ReflectionClass(Router::class);
@@ -235,7 +261,7 @@ class RouterTest extends TestCase
 
         $_SERVER['REQUEST_METHOD'] = 'GET';
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $container = Container::getInstance();
         $container->instance('request', $request);
 
@@ -308,7 +334,7 @@ class RouterTest extends TestCase
 
         $_SERVER['REQUEST_URI'] = '/admin';
         $_SERVER['REQUEST_METHOD'] = 'GET';
-        $request = new Request();
+        $request = Request::createFromGlobals();
 
         $middleware = $this->router->getCurrentRouteMiddleware($request);
 
@@ -426,7 +452,7 @@ class RouterTest extends TestCase
 
     public function testResolveUsesFreshResponseForScalarRouteResults(): void
     {
-        $freshRouter = new TestableRouter($this->app);
+        $freshRouter = new TestableRouter(new Gateway());
         $sharedResponse = new Response('stale body', 202, ['X-Leaked' => 'yes']);
 
         Container::getInstance()->instance('response', $sharedResponse);
@@ -434,12 +460,71 @@ class RouterTest extends TestCase
         $freshRouter->get('/fresh', fn() => 'fresh body');
 
         $request = new TestRequestStub('GET', '/fresh', 'localhost');
+        Container::getInstance()->instance('request', $request);
+
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php), so $this->app->make()
+        // needs to actually build the 'web' group's CsrfTokenMiddleware
+        // rather than return a bare mock default, and CsrfTokenMiddleware
+        // itself needs the Str facade's 'str' binding.
+        Container::getInstance()->instance('str', new \Phaseolies\Support\StringService());
+        $this->app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => Container::getInstance()->make($abstract, $parameters)
+        );
+
         $response = $freshRouter->resolve($this->app, $request);
 
         $this->assertNotSame($sharedResponse, $response);
         $this->assertSame('fresh body', $response->getBody());
         $this->assertNull($response->headers->get('X-Leaked'));
         $this->assertSame(200, $response->getStatusCode());
+    }
+
+    /**
+     * Worker-mode regression: Router::resolve() used to apply route
+     * middleware directly onto the shared Gateway singleton's chain
+     * (`$this->gateway->applyMiddleware()`), which only ever wraps its
+     * current chain, never resets it. Reusing one Router/Gateway across
+     * multiple dispatches — exactly what a persistent worker
+     * (Swoole/FrankenPHP/RoadRunner) does — would make every dispatch's
+     * middleware permanently stack on top of every dispatch before it, so
+     * the Nth request would run its middleware N times. resolve() now
+     * builds a fresh, request-local chain every call instead.
+     */
+    public function testRouteMiddlewareDoesNotAccumulateAcrossDispatches(): void
+    {
+        WorkerModeCountingMiddleware::$count = 0;
+
+        $gateway = new Gateway();
+        $gateway->routeMiddleware['web']['counter'] = WorkerModeCountingMiddleware::class;
+
+        $router = new TestableRouter($gateway);
+        $router->get('/counted', fn() => 'ok')->middleware('counter');
+
+        Container::getInstance()->instance('str', new \Phaseolies\Support\StringService());
+        $this->app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => Container::getInstance()->make($abstract, $parameters)
+        );
+
+        $request1 = new TestRequestStub('GET', '/counted', 'localhost');
+        Container::getInstance()->instance('request', $request1);
+        $router->resolve($this->app, $request1);
+
+        $this->assertSame(
+            1,
+            WorkerModeCountingMiddleware::$count,
+            'route middleware should run exactly once on the first dispatch'
+        );
+
+        $request2 = new TestRequestStub('GET', '/counted', 'localhost');
+        Container::getInstance()->instance('request', $request2);
+        $router->resolve($this->app, $request2);
+
+        $this->assertSame(
+            2,
+            WorkerModeCountingMiddleware::$count,
+            'reusing the same Router/Gateway across two dispatches must run route middleware exactly once per dispatch, not accumulate a stacked chain from the previous request'
+        );
     }
 
     public function testViewHelperReturnsFreshResponseInstance(): void
@@ -800,6 +885,35 @@ class RouterTest extends TestCase
         $result = $method->invoke($this->router, $callback, $app, $routeParams);
 
         $this->assertEquals('User 123: John', $result);
+    }
+
+    public function testPushGlobalMiddlewareIsAppendedAfterGatewayList(): void
+    {
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+
+        $global = $this->router->getGlobalMiddleware();
+
+        $this->assertSame(
+            (new Gateway())->getGlobalMiddleware(),
+            array_slice($global, 0, count($global) - 1)
+        );
+        $this->assertSame('Pushed\\Middleware', end($global));
+    }
+
+    public function testPushGlobalMiddlewareIsNotDuplicated(): void
+    {
+        $existing = (new Gateway())->getGlobalMiddleware()[0] ?? null;
+
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+        $this->router->pushGlobalMiddleware('Pushed\\Middleware');
+
+        if ($existing !== null) {
+            $this->router->pushGlobalMiddleware($existing);
+        }
+
+        $global = $this->router->getGlobalMiddleware();
+
+        $this->assertSame($global, array_values(array_unique($global)));
     }
 
     public function testProcessRateLimitAnnotation(): void

@@ -22,11 +22,20 @@ class PaginatorTest extends TestCase
     protected function setUp(): void
     {
         $_SESSION = [];
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $container = new Container;
+        Container::setInstance($container);
 
         $container->singleton('request', Request::class);
 
         $this->paginator = new Paginator($this->testData);
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     public function testHasPages()
@@ -87,6 +96,15 @@ class PaginatorTest extends TestCase
         $lastPageData['next_page_url'] = null;
         $lastPagePaginator = new Paginator($lastPageData);
         $this->assertNull($lastPagePaginator->nextPageUrl());
+    }
+
+    public function testPreviousAndNextUrlsIgnoreMergedRequestInput()
+    {
+        // Input merged in code is server-side data, not part of the query string
+        request()->merge(['global_merge_testing_data' => 'doppar']);
+
+        $this->assertEquals('http://example.com?page=4', $this->paginator->previousPageUrl());
+        $this->assertEquals('http://example.com?page=6', $this->paginator->nextPageUrl());
     }
 
     public function testCurrentPage()

@@ -16,9 +16,9 @@ use Phaseolies\Database\Entity\Query\{
     CollectsRelations,
     InteractsWithNestedRelations,
     InteractsWithConditionBinding,
-    InteractsWithCursorPagination
+    InteractsWithCursorPagination,
+    InteractsWithSoftDeleteScope
 };
-use Phaseolies\Utilities\Casts\CastToDate;
 use Phaseolies\Support\Facades\URL;
 use Phaseolies\Support\Contracts\Encryptable;
 use Phaseolies\Support\Collection;
@@ -35,7 +35,11 @@ class Builder
     use InteractsWithAggregateFucntion;
     use CollectsRelations;
     use InteractsWithNestedRelations;
-    use InteractsWithConditionBinding;
+    use InteractsWithConditionBinding, InteractsWithSoftDeleteScope {
+        InteractsWithSoftDeleteScope::buildWhereClause insteadof InteractsWithConditionBinding;
+        InteractsWithSoftDeleteScope::buildWhereClause as protected buildSoftDeleteWhereClause;
+        InteractsWithConditionBinding::buildWhereClause as protected buildConditionWhereClause;
+    }
     use InteractsWithCursorPagination;
 
     /**
@@ -135,6 +139,23 @@ class Builder
     /**
      * @var bool
      */
+    protected bool $withoutHooks = false;
+
+    /**
+     * @var bool
+     */
+    protected bool $withHooks = false;
+
+    /**
+     * The condition that ties this query to the model it was reached from
+     *
+     * @var array{0: string, 1: array}|null
+     */
+    protected ?array $relationScope = null;
+
+    /**
+     * @var bool
+     */
     protected bool $suppressEagerLoad = false;
 
     /**
@@ -161,6 +182,191 @@ class Builder
     }
 
     /**
+     * Combine the query's conditions with the relation scope, if there is one
+     *
+     * @return array [sql, bindings]
+     */
+    protected function buildWhereClause(): array
+    {
+        [$sql, $bindings] = $this->buildSoftDeleteWhereClause();
+
+        if ($this->relationScope === null) {
+            return [$sql, $bindings];
+        }
+
+        [$scopeSql, $scopeBindings] = $this->relationScope;
+
+        return [
+            $sql === '' ? $scopeSql : "({$sql}) AND {$scopeSql}",
+            array_merge($bindings, $scopeBindings),
+        ];
+    }
+
+    /**
+     * Limit this query to rows whose column equals the value.
+     *
+     * @param string $column
+     * @param mixed $value
+     * @return static
+     */
+    public function constrainToColumn(string $column, mixed $value): static
+    {
+        if ($value === null) {
+            return $this->constrainToNothing();
+        }
+
+        $this->relationScope = [
+            $this->quoteIdentifier($this->tableReference() . '.' . $column) . ' = ?',
+            [$value],
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Limit this query to rows that the pivot table links to the parent
+     *
+     * @param string $pivotTable
+     * @param string $foreignKey
+     * @param string $relatedKey
+     * @param string $ownerKey
+     * @param mixed $parentKey
+     * @return static
+     */
+    public function constrainToPivot(
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        string $ownerKey,
+        mixed $parentKey
+    ): static {
+        if ($parentKey === null) {
+            return $this->constrainToNothing();
+        }
+
+        $quote = fn (string $identifier) => $this->quoteIdentifier($identifier);
+
+        $this->relationScope = [
+            $quote($this->tableReference() . '.' . $ownerKey)
+                . ' IN (SELECT ' . $quote($pivotTable . '.' . $relatedKey)
+                . ' FROM ' . $quote($pivotTable)
+                . ' WHERE ' . $quote($pivotTable . '.' . $foreignKey) . ' = ?)',
+            [$parentKey],
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Limit this query to rows that will never match
+     *
+     * @return static
+     */
+    private function constrainToNothing(): static
+    {
+        $this->relationScope = ['1 = 0', []];
+
+        return $this;
+    }
+
+    /**
+     * Skip model hooks for the next write on every model this builder
+     * creates or loads.
+     *
+     * @return self
+     */
+    public function withoutHook(): self
+    {
+        $this->withoutHooks = true;
+
+        return $this;
+    }
+
+    /**
+     * Run model hooks for update(), delete(), restore() and forceDelete()
+     * by writing each matching model on its own.
+     *
+     * @return self
+     */
+    public function withHooks(): self
+    {
+        $this->withHooks = true;
+
+        return $this;
+    }
+
+    /**
+     * Run the callback on each matching model, in chunks by primary key.
+     * Returns false if any callback returned false.
+     *
+     * @param \Closure(Model): bool $callback
+     * @return bool
+     */
+    private function eachModelWithHooks(\Closure $callback): bool
+    {
+        $ok = true;
+
+        $this->chunkById(500, function ($models) use ($callback, &$ok) {
+            foreach ($models as $model) {
+                if ($callback($model) === false) {
+                    $ok = false;
+                }
+            }
+        });
+
+        return $ok;
+    }
+
+    /**
+     * Update the first model matching the attributes, or create it.
+     *
+     * @param array $attributes
+     * @param array $values
+     * @return Model
+     */
+    public function updateOrCreate(array $attributes, array $values = []): Model
+    {
+        $model = $this->firstMatching($attributes);
+
+        if ($model) {
+            $model->fill($values);
+            $model->save();
+
+            return $model;
+        }
+
+        return $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * Retrieve the first model matching the attributes, or create it.
+     *
+     * @param array $attributes
+     * @param array $values
+     * @return Model
+     */
+    public function firstOrCreate(array $attributes, array $values = []): Model
+    {
+        return $this->firstMatching($attributes)
+            ?? $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * @param array $attributes
+     * @return Model|null
+     */
+    private function firstMatching(array $attributes): ?Model
+    {
+        $query = clone $this;
+
+        foreach ($attributes as $field => $value) {
+            $query->where($field, $value);
+        }
+
+        return $query->first();
+    }
+
+    /**
      * Create a new model instance and save it to the database
      *
      * @param array $attributes
@@ -170,6 +376,10 @@ class Builder
     {
         $modelClass = $this->modelClass;
         $model = new $modelClass();
+
+        if ($this->withoutHooks) {
+            $model->withoutHook();
+        }
 
         if ($this->connectionName !== null) {
             $model->setConnectionName($this->connectionName);
@@ -226,9 +436,11 @@ class Builder
      */
     public function where($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'AND');
         }
+
+        $this->assertValidIdentifier($field);
 
         if (func_num_args() === 2) {
             $value = $operator;
@@ -258,9 +470,11 @@ class Builder
      */
     public function orWhere($field, $operator = null, $value = null): self
     {
-        if (is_callable($field)) {
+        if ($this->isCallback($field)) {
             return $this->whereNested($field, 'OR');
         }
+
+        $this->assertValidIdentifier($field);
 
         if (func_num_args() === 2) {
             $value = $operator;
@@ -291,6 +505,9 @@ class Builder
     {
         $nestedQuery = new static($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->connectionName);
 
+        // The outer query applies the soft delete constraint once
+        $nestedQuery->withoutSoftDeleteScope();
+
         $callback($nestedQuery);
 
         if (!empty($nestedQuery->conditions)) {
@@ -313,6 +530,15 @@ class Builder
      */
     public function orderBy(string $field, string $direction = 'ASC'): self
     {
+        $this->assertValidIdentifier($field);
+
+        $direction = strtoupper($direction);
+        if (!in_array($direction, ['ASC', 'DESC'], true)) {
+            throw new \InvalidArgumentException(
+                "Invalid sort direction \"{$direction}\". Use \"ASC\" or \"DESC\"."
+            );
+        }
+
         $this->orderBy[] = [$field, $direction];
         return $this;
     }
@@ -325,6 +551,8 @@ class Builder
      */
     public function groupBy(string $field): self
     {
+        $this->assertValidIdentifier($field);
+
         $this->groupBy[] = $field;
         return $this;
     }
@@ -530,10 +758,12 @@ class Builder
         $relationType = $model->getLastRelationType();
         $relatedModel = $model->getLastRelatedModel();
 
+        $bindings = [];
+
         if ($relationType === 'bindToMany') {
-            $subquery = $this->buildManyToManySubquery($model, $relatedModel, $callback);
+            $subquery = $this->buildManyToManySubquery($model, $relatedModel, $callback, $bindings);
         } else {
-            $subquery = $this->buildDirectRelationshipSubquery($model, $relatedModel, $callback);
+            $subquery = $this->buildDirectRelationshipSubquery($model, $relatedModel, $callback, $bindings);
         }
 
         $subquery .= ' LIMIT 1';
@@ -541,7 +771,7 @@ class Builder
         $this->conditions[] = [
             'type' => $type,
             'subquery' => $subquery,
-            'bindings' => [],
+            'bindings' => $bindings,
             'boolean' => $boolean
         ];
 
@@ -554,9 +784,10 @@ class Builder
      * @param Model $model
      * @param mixed $relatedModel
      * @param callable|null $callback
+     * @param array $bindings
      * @return string
      */
-    private function buildManyToManySubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    private function buildManyToManySubquery(Model $model, mixed $relatedModel, ?callable $callback, array &$bindings): string
     {
         $pivotTable = $model->getLastPivotTable();
         $foreignKey = $model->getLastForeignKey();
@@ -567,18 +798,25 @@ class Builder
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
 
+        $relatedQuery = $this->buildRelatedSubqueryScope($relatedModel, $callback);
+        $softDeleteConstraint = $relatedQuery->compileSoftDeleteConstraint($relatedTable);
+
         // Build subquery with JOIN to access related model columns
         $subquery = "SELECT 1 FROM {$quote($pivotTable)}";
 
-        // Add JOIN to related table if we have a callback
-        if ($callback) {
+        // Join the related table when its columns are needed
+        if ($callback || $softDeleteConstraint !== null) {
             $subquery .= " INNER JOIN {$quote($relatedTable)} ON {$quote($pivotTable)}.{$quote($relatedKey)} = {$quote($relatedTable)}.{$quote($relatedPrimaryKey)}";
         }
 
         $subquery .= " WHERE {$quote($pivotTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+            $subquery .= $this->compileCallbackConditions($relatedQuery, $relatedTable, $bindings);
+        }
+
+        if ($softDeleteConstraint !== null) {
+            $subquery .= " AND {$softDeleteConstraint}";
         }
 
         return $subquery;
@@ -590,9 +828,10 @@ class Builder
      * @param Model $model
      * @param mixed $relatedModel
      * @param callable|null $callback
+     * @param array $bindings
      * @return string
      */
-    private function buildDirectRelationshipSubquery(Model $model, mixed $relatedModel, ?callable $callback): string
+    private function buildDirectRelationshipSubquery(Model $model, mixed $relatedModel, ?callable $callback, array &$bindings): string
     {
         $foreignKey = $model->getLastForeignKey();
         $localKey = $model->getLastLocalKey();
@@ -600,54 +839,88 @@ class Builder
 
         $quote = fn($identifier) => $this->quoteIdentifier($identifier);
 
+        $relatedQuery = $this->buildRelatedSubqueryScope($relatedModel, $callback);
+
         $subquery = "SELECT 1 FROM {$quote($relatedTable)}
             WHERE {$quote($relatedTable)}.{$quote($foreignKey)} = {$quote($this->table)}.{$quote($localKey)}";
 
         if ($callback) {
-            $subquery = $this->addCallbackConditions($subquery, $relatedModel, $callback, $relatedTable);
+            $subquery .= $this->compileCallbackConditions($relatedQuery, $relatedTable, $bindings);
+        }
+
+        if (($softDeleteConstraint = $relatedQuery->compileSoftDeleteConstraint($relatedTable)) !== null) {
+            $subquery .= " AND {$softDeleteConstraint}";
         }
 
         return $subquery;
     }
 
     /**
-     * Add callback conditions to the subquery
+     * Build a query for the related model and run the user's callback on it,
+     * so the subquery can read back its conditions and trashed mode.
      *
-     * @param string $subquery
      * @param mixed $relatedModel
-     * @param callable $callback
-     * @param string $relatedTable
-     * @return string
+     * @param callable|null $callback
+     * @return self
      */
-    private function addCallbackConditions(string $subquery, mixed $relatedModel, callable $callback, string $relatedTable): string
+    private function buildRelatedSubqueryScope(mixed $relatedModel, ?callable $callback): self
     {
-        $subQueryBuilder = $relatedModel::query($this->connectionName);
-        $callback($subQueryBuilder);
+        $relatedQuery = $relatedModel::query($this->connectionName);
 
-        $quote = fn($identifier) => $this->quoteIdentifier($identifier);
-        $escapeValue = fn($value) => $this->escapeValue($value);
-
-        foreach ($subQueryBuilder->conditions as $condition) {
-            if (isset($condition['type'])) {
-                continue;
-            }
-
-            $column = $condition[1];
-            $operator = $condition[2];
-            $value = $condition[3];
-
-            // Ensure column is properly qualified with table name if not already
-            if (strpos($column, '.') === false) {
-                $column = "{$quote($relatedTable)}.{$quote($column)}";
-            } else {
-                // Quote qualified column names
-                $column = $quote($column);
-            }
-
-            $subquery .= $this->buildConditionClause($column, $operator, $value, $escapeValue);
+        if ($callback) {
+            $callback($relatedQuery);
         }
 
-        return $subquery;
+        return $relatedQuery;
+    }
+
+    /**
+     * Compile the conditions a callback added to a related query into an
+     * " AND (...)" fragment for a hand-built subquery.
+     *
+     * @param self $relatedQuery
+     * @param string $relatedTable
+     * @param array $bindings
+     * @return string
+     */
+    private function compileCallbackConditions(self $relatedQuery, string $relatedTable, array &$bindings): string
+    {
+        $this->qualifyConditionColumns($relatedQuery, $relatedTable);
+
+        [$whereSql, $whereBindings] = $relatedQuery->buildConditionWhereClause();
+
+        if ($whereSql === '') {
+            return '';
+        }
+
+        $bindings = array_merge($bindings, $whereBindings);
+
+        return " AND ({$whereSql})";
+    }
+
+    /**
+     * Qualify the plain column names of a query's conditions, including
+     * those of nested groups, with the given table.
+     *
+     * @param self $query
+     * @param string $table
+     * @return void
+     */
+    private function qualifyConditionColumns(self $query, string $table): void
+    {
+        foreach ($query->conditions as &$condition) {
+            $type = $condition['type'] ?? null;
+
+            if ($type === 'NESTED') {
+                $this->qualifyConditionColumns($condition['query'], $table);
+            } elseif ($type === null && is_string($condition[1] ?? null)) {
+                if (preg_match('/^[A-Za-z_]\w*$/', $condition[1])) {
+                    $condition[1] = $this->quoteIdentifier("{$table}.{$condition[1]}");
+                } elseif (preg_match('/^[A-Za-z_]\w*\.[A-Za-z_]\w*$/', $condition[1])) {
+                    $condition[1] = $this->quoteIdentifier($condition[1]);
+                }
+            }
+        }
     }
 
     /**
@@ -667,13 +940,13 @@ class Builder
             } elseif ($operator === '!=') {
                 return " AND {$column} IS NOT NULL";
             }
-        } elseif ($operator === 'IN') {
+        } elseif ($operator === 'IN' || $operator === 'NOT IN') {
             if (empty($value)) {
-                // Empty IN clause is always false
-                return " AND 1=0";
+                // Empty IN clause is always false, empty NOT IN always true
+                return $operator === 'IN' ? " AND 1=0" : " AND 1=1";
             } else {
                 $escapedValues = $escapeValue($value);
-                return " AND {$column} IN {$escapedValues}";
+                return " AND {$column} {$operator} {$escapedValues}";
             }
         } elseif ($operator === 'LIKE' || $operator === 'NOT LIKE') {
             $escapedValue = $escapeValue($value);
@@ -730,7 +1003,7 @@ class Builder
      */
     public function if($value, callable $callback, ?callable $default = null): self
     {
-        $payload = is_callable($value) ? $value() : $value;
+        $payload = $this->isCallback($value) ? $value() : $value;
 
         if ($payload === true || $this->hasValue($payload)) {
             $callback($this);
@@ -917,6 +1190,10 @@ class Builder
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $model = app($this->modelClass, [$row]);
+
+                if ($this->withoutHooks) {
+                    $model->withoutHook();
+                }
 
                 if ($this->connectionName !== null) {
                     $model->setConnectionName($this->connectionName);
@@ -1349,7 +1626,7 @@ class Builder
 
         foreach ($relations as $key => $value) {
             $relation = is_string($key) ? $key : $value;
-            $constraint = is_callable($value) ? $value : $callback;
+            $constraint = $this->isCallback($value) ? $value : $callback;
 
             if (str_contains($relation, '.')) {
                 $this->loadNestedRelations($models, $relation, $constraint);
@@ -1365,9 +1642,9 @@ class Builder
      * Reload the current model instance with fresh attributes from the database.
      *
      * @param string|array $relations
-     * @return $this|null
+     * @return Model|null
      */
-    public function fresh($relations = []): ?self
+    public function fresh($relations = []): ?Model
     {
         $model = $this->first();
 
@@ -1375,7 +1652,10 @@ class Builder
             return null;
         }
 
-        $freshModel = $this->getModel()->newQuery()
+        $freshQuery = $this->getModel()->newQuery();
+        $freshQuery->trashed = $this->trashed;
+
+        $freshModel = $freshQuery
             ->where($model->getKeyName(), $model->getKey())
             ->embed($relations)
             ->first();
@@ -1403,6 +1683,8 @@ class Builder
     /**
      * Delete records by their primary keys.
      *
+     * On a soft-deletable model the rows are soft-deleted instead.
+     *
      * @param mixed ...$ids
      * @return int
      * @throws PDOException
@@ -1419,13 +1701,31 @@ class Builder
         $primaryKey = $model->getKeyName();
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "DELETE FROM {$this->table} WHERE {$primaryKey} IN ({$placeholders})";
+        $bindings = $ids;
+
+        if ($this->shouldSoftDelete()) {
+            $column = $this->getSoftDeleteColumn();
+            $sets = ["{$column} = ?"];
+            $now = (string) now();
+            $bindings = [$now];
+
+            if ($model->usesTimestamps()) {
+                $sets[] = 'updated_at = ?';
+                $bindings[] = $now;
+            }
+
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $sets)
+                . " WHERE {$primaryKey} IN ({$placeholders}) AND {$column} IS NULL";
+            $bindings = array_merge($bindings, $ids);
+        } else {
+            $sql = "DELETE FROM {$this->table} WHERE {$primaryKey} IN ({$placeholders})";
+        }
 
         try {
             $stmt = $this->pdo->prepare($sql);
 
-            foreach ($ids as $index => $id) {
-                $stmt->bindValue($index + 1, $id, $this->getPdoParamType($id));
+            foreach (array_values($bindings) as $index => $value) {
+                $stmt->bindValue($index + 1, $value, $this->getPdoParamType($value));
             }
 
             $stmt->execute();
@@ -1640,7 +1940,7 @@ class Builder
 
         if (is_array($relations)) {
             foreach ($relations as $key => $value) {
-                if (is_callable($value)) {
+                if ($this->isCallback($value)) {
                     $this->eagerLoad["count:{$key}"] = $value;
                 } else {
                     $this->eagerLoad["count:{$value}"] = null;
@@ -1818,18 +2118,7 @@ class Builder
      */
     public function whereIn(string $field, array $values): self
     {
-        if (empty($values)) {
-            return $this->where($field, '=', 'NULL');
-        }
-
-        if (strpos($field, '.') === false) {
-            $field = "{$this->table}.{$field}";
-        }
-
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['AND', $field, 'IN', $values, "($placeholders)"];
-
-        return $this;
+        return $this->addInCondition('AND', $field, $values, 'IN');
     }
 
     /**
@@ -1841,17 +2130,34 @@ class Builder
      */
     public function orWhereIn(string $field, array $values): self
     {
-        if (empty($values)) {
-            $this->orWhere($field, '=', 'NULL');
-            return $this;
-        }
-
-        $placeholders = implode(',', array_fill(0, count($values), '?'));
-        $this->conditions[] = ['OR', $field, 'IN', $values, "($placeholders)"];
-
-        return $this;
+        return $this->addInCondition('OR', $field, $values, 'IN');
     }
 
+    /**
+     * Add a WHERE NOT IN condition
+     *
+     * An empty list excludes nothing.
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function whereNotIn(string $field, array $values): self
+    {
+        return $this->addInCondition('AND', $field, $values, 'NOT IN');
+    }
+
+    /**
+     * Add a OR WHERE NOT IN condition
+     *
+     * @param string $field
+     * @param array $values
+     * @return self
+     */
+    public function orWhereNotIn(string $field, array $values): self
+    {
+        return $this->addInCondition('OR', $field, $values, 'NOT IN');
+    }
 
     /**
      * Load one-to-one relationships
@@ -1935,7 +2241,7 @@ class Builder
 
         if (is_array($relations)) {
             foreach ($relations as $key => $value) {
-                if (is_callable($value)) {
+                if ($this->isCallback($value)) {
                     // Format: ['comments' => function($q) { ... }]
                     [$relationName, $columns] = $this->parseRelationWithColumns($key);
                     $constraint = !empty($columns)
@@ -1976,6 +2282,10 @@ class Builder
             }
 
             $model = new $this->modelClass($result);
+
+            if ($this->withoutHooks) {
+                $model->withoutHook();
+            }
 
             if ($this->connectionName !== null) {
                 $model->setConnectionName($this->connectionName);
@@ -2258,7 +2568,7 @@ class Builder
                 if (in_array($nestedCondition[2], ['BETWEEN', 'NOT BETWEEN'])) {
                     $stmt->bindValue($index++, $nestedCondition[3], $this->getPdoParamType($nestedCondition[3]));
                     $stmt->bindValue($index++, $nestedCondition[4], $this->getPdoParamType($nestedCondition[4]));
-                } elseif ($nestedCondition[2] === 'IN') {
+                } elseif (in_array($nestedCondition[2], ['IN', 'NOT IN'])) {
                     foreach ($nestedCondition[3] as $value) {
                         $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
                     }
@@ -2329,23 +2639,15 @@ class Builder
 
         // Handle timestamp configuration
         static $timestamps = [];
-        $hasCastToDateAttribute = false;
         $class = $this->modelClass;
         $model = $this->getModel();
 
         if (!array_key_exists($class, $timestamps)) {
             $timestamps[$class] = $this->getClassProperty($class, 'timeStamps');
-            if ($this->propertyHasAttribute($class, 'timeStamps', CastToDate::class)) {
-                $hasCastToDateAttribute = true;
-                trigger_error(
-                    'CastToDate attribute is deprecated and will be removed in a future major version. Use #[ToDate] from Phaseolies\Database\Entity\Casts\Attributes\ToDate instead.',
-                    E_USER_DEPRECATED
-                );
-            }
         }
 
         $usesTimestamps = $timestamps[$class] && $model->usesTimestamps();
-        $currentTime = $hasCastToDateAttribute ? now()->startOfDay() : now();
+        $currentTime = now();
 
         // Get column names from first record and add timestamp columns if needed
         $columns = array_keys(reset($values));
@@ -2448,15 +2750,30 @@ class Builder
      */
     public function update(array $attributes): bool
     {
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn (Model $model) => $model->update($attributes)
+            );
+        }
+
         $class = $this->modelClass;
 
         if (app($class)->usesTimestamps()) {
-            $hasCastToDate = $this->propertyHasAttribute($class, 'timeStamps', CastToDate::class);
-            $attributes['updated_at'] = $hasCastToDate
-                ? now()->startOfDay()
-                : now();
+            $attributes['updated_at'] = now();
         }
 
+        return $this->performUpdate($attributes);
+    }
+
+    /**
+     * Run an UPDATE for the given attributes against the matched rows,
+     * without touching updated_at.
+     *
+     * @param array $attributes
+     * @return bool
+     */
+    protected function performUpdate(array $attributes): bool
+    {
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
         $setBindings = array_values($attributes);
 
@@ -2498,6 +2815,18 @@ class Builder
      */
     public function delete(): bool
     {
+        if ($this->withHooks) {
+            return $this->eachModelWithHooks(
+                fn (Model $model) => $model->delete()
+            );
+        }
+
+        if ($this->shouldSoftDelete()) {
+            $now = (string) now();
+
+            return $this->writeSoftDeleteState($now, $now);
+        }
+
         $sql = "DELETE FROM {$this->table}";
 
         [$whereSql, $whereBindings] = $this->buildWhereClause();
@@ -2542,6 +2871,10 @@ class Builder
             // Convert results to model instances
             $models = array_map(function ($item) {
                 $model = new $this->modelClass($item);
+
+                if ($this->withoutHooks) {
+                    $model->withoutHook();
+                }
 
                 if ($this->connectionName !== null) {
                     $model->setConnectionName($this->connectionName);
@@ -2667,6 +3000,8 @@ class Builder
      */
     public function whereBetween(string $column, array $values, string $boolean = 'AND', bool $not = false): self
     {
+        $this->assertValidIdentifier($column);
+
         // Validate input
         if (count($values) !== 2) {
             throw new \InvalidArgumentException('whereBetween requires an array with exactly 2 values');
@@ -2732,6 +3067,8 @@ class Builder
      */
     public function whereNull(string $column, string $boolean = 'AND', bool $not = false): self
     {
+        $this->assertValidIdentifier($column);
+
         $this->conditions[] = [
             $boolean,
             $column,
@@ -3282,6 +3619,7 @@ class Builder
         $this->offset = null;
         $this->joins = [];
         $this->eagerLoad = [];
+        $this->trashed = 'exclude';
 
         return $this;
     }

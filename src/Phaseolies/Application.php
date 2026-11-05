@@ -4,24 +4,31 @@ namespace Phaseolies;
 
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\Support\Router;
-use Phaseolies\Providers\GhostableProvider;
-use Phaseolies\Providers\ServiceProvider;
+use Phaseolies\Launchers\GhostableLauncher;
+use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Http\DispatchResult;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Contracts\GatewayInterface;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Error\ErrorHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Config\Config;
+use Phaseolies\Support\DeferScope;
+use Phaseolies\Support\ExecutionContext;
+use Phaseolies\Support\Concurrency\TaskGroup;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
 use Phaseolies\ApplicationBuilder;
-use Dotenv\Dotenv;
+use Devium\Toml\Toml;
+use RuntimeException;
 
 class Application extends Container
 {
     /**
      * The current version of the Doppar framework.
      */
-    const VERSION = '3.26.6';
+    const VERSION = '4.8.4';
 
     /**
      * The base path of the application installation.
@@ -56,7 +63,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $resourcesPath;
+    protected $templatesPath;
 
     /**
      * The path to the client-side assets directory.
@@ -84,7 +91,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $databasePath;
+    protected $schemaPath;
 
     /**
      * The path to the public directory.
@@ -105,7 +112,7 @@ class Application extends Container
      *
      * @var string
      */
-    protected $environmentFile = '.env';
+    protected $environmentFile = 'env.toml';
 
     /**
      * The environment name.
@@ -122,7 +129,7 @@ class Application extends Container
     protected $isRunningInConsole = null;
 
     /**
-     * The registered service providers.
+     * The registered service launchers.
      *
      * @var array
      */
@@ -131,28 +138,28 @@ class Application extends Container
     /**
      * The queued ghost providers keyed by class name.
      *
-     * @var array<class-string<ServiceProvider>, ServiceProvider>
+     * @var array<class-string<ServiceLauncher>, ServiceLauncher>
      */
     protected array $ghostProviders = [];
 
     /**
      * Map of service identifiers to ghost provider classes.
      *
-     * @var array<string, class-string<ServiceProvider>>
+     * @var array<string, class-string<ServiceLauncher>>
      */
     protected array $ghostServices = [];
 
     /**
      * Tracks ghost providers that have already been loaded.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $loadedGhostProviders = [];
 
     /**
      * Tracks ghost providers currently being loaded.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $loadingGhostProviders = [];
 
@@ -173,7 +180,7 @@ class Application extends Container
     /**
      * Tracks providers whose boot method has already run.
      *
-     * @var array<class-string<ServiceProvider>, true>
+     * @var array<class-string<ServiceLauncher>, true>
      */
     protected array $bootedProviderClasses = [];
 
@@ -211,19 +218,37 @@ class Application extends Container
     protected array $terminatingCallbacks = [];
 
     /**
+     * Active defer scopes, innermost last.
+     *
+     * @var array<int, DeferScope>
+     */
+    protected array $deferScopes = [];
+
+    /**
+     * Custom reporter for exceptions thrown by deferred callbacks.
+     *
+     * @var callable|null
+     */
+    protected $deferFailureReporter = null;
+
+    /**
      * Application constructor.
      *
      * Initializes the application by:
      * - Setting the application instance in the container.
+     * - Recording the base path and deriving every other framework
+     *   path from it, before anything below can ask for one.
      * - Loading environment variables from .env before anything else.
      * - Setting up exception handling.
      * - Loading configuration.
-     * - Defining necessary folder paths.
      * - Registering and booting core service providers.
+     *
+     * @param string $basePath
      */
-    public function __construct()
+    public function __construct(string $basePath)
     {
         parent::setInstance($this);
+        $this->withBasePath($basePath);
         $this->loadEnvironmentVariables();
         $this->withExceptionHandler();
         $this->withConfiguration();
@@ -239,7 +264,7 @@ class Application extends Container
      */
     public function langPath($path = ''): string
     {
-        return $this->getPath($this->buildPathFragment('lang', $path));
+        return $this->getPath($this->buildPathFragment('templates/lang', $path));
     }
 
     /**
@@ -250,9 +275,7 @@ class Application extends Container
      */
     public function configure(Application $app): ApplicationBuilder
     {
-        return (new ApplicationBuilder($app))
-            ->withTimezone()
-            ->withMiddlewareStack();
+        return (new ApplicationBuilder($app))->withTimezone();
     }
 
     /**
@@ -263,7 +286,7 @@ class Application extends Container
      */
     public function withBasePath(string $basePath): self
     {
-        $this->basePath = $basePath;
+        $this->basePath = rtrim($basePath, '\/');
 
         $this->setNecessaryFolderPath();
 
@@ -283,7 +306,7 @@ class Application extends Container
     }
 
     /**
-     * Load environment variables from .env file
+     * Load environment variables from env.toml
      *
      * @return void
      */
@@ -293,8 +316,39 @@ class Application extends Container
             return;
         }
 
-        $dotenv = Dotenv::createImmutable(base_path());
-        $dotenv->safeLoad();
+        $tomlFile = $this->basePath('env.toml');
+
+        if (is_file($tomlFile)) {
+            $this->loadTomlEnvironment($tomlFile);
+        }
+    }
+
+    /**
+     * Load environment variables from a flat env.toml file.
+     *
+     * @param string $file
+     * @return void
+     *
+     * @throws RuntimeException
+     */
+    protected function loadTomlEnvironment(string $file): void
+    {
+        $values = Toml::decode(file_get_contents($file), asArray: true);
+
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                throw new RuntimeException(
+                    "env.toml key \"{$key}\" must be a scalar value — nested tables and arrays are not supported."
+                );
+            }
+
+            if (getenv($key) !== false) {
+                continue;
+            }
+
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
     }
 
     /**
@@ -331,7 +385,7 @@ class Application extends Container
      */
     protected function registerCoreProviders(): self
     {
-        $providers = [...($this->loadCoreProviders()), ...(config('app.providers') ?? [])];
+        $providers = [...($this->loadCoreProviders()), ...(config('app.launchers') ?? [])];
 
         $this->registerProviders($providers);
 
@@ -348,7 +402,7 @@ class Application extends Container
         foreach ($providers as $provider) {
             $providerInstance = new $provider($this);
 
-            if ($providerInstance instanceof ServiceProvider) {
+            if ($providerInstance instanceof ServiceLauncher) {
                 if ($this->shouldQueueGhostProvider($providerInstance)) {
                     $this->queueGhostProvider($providerInstance);
                     continue;
@@ -362,21 +416,21 @@ class Application extends Container
     /**
      * Determine if the provider should be queued as a ghost provider
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return bool
      */
-    protected function shouldQueueGhostProvider(ServiceProvider $providerInstance): bool
+    protected function shouldQueueGhostProvider(ServiceLauncher $providerInstance): bool
     {
-        return !$this->runningInConsole() && $providerInstance instanceof GhostableProvider;
+        return !$this->runningInConsole() && $providerInstance instanceof GhostableLauncher;
     }
 
     /**
      * Register and track an eager provider instance.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function registerProviderInstance(ServiceProvider $providerInstance): void
+    protected function registerProviderInstance(ServiceLauncher $providerInstance): void
     {
         $providerInstance->register();
 
@@ -386,12 +440,12 @@ class Application extends Container
     /**
      * Queue a ghost provider until one of its services is requested.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function queueGhostProvider(ServiceProvider $providerInstance): void
+    protected function queueGhostProvider(ServiceLauncher $providerInstance): void
     {
-        /** @var GhostableProvider $providerInstance */
+        /** @var ServiceLauncher&GhostableLauncher $providerInstance */
         $providerClass = $providerInstance::class;
 
         $this->ghostProviders[$providerClass] = $providerInstance;
@@ -450,14 +504,13 @@ class Application extends Container
      */
     protected function setNecessaryFolderPath(): void
     {
-        $this->basePath = $this->basePath();
         $this->configPath = $this->configPath();
         $this->appPath = $this->appPath();
         $this->bootstrapPath = $this->bootstrapPath();
-        $this->databasePath = $this->databasePath();
+        $this->schemaPath = $this->schemaPath();
         $this->publicPath = $this->publicPath();
         $this->storagePath = $this->storagePath();
-        $this->resourcesPath = $this->resourcesPath();
+        $this->templatesPath = $this->templatesPath();
         $this->clientPath = $this->clientPath();
     }
 
@@ -479,14 +532,14 @@ class Application extends Container
     }
 
     /**
-     * Gets the resources path.
+     * Gets the templates path.
      *
      * @param string $path
      * @return string
      */
-    public function resourcesPath($path = ''): string
+    public function templatesPath($path = ''): string
     {
-        return $this->resourcesPath = $this->getPath($this->buildPathFragment('resources', $path));
+        return $this->templatesPath = $this->getPath($this->buildPathFragment('templates', $path));
     }
 
     /**
@@ -497,7 +550,7 @@ class Application extends Container
      */
     public function clientPath($path = ''): string
     {
-        return $this->clientPath = $this->getPath($this->buildPathFragment('resources/client', $path));
+        return $this->clientPath = $this->getPath($this->buildPathFragment('templates/client', $path));
     }
 
     /**
@@ -508,7 +561,7 @@ class Application extends Container
      */
     public function bootstrapPath($path = ''): string
     {
-        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('bootstrap', $path));
+        return $this->bootstrapPath = $this->getPath($this->buildPathFragment('runtime', $path));
     }
 
     /**
@@ -517,9 +570,9 @@ class Application extends Container
      * @param string $path
      * @return string
      */
-    public function databasePath($path = ''): string
+    public function schemaPath($path = ''): string
     {
-        return $this->databasePath = $this->getPath($this->buildPathFragment('database', $path));
+        return $this->schemaPath = $this->getPath($this->buildPathFragment('schema', $path));
     }
 
     /**
@@ -568,17 +621,24 @@ class Application extends Container
      */
     public function appPath(): string
     {
-        return $this->appPath = $this->basePath();
+        return $this->appPath = $this->getPath('src');
     }
 
     /**
      * Gets the base path of the application.
      *
+     * @param string $path
      * @return string
      */
-    public function basePath(): string
+    public function basePath(string $path = ''): string
     {
-        return $this->basePath = base_path();
+        if ($path === '') {
+            return $this->basePath;
+        }
+
+        $normalizedPath = trim(str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path), DIRECTORY_SEPARATOR);
+
+        return rtrim($this->basePath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $normalizedPath;
     }
 
     /**
@@ -588,7 +648,7 @@ class Application extends Container
      */
     public function configPath($path = ''): string
     {
-        return $this->configPath = $this->getPath("config/{$path}");
+        return $this->configPath = $this->getPath("runtime/config/{$path}");
     }
 
     /**
@@ -748,9 +808,9 @@ class Application extends Container
         $this->singleton('path.config', fn() => $this->configPath());
         $this->singleton('path.public', fn() => $this->publicPath());
         $this->singleton('path.storage', fn() => $this->storagePath());
-        $this->singleton('path.resources', fn() => $this->resourcesPath());
+        $this->singleton('path.templates', fn() => $this->templatesPath());
         $this->singleton('path.client', fn() => $this->clientPath());
-        $this->singleton('path.database', fn() => $this->databasePath());
+        $this->singleton('path.database', fn() => $this->schemaPath());
     }
 
     /**
@@ -761,7 +821,12 @@ class Application extends Container
     protected function bindSingletonClasses(): void
     {
         $this->bindApplicationNecessaryPath();
-        $this->singleton('request', Request::class);
+
+        $this->singleton('request', fn() => Request::capture());
+
+        $this->singleton(LoopInterface::class, fn() => Loop::get());
+
+        $this->bindHttpGateway();
 
         $this->singleton('route', Router::class);
         $this->router = app('route');
@@ -781,9 +846,21 @@ class Application extends Container
             fn() =>
             new \Phaseolies\Database\Migration\Migrator(
                 new \Phaseolies\Database\Migration\MigrationRepository(),
-                database_path('migrations')
+                schema_path('migrations')
             )
         );
+    }
+
+    /**
+     * Bind the application's HTTP middleware gateway
+     *
+     * @return void
+     */
+    protected function bindHttpGateway(): void
+    {
+        if (!$this->has(GatewayInterface::class) && class_exists(\App\Http\Gateway::class)) {
+            $this->singleton(GatewayInterface::class, \App\Http\Gateway::class);
+        }
     }
 
     /**
@@ -794,12 +871,12 @@ class Application extends Container
     protected function loadCoreProviders(): array
     {
         return [
-            \Phaseolies\Providers\FacadeServiceProvider::class,
-            \Phaseolies\Providers\LanguageServiceProvider::class,
-            \Phaseolies\Providers\SessionServiceProvider::class,
-            \Phaseolies\Providers\RouteServiceProvider::class,
-            \Phaseolies\Providers\CacheServiceProvider::class,
-            \Phaseolies\Providers\RateLimiterServiceProvider::class,
+            \Phaseolies\Launchers\FacadeLauncher::class,
+            \Phaseolies\Launchers\LanguageLauncher::class,
+            \Phaseolies\Launchers\SessionLauncher::class,
+            \Phaseolies\Launchers\RouteLauncher::class,
+            \Phaseolies\Launchers\CacheLauncher::class,
+            \Phaseolies\Launchers\RateLimiterLauncher::class,
         ];
     }
 
@@ -814,12 +891,22 @@ class Application extends Container
     }
 
     /**
+     * Get all registered service launchers.
+     *
+     * @return array
+     */
+    public function getLaunchers(): array
+    {
+        return $this->serviceProviders;
+    }
+
+    /**
      * Get a specific provider by class name
      *
      * @param string $provider
-     * @return ServiceProvider|null
+     * @return ServiceLauncher|null
      */
-    public function getProvider(string $provider): ?ServiceProvider
+    public function getProvider(string $provider): ?ServiceLauncher
     {
         foreach ($this->serviceProviders as $serviceProvider) {
             if (get_class($serviceProvider) === $provider) {
@@ -828,6 +915,14 @@ class Application extends Container
         }
 
         return null;
+    }
+
+    /**
+     * Get a registered launcher by class name.
+     */
+    public function getLauncher(string $launcher): ?ServiceLauncher
+    {
+        return $this->getProvider($launcher);
     }
 
     /**
@@ -861,13 +956,13 @@ class Application extends Container
 
         $providerInstance = $this->ghostProviders[$providerClass] ?? null;
 
-        if (!$providerInstance instanceof ServiceProvider) {
+        if (!$providerInstance instanceof ServiceLauncher) {
             return false;
         }
 
         $this->loadingGhostProviders[$providerClass] = true;
 
-        foreach (($providerInstance instanceof GhostableProvider ? $providerInstance->ghosts() : []) as $ghost) {
+        foreach (($providerInstance instanceof GhostableLauncher ? $providerInstance->ghosts() : []) as $ghost) {
             unset($this->ghostServices[$ghost]);
         }
 
@@ -889,10 +984,10 @@ class Application extends Container
     /**
      * Boot a provider instance once.
      *
-     * @param ServiceProvider $providerInstance
+     * @param ServiceLauncher $providerInstance
      * @return void
      */
-    protected function bootProviderInstance(ServiceProvider $providerInstance): void
+    protected function bootProviderInstance(ServiceLauncher $providerInstance): void
     {
         $providerClass = $providerInstance::class;
 
@@ -900,7 +995,7 @@ class Application extends Container
             return;
         }
 
-        $providerInstance->boot();
+        $providerInstance->launch();
 
         $this->bootedProviderClasses[$providerClass] = true;
     }
@@ -1045,14 +1140,253 @@ class Application extends Container
      * @param \Throwable|null $exception
      * @return void
      */
-    public function terminate(Request $request, ?Response $response = null, ?\Throwable $exception = null): void
-    {
+    public function terminate(
+        Request $request,
+        ?Response $response = null,
+        ?\Throwable $exception = null,
+        ?DeferScope $deferScope = null,
+        ?ExecutionContext $context = null
+    ): void {
+        if ($context !== null) {
+            $this->resumeContext($context);
+        }
+
+        if ($deferScope !== null) {
+            // Make the request scope current again so terminating callbacks
+            // can still defer cleanup into it.
+            $this->resumeDeferScope($deferScope);
+        }
+
+        $terminationFailure = null;
+
         try {
             foreach ($this->terminatingCallbacks as $callback) {
                 $this->callTerminatingCallback($callback, $request, $response, $exception);
             }
+        } catch (\Throwable $e) {
+            // Remember it so deferred-callback failures are reported against the
+            // exception that is actually ending the request, then let it propagate.
+            $terminationFailure = $e;
+
+            throw $e;
         } finally {
-            $this->cleanupRequestScopedServices();
+            try {
+                if ($deferScope !== null) {
+                    $this->endDeferScope($deferScope, $terminationFailure ?? $exception);
+                }
+            } finally {
+                $cleanupFailure = null;
+
+                try {
+                    $this->cleanupRequestScopedServices();
+                } catch (\Throwable $e) {
+                    $cleanupFailure = $e;
+                }
+
+                try {
+                    if ($context !== null) {
+                        $this->endContext($context, $terminationFailure ?? $cleanupFailure);
+                    }
+                } finally {
+                    if ($cleanupFailure !== null) {
+                        // Never replace the exception that is already ending the request.
+                        if ($terminationFailure !== null) {
+                            $this->reportTeardownFailure('Request cleanup failed', $cleanupFailure);
+                        } else {
+                            throw $cleanupFailure;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Register a callback to run when the current execution ends.
+     *
+     * @param callable $callback
+     * @return self
+     * @throws \LogicException
+     */
+    public function defer(callable $callback): self
+    {
+        $scope = end($this->deferScopes);
+
+        if (!$scope instanceof DeferScope) {
+            throw new \LogicException(
+                'defer() was called outside an active execution scope. '
+                . 'Run the code through runInDeferScope(), an HTTP dispatch or a console command.'
+            );
+        }
+
+        $scope->push($callback);
+
+        return $this;
+    }
+
+    /**
+     * Determine if a defer scope is currently active.
+     *
+     * @return bool
+     */
+    public function hasDeferScope(): bool
+    {
+        return $this->deferScopes !== [];
+    }
+
+    /**
+     * Start a new, independent defer scope and make it the current one.
+     *
+     * @return DeferScope
+     */
+    public function beginDeferScope(): DeferScope
+    {
+        return $this->deferScopes[] = new DeferScope();
+    }
+
+    /**
+     * Detach a scope from the active stack without running its callbacks.
+     *
+     *
+     * @param DeferScope $scope
+     * @return void
+     */
+    public function suspendDeferScope(DeferScope $scope): void
+    {
+        $index = array_search($scope, $this->deferScopes, true);
+
+        if ($index === false) {
+            return;
+        }
+
+        while (count($this->deferScopes) > $index + 1) {
+            $this->endDeferScope(end($this->deferScopes));
+        }
+
+        array_pop($this->deferScopes);
+    }
+
+    /**
+     * Make a previously suspended scope the current scope again.
+     *
+     * @param DeferScope $scope
+     * @return void
+     */
+    public function resumeDeferScope(DeferScope $scope): void
+    {
+        if ($scope->isClosed() || in_array($scope, $this->deferScopes, true)) {
+            return;
+        }
+
+        $this->deferScopes[] = $scope;
+    }
+
+    /**
+     * End a defer scope: run its callbacks and discard it.
+     *
+     * @param DeferScope $scope
+     * @param \Throwable|null $exception
+     * @return void
+     */
+    public function endDeferScope(DeferScope $scope, ?\Throwable $exception = null): void
+    {
+        $index = array_search($scope, $this->deferScopes, true);
+
+        if ($index === false) {
+            // Not current: either already ended or suspended. Run a
+            // suspended scope in place; a closed scope is a no-op.
+            $this->deferScopes[] = $scope;
+            $index = count($this->deferScopes) - 1;
+        }
+
+        while (count($this->deferScopes) > $index) {
+            // Run while still current, so callbacks may defer further cleanup.
+            $ending = end($this->deferScopes);
+            $failures = $ending->run();
+
+            if (end($this->deferScopes) === $ending) {
+                array_pop($this->deferScopes);
+            }
+
+            foreach ($failures as $failure) {
+                $this->reportDeferFailure($failure, $exception);
+            }
+        }
+    }
+
+    /**
+     * Run a callback inside its own defer scope.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function runInDeferScope(callable $callback): mixed
+    {
+        $scope = $this->beginDeferScope();
+
+        try {
+            return $callback();
+        } catch (\Throwable $e) {
+            $this->endDeferScope($scope, $e);
+
+            throw $e;
+        } finally {
+            $this->endDeferScope($scope);
+        }
+    }
+
+    /**
+     * Set a custom reporter for exceptions thrown by deferred callbacks.
+     *
+     * @param callable(\Throwable, ?\Throwable): void|null $reporter
+     * @return self
+     */
+    public function reportDeferredExceptionsUsing(?callable $reporter): self
+    {
+        $this->deferFailureReporter = $reporter;
+
+        return $this;
+    }
+
+    /**
+     * Report an exception thrown by a deferred callback.
+     *
+     * @param \Throwable $failure
+     * @param \Throwable|null $original
+     * @return void
+     */
+    protected function reportDeferFailure(\Throwable $failure, ?\Throwable $original): void
+    {
+        $reported = false;
+
+        try {
+            if ($this->deferFailureReporter !== null) {
+                ($this->deferFailureReporter)($failure, $original);
+                $reported = true;
+            } elseif ($this->has('log')) {
+                \Phaseolies\Support\Facades\Log::error('Deferred callback failed: ' . $failure->getMessage(), [
+                    'exception' => $failure,
+                ]);
+                $reported = true;
+            }
+        } catch (\Throwable) {
+            // Reporting must never break cleanup; fall through to the last resort.
+        }
+
+        if (!$reported) {
+            // No reporter or logger took it (absent, or it threw). Cleanup failures
+            // are never propagated, so leave a best-effort trace rather than none.
+            try {
+                error_log(sprintf(
+                    'Deferred callback failed: %s: %s in %s:%d',
+                    get_class($failure),
+                    $failure->getMessage(),
+                    $failure->getFile(),
+                    $failure->getLine()
+                ));
+            } catch (\Throwable) {
+                // Nothing left to try.
+            }
         }
     }
 
@@ -1074,6 +1408,13 @@ class Application extends Container
         foreach (['session', 'request', 'response', 'redirect'] as $abstract) {
             $this->forgetResolved($abstract);
         }
+
+        // re-resolves fresh instance instead of reusing it.
+        $this->forgetRequestScopedInstances();
+
+        // Undo any config() mutation made while handling
+        // this request, so it doesn't leak into the next one.
+        Config::resetRuntimeOverrides();
     }
 
     /**
@@ -1125,15 +1466,9 @@ class Application extends Container
                 $resolved = true;
             }
 
-            if (!$resolved && $parameter->isDefaultValueAvailable()) {
-                $arguments[] = $parameter->getDefaultValue();
-                $resolved = true;
-            }
-
             if (!$resolved) {
-                throw new \RuntimeException(
-                    "Unresolvable terminating callback parameter '\${$parameter->getName()}'."
-                );
+                $primitives = $namedContext;
+                $arguments[] = $this->resolveDependency($parameter, $primitives);
             }
         }
 
@@ -1207,18 +1542,69 @@ class Application extends Container
      */
     public function dispatch($request): DispatchResult
     {
+        $this->snapshotBootBindings();
+
+        $context = $this->beginContext(ExecutionContext::REQUEST, $this->requestContextMetadata($request));
+        $deferScope = $this->beginDeferScope();
+
         try {
             $this->instance('request', $request);
 
             $response = $this->handle($request);
 
+            TaskGroup::assertNothingPending($context->id());
+
             $response->prepare($request)->send();
 
-            return new DispatchResult($this, $request, $response);
-        } catch (HttpException $e) {
-            Response::dispatchHttpException($e);
+            $this->suspendDeferScope($deferScope);
+            $this->suspendContext($context);
 
-            return new DispatchResult($this, $request, null, $e);
+            return new DispatchResult($this, $request, $response, null, $deferScope, $context);
+        } catch (HttpException $e) {
+            TaskGroup::cancelPending($e, $context->id());
+
+            try {
+                Response::dispatchHttpException($e);
+            } catch (\Throwable $renderFailure) {
+                $this->endDeferScope($deferScope, $renderFailure);
+                $this->endContext($context, $renderFailure);
+
+                throw $renderFailure;
+            }
+
+            $this->suspendDeferScope($deferScope);
+            $this->suspendContext($context);
+
+            return new DispatchResult($this, $request, null, $e, $deferScope, $context);
+        } catch (\Throwable $e) {
+            TaskGroup::cancelPending($e, $context->id());
+            $this->endDeferScope($deferScope, $e);
+            $this->endContext($context, $e);
+
+            throw $e;
         }
+    }
+
+    /**
+     * Describe a request for its execution context. Must never throw.
+     *
+     * @param mixed $request
+     * @return array<string, mixed>
+     */
+    protected function requestContextMetadata($request): array
+    {
+        $metadata = [];
+
+        try {
+            $metadata = array_filter([
+                'method' => $request->method(),
+                'path' => $request->getPath(),
+                'request_id' => $request->header('X-Request-Id'),
+            ], static fn($value) => $value !== null && $value !== '');
+        } catch (\Throwable) {
+            // Metadata is best-effort; the request must still be served.
+        }
+
+        return $metadata;
     }
 }

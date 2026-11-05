@@ -2,10 +2,14 @@
 
 namespace Phaseolies\Cache;
 
-use DateTime;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\CacheItem;
 use Phaseolies\Cache\Lock\AtomicLock;
+use Psr\Cache\CacheItemInterface;
 use Symfony\Contracts\Cache\CacheInterface as ContractsCacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\NamespacedPoolInterface;
 
 class CacheStore implements IncrementableCacheInterface
 {
@@ -24,16 +28,46 @@ class CacheStore implements IncrementableCacheInterface
     protected string $prefix;
 
     /**
+     * Seconds an item lives when no ttl is given
+     *
+     * @var int|null
+     */
+    protected ?int $defaultTtl;
+
+    /**
+     * Resolves another configured store by name, see store().
+     *
+     * @var \Closure|null
+     */
+    protected ?\Closure $storeResolver = null;
+
+    /**
+     * The name this store was configured under, if known.
+     *
+     * @var string|null
+     */
+    protected ?string $name = null;
+
+    /**
+     * Pool that holds tagged items, created on first use.
+     *
+     * @var TagAwareAdapter|null
+     */
+    protected ?TagAwareAdapter $taggedPool = null;
+
+    /**
      * Create a new cache store instance.
      *
      * @param AdapterInterface $adapter
      * @param string|null $prefix
+     * @param int|null $defaultTtl
      * @return void
      */
-    public function __construct(AdapterInterface $adapter, ?string $prefix = null)
+    public function __construct(AdapterInterface $adapter, ?string $prefix = null, ?int $defaultTtl = null)
     {
         $this->adapter = $adapter;
         $this->prefix = (string) ($prefix ?? config('caching.prefix'));
+        $this->defaultTtl = $defaultTtl;
     }
 
     /**
@@ -92,8 +126,10 @@ class CacheStore implements IncrementableCacheInterface
         $item = $this->adapter->getItem($key);
         $item->set($value);
 
-        if ($ttl !== null) {
-            $item->expiresAfter($this->convertTtlToSeconds($ttl));
+        $seconds = $this->ttlFor($ttl);
+
+        if ($seconds !== null) {
+            $item->expiresAfter($seconds);
         }
 
         return $this->adapter->save($item);
@@ -121,7 +157,14 @@ class CacheStore implements IncrementableCacheInterface
     #[\Override]
     public function clear(): bool
     {
-        return $this->adapter->clear($this->prefix);
+        $cleared = $this->adapter->clear($this->prefix);
+
+        // Tagged items live in their own namespace and are not reached by the call above.
+        if ($pool = $this->taggedPool()) {
+            $cleared = $pool->clear() && $cleared;
+        }
+
+        return $cleared;
     }
 
     /**
@@ -169,7 +212,7 @@ class CacheStore implements IncrementableCacheInterface
         $values = $this->normalizeValueMap($values);
 
         $success = true;
-        $ttl = $this->convertTtlToSeconds($ttl);
+        $ttl = $this->ttlFor($ttl);
 
         foreach ($values as $key => $value) {
             $prefixedKey = $this->prefixedValidatedKey($key);
@@ -237,13 +280,9 @@ class CacheStore implements IncrementableCacheInterface
                 return false;
             }
 
-            $current = (int) $item->get();
-            $new = $current + $value;
+            $new = (int) $item->get() + $value;
             $item->set($new);
-
-            if ($item->getMetadata()['expiry'] ?? null) {
-                $item->expiresAt(DateTime::createFromFormat('U', (string) $item->getMetadata()['expiry']));
-            }
+            $this->keepExpiry($item);
 
             return $this->adapter->save($item) ? $new : false;
         });
@@ -267,13 +306,9 @@ class CacheStore implements IncrementableCacheInterface
                 return false;
             }
 
-            $current = (int) $item->get();
-            $new = $current - $value;
+            $new = (int) $item->get() - $value;
             $item->set($new);
-
-            if ($item->getMetadata()['expiry'] ?? null) {
-                $item->expiresAt(DateTime::createFromFormat('U', (string) $item->getMetadata()['expiry']));
-            }
+            $this->keepExpiry($item);
 
             return $this->adapter->save($item) ? $new : false;
         });
@@ -290,7 +325,7 @@ class CacheStore implements IncrementableCacheInterface
     public function add($key, $value, $ttl = null): bool
     {
         $key = $this->prefixedValidatedKey($key);
-        $seconds = $this->convertTtlToSeconds($ttl);
+        $seconds = $this->ttlFor($ttl);
 
         if ($this->adapter instanceof ContractsCacheInterface) {
             $created = false;
@@ -402,6 +437,43 @@ class CacheStore implements IncrementableCacheInterface
         }
 
         return $validated;
+    }
+
+    /**
+     * The ttl an item is saved with: the given one, or the store default.
+     *
+     * @param null|int|\DateInterval $ttl
+     * @return int|null
+     */
+    protected function ttlFor($ttl): ?int
+    {
+        return $this->convertTtlToSeconds($ttl) ?? $this->defaultTtl;
+    }
+
+    /**
+     * The ttl an item is saved with, in seconds: the given one, or the store default.
+     *
+     * @param null|int|\DateInterval $ttl
+     * @return int|null
+     */
+    public function ttlSeconds($ttl): ?int
+    {
+        return $this->ttlFor($ttl);
+    }
+
+    /**
+     * Save an item with the expiry it already had.
+     *
+     * @param CacheItemInterface $item
+     * @return void
+     */
+    protected function keepExpiry(CacheItemInterface $item): void
+    {
+        $expiry = $item instanceof CacheItem ? ($item->getMetadata()[ItemInterface::METADATA_EXPIRY] ?? null) : null;
+
+        if ($expiry !== null) {
+            $item->expiresAt((new \DateTimeImmutable())->setTimestamp((int) ceil($expiry)));
+        }
     }
 
     /**
@@ -550,21 +622,13 @@ class CacheStore implements IncrementableCacheInterface
      * Get an item from the cache, or execute the callback and store the result.
      *
      * @param string $key
-     * @param int|DateInterval $ttl
+     * @param int|\DateInterval|null $ttl
      * @param \Closure $callback
      * @return mixed
      */
     public function stash(string $key, $ttl, \Closure $callback): mixed
     {
-        if ($this->has($key)) {
-            return $this->get($key);
-        }
-
-        $value = $callback();
-
-        $this->set($key, $value, $ttl);
-
-        return $value;
+        return $this->remember($key, $this->ttlFor($ttl), $callback);
     }
 
     /**
@@ -576,15 +640,7 @@ class CacheStore implements IncrementableCacheInterface
      */
     public function stashForever(string $key, \Closure $callback): mixed
     {
-        if ($this->has($key)) {
-            return $this->get($key);
-        }
-
-        $value = $callback();
-
-        $this->forever($key, $value);
-
-        return $value;
+        return $this->remember($key, null, $callback);
     }
 
     /**
@@ -605,6 +661,195 @@ class CacheStore implements IncrementableCacheInterface
         return $ttl === null
             ? $this->stashForever($key, $callback)
             : $this->stash($key, $ttl, $callback);
+    }
+
+    /**
+     * @param string $key
+     * @param int|null $seconds
+     * @param \Closure $callback
+     * @return mixed
+     */
+    protected function remember(string $key, ?int $seconds, \Closure $callback): mixed
+    {
+        $key = $this->prefixedValidatedKey($key);
+
+        if ($this->adapter instanceof ContractsCacheInterface) {
+            return $this->adapter->get($key, function (ItemInterface $item) use ($seconds, $callback) {
+                $item->expiresAfter($seconds);
+
+                return $callback();
+            });
+        }
+
+        $item = $this->adapter->getItem($key);
+
+        if ($item->isHit()) {
+            return $item->get();
+        }
+
+        $value = $callback();
+        $item->set($value);
+
+        if ($seconds !== null) {
+            $item->expiresAfter($seconds);
+        }
+
+        $this->adapter->save($item);
+
+        return $value;
+    }
+
+    /**
+     * Get an item and remove it in one step.
+     *
+     * @param mixed $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function pull($key, $default = null): mixed
+    {
+        $key = $this->prefixedValidatedKey($key);
+        $item = $this->adapter->getItem($key);
+
+        if (!$item->isHit()) {
+            return $default;
+        }
+
+        $value = $item->get();
+        $this->adapter->deleteItem($key);
+
+        return $value;
+    }
+
+    /**
+     * Determine whether an item is absent from the cache.
+     *
+     * @param mixed $key
+     * @return bool
+     */
+    public function missing($key): bool
+    {
+        return !$this->has($key);
+    }
+
+    /**
+     * Use another store from the `caching.stores` config
+     *
+     * @param string|null $name
+     * @return self
+     * @throws \RuntimeException When the store is not configured
+     */
+    public function store(?string $name = null): self
+    {
+        if ($name === null || $name === $this->name) {
+            return $this;
+        }
+
+        if ($this->storeResolver === null) {
+            throw new \RuntimeException("Cache store [{$name}] cannot be resolved: this store was not created from the cache config.");
+        }
+
+        return ($this->storeResolver)($name);
+    }
+
+    /**
+     * The key prefix this store was created with.
+     *
+     * @return string
+     */
+    public function getPrefix(): string
+    {
+        return $this->prefix;
+    }
+
+    /**
+     * Take over the settings of another store
+     *
+     * @param CacheStore $store
+     * @return static
+     */
+    public function inheritSettingsFrom(CacheStore $store): static
+    {
+        $this->defaultTtl = $store->defaultTtl;
+        $this->name = $store->name;
+        $this->storeResolver = $store->storeResolver;
+
+        return $this;
+    }
+
+    /**
+     * Teach this store how to find the others. Used by the cache launcher.
+     *
+     * @param string $name
+     * @param \Closure $resolver fn(string $name): static
+     * @return static
+     */
+    public function resolveStoresUsing(string $name, \Closure $resolver): static
+    {
+        $this->name = $name;
+        $this->storeResolver = $resolver;
+
+        return $this;
+    }
+
+    /**
+     * Get a cache whose items carry tags, so a whole group can be removed at once
+     *
+     * @param string|array $names
+     * @return TaggedCache
+     * @throws \RuntimeException
+     */
+    public function tags(string|array $names): TaggedCache
+    {
+        $pool = $this->taggedPool();
+
+        if ($pool === null) {
+            throw new \RuntimeException('This cache store does not support tags.');
+        }
+
+        return new TaggedCache($this, $pool, array_values((array) $names));
+    }
+
+    /**
+     * Get the tagged pool, creating it if necessary.
+     *
+     * @return TagAwareAdapter|null
+     */
+    protected function taggedPool(): ?TagAwareAdapter
+    {
+        if ($this->taggedPool === null && ($pool = $this->taggedNamespaceOf($this->adapter)) !== null) {
+            $this->taggedPool = new TagAwareAdapter($pool);
+        }
+
+        return $this->taggedPool;
+    }
+
+    /**
+     * The separate namespace tagged items are kept in, if the adapter can have one.
+     *
+     * @param object $adapter
+     * @return AdapterInterface|null
+     */
+    private function taggedNamespaceOf(object $adapter): ?AdapterInterface
+    {
+        if (!$adapter instanceof NamespacedPoolInterface) {
+            return null;
+        }
+
+        $pool = $adapter->withSubNamespace('tagged');
+
+        return $pool instanceof AdapterInterface ? $pool : null;
+    }
+
+    /**
+     * Validate a key and return it as the adapter will see it.
+     *
+     * @param mixed $key
+     * @return string
+     */
+    public function validatedKey($key): string
+    {
+        return $this->normalizeKey($key);
     }
 
     /**

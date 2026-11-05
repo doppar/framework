@@ -166,6 +166,13 @@ class ScheduledCommand
     private $lastExecutionTime = null;
 
     /**
+     * Whether this instance took the overlap lock, and so is the one that may release it.
+     *
+     * @var bool
+     */
+    private bool $ownsLock = false;
+
+    /**
      * Initializes the command with default lock and tracking file paths.
      *
      * @param string $command
@@ -177,12 +184,32 @@ class ScheduledCommand
         }
 
         $this->command = $command;
-        $tempDir = sys_get_temp_dir();
-        $this->lastRunFile = $tempDir . "/doppar_cron_" . md5($this->command);
-        $this->lockFile = $tempDir . "/doppar_cron_lock_" . md5($this->command);
+        $stateDir = $this->stateDirectory();
+        $this->lastRunFile = $stateDir . "/doppar_cron_" . md5($this->command);
+        $this->lockFile = $stateDir . "/doppar_cron_lock_" . md5($this->command);
 
         $this->ensureSecureFilePermissions($this->lastRunFile);
         $this->ensureSecureFilePermissions($this->lockFile);
+    }
+
+    /**
+     * Get the directory that holds lock and last-run files.
+     *
+     * @return string
+     */
+    private function stateDirectory(): string
+    {
+        try {
+            $directory = storage_path('schedule');
+        } catch (\Throwable) {
+            return sys_get_temp_dir();
+        }
+
+        if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+            return sys_get_temp_dir();
+        }
+
+        return $directory;
     }
 
     /**
@@ -1355,6 +1382,43 @@ class ScheduledCommand
      */
     private function handleOverlappingPrevention(): bool
     {
+        return $this->withLockGuard(fn(): bool => $this->acquireOverlapLock());
+    }
+
+    /**
+     * Run a callback while holding an exclusive lock, so that checking for a
+     * running copy and taking the lock happen as one step. Without it, two
+     * scheduler runs that start together can both decide the command is free.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    private function withLockGuard(callable $callback): mixed
+    {
+        $handle = @fopen($this->lockFile . '.guard', 'c');
+
+        if ($handle === false) {
+            // Cannot create the guard (read-only storage): behave as before.
+            return $callback();
+        }
+
+        try {
+            flock($handle, LOCK_EX);
+
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    /**
+     * Decide whether the command may run, taking the lock if so.
+     *
+     * @return bool
+     */
+    private function acquireOverlapLock(): bool
+    {
         $lockFile = $this->getLockFile();
         $pidFile = $lockFile . '.pid';
 
@@ -1432,13 +1496,7 @@ class ScheduledCommand
             return false;
         }
 
-        try {
-            $output = shell_exec(sprintf("ps -p %d -o pid=", $pid));
-
-            return !empty($output);
-        } catch (\Throwable $e) {
-            return false;
-        }
+        return SchedulePool::isProcessRunning($pid);
     }
 
     /**
@@ -1464,7 +1522,15 @@ class ScheduledCommand
      */
     public function lock(): void
     {
+        $directory = dirname($this->lockFile);
+
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0755, true);
+        }
+
         file_put_contents($this->lockFile, time());
+
+        $this->ownsLock = true;
     }
 
     /**
@@ -1483,16 +1549,20 @@ class ScheduledCommand
         if (file_exists($pidFile)) {
             unlink($pidFile);
         }
+
+        $this->ownsLock = false;
     }
 
     /**
-     * Automatically release the lock if the command is not running in the background
-     * and is set to prevent overlapping executions.
+     * Release the lock this instance took, unless the command runs in the background
      */
     public function __destruct()
     {
-        if ($this->withoutOverlapping) {
-            $this->cleanup();
+        // A background job outlives this object (and the process that made it);
+        // its lock is released by cron:finish when the job ends. Releasing it
+        // here would let the next scheduler run start a second copy.
+        if ($this->ownsLock && $this->withoutOverlapping && !$this->runInBackground) {
+            $this->releaseLock();
         }
     }
 }

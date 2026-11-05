@@ -3,8 +3,9 @@
 namespace Phaseolies\Support;
 
 use Phaseolies\Http\Exceptions\RouteNameNotFoundException;
+use Phaseolies\Support\Contracts\UrlGeneratorInterface;
 
-class UrlGenerator
+class UrlGenerator implements UrlGeneratorInterface
 {
     /**
      * The base URL for generating URLs.
@@ -103,7 +104,7 @@ class UrlGenerator
     }
 
     /**
-     * Generate a full URL without query parameters.
+     * Generate the current full URL, including query parameters.
      *
      * @return string
      */
@@ -241,7 +242,22 @@ class UrlGenerator
             $url .= '#' . $this->fragment;
         }
 
+        $this->resetBuilderState();
+
         return $url;
+    }
+
+    /**
+     * Reset the per-URL builder state
+     *
+     * @return void
+     */
+    protected function resetBuilderState(): void
+    {
+        $this->path = '/';
+        $this->query = [];
+        $this->fragment = '';
+        $this->expiration = 0;
     }
 
     /**
@@ -281,11 +297,15 @@ class UrlGenerator
      * This method is taken from PHP Laravel framework
      * Determine if the given path is a valid URL.
      *
-     * @param string $path
+     * @param mixed $path
      * @return bool
      */
-    public function isValid($path): bool
+    public function isValid(mixed $path): bool
     {
+        if (! is_string($path)) {
+            return false;
+        }
+
         if (! preg_match('~^(#|//|https?://|(mailto|tel|sms):)~', $path)) {
             return filter_var($path, FILTER_VALIDATE_URL) !== false;
         }

@@ -51,7 +51,7 @@ class MakeModelCommand extends Command
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $withMigration = $this->option('m');
             $namespace = 'App\\Models' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Models', $name);
+            $filePath = $this->generatedFilePath('src/Models', $name);
 
             // Check if model already exists
             if (file_exists($filePath)) {
@@ -129,6 +129,6 @@ EOT;
      */
     protected function getMigrationPath(): string
     {
-        return base_path('database/migrations');
+        return base_path('schema/migrations');
     }
 }

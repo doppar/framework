@@ -10,6 +10,7 @@ class MockUser extends Model
     protected $primaryKey = 'id';
     protected $connection = 'default';
     protected $timeStamps = false;
+    protected $creatable = ['name', 'email', 'age', 'status', 'score', 'bio'];
 
     public function posts()
     {

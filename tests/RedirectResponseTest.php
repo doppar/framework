@@ -115,7 +115,11 @@ class RedirectResponseTest extends TestCase
 
     protected function setUp(): void
     {
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $container = new Container();
+        Container::setInstance($container);
         $container->bind('session', Session::class);
         $container->bind('str', StringService::class);
 
@@ -134,6 +138,11 @@ class RedirectResponseTest extends TestCase
         $container->instance('request', $this->request);
 
         $this->replaceMessageBag();
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
     }
 
     private function replaceRouterWithMock()

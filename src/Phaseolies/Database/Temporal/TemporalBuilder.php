@@ -17,17 +17,32 @@ class TemporalBuilder extends Builder
     protected string $datetime;
 
     /**
+     * The branch these history queries are scoped to.
+     *
+     * @var string
+     */
+    protected string $branch;
+
+    /**
      * @param PDO $pdo
      * @param string $table
      * @param string $modelClass
-     * @param int $rowPerPage 
+     * @param int $rowPerPage
      * @param string $datetime
+     * @param string $branch
      */
-    public function __construct(PDO $pdo, string $table, string $modelClass, int $rowPerPage, string $datetime)
-    {
+    public function __construct(
+        PDO $pdo,
+        string $table,
+        string $modelClass,
+        int $rowPerPage,
+        string $datetime,
+        string $branch = 'main'
+    ) {
         parent::__construct($pdo, $table, $modelClass, $rowPerPage);
 
         $this->datetime = $this->normalizeDateTime($datetime);
+        $this->branch   = $branch;
     }
 
     /**
@@ -81,23 +96,29 @@ class TemporalBuilder extends Builder
     public function find($id): ?Model
     {
         $historyTable = TemporalManager::historyTable($this->table, $this->modelClass);
-        $key          = (new $this->modelClass())->getKeyName();
+        $hasBranch    = $this->hasBranchColumn($historyTable);
 
         $sql = "
-            SELECT snapshot
+            SELECT snapshot, action
             FROM   {$historyTable}
             WHERE  record_id = ?
-            AND    valid_from <= ?
-            AND    action != 'deleted'
-            ORDER  BY valid_from DESC
+            AND    valid_from <= ?"
+            . ($hasBranch ? ' AND branch = ?' : '') . "
+            ORDER  BY valid_from DESC, history_id DESC
             LIMIT  1
         ";
 
+        $params = [$id, $this->datetime];
+        if ($hasBranch) {
+            $params[] = $this->branch;
+        }
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$id, $this->datetime]);
+        $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
+        // The latest row decides: if the record was deleted by then, it did not exist.
+        if (!$row || $row['action'] === 'deleted') {
             return null;
         }
 
@@ -115,6 +136,11 @@ class TemporalBuilder extends Builder
     private function fetchTemporalRows(): array
     {
         $historyTable = TemporalManager::historyTable($this->table, $this->modelClass);
+        $hasBranch    = $this->hasBranchColumn($historyTable);
+
+        $innerBranch = $hasBranch ? ' AND h2.branch = ?' : '';
+        $tieBranch   = $hasBranch ? ' AND h3.branch = ?' : '';
+        $outerBranch = $hasBranch ? ' AND h1.branch = ?' : '';
 
         $sql = "
             SELECT h1.snapshot, h1.record_id, h1.action
@@ -123,15 +149,46 @@ class TemporalBuilder extends Builder
                        SELECT MAX(h2.valid_from)
                        FROM   {$historyTable} h2
                        WHERE  h2.record_id  = h1.record_id
-                       AND    h2.valid_from <= ?
+                       AND    h2.valid_from <= ?{$innerBranch}
                    )
-            AND    h1.action != 'deleted'
+            AND    h1.history_id = (
+                       SELECT MAX(h3.history_id)
+                       FROM   {$historyTable} h3
+                       WHERE  h3.record_id = h1.record_id
+                       AND    h3.valid_from = h1.valid_from{$tieBranch}
+                   )
+            AND    h1.action != 'deleted'{$outerBranch}
         ";
 
+        $params = [$this->datetime];
+        if ($hasBranch) {
+            $params[] = $this->branch;
+            $params[] = $this->branch;
+            $params[] = $this->branch;
+        }
+
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$this->datetime]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Whether the history table has a usable branch column for this model.
+     *
+     * @param string $historyTable
+     * @return bool
+     */
+    private function hasBranchColumn(string $historyTable): bool
+    {
+        if (!TemporalManager::isBranchable($this->modelClass)) {
+            return false;
+        }
+
+        $driver = $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        TemporalManager::assertBranchColumn($this->pdo, $historyTable, $driver);
+        return true;
     }
 
     /**
@@ -176,29 +233,104 @@ class TemporalBuilder extends Builder
             return $models;
         }
 
-        return array_values(array_filter($models, function (Model $model) {
-            $pass = true;
+        return array_values(array_filter(
+            $models,
+            fn (Model $model) => $this->matchesConditions($model, $this->conditions)
+        ));
+    }
 
-            foreach ($this->conditions as $condition) {
-                // Skip typed conditions (NESTED, EXISTS, RAW_WHERE, etc.)
-                if (isset($condition['type'])) {
-                    continue;
-                }
+    /**
+     * Check a model against a list of conditions
+     *
+     * @param Model $model
+     * @param array $conditions
+     * @return bool
+     * @throws \LogicException
+     */
+    private function matchesConditions(Model $model, array $conditions): bool
+    {
+        $seen        = false;
+        $anyGroup    = false;
+        $groupResult = true;
 
-                [$boolean, $field, $operator, $value] = array_pad($condition, 4, null);
-                $extra = $condition[4] ?? null;
-
-                // Strip table prefix if present (e.g. "contracts.status" → "status")
-                $column = str_contains($field, '.') ? explode('.', $field, 2)[1] : $field;
-                $actual = $model->{$column} ?? null;
-
-                $result = $this->evaluateCondition($actual, $operator, $value, $extra);
-
-                $pass = $boolean === 'OR' ? ($pass || $result) : ($pass && $result);
+        foreach ($conditions as $condition) {
+            if (($condition['type'] ?? null) === 'RAW_GROUP_BY') {
+                continue;
             }
 
-            return $pass;
-        }));
+            $boolean = strtoupper(isset($condition['type'])
+                ? ($condition['boolean'] ?? 'AND')
+                : ($condition[0] ?? 'AND'));
+
+            $result = $this->matchesCondition($model, $condition);
+
+            if (!$seen) {
+                $groupResult = $result;
+                $seen = true;
+            } elseif ($boolean === 'OR') {
+                $anyGroup    = $anyGroup || $groupResult;
+                $groupResult = $result;
+            } else {
+                $groupResult = $groupResult && $result;
+            }
+        }
+
+        return !$seen || $anyGroup || $groupResult;
+    }
+
+    /**
+     * Check a model against a single condition entry.
+     *
+     * @param Model $model
+     * @param array $condition
+     * @return bool
+     * @throws \LogicException
+     */
+    private function matchesCondition(Model $model, array $condition): bool
+    {
+        if (isset($condition['type'])) {
+            if ($condition['type'] === 'NESTED') {
+                return $this->matchesConditions($model, $condition['query']->conditions);
+            }
+
+            throw new \LogicException(
+                "Temporal queries filter snapshots in PHP, so {$condition['type']} conditions are not supported. "
+                    . 'Use where(), orWhere(), whereIn(), whereNull(), whereBetween() or a nested where() instead.'
+            );
+        }
+
+        [, $field, $operator, $value] = array_pad($condition, 4, null);
+        $extra = $condition[4] ?? null;
+
+        // Strip table prefix if present (e.g. "contracts.status" → "status")
+        $column = str_contains($field, '.') ? explode('.', $field, 2)[1] : $field;
+        $actual = $model->{$column} ?? null;
+
+        return $this->evaluateCondition($actual, $operator, $value, $extra);
+    }
+
+    /**
+     * Add a nested WHERE group. The nested query keeps the same point in time.
+     *
+     * @param callable $callback
+     * @param string $boolean
+     * @return self
+     */
+    public function whereNested(callable $callback, string $boolean = 'AND'): self
+    {
+        $nested = new self($this->pdo, $this->table, $this->modelClass, $this->rowPerPage, $this->datetime);
+
+        $callback($nested);
+
+        if (!empty($nested->conditions)) {
+            $this->conditions[] = [
+                'type' => 'NESTED',
+                'query' => $nested,
+                'boolean' => $boolean,
+            ];
+        }
+
+        return $this;
     }
 
     /**
@@ -309,31 +441,14 @@ class TemporalBuilder extends Builder
     }
 
     /**
-     * Normalize various human-friendly datetime strings into a sortable
+     * Normalize a datetime for comparison with `valid_from`
      *
      * @param string $datetime
      * @return string
      */
     private function normalizeDateTime(string $datetime): string
     {
-        $datetime = trim($datetime);
-
-        // Date-only: append end-of-day
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $datetime)) {
-            return $datetime . ' 23:59:59.999999';
-        }
-
-        // Date + HH:MM only
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $datetime)) {
-            return $datetime . ':59.999999';
-        }
-
-        // Date + HH:MM:SS only
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $datetime)) {
-            return $datetime . '.999999';
-        }
-
-        return $datetime;
+        return TemporalManager::normalizeDateTime($datetime, $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME));
     }
 
     /**
@@ -344,5 +459,15 @@ class TemporalBuilder extends Builder
     public function getDatetime(): string
     {
         return $this->datetime;
+    }
+
+    /**
+     * Expose the resolved branch for external use.
+     *
+     * @return string
+     */
+    public function getBranch(): string
+    {
+        return $this->branch;
     }
 }

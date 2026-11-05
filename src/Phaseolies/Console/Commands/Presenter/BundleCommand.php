@@ -30,7 +30,7 @@ class BundleCommand extends Command
         return $this->executeWithTiming(function () {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Http\\Presenters' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Http/Presenters', $name);
+            $filePath = $this->generatedFilePath('src/Http/Presenters', $name);
 
             if (file_exists($filePath)) {
                 $this->displayError('Bundle class already exists at:');

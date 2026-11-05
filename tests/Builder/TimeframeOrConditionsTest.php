@@ -4,10 +4,12 @@ namespace Tests\Unit\Builder;
 
 use PDO;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 use Tests\Support\Model\MockUser;
 
+#[AllowMockObjectsWithoutExpectations]
 class TimeframeOrConditionsTest extends TestCase
 {
     private $pdoMock;
@@ -15,9 +17,7 @@ class TimeframeOrConditionsTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
 
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
@@ -208,9 +208,7 @@ class TimeframeOrConditionsTest extends TestCase
     public function testOrWhereTimeForPostgresUsesExtract()
     {
         $pgPdo = $this->createMock(PDO::class);
-        $pgPdo->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn('pgsql');
+        $pgPdo->method('getAttribute')->willReturn('pgsql');
 
         $b = new Builder($pgPdo, 'users', MockUser::class, 15);
 
@@ -223,9 +221,7 @@ class TimeframeOrConditionsTest extends TestCase
     public function testOrWhereMonthForSqliteUsesStrftime()
     {
         $sqPdo = $this->createMock(PDO::class);
-        $sqPdo->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn('sqlite');
+        $sqPdo->method('getAttribute')->willReturn('sqlite');
 
         $b = new Builder($sqPdo, 'users', MockUser::class, 15);
 
@@ -315,5 +311,44 @@ class TimeframeOrConditionsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $this->builder()->formatDateTime(99999);
+    }
+
+    // ==================== IDENTIFIER VALIDATION (SQL INJECTION) TESTS ====================
+
+    public function testWhereDateRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereDate('created_at) OR (1=1', '2024-06-15');
+    }
+
+    public function testWhereMonthRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereMonth('created_at); DROP TABLE users; --', 6);
+    }
+
+    public function testWhereYearRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereYear('created_at) OR (1=1', 2024);
+    }
+
+    public function testWhereDateBetweenRejectsInjectedColumnIdentifier()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()->whereDateBetween('created_at) OR (1=1', '2024-01-01', '2024-12-31');
+    }
+
+    public function testWhereDateBetweenStillWorksWithPlainColumn()
+    {
+        $sql = $this->builder()
+            ->whereDateBetween('created_at', '2024-01-01', '2024-12-31')
+            ->toSql();
+
+        $this->assertStringContainsString('DATE(created_at) BETWEEN ? AND ?', $sql);
     }
 }

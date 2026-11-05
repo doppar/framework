@@ -3,7 +3,7 @@
 namespace Tests\Unit\Application;
 
 use ReflectionClass;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Application;
 use Phaseolies\Auth\ActorManager;
 use Phaseolies\DI\Container;
@@ -21,9 +21,14 @@ use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Support\StringService;
 use Phaseolies\Support\View\Factory as ViewFactory;
+use Phaseolies\Support\Concurrency\Task;
+use Phaseolies\Support\Concurrency\TaskGroup;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
+use React\EventLoop\StreamSelectLoop;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 function base_path($path = '')
@@ -87,13 +92,12 @@ final class ApplicationTest extends TestCase
         $this->app->method('withConfiguration')->willReturnSelf();
         $this->app->method('withExceptionHandler')->willReturnSelf();
 
-        // Now call the parent constructor manually without the problematic initialization
+        // Now call the parent constructor manually without the problematic initialization.
+        // The constructor itself calls withBasePath() (not stubbed above), which sets the
+        // base path for testing as a side effect.
         $reflection = new ReflectionClass(Application::class);
         $constructor = $reflection->getConstructor();
-        $constructor->invoke($this->app);
-
-        // Set base path for testing
-        $this->app->withBasePath($this->tempBasePath);
+        $constructor->invoke($this->app, $this->tempBasePath);
     }
 
     protected function tearDown(): void
@@ -101,28 +105,42 @@ final class ApplicationTest extends TestCase
         GhostableTestProvider::resetState();
         $this->app->flush();
         Container::forgetInstance();
+
+        // Config::$configFiles is memoized process-wide and never
+        // invalidated on its own; a couple of tests in this class touch
+        // the real Config class against $this->tempBasePath (see
+        // testTerminateResetsRuntimeConfigOverrides), and without this,
+        // that memoized file list would dangle once tempBasePath is
+        // deleted below — corrupting Config for whichever test runs next
+        // in this same PHPUnit process.
+        Config::clearCache();
+
         $this->deleteDirectory($this->tempBasePath);
     }
 
     private function createDirectoryStructure(): void
     {
         $dirs = [
-            '/config',
-            '/bootstrap',
-            '/database/migrations',
+            '/runtime/config',
+            '/runtime',
+            '/schema/migrations',
             '/public',
             '/storage',
-            '/resources',
-            '/resources/lang',
-            '/app',
+            '/templates',
+            '/templates/lang',
+            '/src',
         ];
 
         foreach ($dirs as $dir) {
-            mkdir($this->tempBasePath . $dir, 0777, true);
+            $path = $this->tempBasePath . $dir;
+
+            if (!is_dir($path)) {
+                mkdir($path, 0777, true);
+            }
         }
 
         // Create minimal config file
-        file_put_contents($this->tempBasePath . '/config/app.php', "<?php return [
+        file_put_contents($this->tempBasePath . '/runtime/config/app.php', "<?php return [
             'env' => 'testing',
             'locale' => 'en',
             'fallback_locale' => 'en',
@@ -185,14 +203,14 @@ final class ApplicationTest extends TestCase
     public function testPathMethodsReturnCorrectPaths(): void
     {
         $stringService = app(StringService::class);
-        $this->assertStringEndsWith('/resources/views', $stringService->urlHarmonize($this->app->resourcesPath('views')));
-        $this->assertStringEndsWith('/resources/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
-        $this->assertStringEndsWith('/bootstrap/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
-        $this->assertStringEndsWith('/database/migrations', $stringService->urlHarmonize($this->app->databasePath('migrations')));
+        $this->assertStringEndsWith('/templates/views', $stringService->urlHarmonize($this->app->templatesPath('views')));
+        $this->assertStringEndsWith('/templates/client/js/pages', $stringService->urlHarmonize($this->app->clientPath('js\\pages')));
+        $this->assertStringEndsWith('/runtime/cache', $stringService->urlHarmonize($this->app->bootstrapPath('cache')));
+        $this->assertStringEndsWith('/schema/migrations', $stringService->urlHarmonize($this->app->schemaPath('migrations')));
         $this->assertStringEndsWith('/public/assets', $stringService->urlHarmonize($this->app->publicPath('assets')));
         $this->assertStringEndsWith('/storage/logs', $stringService->urlHarmonize($this->app->storagePath('logs')));
-        $this->assertStringEndsWith('/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
-        $this->assertStringEndsWith('/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
+        $this->assertStringEndsWith('/runtime/config/app.php', $stringService->urlHarmonize($this->app->configPath('app.php')));
+        $this->assertStringEndsWith('/templates/lang/en', $stringService->urlHarmonize($this->app->langPath('en')));
     }
 
     public function testPathCaching(): void
@@ -205,7 +223,7 @@ final class ApplicationTest extends TestCase
 
     public function testEnvironmentFileManagement(): void
     {
-        $this->assertSame('.env', $this->app->environmentFile());
+        $this->assertSame('env.toml', $this->app->environmentFile());
 
         $result = $this->app->loadEnvironmentFrom('.env.testing');
         $this->assertSame($this->app, $result);
@@ -217,8 +235,8 @@ final class ApplicationTest extends TestCase
         $providers = $this->callProtectedMethod($this->app, 'loadCoreProviders');
 
         $this->assertIsArray($providers);
-        $this->assertContains(\Phaseolies\Providers\RouteServiceProvider::class, $providers);
-        $this->assertContains(\Phaseolies\Providers\LanguageServiceProvider::class, $providers);
+        $this->assertContains(\Phaseolies\Launchers\RouteLauncher::class, $providers);
+        $this->assertContains(\Phaseolies\Launchers\LanguageLauncher::class, $providers);
     }
 
     public function testGhostableProvidersAreQueuedOutsideConsole(): void
@@ -437,6 +455,73 @@ final class ApplicationTest extends TestCase
         $this->assertNull($captured[2]);
     }
 
+    public function testDispatchWaitsForTaskGroupsBeforeSendingTheResponse(): void
+    {
+        $request = new Request();
+        $taskFinished = false;
+
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+        $response->method('prepare')->willReturnSelf();
+        $response->expects($this->once())
+            ->method('send')
+            ->willReturnCallback(function () use (&$taskFinished, $response) {
+                $this->assertTrue($taskFinished);
+
+                return $response;
+            });
+
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willReturnCallback(
+            function () use ($response, &$taskFinished) {
+                $requestContext = $this->app->executionContext();
+
+                TaskGroup::run([
+                    'required-data' => function (Task $task) use (&$taskFinished, $requestContext) {
+                        $this->assertSame($requestContext, $this->app->executionContext());
+
+                        return $task->await(function ($resolve) use (&$taskFinished) {
+                            $timer = Loop::addTimer(0.001, function () use ($resolve, &$taskFinished) {
+                                $taskFinished = true;
+                                $resolve();
+                            });
+
+                            return fn () => Loop::cancelTimer($timer);
+                        });
+                    },
+                ]);
+
+                return $response;
+            }
+        );
+        $this->app->router = $router;
+
+        $this->app->dispatch($request)->terminate();
+    }
+
+    public function testApplicationBindsTheConfiguredEventLoopContract(): void
+    {
+        $this->assertSame(Loop::get(), $this->app->make(LoopInterface::class));
+    }
+
+    public function testTaskGroupsResolveAnOverriddenEventLoopContract(): void
+    {
+        $loop = new StreamSelectLoop();
+        $this->app->instance(LoopInterface::class, $loop);
+
+        $results = TaskGroup::run([
+            'configured' => function (Task $task) use ($loop) {
+                return $task->await(function ($resolve) use ($loop) {
+                    $loop->futureTick(fn () => $resolve('result'));
+                });
+            },
+        ]);
+
+        $this->assertSame(['configured' => 'result'], $results);
+    }
+
     public function testDispatchStillTerminatesWhenResultIsIgnored(): void
     {
         $request = new Request();
@@ -557,6 +642,24 @@ final class ApplicationTest extends TestCase
         $this->assertSame($exception, $captured['exception']);
     }
 
+    public function testTerminatingCallbackCanTypeHintAnArbitraryContainerService(): void
+    {
+        // Beyond request/response/exception, a terminating callback
+        // parameter that doesn't match the lifecycle context by type
+        // or name should be resolved from the container like any
+        // other injected dependency, not just default-valued or
+        // rejected outright.
+        $captured = null;
+
+        $this->app->terminating(function (StringService $strings) use (&$captured): void {
+            $captured = $strings;
+        });
+
+        $this->app->terminate(new Request(), new Response('ok'));
+
+        $this->assertInstanceOf(StringService::class, $captured);
+    }
+
     public function testTerminateCleansRequestScopedServicesAfterCallbacks(): void
     {
         $_SESSION = [];
@@ -627,4 +730,94 @@ final class ApplicationTest extends TestCase
         $this->assertFalse($this->app->hasInstance('session'));
         $this->assertFalse($this->app->hasInstance('redirect'));
     }
+
+    /**
+     * Worker-mode regression: a class bound *while handling a request*
+     * (mirroring what Router::resolveFormRequestValidationClass() and
+     * #[Bind]/#[Resolver] attributes do mid-dispatch for FormRequest
+     * classes and route dependencies) must not silently turn into a
+     * permanent cross-request singleton. Under a persistent worker
+     * (Swoole/FrankenPHP/RoadRunner) reusing one Application across many
+     * requests, the second request must get its own fresh instance rather
+     * than the first request's — see Container::snapshotBootBindings()
+     * and Application::cleanupRequestScopedServices().
+     */
+    public function testDynamicRequestScopedBindingIsNotReusedAcrossDispatches(): void
+    {
+        $response = $this->getMockBuilder(Response::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['prepare', 'send'])
+            ->getMock();
+        $response->method('prepare')->willReturnSelf();
+        $response->method('send')->willReturnSelf();
+
+        $seenInstances = [];
+
+        $router = $this->createMock(Router::class);
+        $router->method('resolve')->willReturnCallback(function () use ($response, &$seenInstances) {
+            if (!$this->app->has(WorkerModeDummyFormRequest::class)) {
+                $this->app->singleton(WorkerModeDummyFormRequest::class, fn() => new WorkerModeDummyFormRequest());
+            }
+
+            $seenInstances[] = $this->app->make(WorkerModeDummyFormRequest::class);
+
+            return $response;
+        });
+        $this->app->router = $router;
+
+        $this->app->dispatch(new Request());
+        $this->app->terminate(new Request(), $response);
+
+        $this->app->dispatch(new Request());
+        $this->app->terminate(new Request(), $response);
+
+        $this->assertCount(2, $seenInstances);
+        $this->assertNotSame(
+            $seenInstances[0],
+            $seenInstances[1],
+            'A binding registered while handling one request must not be reused by the next request under a persistent worker.'
+        );
+
+        // The binding definition itself is fine to keep (cheap, and lets
+        // the next request resolve fresh) — only the *resolved instance*
+        // must not survive.
+        $this->assertTrue($this->app->has(WorkerModeDummyFormRequest::class));
+    }
+
+    /**
+     * Worker-mode regression: Config::set()/Application::setLocale() calls
+     * made while handling one request (e.g. from middleware) must not
+     * leak into whichever request the same persistent worker serves next.
+     */
+    public function testTerminateResetsRuntimeConfigOverrides(): void
+    {
+        // Establish a known baseline via the same reset path terminate()
+        // uses, regardless of what state earlier tests in this process
+        // left Config in. Config::get() ensures initialize() has run
+        // (Config::all() alone does not, and will warn on a null cache
+        // file path if called first in a fresh process).
+        Config::get('app.locale');
+        Config::resetRuntimeOverrides();
+        $bootState = Config::all();
+
+        Config::set('app.locale', '__worker_leak_probe__');
+        $this->assertSame('__worker_leak_probe__', Config::get('app.locale'));
+
+        $this->app->terminate(new Request(), new Response('ok'));
+
+        $this->assertSame(
+            $bootState,
+            Config::all(),
+            'A config mutation made while handling one request must not leak into the next request a persistent worker serves.'
+        );
+    }
+}
+
+/**
+ * A minimal stand-in for a FormRequest/route-dependency class that the
+ * router binds the first time a route needs it — see
+ * testDynamicRequestScopedBindingIsNotReusedAcrossDispatches().
+ */
+class WorkerModeDummyFormRequest
+{
 }

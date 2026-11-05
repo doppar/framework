@@ -19,11 +19,11 @@ use Phaseolies\Support\Session;
 use Phaseolies\Translation\FileLoader;
 use Phaseolies\Translation\Translator;
 use PHPUnit\Framework\TestCase;
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Tests\Support\MockContainer;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class LifecycleRouteRequestStub extends Request
@@ -47,6 +47,16 @@ class LifecycleRouteRequestStub extends Request
 
     public function getPath(): string
     {
+        return $this->testPath;
+    }
+
+    public function getRequestUri(): string
+    {
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php) and needs a working
+        // uri()/isApiRequest(), which the real Request derives from
+        // $this->server — never initialized here since this stub skips
+        // Request::__construct().
         return $this->testPath;
     }
 
@@ -137,11 +147,21 @@ PHP);
     {
         $payload = ['framework' => 'Doppar', 'version' => 3];
         $app = $this->createStub(Application::class);
-        $router = new LifecycleTestableRouter($app);
+        $router = new LifecycleTestableRouter(new Gateway());
 
         $router->get('/payload', fn() => $payload);
 
         $request = new LifecycleRouteRequestStub('GET', '/payload', 'localhost');
+        $this->container->instance('request', $request);
+
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php), so $app->make() needs
+        // to actually build the 'web' group's CsrfTokenMiddleware, which
+        // in turn needs the Str facade's 'str' binding.
+        $this->container->instance('str', new \Phaseolies\Support\StringService());
+        $app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => $this->container->make($abstract, $parameters)
+        );
 
         $routeResponse = $router->resolve($app, $request);
         $helperResponse = response($payload);
@@ -159,17 +179,28 @@ PHP);
     {
         $payload = ['framework' => 'Doppar'];
         $app = $this->createStub(Application::class);
-        $router = new LifecycleTestableRouter($app);
+        $router = new LifecycleTestableRouter(new Gateway());
 
         $router->get('/payload', fn() => $payload);
 
         $routeRequest = new LifecycleRouteRequestStub('GET', '/payload', 'localhost');
+        $this->container->instance('request', $routeRequest);
+
+        // Group middleware (CSRF, etc.) is resolved on every dispatch now
+        // (see [[ArchNotes]] in Support/Router.php), so $app->make() needs
+        // to actually build the 'web' group's CsrfTokenMiddleware, which
+        // in turn needs the Str facade's 'str' binding.
+        $this->container->instance('str', new \Phaseolies\Support\StringService());
+        $app->method('make')->willReturnCallback(
+            fn($abstract, $parameters = []) => $this->container->make($abstract, $parameters)
+        );
+
         $routeResponse = $router->resolve($app, $routeRequest);
         $helperResponse = response($payload);
 
         $_SERVER['REQUEST_METHOD'] = 'HEAD';
         $_SERVER['SERVER_PROTOCOL'] = 'HTTP/1.1';
-        $headRequest = new Request();
+        $headRequest = Request::createFromGlobals();
 
         $routeResponse->prepare($headRequest);
         $helperResponse->prepare($headRequest);
@@ -212,7 +243,7 @@ PHP);
         $_SERVER['HTTP_REFERER'] = '/form';
         $_POST = [];
 
-        $request = new Request();
+        $request = Request::createFromGlobals();
         $this->container->instance('request', $request);
 
         try {

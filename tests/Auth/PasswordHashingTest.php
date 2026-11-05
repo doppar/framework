@@ -14,7 +14,12 @@ namespace Phaseolies\Auth\Security {
 namespace Tests\Unit\Auth {
 
     use Phaseolies\Auth\Security\PasswordHashing;
+    use Phaseolies\Auth\Security\Contracts\HashingInterface;
+    use Phaseolies\Application;
+    use Phaseolies\DI\Container;
+    use Phaseolies\Launchers\FacadeLauncher;
     use PHPUnit\Framework\TestCase;
+    use ReflectionClass;
     use RuntimeException;
 
     class PasswordHashingTest extends TestCase
@@ -33,6 +38,84 @@ namespace Tests\Unit\Auth {
         protected function tearDown(): void
         {
             unset($GLOBALS['doppar_hashing_test_config']);
+        }
+
+        /**
+         * Build a real Application without booting it
+         *
+         * @return Application
+         */
+        private function makeApplication(): Application
+        {
+            return (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        }
+
+        public function testPasswordHashingImplementationConformsToTheHashingContract(): void
+        {
+            $this->assertInstanceOf(HashingInterface::class, $this->hashing);
+        }
+
+        public function testApplicationBindsTheHashingContractAndLegacyServiceNameToTheSameSingleton(): void
+        {
+            $app = $this->makeApplication();
+
+            (new FacadeLauncher($app))->register();
+
+            $contractHashing = $app->get(HashingInterface::class);
+            $legacyHashing = $app->get('hash');
+
+            $this->assertInstanceOf(HashingInterface::class, $contractHashing);
+            $this->assertInstanceOf(PasswordHashing::class, $contractHashing);
+            $this->assertSame($contractHashing, $legacyHashing);
+            $this->assertTrue($legacyHashing->check('secret123', $legacyHashing->make('secret123')));
+        }
+
+        public function testCheckReturnsFalseForMissingPasswordOrHash(): void
+        {
+            $hash = $this->hashing->make('secret123');
+
+            $this->assertFalse($this->hashing->check('secret123', null));
+            $this->assertFalse($this->hashing->check(null, $hash));
+            $this->assertFalse($this->hashing->check(null, null));
+        }
+
+        public function testNeedsRehashIsTrueForMissingHash(): void
+        {
+            $this->assertTrue($this->hashing->needsRehash(null));
+        }
+
+        public function testInstanceOverrideByLegacyKeyReachesTheContract(): void
+        {
+            $app = $this->makeApplication();
+
+            (new FacadeLauncher($app))->register();
+
+            $fake = new PasswordHashing();
+            $app->instance('hash', $fake);
+
+            $this->assertSame($fake, $app->get(HashingInterface::class));
+            $this->assertSame($fake, $app->get('hash'));
+        }
+
+        public function testNeedsRehashStillRejectsUnsupportedDriverForMissingHash(): void
+        {
+            $GLOBALS['doppar_hashing_test_config']['hashing.driver'] = 'md5';
+
+            $this->expectException(RuntimeException::class);
+            $this->hashing->needsRehash(null);
+        }
+
+        public function testSingletonOverrideByLegacyKeyReachesTheContract(): void
+        {
+            $app = $this->makeApplication();
+
+            (new FacadeLauncher($app))->register();
+
+            $custom = new PasswordHashing();
+            $app->singleton('hash', fn() => $custom);
+
+            $this->assertSame($custom, $app->get('hash'));
+            $this->assertSame($custom, $app->get(HashingInterface::class));
         }
 
         public function testMakeReturnsBcryptHash()

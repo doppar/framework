@@ -129,7 +129,7 @@ class Controller extends View
     {
         parent::__construct();
         $this->setFileExtension('.odo.php');
-        $this->setViewFolder('resources/views' . DIRECTORY_SEPARATOR);
+        $this->setViewFolder('templates/views' . DIRECTORY_SEPARATOR);
         $this->setCacheFolder('storage/framework/views' . DIRECTORY_SEPARATOR);
         $this->createCacheFolder();
         $this->setSymlinkPathFolder('storage/app/public' . DIRECTORY_SEPARATOR);
@@ -320,9 +320,9 @@ class Controller extends View
 
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $viewName);
 
-        // First check published views in resources/views/vendor/{namespace}
+        // First check published views in templates/views/vendor/{namespace}
         // Prioritize published views over package views
-        $publishedPath = base_path('resources/views/vendor/' . $namespace);
+        $publishedPath = base_path('templates/views/vendor/' . $namespace);
         if (is_dir($publishedPath)) {
             $possiblePaths = [
                 $publishedPath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension,
@@ -363,7 +363,9 @@ class Controller extends View
     protected function findRegularView(string $view): string
     {
         $viewPath = str_replace('.', DIRECTORY_SEPARATOR, $view);
-        $basePath = base_path($this->viewFolder);
+        $basePath = $this->isAbsolutePath($this->viewFolder)
+            ? rtrim($this->viewFolder, DIRECTORY_SEPARATOR)
+            : base_path($this->viewFolder);
 
         $possiblePaths = [
             $basePath . DIRECTORY_SEPARATOR . $viewPath . $this->fileExtension
@@ -383,6 +385,21 @@ class Controller extends View
     }
 
     /**
+     * Determine if the given path is an absolute filesystem path
+     *
+     * @param string $path
+     * @return bool
+     */
+    protected function isAbsolutePath(string $path): bool
+    {
+        $normalizedPath = str_replace('\\', '/', $path);
+
+        return DIRECTORY_SEPARATOR === '\\'
+            ? preg_match('/^(?:[A-Za-z]:[\\\\\\/]|[\\\\]{2})/', $path) === 1
+            : str_starts_with($normalizedPath, '/');
+    }
+
+    /**
      * Prepare the view file (locate and compile).
      *
      * @param string $view
@@ -396,7 +413,7 @@ class Controller extends View
             $viewKey = str_replace(['/', '\\', DIRECTORY_SEPARATOR], '.', $view);
 
             // stronger hash to avoid collisions
-            $hash = hash('xxh128', $viewKey);
+            $hash = hash('xxh128', $viewKey . '|' . $actual);
             $cache = base_path($this->cacheFolder) . DIRECTORY_SEPARATOR . $viewKey . '__' . $hash . '.php';
 
             $needsRecompile = $this->needsRecompilation($cache, $actual);

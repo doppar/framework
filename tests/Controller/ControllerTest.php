@@ -14,10 +14,18 @@ class ControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $container = new Container();
-        Container::setInstance(new MockContainer());
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('view', \Phaseolies\Support\View\Factory::class);
         $this->controller = new Controller();
+    }
+
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
+        parent::tearDown();
     }
 
     public function testConstructorInitialization(): void
@@ -49,6 +57,24 @@ class ControllerTest extends TestCase
         $viewFolderProperty = $reflection->getProperty('viewFolder');
 
         $this->assertEquals('custom' . DIRECTORY_SEPARATOR . 'views', $viewFolderProperty->getValue($this->controller));
+    }
+
+    public function testFindRegularViewPreservesAbsoluteViewFolder(): void
+    {
+        $viewFolder = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'phaseolies_views_' . uniqid();
+        $viewFile = $viewFolder . DIRECTORY_SEPARATOR . 'sample.odo.php';
+        mkdir($viewFolder, 0777, true);
+        file_put_contents($viewFile, 'sample');
+
+        try {
+            $this->controller->setViewFolder($viewFolder);
+            $method = (new \ReflectionClass(Controller::class))->getMethod('findRegularView');
+
+            $this->assertSame($viewFile, $method->invoke($this->controller, 'sample'));
+        } finally {
+            @unlink($viewFile);
+            @rmdir($viewFolder);
+        }
     }
 
     public function testSetEchoFormat(): void

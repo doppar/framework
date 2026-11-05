@@ -62,7 +62,8 @@ class Paginator
             return null;
         }
 
-        $queryParams = request()->except('page');
+        $queryParams = request()->query();
+        unset($queryParams['page']);
 
         return $this->appendQueryParameters($this->data['previous_page_url'], $queryParams);
     }
@@ -78,7 +79,8 @@ class Paginator
             return null;
         }
 
-        $queryParams = request()->except('page');
+        $queryParams = request()->query();
+        unset($queryParams['page']);
 
         return $this->appendQueryParameters($this->data['next_page_url'], $queryParams);
     }
@@ -106,7 +108,7 @@ class Paginator
     /**
      * Generate an array of page numbers with ellipsis for gaps
      *
-     * @return string|null
+     * @return array
      */
     public function jump(): array
     {
@@ -209,7 +211,7 @@ class Paginator
      */
     public function linkWithJumps(): ?string
     {
-        if (file_exists(resource_path('views/vendor/pagination/jump.odo.php'))) {
+        if (file_exists(template_path('views/vendor/pagination/jump.odo.php'))) {
             return view('vendor.pagination.jump', ['paginator' => $this])->render();
         }
 
@@ -272,7 +274,7 @@ class Paginator
      */
     public function links(): ?string
     {
-        if (file_exists(resource_path('views/vendor/pagination/number.odo.php'))) {
+        if (file_exists(template_path('views/vendor/pagination/number.odo.php'))) {
             return view('vendor.pagination.number', ['paginator' => $this])->render();
         }
 

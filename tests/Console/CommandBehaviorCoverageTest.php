@@ -14,6 +14,7 @@ use Phaseolies\Console\Commands\MakeAuthorizerCommand;
 use Phaseolies\Console\Commands\MakeConsoleCommand;
 use Phaseolies\Console\Commands\MakeControllerCommand;
 use Phaseolies\Console\Commands\MakeHookCommand;
+use Phaseolies\Console\Commands\MakeSignalCommand;
 use Phaseolies\Console\Commands\MakeMailCommand;
 use Phaseolies\Console\Commands\MakeMiddlewareCommand;
 use Phaseolies\Console\Commands\MakeModelCommand;
@@ -32,6 +33,7 @@ use Phaseolies\Console\Commands\StorageLinkCommand;
 use Phaseolies\Console\Commands\StorageUnlinkCommand;
 use Phaseolies\Console\Commands\Tests\UnitTestCommand;
 use Phaseolies\Console\Commands\VendorPublishCommand;
+use Phaseolies\Launchers\ServiceLauncher;
 use Phaseolies\Console\Commands\ViewCacheCommand;
 use Phaseolies\Console\Commands\ViewClearCommand;
 use Phaseolies\Database\Migration\MigrationCreator;
@@ -73,12 +75,178 @@ class CommandBehaviorCoverageTest extends TestCase
         $command->fakeArguments['name'] = 'ReportsSyncCommand';
 
         $result = $command->handle();
-        $file = Env::path('app/Schedule/Commands/ReportsSyncCommand.php');
+        $file = Env::path('src/Schedule/Commands/ReportsSyncCommand.php');
 
         $this->assertSame(0, $result);
         $this->assertFileExists($file);
         $this->assertStringContainsString("protected \$name = 'doppar_demo:reports-sync';", (string) file_get_contents($file));
         $this->assertContains('Command created successfully', $command->capturedSuccesses);
+    }
+
+    public function testMakeSignalCommandCreatesAPlainSignalClass(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'Billing\\InvoicePaid';
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/Billing/InvoicePaid.php');
+        $contents = (string) file_get_contents($file);
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString('namespace App\\Signals\\Billing;', $contents);
+        $this->assertStringContainsString('class InvoicePaid', $contents);
+        $this->assertStringNotContainsString('DeliverOnSettle', $contents);
+        $this->assertContains('Signal created successfully', $command->capturedSuccesses);
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandAddsTheSettleAttribute(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'OrderPlaced';
+        $command->fakeOptions = ['settle' => true, 'connection' => null];
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/OrderPlaced.php');
+        $contents = (string) file_get_contents($file);
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString('use Phaseolies\\Signals\\Attributes\\DeliverOnSettle;', $contents);
+        $this->assertStringContainsString("#[DeliverOnSettle]\nclass OrderPlaced", $contents);
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandConnectionImpliesSettle(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'ReportStored';
+        $command->fakeOptions = ['settle' => false, 'connection' => 'analytics'];
+
+        $result = $command->handle();
+        $file = Env::path('src/Signals/ReportStored.php');
+
+        $this->assertSame(0, $result);
+        $this->assertStringContainsString(
+            "#[DeliverOnSettle(connection: 'analytics')]\nclass ReportStored",
+            (string) file_get_contents($file)
+        );
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testMakeSignalCommandRefusesToOverwriteOrAcceptUnsafeInput(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'OrderPlaced';
+        $this->assertSame(0, $command->handle());
+
+        $file = Env::path('src/Signals/OrderPlaced.php');
+        $original = (string) file_get_contents($file);
+        $this->assertSame(1, $command->handle());
+        $this->assertSame($original, (string) file_get_contents($file));
+
+        $bad = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $bad->fakeArguments['name'] = 'Evil';
+        $bad->fakeOptions = ['connection' => "x')]\nclass Pwned {} //"];
+        $this->assertSame(1, $bad->handle());
+        $this->assertFileDoesNotExist(Env::path('src/Signals/Evil.php'));
+
+        $badName = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $badName->fakeArguments['name'] = 'Not-A-Class';
+        $this->assertSame(1, $badName->handle());
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unsafeSignalNames(): iterable
+    {
+        yield 'a namespace segment that is not an identifier' => ['Admin/123Invalid/OrderPaid'];
+        yield 'a segment with a dash' => ['Bad-Seg/OrderPaid'];
+        yield 'a dot segment' => ['Billing/./OrderPaid'];
+        yield 'a parent segment inside' => ['Billing/../OrderPaid'];
+        yield 'climbing out of the signals directory' => ['../Escaped'];
+        yield 'climbing out of the project' => ['../../outside/OrderPaid'];
+        yield 'backslashes do not get around it' => ['..\\..\\outside\\OrderPaid'];
+        yield 'only slashes' => ['///'];
+    }
+
+    #[DataProvider('unsafeSignalNames')]
+    public function testMakeSignalCommandRejectsEveryUnsafeNameSegment(string $name): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = $name;
+
+        $this->assertSame(1, $command->handle());
+        $this->assertNotEmpty($command->capturedErrors);
+        foreach (['src/Signals/Admin', 'src/Signals/Bad-Seg', 'src/Signals/Billing', 'src/Escaped.php', 'src/OrderPaid.php', 'outside', 'src/Signals/OrderPaid.php'] as $path) {
+            $this->assertFileDoesNotExist(Env::path($path), "nothing may be written for \"$name\" ($path)");
+        }
+    }
+
+    public function testMakeSignalCommandAcceptsValidNestedNamespaces(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeArguments['name'] = 'Admin\\Billing_2/OrderPaid';
+
+        $this->assertSame(0, $command->handle());
+        $file = Env::path('src/Signals/Admin/Billing_2/OrderPaid.php');
+        $this->assertFileExists($file);
+        $this->assertStringContainsString('namespace App\\Signals\\Admin\\Billing_2;', (string) file_get_contents($file));
+        $this->assertSame(0, $this->lintFile($file));
+    }
+
+    public function testGeneratedFilePathNeverLeavesItsDirectory(): void
+    {
+        $command = new class extends MakeSignalCommand
+        {
+            use InteractsWithFakeCommandIO;
+
+            public function path(string $name): string
+            {
+                return $this->generatedFilePath('src/Signals', $name);
+            }
+        };
+
+        $this->assertStringEndsWith('src/Signals/Billing/OrderPaid.php', str_replace('\\', '/', $command->path('Billing/OrderPaid')));
+        foreach (['../Escaped', 'Billing/../../Escaped', './OrderPaid'] as $bad) {
+            try {
+                $command->path($bad);
+                $this->fail("\"$bad\" should have been refused");
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('".." segments', $e->getMessage());
+            }
+        }
+    }
+
+    private function lintFile(string $file): int
+    {
+        exec(PHP_BINARY . ' -l ' . escapeshellarg($file) . ' 2>&1', $output, $status);
+
+        return $status;
     }
 
     public function testMakeAuthCommandGeneratesExpectedFilesAndRoutes(): void
@@ -88,16 +256,16 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $routesPath = Env::path('routes/web.php');
+        $routesPath = Env::path('runtime/routes/web.php');
         mkdir(dirname($routesPath), 0755, true);
         file_put_contents($routesPath, "<?php\n");
 
         $result = $command->handle();
 
         $this->assertSame(0, $result);
-        $this->assertFileExists(Env::path('app/Http/Controllers/Auth/LoginController.php'));
-        $this->assertFileExists(Env::path('resources/views/auth/login.odo.php'));
-        $this->assertFileExists(Env::path('resources/views/layouts/app.odo.php'));
+        $this->assertFileExists(Env::path('src/Http/Controllers/Auth/LoginController.php'));
+        $this->assertFileExists(Env::path('templates/views/auth/login.odo.php'));
+        $this->assertFileExists(Env::path('templates/views/layouts/app.odo.php'));
         $this->assertSame("<?php\n", (string) file_get_contents($routesPath));
         $this->assertContains('Authentication scaffolding generated successfully', $command->capturedSuccesses);
     }
@@ -122,7 +290,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertStringContainsString('namespace App\\Http\\Controllers\\Admin;', $content);
         $this->assertStringContainsString('class UserController', $content);
         $this->assertStringContainsString('view admin.users', $content);
-        $this->assertStringContainsString('path app/Http/Controllers/Admin/UserController.php', $content);
+        $this->assertStringContainsString('path src/Http/Controllers/Admin/UserController.php', $content);
     }
 
     public function testCommandHelpersNormalizeGeneratedNamesAndRelativePaths(): void
@@ -140,8 +308,8 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(['Admin', 'Hello'], $parts);
         $this->assertSame('TestProvider', $className);
         $this->assertSame(
-            'app/Providers/Hello/TestProvider.php',
-            $this->invokeMethod($command, 'relativePath', [Env::path('app/Providers/Hello/TestProvider.php')])
+            'src/Launchers/Hello/TestProvider.php',
+            $this->invokeMethod($command, 'relativePath', [Env::path('src/Launchers/Hello/TestProvider.php')])
         );
     }
 
@@ -152,19 +320,19 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $command->fakeArguments['name'] = 'Hello\\TestProvider';
+        $command->fakeArguments['name'] = 'Hello\\TestLauncher';
 
         $result = $command->handle();
-        $file = Env::path('app/Providers/Hello/TestProvider.php');
+        $file = Env::path('src/Launchers/Hello/TestLauncher.php');
         $contents = (string) file_get_contents($file);
         $lines = array_map(static fn(array $line): string => $line[0], $command->capturedLines);
 
         $this->assertSame(0, $result);
         $this->assertFileExists($file);
-        $this->assertStringContainsString('namespace App\\Providers\\Hello;', $contents);
-        $this->assertStringContainsString('class TestProvider extends ServiceProvider', $contents);
+        $this->assertStringContainsString('namespace App\\Launchers\\Hello;', $contents);
+        $this->assertStringContainsString('class TestLauncher extends ServiceLauncher', $contents);
         $this->assertContains(
-            '<fg=yellow>📦 File:</> <fg=white>app/Providers/Hello/TestProvider.php</>',
+            '<fg=yellow>📦 File:</> <fg=white>src/Launchers/Hello/TestLauncher.php</>',
             $lines
         );
     }
@@ -194,11 +362,11 @@ class CommandBehaviorCoverageTest extends TestCase
 
         $this->assertSame('App\\Http\\Controllers\\Admin', $namespace);
         $this->assertSame(
-            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, Env::path('app/Http/Controllers/Admin/UserController.php')),
+            str_replace(['/', '\\'], DIRECTORY_SEPARATOR, Env::path('src/Http/Controllers/Admin/UserController.php')),
             $filePath
         );
         $this->assertSame('UserController', $className);
-        $this->assertFileExists(Env::path('resources/views/admin/users/default.odo.php'));
+        $this->assertFileExists(Env::path('templates/views/admin/users/default.odo.php'));
     }
 
     public function testMakeAuthorizerCommandGeneratesModelAwarePolicyMethods(): void
@@ -245,11 +413,11 @@ class CommandBehaviorCoverageTest extends TestCase
         };
 
         return [
-            'provider' => [
+            'launcher' => [
                 new MakeProviderCommand(),
                 'generateProviderContent',
-                ['App\\Providers', 'AppServiceProvider'],
-                ['class AppServiceProvider extends ServiceProvider', 'public function register(): void'],
+                ['App\\Launchers', 'AppLauncher'],
+                ['class AppLauncher extends ServiceLauncher', 'public function launch(): void'],
             ],
             'rule' => [
                 new MakeRuleCommand(),
@@ -338,8 +506,8 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertSame(0, $addColumn->handle());
         $this->assertSame(
             [
-                ['create_users_table', Env::path('database/migrations'), 'users', true],
-                ['add_status_to_orders', Env::path('database/migrations'), 'orders', false, 'status', 'string', 'name'],
+            ['create_users_table', Env::path('schema/migrations'), 'users', true],
+            ['add_status_to_orders', Env::path('schema/migrations'), 'orders', false, 'status', 'string', 'name'],
             ],
             $calls
         );
@@ -355,7 +523,7 @@ class CommandBehaviorCoverageTest extends TestCase
         $firstRun = $command->handle();
         $secondRun = $command->handle();
 
-        $paginationDir = Env::path('resources/views/vendor/pagination');
+        $paginationDir = Env::path('templates/views/vendor/pagination');
 
         $this->assertSame(0, $firstRun);
         $this->assertSame(0, $secondRun);
@@ -371,14 +539,14 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $envFile = Env::path('.env');
-        file_put_contents($envFile, "APP_NAME=Doppar\nAPP_KEY=base64:old-key\n");
+        $envFile = Env::path('env.toml');
+        file_put_contents($envFile, "APP_NAME = \"Doppar\"\nAPP_KEY = \"base64:old-key\"\n");
 
         $result = $command->handle();
         $contents = (string) file_get_contents($envFile);
 
         $this->assertSame(0, $result);
-        $this->assertMatchesRegularExpression('/APP_KEY=base64:[A-Za-z0-9+\/=]+/', $contents);
+        $this->assertMatchesRegularExpression('/APP_KEY = "base64:[A-Za-z0-9+\/=]+"/', $contents);
         $this->assertContains('Application key set successfully', $command->capturedSuccesses);
     }
 
@@ -541,13 +709,13 @@ class CommandBehaviorCoverageTest extends TestCase
             use InteractsWithFakeCommandIO;
         };
 
-        $viewDir = Env::path('resources/views/admin');
+        $viewDir = Env::path('templates/views/admin');
         mkdir($viewDir, 0755, true);
         file_put_contents($viewDir . '/dashboard.odo.php', '<h1>Dashboard</h1>');
 
         $cacheDir = Env::path('storage/framework/views');
-        $this->invokeMethod($command, 'ensureDirectoriesExist', [Env::path('resources/views'), $cacheDir]);
-        $files = $this->invokeMethod($command, 'getAllViewFiles', [Env::path('resources/views')]);
+        $this->invokeMethod($command, 'ensureDirectoriesExist', [Env::path('templates/views'), $cacheDir]);
+        $files = $this->invokeMethod($command, 'getAllViewFiles', [Env::path('templates/views')]);
 
         $this->assertDirectoryExists($cacheDir);
         $this->assertSame([realpath($viewDir . '/dashboard.odo.php')], $files);
@@ -675,7 +843,370 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->invokeMethod($command, 'publishFile', [$sourceFile, $targetFile, false]);
 
         $this->assertFileExists($targetFile);
-        $this->assertContains('Skipping: File already exists at ' . $targetFile, $command->capturedWarnings);
+        $output = $this->capturedOutput($command);
+        $this->assertStringContainsString('COPIED', $output);
+        $this->assertStringContainsString('SKIPPED', $output);
+        $this->assertStringContainsString('published/config/demo.php', str_replace('\\', '/', $output));
+        $this->assertStringContainsString('already exists', $output);
+    }
+
+    public function testVendorPublishCommandWarnsWhenNoLaunchersArePublishable(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $appStub->method('getLaunchers')->willReturn([]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertContains('No publishable launchers found.', $command->capturedWarnings);
+        $this->assertEmpty($command->capturedChoiceQuestions);
+    }
+
+    public function testVendorPublishCommandFallsBackToPublishingAllWhenNonInteractive(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = $this->makeFakePublishableLauncher($appStub, 'alpha');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeInteractive = false;
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertEmpty($command->capturedChoiceQuestions);
+        $this->assertContains('Published 1 file from 1 launcher.', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishCommandPublishesAllWhenChoiceIsAll(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcherA = $this->makeFakePublishableLauncher($appStub, 'alpha', FakePublishableLauncherAlpha::class);
+        $launcherB = $this->makeFakePublishableLauncher($appStub, 'beta', FakePublishableLauncherBeta::class);
+        $appStub->method('getLaunchers')->willReturn([$launcherA, $launcherB]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeChoiceAnswer = 'All';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertCount(1, $command->capturedChoiceQuestions);
+        $this->assertSame('All', $command->capturedChoiceQuestions[0]['default']);
+        $this->assertContains(get_class($launcherA), $command->capturedChoiceQuestions[0]['choices']);
+        $this->assertContains(get_class($launcherB), $command->capturedChoiceQuestions[0]['choices']);
+        $this->assertContains('Published 2 files from 2 launchers.', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishCommandPublishesOnlyTheChosenLauncher(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcherA = $this->makeFakePublishableLauncher($appStub, 'alpha', FakePublishableLauncherAlpha::class);
+        $launcherB = $this->makeFakePublishableLauncher($appStub, 'beta', FakePublishableLauncherBeta::class);
+        $appStub->method('getLaunchers')->willReturn([$launcherA, $launcherB]);
+        $appStub->method('getLauncher')->willReturnCallback(
+            fn(string $class) => $class === get_class($launcherA) ? $launcherA : null
+        );
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeChoiceAnswer = get_class($launcherA);
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertContains('Published 1 file for launcher [' . get_class($launcherA) . '].', $command->capturedSuccesses);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+    }
+
+    public function testVendorPublishTagPublishesOnlyTheMatchingGroupAndPrintsNoOtherPackage(): void
+    {
+        [$command, $alpha, $beta] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertStringContainsString('alpha/config.php', str_replace('\\', '/', $output));
+        $this->assertStringNotContainsString('beta', $output);
+        $this->assertContains('Published 1 file for tag [alpha-config].', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishUnknownTagFailsWritesNothingAndSuggestsSimilarTags(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(1, $result);
+        $this->assertContains('No publishable resources found for tag [alpha].', $command->capturedErrors);
+        $this->assertStringContainsString('Did you mean', $output);
+        $this->assertStringContainsString('alpha-config', $output);
+        $this->assertSame([], $command->capturedSuccesses);
+        $this->assertFileDoesNotExist(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+    }
+
+    public function testVendorPublishUnknownTagWithNoSimilarNameListsAvailableTags(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'zzzzzzzzzz';
+
+        $result = $command->handle();
+
+        $output = $this->capturedOutput($command);
+        $this->assertSame(1, $result);
+        $this->assertStringNotContainsString('Did you mean', $output);
+        $this->assertStringContainsString('Available tags:', $output);
+        $this->assertStringContainsString('alpha-config', $output);
+        $this->assertStringContainsString('beta-config', $output);
+    }
+
+    public function testVendorPublishCommaSeparatedTagsPublishEachTag(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config, beta-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileExists(Env::path('published/beta/config.php'));
+        $this->assertContains('Published 2 files for 2 tags.', $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishOneUnknownTagAmongValidOnesPublishesNothing(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config,nope';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertFileDoesNotExist(Env::path('published/alpha/config.php'));
+    }
+
+    public function testVendorPublishLauncherPublishesEverythingItRegisteredIncludingGroups(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileExists(Env::path('published/alpha/plain.php'));
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertContains(
+            'Published 2 files for launcher [' . get_class($alpha) . '].',
+            $command->capturedSuccesses
+        );
+    }
+
+    public function testVendorPublishLauncherWithTagPublishesThatTagFromThatLauncherOnly(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+        $command->fakeOptions['tag'] = 'alpha-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(0, $result);
+        $this->assertFileExists(Env::path('published/alpha/config.php'));
+        $this->assertFileDoesNotExist(Env::path('published/alpha/plain.php'));
+    }
+
+    public function testVendorPublishLauncherWithATagItDoesNotOwnFails(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = get_class($alpha);
+        $command->fakeOptions['tag'] = 'beta-config';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertFileDoesNotExist(Env::path('published/beta/config.php'));
+        $this->assertStringContainsString('in launcher [' . get_class($alpha) . ']', $command->capturedErrors[0]);
+    }
+
+    public function testVendorPublishUnknownLauncherFailsAndListsPublishableLaunchers(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = 'App\\Nope\\Launcher';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertContains('Unable to locate launcher: App\\Nope\\Launcher', $command->capturedErrors);
+        $this->assertStringContainsString(get_class($alpha), $this->capturedOutput($command));
+        $this->assertSame([], $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishSkipsExistingFilesUnlessForced(): void
+    {
+        [$command, $alpha] = $this->makeTaggedCommand();
+        $command->fakeOptions['tag'] = 'alpha-config';
+        $target = Env::path('published/alpha/config.php');
+        mkdir(dirname($target), 0755, true);
+        file_put_contents($target, 'user edited');
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('user edited', file_get_contents($target));
+        $this->assertStringContainsString('Nothing published', $command->capturedInfos[0]);
+        $this->assertStringContainsString('--force', $command->capturedInfos[0]);
+
+        [$forced] = $this->makeTaggedCommand();
+        $forced->fakeOptions['tag'] = 'alpha-config';
+        $forced->fakeOptions['force'] = true;
+
+        $this->assertSame(0, $forced->handle());
+        $this->assertSame('<?php return [];', file_get_contents($target));
+        $this->assertStringContainsString('OVERWRITTEN', $this->capturedOutput($forced));
+    }
+
+    public function testVendorPublishReportsSkippedCountNextToPublishedCount(): void
+    {
+        [$command] = $this->makeTaggedCommand();
+        $command->fakeOptions['launcher'] = FakePublishableLauncherAlpha::class;
+        $existing = Env::path('published/alpha/plain.php');
+        mkdir(dirname($existing), 0755, true);
+        file_put_contents($existing, 'keep');
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('keep', file_get_contents($existing));
+        $this->assertStringContainsString(
+            'Published 1 file for launcher [' . FakePublishableLauncherAlpha::class . ']. Skipped 1 existing',
+            $command->capturedSuccesses[0]
+        );
+    }
+
+    public function testVendorPublishMissingSourceFileFailsInsteadOfPrintingAFalseSuccess(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = new FakePublishableLauncherAlpha($appStub);
+        $launcher->publishes([Env::path('vendor/gone.php') => Env::path('published/gone.php')], 'gone');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeOptions['tag'] = 'gone';
+
+        $result = $command->handle();
+
+        $this->assertSame(1, $result);
+        $this->assertStringContainsString('MISSING', $this->capturedOutput($command));
+        $this->assertFileDoesNotExist(Env::path('published/gone.php'));
+        $this->assertSame([], $command->capturedSuccesses);
+    }
+
+    public function testVendorPublishDirectoryTagCopiesNestedFiles(): void
+    {
+        $appStub = $this->createStub(Application::class);
+        $launcher = new FakePublishableLauncherAlpha($appStub);
+        $sourceDir = Env::path('vendor/pkg/assets');
+        mkdir($sourceDir . '/css', 0755, true);
+        file_put_contents($sourceDir . '/app.js', 'js');
+        file_put_contents($sourceDir . '/css/app.css', 'css');
+        $launcher->publishes([$sourceDir => Env::path('public/vendor/pkg')], 'pkg-assets');
+        $appStub->method('getLaunchers')->willReturn([$launcher]);
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+        $command->fakeOptions['tag'] = 'pkg-assets';
+
+        $this->assertSame(0, $command->handle());
+        $this->assertSame('js', file_get_contents(Env::path('public/vendor/pkg/app.js')));
+        $this->assertSame('css', file_get_contents(Env::path('public/vendor/pkg/css/app.css')));
+        $this->assertContains('Published 2 files for tag [pkg-assets].', $command->capturedSuccesses);
+    }
+
+    /**
+     * Two launchers: alpha registers a tagged config plus an untagged file, beta a tagged config.
+     *
+     * @return array{0: VendorPublishCommand, 1: ServiceLauncher, 2: ServiceLauncher}
+     */
+    private function makeTaggedCommand(): array
+    {
+        $appStub = $this->createStub(Application::class);
+
+        $alpha = new FakePublishableLauncherAlpha($appStub);
+        $beta = new FakePublishableLauncherBeta($appStub);
+
+        foreach ([['alpha', $alpha, 'alpha-config'], ['beta', $beta, 'beta-config']] as [$label, $launcher, $tag]) {
+            $from = Env::path("vendor/{$label}/config.php");
+            @mkdir(dirname($from), 0755, true);
+            file_put_contents($from, '<?php return [];');
+            $launcher->publishes([$from => Env::path("published/{$label}/config.php")], $tag);
+        }
+
+        $plain = Env::path('vendor/alpha/plain.php');
+        file_put_contents($plain, '<?php return [];');
+        $alpha->publishes([$plain => Env::path('published/alpha/plain.php')]);
+
+        $appStub->method('getLaunchers')->willReturn([$alpha, $beta]);
+        $appStub->method('getLauncher')->willReturnCallback(
+            fn(string $class) => match ($class) {
+                get_class($alpha) => $alpha,
+                get_class($beta) => $beta,
+                default => null,
+            }
+        );
+        Env::$appInstance = $appStub;
+
+        $command = new class extends VendorPublishCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        return [$command, $alpha, $beta];
+    }
+
+    private function capturedOutput(object $command): string
+    {
+        return implode("\n", array_map(fn(array $line) => $line[0], $command->capturedLines));
+    }
+
+    private function makeFakePublishableLauncher(object $app, string $label, string $className = FakePublishableLauncherAlpha::class): ServiceLauncher
+    {
+        $from = Env::path("vendor/{$label}/config.php");
+        $to = Env::path("published/{$label}/config.php");
+
+        @mkdir(dirname($from), 0755, true);
+        file_put_contents($from, '<?php return [];');
+
+        $launcher = new $className($app);
+        $launcher->publishes([$from => $to]);
+
+        return $launcher;
     }
 
     private function invokeMethod(object $instance, string $method, array $arguments = []): mixed
@@ -684,4 +1215,24 @@ class CommandBehaviorCoverageTest extends TestCase
 
         return $reflection->invokeArgs($instance, $arguments);
     }
+}
+
+/**
+ * Distinct launcher fixtures for VendorPublishCommand tests.
+ *
+ * These must be separately-named (not anonymous) classes: two anonymous
+ * class expressions with identical bodies at the same source location
+ * resolve to the same PHP class, which would make it impossible to tell
+ * two fake launchers apart by class name in the tests above.
+ */
+class FakePublishableLauncherAlpha extends ServiceLauncher
+{
+    public function register() {}
+    public function launch() {}
+}
+
+class FakePublishableLauncherBeta extends ServiceLauncher
+{
+    public function register() {}
+    public function launch() {}
 }

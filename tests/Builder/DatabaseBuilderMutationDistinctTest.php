@@ -18,7 +18,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -45,7 +45,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
     private function setBuilderDriver(string $driver): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn($driver);
+        $this->pdoMock->method('getAttribute')->willReturn($driver);
     }
 
     public function testIncrementAndDecrementReturnRowCount()
@@ -58,7 +58,7 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
         $stmtMock->method('rowCount')->willReturn(3);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturn($stmtMock);
 
         $builder = $this->createBuilder();
@@ -74,12 +74,12 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
         $this->setBuilderDriver('mysql');
 
         $describeStmt = $this->createMock(PDOStatement::class);
-        $describeStmt->method('fetchAll')
+        $describeStmt->expects($this->once())->method('fetchAll')
             ->with($this->anything())
             ->willReturn([['Field' => 'id'], ['Field' => 'name']]);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('query')->willReturn($describeStmt);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -92,16 +92,16 @@ class DatabaseBuilderMutationDistinctTest extends TestCase
         $this->setBuilderDriver('mysql');
 
         $describeStmt = $this->createMock(PDOStatement::class);
-        $describeStmt->method('fetchAll')
+        $describeStmt->expects($this->once())->method('fetchAll')
             ->with($this->anything())
             ->willReturn([['Field' => 'id'], ['Field' => 'status']]);
 
         $selectStmt = $this->createMock(PDOStatement::class);
         $selectStmt->method('execute')->willReturn(true);
-        $selectStmt->method('fetchAll')->with($this->anything(), $this->equalTo(0))->willReturn(['active', 'pending']);
+        $selectStmt->expects($this->once())->method('fetchAll')->with($this->anything(), $this->equalTo(0))->willReturn(['active', 'pending']);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('query')->willReturn($describeStmt);
         $this->pdoMock->method('prepare')->willReturn($selectStmt);
 

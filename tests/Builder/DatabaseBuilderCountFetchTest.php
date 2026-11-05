@@ -5,9 +5,11 @@ namespace Tests\Unit\Builder;
 use PDO;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderCountFetchTest extends TestCase
 {
     private $database;
@@ -16,7 +18,7 @@ class DatabaseBuilderCountFetchTest extends TestCase
     protected function setUp(): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
         $this->database = new Database('default');
@@ -45,10 +47,10 @@ class DatabaseBuilderCountFetchTest extends TestCase
     {
         $stmt = $this->createMock(PDOStatement::class);
         $stmt->method('execute')->willReturn(true);
-        $stmt->method('fetch')->with($this->anything())->willReturn(['aggregate' => 7]);
+        $stmt->expects($this->once())->method('fetch')->with($this->anything())->willReturn(['aggregate' => 7]);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturn($stmt);
 
         $builder = $this->createBuilder();
@@ -63,15 +65,15 @@ class DatabaseBuilderCountFetchTest extends TestCase
         // First call: one row
         $stmt1 = $this->createMock(PDOStatement::class);
         $stmt1->method('execute')->willReturn(true);
-        $stmt1->method('fetch')->with($this->anything())->willReturn(['id' => 1, 'name' => 'Alice']);
+        $stmt1->expects($this->once())->method('fetch')->with($this->anything())->willReturn(['id' => 1, 'name' => 'Alice']);
 
         // Second call: no rows
         $stmt2 = $this->createMock(PDOStatement::class);
         $stmt2->method('execute')->willReturn(true);
-        $stmt2->method('fetch')->with($this->anything())->willReturn(false);
+        $stmt2->expects($this->once())->method('fetch')->with($this->anything())->willReturn(false);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturnOnConsecutiveCalls($stmt1, $stmt2);
 
         $builder = $this->createBuilder();
@@ -88,15 +90,15 @@ class DatabaseBuilderCountFetchTest extends TestCase
         // True: fetch returns row
         $stmt1 = $this->createMock(PDOStatement::class);
         $stmt1->method('execute')->willReturn(true);
-        $stmt1->method('fetch')->with($this->anything())->willReturn(['id' => 1]);
+        $stmt1->expects($this->once())->method('fetch')->with($this->anything())->willReturn(['id' => 1]);
 
         // False: fetch returns false
         $stmt2 = $this->createMock(PDOStatement::class);
         $stmt2->method('execute')->willReturn(true);
-        $stmt2->method('fetch')->with($this->anything())->willReturn(false);
+        $stmt2->expects($this->once())->method('fetch')->with($this->anything())->willReturn(false);
 
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')->with(PDO::ATTR_DRIVER_NAME)->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
         $this->pdoMock->method('prepare')->willReturnOnConsecutiveCalls($stmt1, $stmt2);
 
         $builder = $this->createBuilder();

@@ -6,6 +6,7 @@ use Phaseolies\Application;
 use Phaseolies\Error\Traces\Frame;
 use Phaseolies\Error\Utils\ExceptionMarkdownReport;
 use Phaseolies\Error\Utils\Highlighter;
+use Phaseolies\Error\Utils\PathResolver;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Response;
@@ -61,7 +62,7 @@ class WebErrorRenderer
             'traces'          => Frame::extractFramesCollectionFromEngine($exception->getTrace()),
             'headers'         => ($this->getHeaders()),
             'error_message'   => ucfirst($exception->getMessage()),
-            'error_file'      => $errorFile,
+            'error_file'      => PathResolver::toDisplayPath($errorFile),
             'error_line'      => $errorLine,
             'routing'          => $this->getRouteDetails(),
             'contents'        => $this->buildContents($codeLines),
@@ -223,7 +224,7 @@ class WebErrorRenderer
     protected function resolveErrorViewPath(int $statusCode): ?string
     {
         $customPath = base_path(
-            'resources'
+            'templates'
             . DIRECTORY_SEPARATOR . 'views'
             . DIRECTORY_SEPARATOR . 'errors'
             . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"

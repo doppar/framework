@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
+use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
@@ -151,6 +152,28 @@ class ResponseTest extends TestCase
     {
         $this->response->setBody('Render test');
         $this->assertEquals('Render test', $this->response->render());
+    }
+
+    public function testRenderViewDelegatesToOdoController(): void
+    {
+        $controller = $this->createMock(Controller::class);
+        $controller->expects($this->once())
+            ->method('render')
+            ->with('demo', ['name' => 'Doppar'], true)
+            ->willReturn('<h1>Doppar</h1>');
+
+        $container = new Container();
+        $container->instance(Controller::class, $controller);
+        Container::setInstance($container);
+
+        try {
+            $this->assertSame(
+                '<h1>Doppar</h1>',
+                $this->response->renderView('demo', ['name' => 'Doppar'])
+            );
+        } finally {
+            Container::forgetInstance();
+        }
     }
 
     public function testJson()

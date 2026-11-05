@@ -42,6 +42,7 @@ abstract class ModelQueryDriverTestCase extends TestCase
     {
         $this->tearDownDatabaseConnections();
         unset($this->pdo);
+        Container::forgetInstance();
 
         parent::tearDown();
     }
@@ -60,8 +61,10 @@ abstract class ModelQueryDriverTestCase extends TestCase
 
     protected function bootContainer(): void
     {
-        Container::setInstance(new MockContainer());
-        $container = new Container();
+        // Bind onto the same container instance we activate — bindings are
+        // per-instance now (see [[ArchNotes]] in DI/Container.php).
+        $container = new MockContainer();
+        Container::setInstance($container);
         $container->bind('request', fn() => new Request());
         $container->bind('url', fn() => UrlGenerator::class);
         $container->bind('db', fn() => new Database('default'));
@@ -317,7 +320,7 @@ abstract class ModelQueryDriverTestCase extends TestCase
             $this->markTestSkipped('The pdo_sqlite extension is required for SQLite model query tests.');
         }
 
-        return new PDO('sqlite:' . $this->sqliteDatabasePath());
+        return new PDO('sqlite:' . $this->sqliteschemaPath());
     }
 
     protected function createMysqlPdo(): PDO
@@ -431,7 +434,7 @@ abstract class ModelQueryDriverTestCase extends TestCase
         ];
     }
 
-    protected function sqliteDatabasePath(): string
+    protected function sqliteschemaPath(): string
     {
         $className = str_replace('\\', '-', static::class);
 

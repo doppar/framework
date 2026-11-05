@@ -2,19 +2,20 @@
 
 namespace Phaseolies\Support\Facades;
 
+use Phaseolies\Facade\BaseFacade;
+use Phaseolies\Http\Response\Cookie as BrowserCookie;
+
 /**
- * @method static \Phaseolies\Support\CookieJar make(string $name, ?string $value = null, array $options = []): Cookie
- * @method static \Phaseolies\Support\CookieJar get(string $key, $default = null)
- * @method static \Phaseolies\Support\CookieJar has(string $key): bool
- * @method static \Phaseolies\Support\CookieJar store($name, $value = null, array $options = []): bool
- * @method static \Phaseolies\Support\CookieJar remove(string $name, array $options = []): void
- * @method static \Phaseolies\Support\CookieJar forever(string $name, string $value, array $options = []): void
- * @method static \Phaseolies\Support\CookieJar all(bool $decodeValues = true): array
+ * @method static BrowserCookie make(string $name, ?string $value = null, array $options = [])
+ * @method static mixed get(string $key, $default = null)
+ * @method static bool has(string $key)
+ * @method static bool store($name, $value = null, array $options = [])
+ * @method static void remove(string $name, array $options = [])
+ * @method static void forever(string $name, string $value, array $options = [])
+ * @method static array all(bool $decodeValues = true)
+ *
  * @see \Phaseolies\Support\CookieJar
  */
-
-use Phaseolies\Facade\BaseFacade;
-
 class Cookie extends BaseFacade
 {
     protected static function getFacadeAccessor()

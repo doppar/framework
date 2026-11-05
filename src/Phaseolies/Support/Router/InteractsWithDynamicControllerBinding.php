@@ -11,7 +11,7 @@ trait InteractsWithDynamicControllerBinding
      */
     protected function getComposerClassLoader(): ?object
     {
-        $vendorDir = base_path('/vendor');
+        $vendorDir = base_path('vendor');
         $autoloadFile = $vendorDir . '/autoload.php';
 
         if (!file_exists($autoloadFile)) {
@@ -128,7 +128,7 @@ trait InteractsWithDynamicControllerBinding
 
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
                 if (!empty($method->getAttributes(
-                    \Phaseolies\Utilities\Attributes\Route::class
+                    \Phaseolies\Support\Router\Attributes\Route::class
                 ))) {
                     return true;
                 }
@@ -151,7 +151,7 @@ trait InteractsWithDynamicControllerBinding
      */
     protected function scanDefaultControllerDirectory(): array
     {
-        $controllerPath = base_path('app/Http/Controllers');
+        $controllerPath = base_path('src/Http/Controllers');
         $controllers = [];
 
         if (!is_dir($controllerPath)) {

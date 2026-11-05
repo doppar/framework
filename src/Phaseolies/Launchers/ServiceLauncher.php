@@ -1,0 +1,250 @@
+<?php
+
+namespace Phaseolies\Launchers;
+
+use Phaseolies\Database\Migration\Migration;
+use Phaseolies\Application;
+
+abstract class ServiceLauncher
+{
+    /**
+     * The paths that should be published.
+     *
+     * @var array<string, null|string>
+     */
+    protected array $publishes = [];
+
+    /**
+     * The paths that should be published by groups.
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected array $publishGroups = [];
+
+    /**
+     * Create a new service launcher instance.
+     */
+    public function __construct(protected Application $app) {}
+
+    /**
+     * Register any application services.
+     *
+     * @return void
+     */
+    abstract public function register();
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    abstract public function launch();
+
+    /**
+     * Register routes from the given path.
+     *
+     * @param string $path
+     * @return void
+     */
+    public function loadRoutes(string $path): void
+    {
+        if (file_exists($path)) {
+            require $path;
+        }
+    }
+
+    /**
+     * Register migrations from the given path.
+     *
+     * @param string $path
+     * @return void
+     */
+    public function loadMigrations(string $path): void
+    {
+        $files = glob($path . '/*.php');
+        foreach ($files as $file) {
+            $migration = require $file;
+
+            if ($migration instanceof \Closure) {
+                $migration = $migration();
+            }
+
+            if ($migration instanceof Migration) {
+                $this->app['migrator']->addMigration($file, $migration);
+            }
+        }
+    }
+
+    /**
+     * Merge the given configuration with the existing configuration.
+     *
+     * @param string $path
+     * @param string $key
+     * @return void
+     */
+    public function mergeConfig(string $path, string $key): void
+    {
+        if (! $this->app->has('config')) {
+            return;
+        }
+
+        $config = $this->app['config']->get($key, []);
+
+        if (file_exists($path)) {
+            $this->app['config']->set(
+                $key,
+                array_merge(require $path, $config)
+            );
+        }
+    }
+
+    /**
+     * Register and publish package views.
+     *
+     * @param array $paths
+     * @param string $group
+     * @return void
+     */
+    public function publishesViews(array $paths, string $group = 'views'): void
+    {
+        $this->publishes($paths, $group);
+    }
+
+    /**
+     * Register views from the given path with the specified namespace.
+     *
+     * @param string $path
+     * @param string $namespace
+     * @return void
+     */
+    public function loadViews(string $path, string $namespace): void
+    {
+        if ($this->app->has('view')) {
+            $this->app['view']->addNamespace($namespace, $path);
+        }
+    }
+
+    /**
+     * Register translation files from the given path.
+     *
+     * @param string $path
+     * @param string $namespace
+     * @return void
+     */
+    public function loadTranslations(string $path, string $namespace): void
+    {
+        if ($this->app->has('translator')) {
+            $this->app['translator']->addNamespace($namespace, $path);
+        }
+    }
+
+    /**
+     * Register paths to be published by the publish command.
+     *
+     * @param array $paths
+     * @param mixed|null $groups
+     * @return void
+     */
+    public function publishes(array $paths, mixed $groups = null): void
+    {
+        $this->ensurePublishArrayInitialized();
+
+        if (is_null($groups)) {
+            $this->publishes = array_merge($this->publishes, $paths);
+        } else {
+            foreach ((array) $groups as $group) {
+                if (!isset($this->publishGroups[$group])) {
+                    $this->publishGroups[$group] = [];
+                }
+
+                $this->publishGroups[$group] = array_merge(
+                    $this->publishGroups[$group],
+                    $paths
+                );
+            }
+        }
+    }
+
+    /**
+     * Ensure the publishes array is initialized.
+     *
+     * @return void
+     */
+    protected function ensurePublishArrayInitialized(): void
+    {
+        // Publish registries are initialized at declaration time.
+    }
+
+    /**
+     * Register package's migration paths to be published.
+     *
+     * @param array|string $paths
+     * @param string $groupSuffix
+     * @return void
+     */
+    public function publishesMigrations(array|string $paths, string $groupSuffix = 'migrations'): void
+    {
+        $this->publishes($paths, $groupSuffix);
+    }
+
+    /**
+     * Get the paths to publish.
+     *
+     * @param string|null|null $provider
+     * @param string|null|null $group
+     * @return array
+     */
+    public function pathsToPublish(string|null $provider = null, string|null $group = null): array
+    {
+        if (!is_null($paths = $this->pathsForProviderOrGroup($provider, $group))) {
+            return $paths;
+        }
+
+        return array_merge($this->publishes, $this->publishGroups);
+    }
+
+    /**
+     * Get the tags (groups) this launcher registered publishable paths for.
+     *
+     * @return array<int, string>
+     */
+    public function publishTags(): array
+    {
+        return array_map('strval', array_keys($this->publishGroups));
+    }
+
+    /**
+     * Get the paths for the provider or group.
+     *
+     * @param string|null $provider
+     * @param string|null $group
+     * @return array|null
+     */
+    protected function pathsForProviderOrGroup(string|null $provider, string|null $group): ?array
+    {
+        if ($group) {
+            return $this->publishGroups[$group] ?? [];
+        }
+
+        if ($provider && isset($this->publishes[$provider])) {
+            return [$provider => $this->publishes[$provider]];
+        }
+
+        return null;
+    }
+
+    /**
+     * Register the package's custom pool commands.
+     *
+     * @param array|string $commands
+     * @return void
+     */
+    public function commands(array|string $commands): void
+    {
+        $commands = is_array($commands) ? $commands : func_get_args();
+
+        if ($this->app->runningInConsole()) {
+            $this->app['console']->addCommands($commands);
+        }
+    }
+}

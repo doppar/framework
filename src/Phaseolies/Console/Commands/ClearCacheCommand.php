@@ -12,7 +12,7 @@ class ClearCacheCommand extends Command
      *
      * @var string
      */
-    protected $name = 'cache:clear';
+    protected $name = 'cache:clear {--store= : Clear only this store from the caching config, leaving the framework cache files alone}';
 
     /**
      * The command description shown in the Pool command list.
@@ -28,6 +28,16 @@ class ClearCacheCommand extends Command
      */
     public function handle(): int
     {
+        $store = $this->option('store');
+
+        if ($store) {
+            return $this->withTiming(function () use ($store) {
+                Cache::store($store)->clear();
+
+                return Command::SUCCESS;
+            }, "Cache store [{$store}] has been cleared.");
+        }
+
         return $this->withTiming(function() {
             $cacheDir = base_path('storage/framework/cache');
             $this->deleteDirectoryContents($cacheDir);

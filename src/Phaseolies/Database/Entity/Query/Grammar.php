@@ -5,6 +5,66 @@ namespace Phaseolies\Database\Entity\Query;
 trait Grammar
 {
     /**
+     * Matches a plain column name or a table-qualified column name
+     *
+     * @var string
+     */
+    private const VALID_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?\z/';
+
+    /**
+     * Matches a plain, unqualified identifier
+     *
+     * @var string
+     */
+    private const VALID_SIMPLE_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*\z/';
+
+    /**
+     * Determine if a value is a safe identifier.
+     *
+     * @param string $identifier
+     * @param bool $allowQualified
+     * @return bool
+     */
+    protected static function isValidIdentifier(string $identifier, bool $allowQualified = true): bool
+    {
+        return (bool) preg_match(
+            $allowQualified ? self::VALID_IDENTIFIER_PATTERN : self::VALID_SIMPLE_IDENTIFIER_PATTERN,
+            $identifier
+        );
+    }
+
+    /**
+     * Ensure a value used as a column identifier is a safe
+     *
+     * @param string $identifier
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidIdentifier(string $identifier): void
+    {
+        if (!static::isValidIdentifier($identifier)) {
+            throw new \InvalidArgumentException(
+                "Invalid column identifier \"{$identifier}\". " .
+                "Use whereRaw()/orderByRaw()/groupByRaw() to build conditions from raw SQL expressions."
+            );
+        }
+    }
+
+    /**
+     * Determine if a value is a callback (closure, invokable or array callable).
+     *
+     * Strings are never treated as callbacks: names like "date" or "time"
+     * pass is_callable() but are column names or values here.
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    protected function isCallback(mixed $value): bool
+    {
+        return !is_string($value) && is_callable($value);
+    }
+
+    /**
      * Get the current driver
      *
      * @return string
@@ -34,13 +94,20 @@ trait Grammar
      *
      * @param string $tableName
      * @return string
+     * @throws \InvalidArgumentException
      */
     public function getTableColumnsSql(string $tableName): string
     {
+        $this->assertValidIdentifier($tableName);
+
+        // information_schema compares table_name as a string value, so it is
+        // escaped as a literal rather than quoted as an identifier
+        $literal = str_replace("'", "''", $tableName);
+
         return match ($this->getDriver()) {
-            'sqlite' => "PRAGMA table_info({$tableName})",
-            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$tableName}'",
-            default => "DESCRIBE {$tableName}",
+            'sqlite' => "PRAGMA table_info({$this->quoteIdentifier($tableName)})",
+            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = '{$literal}'",
+            default => "DESCRIBE {$this->quoteIdentifier($tableName)}",
         };
     }
 
@@ -598,6 +665,8 @@ trait Grammar
      */
     protected function addLikeCondition(string $field, string $value, bool $caseSensitive, string $boolean): self
     {
+        $this->assertValidIdentifier($field);
+
         // Intentionally avoiding $caseSensitive search
         $driver = $this->getDriver();
         $likeValue = $this->prepareLikeValue($value);

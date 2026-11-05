@@ -11,6 +11,7 @@ class MockComputedUser extends Model
     protected $connection = 'default';
     protected $timeStamps = false;
 
+    protected $creatable = ['first_name', 'last_name', 'email', 'password'];
     protected $unexposable = ['password'];
 
     #[Computed]

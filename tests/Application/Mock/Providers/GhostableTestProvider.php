@@ -2,10 +2,10 @@
 
 namespace Tests\Application\Mock\Providers;
 
-use Phaseolies\Providers\ServiceProvider;
-use Phaseolies\Providers\GhostableProvider;
+use Phaseolies\Launchers\ServiceLauncher;
+use Phaseolies\Launchers\GhostableLauncher;
 
-class GhostableTestProvider extends ServiceProvider implements GhostableProvider
+class GhostableTestProvider extends ServiceLauncher implements GhostableLauncher
 {
     public static int $registerCount = 0;
     public static int $bootCount = 0;
@@ -29,7 +29,7 @@ class GhostableTestProvider extends ServiceProvider implements GhostableProvider
         }
     }
 
-    public function boot(): void
+    public function launch(): void
     {
         self::$bootCount++;
 

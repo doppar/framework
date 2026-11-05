@@ -13,13 +13,18 @@ class TimezoneHandlerTest extends TestCase
 
     protected function setUp(): void
     {
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app() helper under test to see it.
         $this->container = new Container;
+        Container::setInstance($this->container);
     }
 
     protected function tearDown(): void
     {
         date_default_timezone_set('UTC');
         Carbon::setTestNow();
+        Container::forgetInstance();
         parent::tearDown();
     }
 

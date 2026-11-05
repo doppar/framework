@@ -2,16 +2,18 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Support\Mail\MailService to($user)
- * @method static \Phaseolies\Support\Mail\MailService send(\Phaseolies\Support\Mail\Mailable $mailable)
- * @method static \Phaseolies\Support\Mail\MailService cc(string|array $cc)
- * @method static \Phaseolies\Support\Mail\MailService bcc(string|array $bcc)
- * @see \Phaseolies\Support\Mail\MailService
- */
-
 use Phaseolies\Facade\BaseFacade;
 
+/**
+ * @method static \Phaseolies\Support\Mail\Contracts\MailInterface to(\Phaseolies\Database\Entity\Model|string|array $recipient, string|null $name = null)
+ * @method static \Phaseolies\Support\Mail\Contracts\MailInterface cc(string|array $cc)
+ * @method static \Phaseolies\Support\Mail\Contracts\MailInterface bcc(string|array $bcc)
+ * @method static \Phaseolies\Support\Mail\Contracts\MailInterface driver(\Symfony\Component\Mailer\Transport\TransportInterface|string $transport)
+ * @method static \Symfony\Component\Mailer\SentMessage send(\Phaseolies\Support\Mail\Mailable $mailable)
+ * @method static \Symfony\Component\Mailer\SentMessage deliver(\Phaseolies\Support\Mail\Mailable $mailable)
+ *
+ * @see \Phaseolies\Support\Mail\Contracts\MailInterface
+ */
 class Mail extends BaseFacade
 {
     protected static function getFacadeAccessor()

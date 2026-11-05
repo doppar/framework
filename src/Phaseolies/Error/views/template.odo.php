@@ -4,98 +4,140 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Error — [[ $error_message ]]</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-    <script>
-        (() => {
-            const stored = localStorage.getItem('theme');
-            const theme = stored !== null ? stored : 'system';
-            if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            }
-        })();
-    </script>
-
-    <style type="text/tailwindcss">
-        @theme {
-            --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
-            --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
-            --color-hl-tag: #94a3b8;
-            --color-hl-variable: #f97316;
-            --color-hl-string: #6366f1;
-            --color-hl-definition: #8b5cf6;
-            --color-hl-modifier: #d97706;
-            --color-hl-keyword: #e11d48;
-            --color-hl-literal: #16a34a;
-            --color-hl-comment: #94a3b8;
-            --color-hl-number: #f97316;
-            --color-hl-default: #1e293b;
-        }
-        @layer theme {
-            .dark {
-                --color-hl-tag: #475569;
-                --color-hl-variable: #fb923c;
-                --color-hl-string: #818cf8;
-                --color-hl-definition: #a78bfa;
-                --color-hl-modifier: #fbbf24;
-                --color-hl-keyword: #fb7185;
-                --color-hl-literal: #4ade80;
-                --color-hl-comment: #475569;
-                --color-hl-number: #fb923c;
-                --color-hl-default: #e2e8f0;
-            }
-        }
-        @custom-variant dark (&:where(.dark, .dark *));
-        body {
-            font-family: var(--font-sans);
-        }
-        @layer components {
-            .badge { @apply inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-widest uppercase; }
-            .badge[data-request-type="GET"]    { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400; }
-            .badge[data-request-type="POST"]   { @apply bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400; }
-            .badge[data-request-type="PUT"]    { @apply bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400; }
-            .badge[data-request-type="DELETE"] { @apply bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400; }
-            .badge[data-request-type="PATCH"]  { @apply bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400; }
-            .code-line        { @apply flex w-full text-xs leading-none; }
-            .code-line-error  { @apply flex w-full text-xs leading-none bg-rose-500/8 border-l-2 border-rose-500; }
-            .code-line-number  { @apply w-10 text-right pr-4 select-none shrink-0 text-slate-400 dark:text-slate-600; }
-            .code-line-content { @apply flex-1 pr-4; }
-            .glass-card  { @apply rounded-2xl border border-black/5 dark:border-white/5 bg-white/80 dark:bg-white/3 backdrop-blur-sm; }
-            .section-label { @apply text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-600; }
-            .mw-chip {
-                @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold
-                       bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400
-                       border border-indigo-100 dark:border-indigo-500/20;
-            }
-        }
-    </style>
+    <title>[[ $status_code ]] &middot; [[ $error_message ]]</title>
 
     <style>
+        /* ============ TOKENS ============ */
+        :root {
+            --paper: #edece7;
+            --ink: #1c1712;
+            --ink-soft: #4a4238;
+            --muted: #8a8274;
+            --line: #ded8cc;
+            --surface: #fbfaf6;
+            --surface-2: #eae6dc;
+            --signal: #c8481a;
+            --signal-soft: rgba(200, 72, 26, .09);
+            --signal-line: rgba(200, 72, 26, .35);
+            --wire: #2f6f6b;
+            --wire-soft: rgba(47, 111, 107, .09);
+            --shadow: 0 1px 2px rgba(28, 23, 18, .04), 0 8px 24px -12px rgba(28, 23, 18, .10);
+
+            --hl-tag: #a49c8c;
+            --hl-variable: var(--signal);
+            --hl-string: #4d6a8a;
+            --hl-def: #6b5b95;
+            --hl-mod: #a67c1e;
+            --hl-keyword: #a3315c;
+            --hl-literal: #5f7a3d;
+            --hl-comment: var(--muted);
+            --hl-number: var(--hl-mod);
+            --hl-default: var(--ink-soft);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --paper: #15110d;
+                --ink: #ece7dd;
+                --ink-soft: #c9c2b4;
+                --muted: #93897a;
+                --line: #332c22;
+                --surface: #1c1712;
+                --surface-2: #100d09;
+                --signal: #e8703a;
+                --signal-soft: rgba(232, 112, 58, .13);
+                --signal-line: rgba(232, 112, 58, .4);
+                --wire: #5cb8b0;
+                --wire-soft: rgba(92, 184, 176, .12);
+                --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 28px -14px rgba(0, 0, 0, .6);
+
+                --hl-tag: #6b6255;
+                --hl-variable: var(--signal);
+                --hl-string: #8fb4d9;
+                --hl-def: #b4a4dd;
+                --hl-mod: #d9a84a;
+                --hl-keyword: #e0698f;
+                --hl-literal: #a3c274;
+                --hl-comment: var(--muted);
+                --hl-number: var(--hl-mod);
+                --hl-default: var(--ink-soft);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --paper: #15110d;
+            --ink: #ece7dd;
+            --ink-soft: #c9c2b4;
+            --muted: #93897a;
+            --line: #332c22;
+            --surface: #1c1712;
+            --surface-2: #100d09;
+            --signal: #e8703a;
+            --signal-soft: rgba(232, 112, 58, .13);
+            --signal-line: rgba(232, 112, 58, .4);
+            --wire: #5cb8b0;
+            --wire-soft: rgba(92, 184, 176, .12);
+            --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 28px -14px rgba(0, 0, 0, .6);
+
+            --hl-tag: #6b6255;
+            --hl-variable: var(--signal);
+            --hl-string: #8fb4d9;
+            --hl-def: #b4a4dd;
+            --hl-mod: #d9a84a;
+            --hl-keyword: #e0698f;
+            --hl-literal: #a3c274;
+            --hl-comment: var(--muted);
+            --hl-number: var(--hl-mod);
+            --hl-default: var(--ink-soft);
+        }
+
+        /* ============ RESET / BASE ============ */
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
         body {
-            background-color: #f9f9f7;
-            background-image: radial-gradient(circle, rgba(0, 0, 0, 0.13) 1px, transparent 1px);
-            background-size: 22px 22px;
+            margin: 0;
+            padding: 0;
         }
 
-        html.dark body {
-            background-color: #0d0d10;
-            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-            background-size: 22px 22px;
+        body {
+            background-color: var(--paper);
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            background-image:
+                radial-gradient(640px 460px at 100% 0%, var(--signal-soft), transparent 62%),
+                radial-gradient(560px 420px at 0% 100%, var(--wire-soft), transparent 62%),
+                linear-gradient(color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px),
+                linear-gradient(90deg, color-mix(in srgb, var(--ink) 5%, transparent) 1px, transparent 1px);
+            background-position: top right, bottom left, center, center;
+            background-repeat: no-repeat, no-repeat, repeat, repeat;
+            background-size: auto, auto, 44px 44px, 44px 44px;
+            background-attachment: fixed, fixed, fixed, fixed;
         }
 
-        body>* {
-            position: relative;
-            z-index: 1;
+        code,
+        pre,
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
         }
 
-        /* ── Scrollbars ── */
+        ::selection {
+            background: var(--signal-soft);
+            color: var(--ink);
+        }
+
+        a {
+            color: var(--wire);
+        }
+
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 7px;
+            height: 7px;
         }
 
         ::-webkit-scrollbar-track {
@@ -103,37 +145,48 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, .12);
+            background: var(--line);
             border-radius: 99px;
         }
 
-        .dark ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .08);
+        button,
+        input {
+            font: inherit;
+            color: inherit;
         }
 
-        /* ── Error line pulse ── */
-        @keyframes pulse-error {
+        button {
+            cursor: pointer;
+        }
 
-            0%,
-            100% {
-                background-color: rgba(239, 68, 68, 0.08);
+        :focus-visible {
+            outline: 2px solid var(--signal);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .001ms !important;
             }
-
-            50% {
-                background-color: rgba(239, 68, 68, 0.15);
-            }
         }
 
-        .code-line-error {
-            animation: pulse-error 2.5s ease-in-out infinite;
-            padding: 10px 0;
+        /* ============ LAYOUT ============ */
+        .wrap {
+            max-width: 1040px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
-        /* ── Entrance animations ── */
-        @keyframes slide-up {
+        @keyframes rise {
             from {
                 opacity: 0;
-                transform: translateY(16px);
+                transform: translateY(10px);
             }
 
             to {
@@ -142,763 +195,1086 @@
             }
         }
 
-        .anim-1 {
-            animation: slide-up .4s ease both;
+        .rise-1 {
+            animation: rise .38s ease both;
         }
 
-        .anim-2 {
-            animation: slide-up .4s .07s ease both;
+        .rise-2 {
+            animation: rise .38s .05s ease both;
         }
 
-        .anim-3 {
-            animation: slide-up .4s .14s ease both;
+        .rise-3 {
+            animation: rise .38s .10s ease both;
         }
 
-        .anim-4 {
-            animation: slide-up .4s .21s ease both;
+        .rise-4 {
+            animation: rise .38s .15s ease both;
         }
 
-        .anim-5 {
-            animation: slide-up .4s .28s ease both;
+        .rise-5 {
+            animation: rise .38s .20s ease both;
         }
 
-        .anim-6 {
-            animation: slide-up .4s .35s ease both;
-        }
-
-        /* ── Collapsible defaults ── */
-        .frame-body {
-            display: none;
-        }
-
-        .headers-panel {
-            display: none;
-        }
-
-        .arrow-icon {
-            transition: transform 0.2s ease;
-        }
-
-        /* ── Clickable rows ── */
-        .frame-toggle,
-        .headers-toggle {
+        /* ============ COMMAND BAR ============ */
+        .bar {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 12px;
-            padding: 12px 16px;
-            cursor: pointer;
-            user-select: none;
+            padding: 16px 0;
         }
 
-        .frame-toggle:hover {
-            background: rgba(0, 0, 0, .02);
-        }
-
-        html.dark .frame-toggle:hover {
-            background: rgba(255, 255, 255, .02);
-        }
-
-        .headers-toggle:hover {
-            background: rgba(0, 0, 0, .02);
-        }
-
-        html.dark .headers-toggle:hover {
-            background: rgba(255, 255, 255, .02);
-        }
-
-        .exception-pill {
+        .pill {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 3px 10px 3px 7px;
-            border-radius: 6px;
-            font-size: 11px;
+            gap: 8px;
+            padding: 6px 12px 6px 10px;
+            border-radius: 7px;
+            background: var(--signal-soft);
+            border: 1px solid var(--signal-line);
+            color: var(--signal);
             font-weight: 600;
-            letter-spacing: 0.01em;
-            background: rgba(225, 29, 72, 0.08);
-            border: 1px solid rgba(225, 29, 72, 0.18);
-            color: #e11d48;
+            font-size: 12.5px;
+            letter-spacing: .01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 62vw;
         }
 
-        html.dark .exception-pill {
-            background: rgba(251, 113, 133, 0.1);
-            border-color: rgba(251, 113, 133, 0.2);
-            color: #fb7185;
-        }
-
-        .exception-pill-dot {
+        .dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: currentColor;
-            animation: pulse-dot 2s ease infinite;
-            flex-shrink: 0;
+            flex: none;
+            animation: blip 2s ease infinite;
         }
 
-        @keyframes pulse-dot {
+        @keyframes blip {
 
             0%,
             100% {
-                opacity: .8;
+                opacity: .9;
                 transform: scale(1);
             }
 
             50% {
-                opacity: .3;
-                transform: scale(.6);
+                opacity: .35;
+                transform: scale(.65);
             }
         }
 
-        .hero-glow {
-            position: absolute;
-            top: -80px;
-            right: -80px;
-            width: 500px;
-            height: 400px;
-            border-radius: 50%;
-            pointer-events: none;
+        .bar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: none;
         }
 
-        .status-badge {
+        .chipset {
+            display: flex;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .chipset span {
+            padding: 6px 10px;
+            border-right: 1px solid var(--line);
+            color: var(--muted);
+        }
+
+        .chipset span:last-child {
+            border-right: none;
+        }
+
+        .chipset b {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: transparent;
+            color: var(--ink-soft);
+            transition: background .15s ease, color .15s ease, border-color .15s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--surface-2);
+            color: var(--ink);
+        }
+
+        .icon-btn svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .icon-btn.ok {
+            color: var(--wire);
+            border-color: var(--wire);
+            background: var(--wire-soft);
+        }
+
+        /* ============ HERO ============ */
+        .hero {
+            position: relative;
+            padding: 8px 0 22px;
+        }
+
+        .kicker {
+            position: relative;
+            margin: 0 0 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--signal);
+        }
+
+        .headline {
+            position: relative;
+            margin: 0 0 18px;
+            font-size: clamp(21px, 3vw, 30px);
+            font-weight: 700;
+            letter-spacing: -.015em;
+            line-height: 1.25;
+            max-width: 60ch;
+            text-wrap: balance;
+            color: var(--ink);
+            word-wrap: break-word;
+        }
+
+        .stat-row {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px 4px 7px;
-            border-radius: 6px;
+            padding: 5px 10px;
+            border-radius: 7px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid var(--line);
+            color: var(--ink-soft);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chip.on-signal {
+            background: var(--signal-soft);
+            border-color: var(--signal-line);
+            color: var(--signal);
+        }
+
+        .chip.on-wire {
+            background: var(--wire-soft);
+            border-color: color-mix(in srgb, var(--wire) 45%, transparent);
+            color: var(--wire);
+        }
+
+        .meta-time {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ============ REQUEST LINE ============ */
+        .request-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 9px 10px 9px 12px;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow);
+        }
+
+        .method {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 700;
             font-size: 11px;
-            font-weight: 700;
-            background: rgba(225, 29, 72, 0.09);
-            border: 1px solid rgba(225, 29, 72, 0.2);
-            color: #e11d48;
+            letter-spacing: .04em;
+            padding: 4px 8px;
+            border-radius: 6px;
+            flex: none;
+            background: var(--wire-soft);
+            color: var(--wire);
         }
 
-        html.dark .status-badge {
-            background: rgba(251, 113, 133, 0.09);
-            border-color: rgba(251, 113, 133, 0.2);
-            color: #fb7185;
+        .url {
+            flex: 1;
+            min-width: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+            color: var(--ink-soft);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .status-badge-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-            animation: pulse-dot 1.8s ease infinite;
+        /* ============ PANEL ============ */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 18px;
         }
 
-        .code-line:not(.code-line-error):hover {
-            background: rgba(0, 0, 0, .025);
-        }
-
-        html.dark .code-line:not(.code-line-error):hover {
-            background: rgba(255, 255, 255, .02);
-        }
-
-        .param-dot-line {
-            flex-grow: 1;
-            border-bottom: 1px dashed rgba(0, 0, 0, .1);
-            margin: 0 8px 4px;
-        }
-
-        html.dark .param-dot-line {
-            border-bottom-color: rgba(255, 255, 255, .07);
-        }
-
-        .line-badge {
-            display: inline-flex;
+        .panel-head {
+            display: flex;
             align-items: center;
-            padding: 2px 8px;
-            border-radius: 5px;
-            font-size: 10px;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--line);
+            background: var(--surface-2);
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            font-size: 13.5px;
             font-weight: 700;
-            letter-spacing: 0.05em;
-            background: rgba(225, 29, 72, 0.08);
-            border: 1px solid rgba(225, 29, 72, 0.18);
-            color: #e11d48;
+            letter-spacing: -.005em;
         }
 
-        html.dark .line-badge {
-            background: rgba(251, 113, 133, 0.08);
-            border-color: rgba(251, 113, 133, 0.18);
-            color: #fb7185;
+        .win-dots {
+            display: flex;
+            gap: 6px;
+            flex: none;
         }
 
-        .route-live-dot {
-            width: 7px;
-            height: 7px;
+        .win-dots i {
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
-            background: #e11d48;
-            animation: pulse-dot 1.6s ease infinite;
+            display: block;
         }
 
-        html.dark .route-live-dot {
-            background: #fb7185;
+        .win-dots i:nth-child(1) {
+            background: color-mix(in srgb, var(--signal) 70%, var(--surface-2));
         }
 
-        .request-bar {
-            border-top: 1px solid rgba(0, 0, 0, .06);
-            border-bottom: 1px solid rgba(0, 0, 0, .06);
-            background: rgba(255, 255, 255, .4);
-            backdrop-filter: blur(4px);
+        .win-dots i:nth-child(2) {
+            background: color-mix(in srgb, var(--hl-mod) 70%, var(--surface-2));
         }
 
-        html.dark .request-bar {
-            border-top-color: rgba(255, 255, 255, .05);
-            border-bottom-color: rgba(255, 255, 255, .05);
-            background: rgba(255, 255, 255, .02);
+        .win-dots i:nth-child(3) {
+            background: color-mix(in srgb, var(--wire) 70%, var(--surface-2));
         }
 
-        .frame-count-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
+        .file-path {
+            flex: 1;
+            min-width: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .count-badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--muted);
+            background: var(--surface);
+            border: 1px solid var(--line);
             border-radius: 99px;
-            font-size: 10px;
-            font-weight: 700;
-            background: rgba(0, 0, 0, .05);
-            border: 1px solid rgba(0, 0, 0, .07);
-            color: #64748b;
+            padding: 2px 8px;
+            flex: none;
         }
 
-        html.dark .frame-count-badge {
-            background: rgba(255, 255, 255, .06);
-            border-color: rgba(255, 255, 255, .06);
-            color: #94a3b8;
+        /* ============ CODE BLOCK ============ */
+        .code {
+            margin: 0;
+            padding: 4px 0;
+            overflow-x: auto;
+            background: var(--surface-2);
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        }
+
+        .code-line,
+        .code-line-error {
+            display: flex;
+            width: 100%;
+            font-size: 12.5px;
+            line-height: 1.65;
+            white-space: pre;
+        }
+
+        .code-line-error {
+            background: var(--signal-soft);
+            border-left: 2px solid var(--signal);
+        }
+
+        .code-line-number {
+            width: 42px;
+            flex: none;
+            text-align: right;
+            padding-right: 16px;
+            color: var(--muted);
+            opacity: .7;
+            user-select: none;
+        }
+
+        .code-line-content {
+            flex: 1;
+            padding-right: 16px;
+            color: var(--hl-default);
+        }
+
+        .frame-no-code {
+            padding: 16px;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .text-hl-tag {
+            color: var(--hl-tag);
+        }
+
+        .text-hl-variable {
+            color: var(--hl-variable);
+            font-weight: 600;
+        }
+
+        .text-hl-string {
+            color: var(--hl-string);
+        }
+
+        .text-hl-definition {
+            color: var(--hl-def);
+            font-weight: 600;
+        }
+
+        .text-hl-modifier {
+            color: var(--hl-mod);
+        }
+
+        .text-hl-keyword {
+            color: var(--hl-keyword);
+            font-weight: 600;
+        }
+
+        .text-hl-literal {
+            color: var(--hl-literal);
+        }
+
+        .text-hl-comment {
+            color: var(--hl-comment);
+            font-style: italic;
+        }
+
+        .text-hl-number {
+            color: var(--hl-number);
+        }
+
+        .text-hl-default {
+            color: var(--hl-default);
+        }
+
+        /* ============ STACK TRACE / SIGNAL RAIL ============ */
+        .trace-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            flex-wrap: wrap;
+        }
+
+        .filter-input {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--ink);
+            width: 150px;
+        }
+
+        .filter-input::placeholder {
+            color: var(--muted);
+        }
+
+        .toggle-btn {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            padding: 6px 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            transition: background .15s ease, color .15s ease;
+            white-space: nowrap;
+        }
+
+        .toggle-btn:hover {
+            background: var(--surface-2);
+        }
+
+        .toggle-btn[aria-pressed="true"] {
+            background: var(--wire-soft);
+            color: var(--wire);
+            border-color: color-mix(in srgb, var(--wire) 45%, transparent);
+        }
+
+        .rail {
+            position: relative;
+            padding: 4px 16px 10px 46px;
+        }
+
+        .rail::before {
+            content: "";
+            position: absolute;
+            left: 19px;
+            top: 30px;
+            bottom: 30px;
+            width: 2px;
+            background: linear-gradient(var(--signal), var(--line) 65%);
+        }
+
+        .frame {
+            position: relative;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .frame:last-child {
+            border-bottom: none;
+        }
+
+        .frame[data-vendor="1"] {
+            opacity: .78;
+        }
+
+        .rail.hide-vendor .frame[data-vendor="1"] {
+            display: none;
+        }
+
+        .rail.filtering .frame[data-hide="1"] {
+            display: none;
+        }
+
+        .node {
+            position: absolute;
+            left: -35px;
+            top: 14px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 2px solid var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .frame:first-child .node {
+            background: var(--signal);
+            border-color: var(--signal);
+            color: var(--surface);
+            box-shadow: 0 0 0 4px var(--signal-soft);
+        }
+
+        .frame-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            padding: 13px 4px 13px 0;
+            min-height: 56px;
+        }
+
+        .frame-toggle:hover {
+            background: color-mix(in srgb, var(--ink) 3%, transparent);
+        }
+
+        .frame-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .frame-sig {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .frame-file {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .vendor-tag {
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 1px 5px;
+            flex: none;
+        }
+
+        .chev {
+            width: 14px;
+            height: 14px;
+            color: var(--muted);
+            flex: none;
+            transition: transform .18s ease;
+        }
+
+        .frame-toggle[aria-expanded="true"] .chev,
+        .kv-toggle[aria-expanded="true"] .chev {
+            transform: rotate(180deg);
+        }
+
+        .frame-body {
+            display: none;
+            border-top: 1px solid var(--line);
+            background: var(--surface-2);
+        }
+
+        .frame-body .code {
+            background: transparent;
+        }
+
+        /* ============ DUAL COLUMN ============ */
+        .dual-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        .dual-col .panel {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 760px) {
+            .dual-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .kv-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .kv-panel {
+            display: none;
+        }
+
+        .kv-list {
+            padding: 6px 16px 14px;
+        }
+
+        .kv-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 6px 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .kv-key {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            font-size: 10.5px;
+            flex: none;
+        }
+
+        .kv-dots {
+            flex: 1;
+            border-bottom: 1px dashed var(--line);
+            margin-bottom: 4px;
+            min-width: 12px;
+        }
+
+        .kv-val {
+            color: var(--ink-soft);
+            text-align: right;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 34px 16px;
+            color: var(--muted);
+            gap: 8px;
+        }
+
+        .empty-state svg {
+            width: 28px;
+            height: 28px;
+            opacity: .55;
+        }
+
+        .empty-state span {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10.5px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+
+        .json-body {
+            margin: 0;
+            padding: 14px 16px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--ink-soft);
+            background: var(--surface-2);
+        }
+
+        /* ============ ROUTING ============ */
+        .routing-grid {
+            padding: 18px 16px 4px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px 28px;
+        }
+
+        .field-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        .route-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 5px 0;
+        }
+
+        .route-key {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            flex: none;
+        }
+
+        .route-dots {
+            flex: 1;
+            border-bottom: 1px dashed var(--line);
+            margin-bottom: 4px;
+        }
+
+        .route-val {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink-soft);
+            word-break: break-all;
+        }
+
+        .route-none {
+            font-size: 12px;
+            font-style: italic;
+            color: var(--muted);
+            padding-bottom: 14px;
+        }
+
+        /* ============ INFO GRID ============ */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+
+        @media (max-width: 760px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-card {
+            padding: 16px;
+        }
+
+        .info-card .field-label {
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            margin-bottom: 12px;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-row .k {
+            font-size: 10.5px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 2px;
+        }
+
+        .info-row .v {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+            color: var(--ink-soft);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .foot {
+            text-align: center;
+            padding: 18px 0 36px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 10px;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--muted);
         }
     </style>
 </head>
 
-<body class="min-h-screen text-slate-900 dark:text-slate-100">
+<body>
+    <div class="wrap">
 
-    <!-- ── HERO BANNER ── -->
-    <div class="anim-1 relative overflow-hidden py-8 md:py-10">
-        <div class="hero-glow"></div>
-        <div class="pointer-events-none absolute -bottom-16 left-1/3 w-64 h-64 rounded-full blur-3xl"></div>
-
-        <div class="relative z-10 max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
-
-            <div class="flex items-start justify-between gap-4 mb-5 flex-wrap">
-                <div class="exception-pill">
-                    <span class="exception-pill-dot"></span>
-                    [[ $exception_class ]]
+        <header class="bar rise-1">
+            <span class="pill">[[ $status_code ]]</span>
+            <div class="bar-right">
+                <div class="chipset">
+                    <span>DOPPAR <b>[[ $doppar_version ]]</b></span>
+                    <span>PHP <b>[[ $php_version ]]</b></span>
                 </div>
+                <button class="icon-btn" id="themeBtn" aria-label="Toggle color theme">
+                    <svg id="iSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+                    <svg id="iMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+                </button>
+                <button class="icon-btn" id="copyReportBtn" aria-label="Copy exception report as Markdown" title="Copy report as Markdown">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.1c0-1.13.845-2.1 1.976-2.19.373-.03.748-.06 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.1c0-1.13-.845-2.1-1.976-2.19a48 48 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.25 2.25 0 0 0 15 2.25h-1.5a2.25 2.25 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"/></svg>
+                </button>
+            </div>
+        </header>
 
-                <div class="flex items-center gap-2 shrink-0">
-                    <button id="themeToggle"
-                        class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/8 border border-black/8 dark:border-white/8 transition-all cursor-pointer"
-                        aria-label="Toggle theme">
-                        <svg id="sunIcon" class="hidden dark:block w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
-                        </svg>
-                        <svg id="moonIcon" class="block dark:hidden w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
-                        </svg>
-                    </button>
-                    <button id="copyToClipBoard"
-                        class="p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/8 border border-black/8 dark:border-white/8 transition-all cursor-pointer"
-                        title="Copy as Markdown">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
-                        </svg>
-                    </button>
+        <section class="hero rise-2">
+            <p class="kicker">Uncaught &mdash; [[ $exception_class ]]</p>
+            <h1 class="headline">[[ $error_message ]]</h1>
+            <div class="stat-row">
+                <span class="chip">[[ count($traces) ]] frames</span>
+                <span class="meta-time">[[ $timestamp ]]</span>
+            </div>
+        </section>
 
-                    <div class="flex items-center rounded-xl overflow-hidden border border-black/8 dark:border-white/8 text-xs font-mono">
-                        <div class="px-3 py-1.5 bg-black/3 dark:bg-white/3 border-r border-black/8 dark:border-white/8">
-                            <span class="text-slate-400 dark:text-slate-600 text-[10px] tracking-widest uppercase mr-1.5">Doppar</span>
-                            <span class="font-semibold">[[ $doppar_version ]]</span>
-                        </div>
-                        <div class="px-3 py-1.5">
-                            <span class="text-slate-400 dark:text-slate-600 text-[10px] tracking-widest uppercase mr-1.5">PHP</span>
-                            <span class="font-semibold">[[ $php_version ]]</span>
-                        </div>
+        <div class="request-line rise-2">
+            <span class="method">[[ $request_method ]]</span>
+            <span class="url">[[ $request_url ]]</span>
+            <button class="icon-btn" id="copyUrlBtn" aria-label="Copy request URL" title="Copy URL">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2m-6 12h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z"/></svg>
+            </button>
+        </div>
+
+        <main>
+            <!-- SOURCE -->
+            <section class="panel rise-3">
+                <div class="panel-head">
+                    <span class="win-dots"><i></i><i></i><i></i></span>
+                    <span class="file-path">[[ $error_file ]]</span>
+                    <span class="chip on-signal">Line [[ $error_line ]]</span>
+                </div>
+                <div class="code">[[! $contents !]]</div>
+            </section>
+
+            <!-- STACK TRACE -->
+            <section class="panel rise-4">
+                <div class="panel-head">
+                    <h2>Stack Trace</h2>
+                    <span class="count-badge" id="frameCount">[[ count($traces) ]] frames</span>
+                    <div class="trace-tools">
+                        <input type="search" class="filter-input" id="frameFilter" placeholder="Filter frames&hellip;" aria-label="Filter stack frames">
+                        <button class="toggle-btn" id="vendorToggle" aria-pressed="false">Hide vendor</button>
+                        <button class="toggle-btn" id="expandAllBtn">Expand all</button>
                     </div>
                 </div>
-            </div>
-
-            <h1 class="text-xl md:text-2xl lg:text-2xl text-slate-900 dark:text-slate-50 leading-tight mb-4 break-words max-w-4xl">
-                [[ $error_message ]]
-            </h1>
-        </div>
-    </div>
-
-    <!-- ── REQUEST BAR ── -->
-    <div class="anim-2 bg-white/20 dark:bg-black/10 p-4">
-        <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
-            <div class="flex items-center h-12
-            bg-white/80 dark:bg-white/2
-            backdrop-blur
-            border border-gray-200/70 dark:border-white/10
-            rounded-lg px-3 shadow-sm">
-                <span data-request-type="[[ $request_method ]]" class="badge">[[ $request_method ]]</span>
-                <span class="font-mono text-sm text-gray-600 dark:text-gray-400 ml-3 flex-1 truncate">[[ $request_url ]]</span>
-                <button id="copyUrlBtn"
-                    class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    title="Copy URL">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── OVERVIEW STRIP ── -->
-    <div class="anim-2 bg-white/20 dark:bg-black/10">
-        <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10">
-            <div class="flex items-center py-2.5">
-                <span class="section-label">Date</span>
-                <div class="flex-1"></div>
-                <span class="text-xs font-mono text-slate-600 dark:text-slate-400">[[ $timestamp ]]</span>
-            </div>
-            <div class="flex items-center py-2.5">
-                <span class="section-label">Status Code</span>
-                <div class="flex-1"></div>
-                <span class="status-badge">
-                    <span class="status-badge-dot"></span>
-                    [[ $status_code ]]
-                </span>
-            </div>
-            <div class="flex items-center py-2.5">
-                <span class="section-label">Method</span>
-                <div class="flex-1"></div>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-white/8 text-slate-600 dark:text-slate-300 border border-black/8 dark:border-white/8">
-                    [[ $request_method ]]
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── MAIN CONTENT ── -->
-    <div class="max-w-7xl mx-auto px-4 md:px-8 lg:px-10 py-8 space-y-6">
-
-        <!-- SOURCE FILE VIEWER -->
-        <div class="anim-3 glass-card overflow-hidden">
-            <div class="flex items-center gap-3 px-5 py-3.5 border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2">
-                <div class="flex gap-1.5">
-                    <div class="w-3 h-3 rounded-full bg-rose-400/70"></div>
-                    <div class="w-3 h-3 rounded-full bg-amber-400/70"></div>
-                    <div class="w-3 h-3 rounded-full bg-emerald-400/70"></div>
+                <div id="rail" class="rail">
+                    #include('trace-frames', ['traces' => $traces])
                 </div>
-                <span class="font-mono text-xs text-slate-500 flex-1 truncate">[[ $error_file ]]</span>
-                <span class="line-badge shrink-0">Line [[ $error_line ]]</span>
-            </div>
-            <div class="overflow-x-auto bg-white/60 dark:bg-black/20">
-                <pre class="px-4 py-2 text-xs leading-none">[[! $contents !]]</pre>
-            </div>
-        </div>
+            </section>
 
-        <!-- ── STACK TRACE ── -->
-        <div class="anim-4">
-            <div class="flex items-center justify-between mb-3 px-1">
-                <div class="flex items-center gap-2.5">
-                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    <h2 class="text-sm font-semibold">Stack Trace</h2>
-                    <span id="frameCountBadge" class="frame-count-badge"></span>
+            <!-- HEADERS + BODY -->
+            <div class="dual-col rise-5">
+                <section class="panel">
+                    #include('template-headers', ['headers' => $headers])
+                </section>
+
+                <section class="panel">
+                    <div class="panel-head" style="border-bottom:none;">
+                        <h2>Request Body</h2>
+                        <span class="count-badge">
+                            #if (!empty($request_body))
+                            payload
+                            #else
+                            empty
+                            #endif
+                        </span>
+                    </div>
+                    #if (!empty($request_body))
+                    <pre class="json-body"><code>[[ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ]]</code></pre>
+                    #else
+                    <div style="border-top:1px solid var(--line)">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7m16 0v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-5m16 0h-2.586a1 1 0 0 0-.707.293l-2.414 2.414a1 1 0 0 1-.707.293h-3.172a1 1 0 0 1-.707-.293l-2.414-2.414A1 1 0 0 0 6.586 13H4"/></svg>
+                            <span>No payload on this request</span>
+                        </div>
+                    </div>
+                    #endif
+                </section>
+            </div>
+
+            <!-- ROUTING -->
+            <section class="panel rise-5">
+                <div class="panel-head">
+                    <h2>Routing</h2>
                 </div>
-                <button id="toggleAllFramesBtn"
-                    class="text-xs px-3 py-1.5 rounded-lg cursor-pointer border border-black/8 dark:border-white/8 hover:bg-black/4 dark:hover:bg-white/4 transition-colors font-medium">
-                    <span id="toggleAllText">Expand All</span>
-                </button>
-            </div>
-
-            <div id="traceFrames" class="glass-card overflow-hidden divide-y divide-black/5 dark:divide-white/5">
-                #include('trace-frames', ['traces' => $traces])
-            </div>
-        </div>
-
-        <!-- ── HEADERS ── -->
-        <div class="anim-5 glass-card overflow-hidden">
-            #include('template-headers', ['headers' => $headers])
-        </div>
-
-        <!-- ── REQUEST BODY ── -->
-        <div class="anim-5 glass-card overflow-hidden">
-            <div id="reqBodyToggle"
-                class="flex items-center gap-3 px-5 py-4 border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2 cursor-pointer select-none hover:bg-black/3 dark:hover:bg-white/3 transition-colors">
-                <div class="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center shrink-0">
-                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                    </svg>
-                </div>
-                <span class="text-sm font-semibold flex-1">Request Body</span>
-                #if (!empty($request_body))
-                <svg id="reqBodyArrow" class="arrow-icon w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-                #endif
-            </div>
-            #if (!empty($request_body))
-            <div id="reqBodyPanel" style="display:none;">
-                <pre class="text-xs p-5 overflow-x-auto bg-white/60 dark:bg-black/10 leading-relaxed"><code>[[ json_encode($request_body, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) ]]</code></pre>
-            </div>
-            #else
-            <div class="flex flex-col items-center justify-center py-12 text-slate-300 dark:text-slate-700">
-                <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <p class="text-xs font-mono tracking-widest uppercase">Empty Request Body</p>
-            </div>
-            #endif
-        </div>
-
-        <!-- ── ROUTING DEBUGGER ── -->
-        <div class="anim-5 glass-card overflow-hidden">
-
-            <div class="headers-toggle border-b border-black/5 dark:border-white/5 bg-black/2 dark:bg-white/2">
-                <div class="flex items-center gap-3">
-                    <div class="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
+                <div class="routing-grid">
+                    <div>
+                        <div class="field-label">Route</div>
+                        <div class="route-row"><span class="route-key">Name</span><span class="route-dots"></span><span class="route-val">[[ $current_route_name ?? 'unnamed_route' ]]</span></div>
+                        <div class="route-row">
+                            <span class="route-key">Action</span><span class="route-dots"></span>
+                            #if (!empty($current_route_action))
+                            <span class="route-val">[[ $current_route_action ]]</span>
+                            #else
+                            <span class="route-val" style="font-style:italic;font-weight:400;color:var(--muted)">Closure</span>
+                            #endif
+                        </div>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 tracking-tight">Routing</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-6 space-y-6">
-
-                <!-- Route Name -->
-                <div>
-                    <div class="section-label mb-3">Route Name</div>
-                    <div class="flex items-baseline group py-1.5">
-                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
-                            Name
-                        </span>
-                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
-                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
-                            [[ $current_route_name ?? 'unnamed_route' ]]
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Controller Action -->
-                <div>
-                    <div class="section-label mb-3">Controller</div>
-
-                    <div class="flex items-baseline group py-1.5">
-                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
-                            Action
-                        </span>
-                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
-
-                        #if(!empty($current_route_action))
-                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
-                            [[ $current_route_action ]]
-                        </span>
+                        <div class="field-label">Middleware ([[ count($current_middleware ?? []) ]])</div>
+                        #if (!empty($current_middleware))
+                        #foreach (($current_middleware ?? []) as $index => $mw)
+                        <div class="route-row"><span class="route-key">[[ $index + 1 ]]</span><span class="route-dots"></span><span class="route-val">[[ $mw ]]</span></div>
+                        #endforeach
                         #else
-                        <span class="font-mono text-sm italic text-slate-400 shrink-0">
-                            Closure / No Action
-                        </span>
+                        <div class="route-none">No middleware</div>
+                        #endif
+                    </div>
+                    <div>
+                        <div class="field-label">Route Parameters</div>
+                        #if (!empty($current_route_params))
+                        #foreach ($current_route_params as $key => $val)
+                        <div class="route-row"><span class="route-key">[[ $key ]]</span><span class="route-dots"></span><span class="route-val">[[ $val ]]</span></div>
+                        #endforeach
+                        #else
+                        <div class="route-none">No parameters</div>
                         #endif
                     </div>
                 </div>
+            </section>
 
-                <!-- Middleware -->
-                <div>
-                    <div class="section-label mb-3">Middleware ([[ count($current_middleware ?? []) ]])</div>
-
-                    #if (!empty($current_middleware))
-                    #foreach(($current_middleware ?? []) as $index => $mw)
-                    <div class="flex items-baseline group py-1.5">
-                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
-                            [[ $index + 1 ]]
-                        </span>
-                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
-                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
-                            [[ $mw ]]
-                        </span>
-                    </div>
-                    #endforeach
+            <!-- INFO GRID -->
+            <div class="info-grid rise-5">
+                <section class="panel info-card">
+                    <div class="field-label">System</div>
+                    <div class="info-row"><div class="k">Server</div><div class="v">[[ $server_software ]]</div></div>
+                    <div class="info-row"><div class="k">Platform</div><div class="v">[[ $platform ]]</div></div>
+                </section>
+                <section class="panel info-card">
+                    <div class="field-label">Memory</div>
+                    <div class="info-row"><div class="k">Current Usage</div><div class="v">[[ number_format($memory_usage / 1024 / 1024, 2) ]] MB</div></div>
+                    <div class="info-row"><div class="k">Peak Usage</div><div class="v">[[ number_format($peack_memory_usage / 1024 / 1024, 2) ]] MB</div></div>
+                </section>
+                <section class="panel info-card">
+                    <div class="field-label">User</div>
+                    #if ($user_info)
+                    <div class="info-row"><div class="k">ID</div><div class="v">[[ $user_info['id'] ]]</div></div>
+                    <div class="info-row"><div class="k">Email</div><div class="v">[[ $user_info['email'] ]]</div></div>
                     #else
-                    <div class="flex items-center gap-2 py-1 opacity-40">
-                        <div class="w-1 h-1 rounded-full bg-slate-400"></div>
-                        <span class="text-xs font-mono italic text-slate-500">No middleware</span>
+                    <div class="empty-state" style="padding:6px 0 0;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                        <span>No user</span>
                     </div>
                     #endif
-                </div>
-
-                <!-- Route Parameters -->
-                <div>
-                    <div class="section-label mb-3">Route Parameters</div>
-
-                    #if (!empty($current_route_params))
-                    #foreach ($current_route_params as $key => $val)
-                    <div class="flex items-baseline group py-1.5">
-                        <span class="font-mono text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight shrink-0">
-                            [[ $key ]]
-                        </span>
-                        <span class="param-dot-line group-hover:border-slate-300 dark:group-hover:border-white/10 transition-colors"></span>
-                        <span class="font-mono text-sm font-bold text-slate-700 dark:text-slate-300 break-all shrink-0">
-                            [[ $val ]]
-                        </span>
-                    </div>
-                    #endforeach
-                    #else
-                    <div class="flex items-center gap-2 py-1 opacity-40">
-                        <div class="w-1 h-1 rounded-full bg-slate-400"></div>
-                        <span class="text-xs font-mono italic text-slate-500">No parameters</span>
-                    </div>
-                    #endif
-                </div>
-
-            </div>
-        </div>
-
-        <!-- ── INFO GRID ── -->
-        <div class="anim-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- System -->
-            <div class="glass-card p-5">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-500/10 border border-violet-100 dark:border-violet-500/20 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm font-semibold">System</span>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <div class="section-label mb-1">Server</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">[[ $server_software ]]</div>
-                    </div>
-                    <div>
-                        <div class="section-label mb-1">Platform</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">[[ $platform ]]</div>
-                    </div>
-                </div>
+                </section>
             </div>
 
-            <!-- Memory -->
-            <div class="glass-card p-5">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm font-semibold">Memory</span>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <div class="section-label mb-1">Current Usage</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300">[[ number_format($memory_usage / 1024 / 1024, 2) ]] MB</div>
-                    </div>
-                    <div>
-                        <div class="section-label mb-1">Peak Usage</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300">[[ number_format($peack_memory_usage / 1024 / 1024, 2) ]] MB</div>
-                    </div>
-                </div>
-            </div>
+            <div class="foot">Doppar Framework &middot; Request Diagnostic</div>
+        </main>
+    </div>
 
-            <!-- User -->
-            <div class="glass-card p-5">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center">
-                        <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </div>
-                    <span class="text-sm font-semibold">User</span>
-                </div>
-                #if ($user_info)
-                <div class="space-y-3">
-                    <div>
-                        <div class="section-label mb-1">ID</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300">[[ $user_info['id'] ]]</div>
-                    </div>
-                    <div>
-                        <div class="section-label mb-1">Email</div>
-                        <div class="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">[[ $user_info['email'] ]]</div>
-                    </div>
-                </div>
-                #else
-                <div class="flex flex-col items-center justify-center py-6 text-slate-300 dark:text-slate-700">
-                    <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    </svg>
-                    <p class="text-xs font-mono tracking-widest uppercase">No User</p>
-                </div>
-                #endif
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="text-center py-4 text-[10px] font-mono text-slate-700 dark:text-slate-700 tracking-[0.2em] uppercase">
-            Doppar Framework
-        </div>
-
-    </div><!-- /content -->
-
-    <textarea id="mdContent" class="hidden">[[ $md_content ]]</textarea>
+    <textarea id="mdContent" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;">[[ $md_content ]]</textarea>
 
     <script>
-        const ThemeManager = {
-            getTheme() {
-                const s = localStorage.getItem('theme');
-                return s || 'system';
-            },
-            applyTheme(t) {
-                const isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                document.documentElement.classList.toggle('dark', isDark);
-                localStorage.setItem('theme', t);
-            },
-            init() {
-                this.applyTheme(this.getTheme());
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                    if (localStorage.getItem('theme') === 'system' || !localStorage.getItem('theme')) {
-                        this.applyTheme('system');
-                    }
-                });
-                document.getElementById('themeToggle')?.addEventListener('click', () => {
-                    const cur = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-                    this.applyTheme(cur === 'dark' ? 'light' : 'dark');
-                });
+        (function () {
+            var KEY = 'doppar-error-theme';
+            function getTheme() { try { return localStorage.getItem(KEY) || 'system'; } catch (e) { return 'system'; } }
+            function apply(t) {
+                var root = document.documentElement;
+                if (t === 'system') root.removeAttribute('data-theme');
+                else root.setAttribute('data-theme', t);
+                var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.getElementById('iSun').style.display = dark ? 'block' : 'none';
+                document.getElementById('iMoon').style.display = dark ? 'none' : 'block';
             }
-        };
-        ThemeManager.init();
-
-        document.getElementById('copyToClipBoard')?.addEventListener('click', async function() {
-            const md = document.getElementById('mdContent')?.value;
-            if (!md) return;
-            const copyText = (text) => {
-                const el = document.createElement('textarea');
-                el.value = text;
-                el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
-                document.body.appendChild(el);
-                el.focus();
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-            };
-            try {
-                if (navigator.clipboard?.writeText) {
-                    await navigator.clipboard.writeText(md);
-                } else {
-                    copyText(md);
-                }
-                const orig = this.innerHTML;
-                this.innerHTML = '<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
-                this.classList.add('bg-green-500/10', '!border-green-400/30');
-                setTimeout(() => {
-                    this.innerHTML = orig;
-                    this.classList.remove('bg-green-500/10', '!border-green-400/30');
-                }, 2000);
-            } catch {
-                this.classList.add('bg-red-500/10');
-                setTimeout(() => this.classList.remove('bg-red-500/10'), 1000);
-            }
-        });
-
-        (function() {
-            const toggle = document.getElementById('reqBodyToggle');
-            const panel = document.getElementById('reqBodyPanel');
-            const arrow = document.getElementById('reqBodyArrow');
-            if (!toggle || !panel) return;
-            toggle.addEventListener('click', () => {
-                const open = panel.style.display === 'block';
-                panel.style.display = open ? 'none' : 'block';
-                if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+            apply(getTheme());
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+                if (getTheme() === 'system') apply('system');
             });
-        })();
+            document.getElementById('themeBtn').addEventListener('click', function () {
+                var current = document.documentElement.getAttribute('data-theme') ||
+                    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                var next = current === 'dark' ? 'light' : 'dark';
+                try { localStorage.setItem(KEY, next); } catch (e) {}
+                apply(next);
+            });
 
-        (function() {
-            const container = document.getElementById('traceFrames');
-            if (!container) return;
+            function flashCopy(btn, ok) {
+                var orig = btn.innerHTML;
+                btn.classList.toggle('ok', ok);
+                if (ok) btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
+                setTimeout(function () { btn.innerHTML = orig; btn.classList.remove('ok'); }, 1600);
+            }
+            function copyText(text, btn) {
+                function done(ok) { flashCopy(btn, ok); }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+                } else {
+                    var el = document.createElement('textarea');
+                    el.value = text; el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+                    document.body.appendChild(el); el.focus(); el.select();
+                    try { document.execCommand('copy'); done(true); } catch (e) { done(false); }
+                    document.body.removeChild(el);
+                }
+            }
+            document.getElementById('copyUrlBtn').addEventListener('click', function () {
+                copyText('[[ $request_url ]]', this);
+            });
+            document.getElementById('copyReportBtn').addEventListener('click', function () {
+                var md = document.getElementById('mdContent');
+                copyText(md ? md.value : '', this);
+            });
 
-            container.addEventListener('click', function(e) {
-                const header = e.target.closest('[data-frame-toggle]');
-                if (!header) return;
-                const id = header.getAttribute('data-frame-toggle');
-                const body = container.querySelector('[data-frame-body="' + id + '"]');
-                const arrow = header.querySelector('.arrow-icon');
+            var rail = document.getElementById('rail');
+            rail.addEventListener('click', function (e) {
+                var t = e.target.closest('[data-toggle]');
+                if (!t) return;
+                var id = t.getAttribute('data-toggle');
+                var body = rail.querySelector('[data-body="' + id + '"]');
                 if (!body) return;
-                const open = body.style.display === 'block';
+                var open = body.style.display === 'block';
                 body.style.display = open ? 'none' : 'block';
-                header.setAttribute('aria-expanded', String(!open));
-                if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+                t.setAttribute('aria-expanded', String(!open));
             });
-
-            container.addEventListener('keydown', function(e) {
+            rail.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
-                const h = e.target.closest('[data-frame-toggle]');
-                if (h) {
-                    e.preventDefault();
-                    h.click();
-                }
+                var t = e.target.closest('[data-toggle]');
+                if (t) { e.preventDefault(); t.click(); }
             });
 
-            const btn = document.getElementById('toggleAllFramesBtn');
-            const text = document.getElementById('toggleAllText');
-            let allOpen = false;
-            btn?.addEventListener('click', function() {
+            var expandBtn = document.getElementById('expandAllBtn');
+            var allOpen = false;
+            expandBtn.addEventListener('click', function () {
                 allOpen = !allOpen;
-                container.querySelectorAll('[data-frame-body]').forEach(b => {
-                    b.style.display = allOpen ? 'block' : 'none';
-                });
-                container.querySelectorAll('[data-frame-toggle]').forEach(h => {
-                    h.setAttribute('aria-expanded', String(allOpen));
-                    const a = h.querySelector('.arrow-icon');
-                    if (a) a.style.transform = allOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-                });
-                if (text) text.textContent = allOpen ? 'Collapse All' : 'Expand All';
+                rail.querySelectorAll('[data-body]').forEach(function (b) { b.style.display = allOpen ? 'block' : 'none'; });
+                rail.querySelectorAll('[data-toggle]').forEach(function (h) { h.setAttribute('aria-expanded', String(allOpen)); });
+                expandBtn.textContent = allOpen ? 'Collapse all' : 'Expand all';
             });
 
-            const count = container.querySelectorAll('[data-frame-toggle]').length;
-            const badge = document.getElementById('frameCountBadge');
-            if (badge && count > 0) badge.textContent = count + ' frames';
-        })();
+            var vendorBtn = document.getElementById('vendorToggle');
+            vendorBtn.addEventListener('click', function () {
+                var on = vendorBtn.getAttribute('aria-pressed') === 'true';
+                vendorBtn.setAttribute('aria-pressed', String(!on));
+                rail.classList.toggle('hide-vendor', !on);
+                vendorBtn.textContent = !on ? 'Show vendor' : 'Hide vendor';
+                updateCount();
+            });
 
-        (function() {
-            const toggle = document.querySelector('[data-headers-toggle]');
-            const panel = document.querySelector('[data-headers-panel]');
-            if (!toggle || !panel) return;
-            toggle.addEventListener('click', () => {
-                const open = panel.style.display === 'block';
-                panel.style.display = open ? 'none' : 'block';
-                toggle.setAttribute('aria-expanded', String(!open));
-                const arrow = toggle.querySelector('.arrow-icon');
-                if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+            var filterInput = document.getElementById('frameFilter');
+            filterInput.addEventListener('input', function () {
+                var q = filterInput.value.trim().toLowerCase();
+                rail.classList.toggle('filtering', q.length > 0);
+                rail.querySelectorAll('.frame').forEach(function (f) {
+                    var hay = f.getAttribute('data-search') || '';
+                    f.setAttribute('data-hide', (q && hay.indexOf(q) === -1) ? '1' : '0');
+                });
+                updateCount();
             });
-            toggle.addEventListener('keydown', e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggle.click();
-                }
-            });
-        })();
-        document.getElementById('copyUrlBtn')?.addEventListener('click', async function() {
-            const url = '[[ $request_url ]]';
-            const copyText = (text) => {
-                const el = document.createElement('textarea');
-                el.value = text;
-                el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
-                document.body.appendChild(el);
-                el.focus();
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-            };
-            try {
-                if (navigator.clipboard?.writeText) {
-                    await navigator.clipboard.writeText(url);
-                } else {
-                    copyText(url);
-                }
-                const originalSvg = this.innerHTML;
-                this.innerHTML = `<svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
-                this.classList.add('bg-green-50', 'dark:bg-green-500/10');
-                setTimeout(() => {
-                    this.innerHTML = originalSvg;
-                    this.classList.remove('bg-green-50', 'dark:bg-green-500/10');
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy:', err);
+
+            function updateCount() {
+                var visible = Array.prototype.filter.call(rail.querySelectorAll('.frame'), function (f) {
+                    var vendorHidden = rail.classList.contains('hide-vendor') && f.getAttribute('data-vendor') === '1';
+                    var filterHidden = rail.classList.contains('filtering') && f.getAttribute('data-hide') === '1';
+                    return !vendorHidden && !filterHidden;
+                });
+                var label = visible.length + ' frames';
+                document.getElementById('frameCount').textContent = label;
             }
-        });
+
+            function makeKvToggle(btn, panel) {
+                if (!btn || !panel) return;
+                btn.addEventListener('click', function () {
+                    var open = panel.style.display === 'block';
+                    panel.style.display = open ? 'none' : 'block';
+                    btn.setAttribute('aria-expanded', String(!open));
+                });
+            }
+            makeKvToggle(document.getElementById('headersToggle'), document.getElementById('headersPanel'));
+        })();
     </script>
 </body>
 

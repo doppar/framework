@@ -42,6 +42,7 @@ use Tests\Application\Mock\ClassWithVariadic;
 use Tests\Application\Mock\ComplexConstructorClass;
 use Tests\Application\Mock\ComplexDependencyGraph;
 use Tests\Application\Mock\ConcreteDependency;
+use Tests\Application\Mock\AnotherImplementation;
 use Tests\Application\Mock\ConcreteImplementation;
 use Tests\Application\Mock\Controllers\ControllerClass;
 use Tests\Application\Mock\Counter;
@@ -86,16 +87,11 @@ class ContainerTest extends TestCase
 
     protected function resetContainer(): void
     {
-        $reflection = new \ReflectionClass(Container::class);
-
-        $bindings = $reflection->getProperty('bindings');
-        $bindings->setValue(null, []);
-
-        $instances = $reflection->getProperty('instances');
-        $instances->setValue(null, []);
-
-        $instance = $reflection->getProperty('instance');
-        $instance->setValue(null, null);
+        // $bindings/$instances are per-instance now (see [[ArchNotes]]), so a
+        // fresh Container() already starts empty — no reflection needed for
+        // those. Only the static "active instance" pointer still needs
+        // clearing between tests.
+        Container::forgetInstance();
     }
 
     protected function tearDown(): void
@@ -256,6 +252,23 @@ class ContainerTest extends TestCase
 
         $resolved = $this->container->get(TestInterface::class);
         $this->assertSame($instance, $resolved);
+    }
+
+    public function testExplicitBindingIsNotShadowedByUnrelatedSingleton()
+    {
+        // An unrelated singleton, registered under its own class name,
+        // that happens to implement the same interface as an explicit
+        // binding must not shadow that binding.
+        $unrelated = new AnotherImplementation();
+        $this->container->instance(AnotherImplementation::class, $unrelated);
+
+        $expected = new ConcreteImplementation();
+        $this->container->bind(TestInterface::class, fn() => $expected);
+
+        $resolved = $this->container->get(TestInterface::class);
+
+        $this->assertSame($expected, $resolved);
+        $this->assertNotSame($unrelated, $resolved);
     }
 
     public function testMultipleInstanceBindings()
@@ -507,6 +520,185 @@ class ContainerTest extends TestCase
         $this->container->alias('alias1', 'alias2');
 
         $this->assertEquals('value', $this->container->get('alias2'));
+    }
+
+    public function testForgetResolvedViaAliasClearsSharedInstance()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $first = $this->container->get('alias');
+        $this->container->forgetResolved('alias');
+
+        $this->assertNotSame($first, $this->container->get('alias'));
+        $this->assertNotSame($first, $this->container->get('original'));
+    }
+
+    public function testInstanceOverrideViaAliasReachesTarget()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $fake = new \stdClass();
+        $this->container->instance('alias', $fake);
+
+        $this->assertSame($fake, $this->container->get('original'));
+        $this->assertSame($fake, $this->container->get('alias'));
+    }
+
+    public function testAliasToItselfThrows()
+    {
+        $this->expectException(\LogicException::class);
+        $this->container->alias('same', 'same');
+    }
+
+    public function testRepointingMidChainAliasThrowsInsteadOfLooping()
+    {
+        $this->container->singleton('c', fn() => 'value');
+        $this->container->alias('c', 'b');
+        $this->container->alias('b', 'a');
+
+        try {
+            $this->container->alias('a', 'b');
+            $this->fail('Expected a circular alias to be rejected.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('circular', $e->getMessage());
+        }
+
+        $this->assertSame('value', $this->container->get('a'));
+        $this->assertSame('c', $this->container->getAlias('a'));
+    }
+
+    public function testUsingThroughAliasRestoresOriginalBinding()
+    {
+        $original = new \stdClass();
+        $this->container->instance('original', $original);
+        $this->container->alias('original', 'alias');
+
+        $fake = new \stdClass();
+        $seen = $this->container->using(['alias' => $fake], fn($c) => $c->get('original'));
+
+        $this->assertSame($fake, $seen);
+        $this->assertSame($original, $this->container->get('original'));
+        $this->assertSame($original, $this->container->get('alias'));
+    }
+
+    public function testExtendThroughAliasWrapsTheTarget()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        $this->container->extend('alias', function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get('original')->extended);
+        $this->assertSame($this->container->get('original'), $this->container->get('alias'));
+    }
+
+    public function testResolvedAndIsResolvingFollowAliases()
+    {
+        $this->container->singleton('original', function ($c) {
+            $this->assertTrue($c->isResolving('alias'));
+            return new \stdClass();
+        });
+        $this->container->alias('original', 'alias');
+
+        $this->assertFalse($this->container->resolved('alias'));
+        $this->container->get('alias');
+        $this->assertTrue($this->container->resolved('alias'));
+        $this->assertTrue($this->container->resolved('original'));
+    }
+
+    public function testUnsetAliasLeavesTargetIntact()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+
+        unset($this->container['alias']);
+
+        $this->assertNotNull($this->container->get('original'));
+        $this->assertSame([], $this->container->getAliases());
+    }
+
+    public function testExtendAppliesToAnAlreadyResolvedSingleton()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->get('original');
+
+        $this->container->extend('original', function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get('original')->extended);
+    }
+
+    public function testExtendUnboundClassBuildsAndExtendsIt()
+    {
+        $this->container->extend(\stdClass::class, function ($object) {
+            $object->extended = true;
+            return $object;
+        });
+
+        $this->assertTrue($this->container->get(\stdClass::class)->extended);
+    }
+
+    public function testInstanceReplacesExecutionScopedValue()
+    {
+        $this->container->bindWithScope('scoped', fn() => new \stdClass(), Container::SCOPE_EXECUTION);
+
+        $fake = new \stdClass();
+        $resolved = null;
+        $this->container->runInContext('console', [], function () use ($fake, &$resolved) {
+            $this->container->get('scoped');
+            $this->container->instance('scoped', $fake);
+            $resolved = $this->container->get('scoped');
+        });
+
+        $this->assertSame($fake, $resolved);
+        $this->assertSame(Container::SCOPE_SINGLETON, $this->container->scopeOf('scoped'));
+    }
+
+    public function testUnsettingTargetRemovesItsAliases()
+    {
+        $this->container->singleton('original', fn() => new \stdClass());
+        $this->container->alias('original', 'alias');
+        $this->container->alias('alias', 'alias2');
+
+        unset($this->container['original']);
+
+        $this->assertSame([], $this->container->getAliases());
+        $this->assertSame('alias2', $this->container->getAlias('alias2'));
+    }
+
+    public function testExecutionScopeBindingThroughAliasRebindsTarget()
+    {
+        $this->container->singleton('target', fn() => 'target');
+        $this->container->alias('target', 'name');
+
+        $this->container->bindWithScope('name', fn() => 'own', Container::SCOPE_EXECUTION);
+
+        $resolved = [];
+        $this->container->runInContext('console', [], function () use (&$resolved) {
+            $resolved = [$this->container->get('name'), $this->container->get('target')];
+        });
+
+        $this->assertSame(['own', 'own'], $resolved);
+        $this->assertSame(['name' => 'target'], $this->container->getAliases());
+    }
+
+    public function testBindingThroughAliasRebindsTargetAndKeepsAlias()
+    {
+        $this->container->singleton('original', fn() => 'old');
+        $this->container->alias('original', 'alias');
+
+        $this->container->singleton('alias', fn() => 'new');
+
+        $this->assertSame('new', $this->container->get('original'));
+        $this->assertSame('new', $this->container->get('alias'));
+        $this->assertSame(['alias' => 'original'], $this->container->getAliases());
     }
 
     //========================================
@@ -2263,7 +2455,6 @@ class ContainerTest extends TestCase
         $this->assertEquals('value', $result);
     }
 
-    // has issue
     public function testMultipleContainerInstances()
     {
         $container1 = new Container();
@@ -2272,9 +2463,13 @@ class ContainerTest extends TestCase
         $container1->bind('service', fn() => 'container1');
         $container2->bind('service', fn() => 'container2');
 
-        // creating multiple instances of Container is meaningless
-        // every instance is just a handle to the same static state.
-        $this->assertEquals('container2', $container1->get('service'));
+        // $bindings/$instances are per-instance (see [[ArchNotes]] on the
+        // property declarations), so each Container is its own isolated
+        // registry — required for per-request isolation under a persistent
+        // worker runtime (Swoole/FrankenPHP/RoadRunner), where a fresh
+        // Container/Application per request must not see another request's
+        // bindings.
+        $this->assertEquals('container1', $container1->get('service'));
         $this->assertEquals('container2', $container2->get('service'));
     }
 
@@ -2283,8 +2478,12 @@ class ContainerTest extends TestCase
         Container::setInstance($this->container);
         $this->container->bind('service', fn() => 'value');
 
+        // Container::$instance is still a static "currently active container"
+        // pointer (intentional — it's what lets `app()`/facades resolve
+        // without a reference in hand), but a *new* Container() no longer
+        // inherits its bindings: storage itself is per-instance now.
         $newContainer = new Container();
-        $this->assertTrue($newContainer->has('service'));
+        $this->assertFalse($newContainer->has('service'));
     }
 
     public function testBindingPriorityOverAutoResolution()
@@ -2454,11 +2653,12 @@ class ContainerTest extends TestCase
     public function testFreezeIsIdempotent()
     {
         $service = new MockPaymentService();
+        $service->gateway = 'paypal';
         $service->freeze();
-        // $service->freeze(); // second call must not throw
-        // Phaseolies\DI\Exceptions\ImmutableViolationException: Cannot mutate property $gateway on immutable service [Tests\Application\Mock\Services\MockPaymentService]. Services marked #[Immutable] are frozen after instantiation.
+        $service->freeze(); // second call is a no-op and keeps the values
 
         $this->assertTrue($service->isFrozen());
+        $this->assertSame('paypal', $service->gateway);
     }
 
     // =========================================================================
@@ -2728,6 +2928,48 @@ class ContainerTest extends TestCase
         $cloned = clone $service;
     }
 
+    public function testMutationMessageNamesClassPropertyAndTheFix()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            $service->taxRate = 0.0;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$taxRate', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringContainsString('frozen once the container resolves them', $e->getMessage());
+            $this->assertStringContainsString('launcher', $e->getMessage());
+            $this->assertStringNotContainsString('ServiceProvider', $e->getMessage());
+        }
+    }
+
+    public function testCloneMessageSaysCloneNotProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            clone $service;
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('Cannot clone immutable service', $e->getMessage());
+            $this->assertStringContainsString(MockPaymentService::class, $e->getMessage());
+            $this->assertStringNotContainsString('$__clone', $e->getMessage());
+        }
+    }
+
+    public function testUnsetMessageNamesTheProperty()
+    {
+        $service = $this->container->make(MockPaymentService::class);
+
+        try {
+            unset($service->gateway);
+            $this->fail('Expected ImmutableViolationException');
+        } catch (ImmutableViolationException $e) {
+            $this->assertStringContainsString('$gateway', $e->getMessage());
+        }
+    }
+
     public function testCloningUnfrozenServiceIsAllowed()
     {
         $service = new MockPaymentService(); // not through container — not frozen yet
@@ -2877,6 +3119,118 @@ class ContainerTest extends TestCase
     }
 
     // =========================================================================
+    // SERVICES CONFIGURED IN A LAUNCHER (closure bindings and instance())
+    // =========================================================================
+
+    public function testSingletonClosureResultIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->assertFalse($payment->isFrozen());
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame($payment, $resolved);
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('paypal', $resolved->gateway);
+    }
+
+    public function testSingletonClosureServiceBlocksMutationAfterResolve()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->expectException(ImmutableViolationException::class);
+        $resolved->taxRate = 0.0;
+    }
+
+    public function testLauncherReferenceIsFrozenOnceTheContainerResolvesIt()
+    {
+        $payment = new MockPaymentService();
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+        $this->container->get(MockPaymentService::class);
+
+        // The launcher still holds the same object, and it is frozen too.
+        $this->expectException(ImmutableViolationException::class);
+        $payment->gateway = 'late change';
+    }
+
+    public function testInstanceIsFrozenOnFirstResolve()
+    {
+        $payment = new MockPaymentService();
+        $payment->retries = 9;
+
+        $this->container->instance(MockPaymentService::class, $payment);
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame(9, $resolved->retries);
+    }
+
+    public function testResolvingTwiceKeepsTheConfiguredValues()
+    {
+        $payment = new MockPaymentService();
+        $payment->gateway = 'paypal';
+        $payment->methods = ['wallet'];
+
+        $this->container->singleton(MockPaymentService::class, fn () => $payment);
+
+        $this->container->get(MockPaymentService::class);
+        $again = $this->container->get(MockPaymentService::class);
+
+        $this->assertSame('paypal', $again->gateway);
+        $this->assertSame(['wallet'], $again->methods);
+    }
+
+    public function testMakeWithClosureBindingFreezesEachResult()
+    {
+        $this->container->bind(MockPaymentService::class, fn () => new MockPaymentService());
+
+        $first  = $this->container->make(MockPaymentService::class);
+        $second = $this->container->make(MockPaymentService::class);
+
+        $this->assertNotSame($first, $second);
+        $this->assertTrue($first->isFrozen());
+        $this->assertTrue($second->isFrozen());
+    }
+
+    public function testClosureResultWithoutImmutableAttributeIsNotFrozen()
+    {
+        $this->container->singleton('plain', fn () => new \stdClass());
+
+        $resolved = $this->container->get('plain');
+        $resolved->anything = 'allowed';
+
+        $this->assertSame('allowed', $resolved->anything);
+    }
+
+    public function testClosureReturningNonObjectIsLeftAlone()
+    {
+        $this->container->bind('answer', fn () => 42);
+
+        $this->assertSame(42, $this->container->get('answer'));
+    }
+
+    public function testBuildWithValuesInsteadOfAClosureStillWorks()
+    {
+        $this->container->singleton(
+            MockPaymentService::class,
+            fn ($app) => $app->build(MockPaymentService::class)
+        );
+
+        $resolved = $this->container->get(MockPaymentService::class);
+
+        $this->assertTrue($resolved->isFrozen());
+        $this->assertSame('stripe', $resolved->gateway);
+    }
+
+    // =========================================================================
     // TRANSIENT BEHAVIOUR WITH IMMUTABLE
     // =========================================================================
 
@@ -2999,6 +3353,95 @@ class ContainerTest extends TestCase
 
         $this->assertTrue($paymentThrew);
         $this->assertTrue($mailerThrew);
+    }
+
+    public function testUsingOverridesForTheCallbackAndRestoresAfterwards()
+    {
+        $this->container->instance('mailer', 'real');
+
+        $inside = $this->container->using(['mailer' => 'fake'], fn(Container $c) => $c->make('mailer'));
+
+        $this->assertSame('fake', $inside);
+        $this->assertSame('real', $this->container->make('mailer'));
+    }
+
+    public function testUsingRemovesBindingsThatDidNotExistBefore()
+    {
+        $this->container->using(['scratch' => 'value'], function (Container $c) {
+            $this->assertTrue($c->hasInstance('scratch'));
+        });
+
+        $this->assertFalse($this->container->hasInstance('scratch'));
+        $this->assertArrayNotHasKey('scratch', $this->container->getBindings());
+        $this->assertArrayNotHasKey('scratch', $this->container->getInstances());
+    }
+
+    public function testUsingRestoresEvenWhenTheCallbackThrows()
+    {
+        $this->container->instance('mailer', 'real');
+
+        try {
+            $this->container->using(['mailer' => 'fake'], function () {
+                throw new RuntimeException('boom');
+            });
+            $this->fail('Expected the exception to propagate');
+        } catch (RuntimeException $e) {
+            $this->assertSame('boom', $e->getMessage());
+        }
+
+        $this->assertSame('real', $this->container->make('mailer'));
+    }
+
+    public function testUsingClosureIsAFactoryCalledOnceForTheScope()
+    {
+        $calls = 0;
+
+        $this->container->using(['token' => function () use (&$calls) {
+            $calls++;
+
+            return new \stdClass();
+        }], function (Container $c) {
+            $this->assertSame($c->make('token'), $c->make('token'));
+        });
+
+        $this->assertSame(1, $calls);
+    }
+
+    public function testUsingBuildsAClassNameOverride()
+    {
+        $this->container->bind(TestInterface::class, AnotherImplementation::class);
+
+        $this->container->using([TestInterface::class => ConcreteImplementation::class], function (Container $c) {
+            $this->assertInstanceOf(ConcreteImplementation::class, $c->make(TestInterface::class));
+        });
+
+        $this->assertInstanceOf(AnotherImplementation::class, $this->container->make(TestInterface::class));
+    }
+
+    public function testUsingRestoresTheSameSingletonInstanceThatWasResolvedBefore()
+    {
+        $this->container->singleton(Counter::class);
+        $before = $this->container->make(Counter::class);
+
+        $this->container->using([Counter::class => new Counter()], function (Container $c) use ($before) {
+            $this->assertNotSame($before, $c->make(Counter::class));
+        });
+
+        $this->assertSame($before, $this->container->make(Counter::class));
+    }
+
+    public function testUsingCanBeNested()
+    {
+        $this->container->instance('level', 'outer');
+
+        $result = $this->container->using(['level' => 'one'], function (Container $c) {
+            $c->using(['level' => 'two'], fn() => $this->assertSame('two', $c->make('level')));
+
+            return $c->make('level');
+        });
+
+        $this->assertSame('one', $result);
+        $this->assertSame('outer', $this->container->make('level'));
     }
 
     public function testMailerServiceReadsWorkAfterFreeze()

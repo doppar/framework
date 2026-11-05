@@ -65,6 +65,8 @@ class PresenterBundle implements JsonSerializable
      */
     public function __construct($collection, string $presenter)
     {
+        $this->assertPresenter($presenter);
+
         if (is_array($collection)) {
             if (isset($collection['data']) && $this->isPaginatedArray($collection)) {
                 $this->paginationMeta = $this->extractPaginationMeta($collection);
@@ -82,6 +84,26 @@ class PresenterBundle implements JsonSerializable
     }
 
     /**
+     * Ensure the configured class is a concrete Presenter implementation.
+     *
+     * @param string $presenter
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertPresenter(string $presenter): void
+    {
+        if (!class_exists($presenter) || !is_a($presenter, Presenter::class, true)) {
+            throw new \InvalidArgumentException(
+                "Presenter [{$presenter}] must be a concrete " . Presenter::class . ' class.'
+            );
+        }
+
+        if (!(new \ReflectionClass($presenter))->isInstantiable()) {
+            throw new \InvalidArgumentException("Presenter [{$presenter}] must be instantiable.");
+        }
+    }
+
+    /**
      * Check if the given array matches a paginated structure
      *
      * @param array $data
@@ -90,7 +112,8 @@ class PresenterBundle implements JsonSerializable
     protected function isPaginatedArray(array $data): bool
     {
         return isset($data['data']) &&
-            (isset($data['current_page']) || isset($data['meta']));
+            is_array($data['data']) &&
+            (isset($data['current_page']) || isset($data['last_page']) || is_array($data['meta'] ?? null));
     }
 
     /**
@@ -101,32 +124,84 @@ class PresenterBundle implements JsonSerializable
      */
     protected function extractPaginationMeta(array $paginatedData): array
     {
+        $nestedMeta = is_array($paginatedData['meta'] ?? null)
+            ? $paginatedData['meta']
+            : [];
+        $source = array_merge($nestedMeta, $paginatedData);
+
+        $currentPage = max((int) ($source['current_page'] ?? 1), 1);
+        $perPage = max((int) ($source['per_page'] ?? 15), 1);
+        $total = max((int) ($source['total'] ?? count($paginatedData['data'])), 0);
+        $lastPage = max((int) ($source['last_page'] ?? ceil($total / $perPage)), 1);
+        $path = (string) ($source['path'] ?? $this->requestUrl());
+
         $meta = [
-            'current_page' => $paginatedData['current_page'] ?? 1,
-            'per_page' => $paginatedData['per_page'] ?? 15,
-            'total' => $paginatedData['total'] ?? count($paginatedData['data']),
-            'last_page' => $paginatedData['last_page'] ?? 1,
-            'from' => $paginatedData['from'] ?? 1,
-            'to' => $paginatedData['to'] ?? count($paginatedData['data']),
-            'path' => $paginatedData['path'] ?? request()->url(),
+            'current_page' => $currentPage,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'from' => $source['from'] ?? 1,
+            'to' => $source['to'] ?? count($paginatedData['data']),
+            'path' => $path,
         ];
 
-        $currentPage = $meta['current_page'];
-        $lastPage = $meta['last_page'];
-        $path = $meta['path'];
-
-        $meta['first_page_url'] = $paginatedData['first_page_url'] ?? $this->buildPageUrl($path, 1);
-        $meta['last_page_url'] = $paginatedData['last_page_url'] ?? $this->buildPageUrl($path, $lastPage);
-
-        $meta['next_page_url'] = $currentPage < $lastPage
-            ? $this->buildPageUrl($path, $currentPage + 1)
-            : null;
-
-        $meta['prev_page_url'] = $currentPage > 1
-            ? $this->buildPageUrl($path, $currentPage - 1)
-            : null;
+        $meta['first_page_url'] = $this->paginationUrl($source, 'first_page_url', $path, 1);
+        $meta['last_page_url'] = $this->paginationUrl($source, 'last_page_url', $path, $lastPage);
+        $meta['next_page_url'] = array_key_exists('next_page_url', $source)
+            ? $source['next_page_url']
+            : ($currentPage < $lastPage ? $this->buildPageUrl($path, $currentPage + 1) : null);
+        $meta['previous_page_url'] = array_key_exists('previous_page_url', $source)
+            ? $source['previous_page_url']
+            : ($source['prev_page_url'] ?? ($currentPage > 1
+                ? $this->buildPageUrl($path, $currentPage - 1)
+                : null));
 
         return $meta;
+    }
+
+    /**
+     * Get the pagination URL
+     *
+     * @param array $source
+     * @param string $key
+     * @param string $path
+     * @param int $page
+     * @return string|null
+     */
+    protected function paginationUrl(array $source, string $key, string $path, int $page): ?string
+    {
+        return array_key_exists($key, $source)
+            ? $source[$key]
+            : $this->buildPageUrl($path, $page);
+    }
+
+    /**
+     * Get the request URL
+     *
+     * @return string
+     */
+    protected function requestUrl(): string
+    {
+        try {
+            return (string) request()->url();
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /**
+     * Get the request query string
+     *
+     * @return array
+     */
+    protected function requestQuery(): array
+    {
+        try {
+            $query = request()->query();
+            return is_array($query) ? $query : [];
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -138,11 +213,18 @@ class PresenterBundle implements JsonSerializable
      */
     protected function buildPageUrl(string $path, int $page): string
     {
-        $query = request()->query();
-
+        $query = $this->requestQuery();
         $query['page'] = $page;
 
-        return $path . '?' . http_build_query($query);
+        if ($path === '') {
+            return '?' . http_build_query($query);
+        }
+
+        $separator = str_contains($path, '?')
+            ? (str_ends_with($path, '?') || str_ends_with($path, '&') ? '' : '&')
+            : '?';
+
+        return $path . $separator . http_build_query($query);
     }
 
     /**
@@ -212,11 +294,18 @@ class PresenterBundle implements JsonSerializable
      */
     public function jsonSerialize(): array
     {
-        if ($this->lazy) {
-            return $this->serializeLazy();
+        $data = $this->lazy
+            ? $this->serializeLazy()
+            : $this->serializeEager();
+
+        if (!empty($this->paginationMeta)) {
+            return [
+                'data' => $data,
+                'meta' => $this->paginationMeta,
+            ];
         }
 
-        return $this->serializeEager();
+        return $data;
     }
 
     /**
@@ -226,8 +315,33 @@ class PresenterBundle implements JsonSerializable
      */
     protected function serializeEager(): array
     {
-        $data = [];
+        return iterator_to_array($this->resources(), true);
+    }
 
+    /**
+     * Serialize resources using a generator. JSON serialization still
+     * materializes an array for JSON compatibility.
+     */
+    protected function serializeLazy(): array
+    {
+        return iterator_to_array($this->resources(), true);
+    }
+
+    /**
+     * Yield transformed resources without materializing the complete result.
+     *
+     * @return \Generator<int|string, array>
+     */
+    public function toIterable(): \Generator
+    {
+        yield from $this->resources();
+    }
+
+    /**
+     * @return \Generator<int|string, array>
+     */
+    protected function resources(): \Generator
+    {
         foreach ($this->collection as $key => $item) {
             $resource = new $this->presenter($item);
 
@@ -240,43 +354,11 @@ class PresenterBundle implements JsonSerializable
             }
 
             if ($this->preserveKeys) {
-                $data[$key] = $resource->jsonSerialize();
+                yield $key => $resource->jsonSerialize();
             } else {
-                $data[] = $resource->jsonSerialize();
+                yield $resource->jsonSerialize();
             }
         }
-
-        return $data;
-    }
-
-    /**
-     * Serialize resources using a generator
-     *
-     * @return array
-     */
-    protected function serializeLazy(): array
-    {
-        $generator = function () {
-            foreach ($this->collection as $key => $item) {
-                $resource = new $this->presenter($item);
-
-                if (!empty($this->only)) {
-                    $resource->only($this->only);
-                }
-
-                if (!empty($this->except)) {
-                    $resource->except($this->except);
-                }
-
-                if ($this->preserveKeys) {
-                    yield $key => $resource->jsonSerialize();
-                } else {
-                    yield $resource->jsonSerialize();
-                }
-            }
-        };
-
-        return iterator_to_array($generator());
     }
 
     /**
@@ -286,16 +368,7 @@ class PresenterBundle implements JsonSerializable
      */
     public function paginate(): array
     {
-        $data = $this->jsonSerialize();
-
-        if (!empty($this->paginationMeta)) {
-            return [
-                'data' => $data,
-                'meta' => $this->paginationMeta
-            ];
-        }
-
-        return $data;
+        return $this->jsonSerialize();
     }
 
     /**

@@ -36,7 +36,7 @@ class MakeRequestCommand extends Command
             }
 
             $namespace = 'App\\Http\\Validations' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Http/Validations', $name);
+            $filePath = $this->generatedFilePath('src/Http/Validations', $name);
 
             // Check if request already exists
             if (file_exists($filePath)) {

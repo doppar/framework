@@ -101,9 +101,26 @@ class FileSystemTest extends TestCase
         $this->assertEquals($this->tmpDir . '/uploads/image.jpg', $result);
     }
 
-    public function testStoreageBasePathReturnsFilePath()
+    public function testStorageBasePathReturnsFilePath()
     {
-        $this->assertEquals($this->tmpDir, $this->fs->storeageBasePath());
+        $this->assertSame($this->tmpDir, $this->fs->storageBasePath());
+    }
+
+    public function testDeprecatedStoreageBasePathAliasReturnsSameValue()
+    {
+        $this->assertSame($this->fs->storageBasePath(), $this->fs->storeageBasePath());
+    }
+
+    public function testDeprecatedAliasDelegatesToStorageBasePath()
+    {
+        $fs = new class('/original') extends FileSystem {
+            public function storageBasePath(): string
+            {
+                return '/overridden';
+            }
+        };
+
+        $this->assertSame('/overridden', $fs->storeageBasePath());
     }
 
     public function testIsDirectoryExistsCreatesDirectoryIfMissing()
@@ -171,7 +188,7 @@ class FileSystemTest extends TestCase
         $this->assertSame('profile_image.png', $customFs->getFileName($file));
     }
 
-    public function testPutReturnsFalseWhenSourceStreamCannotBeOpened()
+    public function testPutThrowsAClearErrorWhenTheTemporaryFileIsGone()
     {
         $file = new \Phaseolies\Support\File([
             'name' => 'missing.txt',
@@ -181,20 +198,31 @@ class FileSystemTest extends TestCase
             'size' => 0,
         ]);
 
-        $warning = null;
-        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
-            $warning = $message;
-            return true;
-        }, E_WARNING);
+        $this->expectException(\Phaseolies\Support\Storage\FileNotFoundException::class);
+        $this->expectExceptionMessage('may have been moved already');
+
+        $this->fs->put('uploads', $file);
+    }
+
+    public function testPutNamesTheMissingTemporaryPathInTheError()
+    {
+        $source = $this->tmpDir . '/gone-' . uniqid() . '.txt';
+        $file = new \Phaseolies\Support\File([
+            'name' => 'photo.png',
+            'type' => 'image/png',
+            'tmp_name' => $source,
+            'error' => UPLOAD_ERR_OK,
+            'size' => 0,
+        ]);
 
         try {
-            $this->assertFalse($this->fs->put('uploads', $file));
-        } finally {
-            restore_error_handler();
+            $this->fs->put('uploads', $file);
+            $this->fail('Expected a FileNotFoundException.');
+        } catch (\Phaseolies\Support\Storage\FileNotFoundException $e) {
+            $this->assertSame("Uploaded file does not exist at path {$source}. It may have been moved already.", $e->getMessage());
         }
 
-        $this->assertNotNull($warning);
-        $this->assertStringContainsString('Failed to open stream', $warning);
+        $this->assertFileDoesNotExist($this->tmpDir . '/uploads/photo.png');
     }
 
     public function testPutWritesUsingConfiguredCustomFileName()
@@ -215,5 +243,64 @@ class FileSystemTest extends TestCase
 
         $this->assertTrue($customFs->put('uploads', $file));
         $this->assertFileExists($this->tmpDir . '/uploads/avatar.jpeg');
+    }
+
+    // ==================== PATH TRAVERSAL TESTS ====================
+
+    public function testDestinationFileRejectsPathTraversalInPath()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('../../etc', 'passwd');
+    }
+
+    public function testDestinationFileRejectsPathTraversalInFileName()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('uploads', '../../etc/passwd');
+    }
+
+    public function testIsDirectoryExistsRejectsPathTraversal()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->isDirectoryExists('../outside');
+    }
+
+    public function testDestinationFileRejectsBackslashPathTraversal()
+    {
+        // Windows-style separators must be caught too, not just "/".
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->fs->destinationFile('uploads', '..\\..\\windows\\win.ini');
+    }
+
+    public function testDestinationFileHandlesRootConfiguredWithTrailingBackslash()
+    {
+        // Simulates a Windows-style config value like "C:\storage\".
+        $winStyleFs = new FileSystem(rtrim($this->tmpDir, '/') . '\\');
+
+        $result = $winStyleFs->destinationFile('uploads', 'image.jpg');
+
+        $this->assertEquals($this->tmpDir . '/uploads/image.jpg', $result);
+    }
+
+    public function testResolvePathRejectsSymlinkEscapingRoot()
+    {
+        $outside = sys_get_temp_dir() . '/doppar_fs_outside_' . uniqid();
+        mkdir($outside, 0755, true);
+        file_put_contents($outside . '/secret.txt', 'top secret');
+
+        symlink($outside, $this->tmpDir . '/escape');
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            $this->fs->destinationFile('escape', 'secret.txt');
+        } finally {
+            unlink($this->tmpDir . '/escape');
+            unlink($outside . '/secret.txt');
+            rmdir($outside);
+        }
     }
 }

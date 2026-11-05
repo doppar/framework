@@ -2,11 +2,20 @@
 
 namespace Tests\Unit\Error;
 
+use Phaseolies\Application;
+use Phaseolies\DI\Container;
 use Phaseolies\Error\Traces\Frame;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionProperty;
 
 class FrameTest extends TestCase
 {
+    protected function tearDown(): void
+    {
+        Container::forgetInstance();
+    }
+
     private function makeTrace(array $overrides = []): array
     {
         return array_merge([
@@ -216,10 +225,13 @@ class FrameTest extends TestCase
 
     public function testGetShortFileRequiresBootstrappedApp()
     {
-        // Define BASE_PATH to simulate bootstrapped app
-        if (!defined('BASE_PATH')) {
-            define('BASE_PATH', '/var/www/html');
-        }
+        // Bind an Application with a known base path to simulate a bootstrapped
+        // app, bypassing the constructor's side effects (env loading, config,
+        // providers) since only basePath() is needed here.
+        $app = (new ReflectionClass(Application::class))->newInstanceWithoutConstructor();
+        $basePathProperty = new ReflectionProperty(Application::class, 'basePath');
+        $basePathProperty->setValue($app, '/var/www/html');
+        Container::setInstance($app);
 
         $frame = new Frame($this->makeTrace(['file' => '/var/www/html/app/Http/Controllers/TestController.php']));
 

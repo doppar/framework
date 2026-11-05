@@ -46,8 +46,8 @@ export default defineConfig({
     publicDir: false,
     resolve: {
         alias: {
-            '~client': path.resolve(__dirname, 'resources/client'),
-            '@': path.resolve(__dirname, 'resources/client/js'),
+            '~client': path.resolve(__dirname, 'templates/client'),
+            '@': path.resolve(__dirname, 'templates/client/js'),
         },
     },
     server: {

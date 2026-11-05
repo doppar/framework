@@ -30,7 +30,7 @@ class MakeRuleCommand extends Command
         return $this->executeWithTiming(function () {
             [$name, $parts, $className] = $this->splitGeneratedName((string) $this->argument('name'));
             $namespace = 'App\\Http\\Validations\\Rules' . (count($parts) > 0 ? '\\' . implode('\\', $parts) : '');
-            $filePath = $this->generatedFilePath('app/Http/Validations/Rules', $name);
+            $filePath = $this->generatedFilePath('src/Http/Validations/Rules', $name);
 
             // Check if rule already exists
             if (file_exists($filePath)) {

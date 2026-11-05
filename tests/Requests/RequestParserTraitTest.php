@@ -2,14 +2,14 @@
 
 namespace Tests\Unit\Traits;
 
-use Tests\Support\Kernel;
+use Tests\Support\Gateway;
 use Phaseolies\Support\Router;
 use Phaseolies\Http\Request;
 use Phaseolies\DI\Container;
 use PHPUnit\Framework\TestCase;
 
-if (!class_exists('App\Http\Kernel')) {
-    class_alias(Kernel::class, 'App\Http\Kernel');
+if (!class_exists('App\Http\Gateway')) {
+    class_alias(Gateway::class, 'App\Http\Gateway');
 }
 
 class RequestParserTraitTest extends TestCase
@@ -21,7 +21,11 @@ class RequestParserTraitTest extends TestCase
     {
         parent::setUp();
 
+        // Bindings are per-instance now (see [[ArchNotes]] in
+        // DI/Container.php), so this container must be activated for the
+        // global app()/request() helpers under test to see it.
         $this->container = new Container();
+        Container::setInstance($this->container);
         $this->request = new Request();
         $this->container->singleton('request', fn() => $this->request);
         $this->container->singleton('route', Router::class);
@@ -41,6 +45,7 @@ class RequestParserTraitTest extends TestCase
         $_POST = [];
         $_COOKIE = [];
         $_FILES = [];
+        Container::forgetInstance();
         parent::tearDown();
     }
 
@@ -62,7 +67,7 @@ class RequestParserTraitTest extends TestCase
         $_POST = $post;
         $_COOKIE = $cookies;
 
-        return new Request();
+        return Request::createFromGlobals();
     }
 
     // ===========================

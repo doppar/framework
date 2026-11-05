@@ -495,7 +495,8 @@ class TranslatorTest extends TestCase
 
     public function testGetWithNullLocaleUsesCurrent(): void
     {
-        $this->loader->method('load')
+        $this->loader->expects($this->once())
+            ->method('load')
             ->with('fr', 'messages', null)
             ->willReturn(['welcome' => 'Bienvenue!']);
 
@@ -523,7 +524,8 @@ class TranslatorTest extends TestCase
 
     public function testGetWithNamespace(): void
     {
-        $this->loader->method('load')
+        $this->loader->expects($this->once())
+            ->method('load')
             ->with('en', 'messages', 'package')
             ->willReturn(['welcome' => 'Package Welcome!']);
 

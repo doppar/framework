@@ -18,7 +18,7 @@ class PaginationPublishCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Publish pagination views to resources/views/vendor/pagination';
+    protected $description = 'Publish pagination views to templates/views/vendor/pagination';
 
     /**
      * Execute the console command.
@@ -27,8 +27,8 @@ class PaginationPublishCommand extends Command
      */
     public function handle(): int
     {
-        return $this->executeWithTiming(function() {
-            $paginationPath = resource_path('views/vendor/pagination');
+        return $this->executeWithTiming(function () {
+            $paginationPath = template_path('views/vendor/pagination');
 
             if (!is_dir($paginationPath)) {
                 if (!mkdir($paginationPath, 0755, true)) {

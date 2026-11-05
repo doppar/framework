@@ -35,11 +35,25 @@ class Database
     protected static $transactions = [];
 
     /**
+     * Signals waiting for a transaction to settle, per connection and nesting level
+     *
+     * @var array<string, array<int, array<int, array{0: \Phaseolies\Signals\Contracts\SignalBusInterface, 1: object}>>>
+     */
+    protected static $pendingSignals = [];
+
+    /**
      * The driver instances for each connection
      *
      * @var array<string, \Phaseolies\Database\Contracts\Driver\DriverInterface>
      */
     protected static $drivers = [];
+
+    /**
+     * Statements captured while pretending, or null when running for real
+     *
+     * @var array<int, array{sql: string, bindings: array}>|null
+     */
+    protected static ?array $pretendLog = null;
 
     /**
      * The connection name for this instance
@@ -193,12 +207,15 @@ class Database
     {
         $pdo = $this->getPdo();
         $connection = $this->connection ?? config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
 
-        if (static::$transactions[$connection] === 1) {
+        if ($level === 1) {
             $pdo->commit();
         }
 
-        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
+        static::$transactions[$connection] = max(0, $level - 1);
+
+        static::settleSignals($connection, $level);
     }
 
     /**
@@ -211,14 +228,99 @@ class Database
     {
         $pdo = $this->getPdo();
         $connection = $this->connection ?? config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
 
-        if (static::$transactions[$connection] === 1) {
+        // Dropped first, so a rollback that itself fails can never leak them.
+        static::discardSignals($connection, $level);
+
+        if ($level === 1) {
             $pdo->rollBack();
         } else {
-            $pdo->exec("ROLLBACK TO SAVEPOINT trans" . static::$transactions[$connection]);
+            $pdo->exec("ROLLBACK TO SAVEPOINT trans" . $level);
         }
 
-        static::$transactions[$connection] = max(0, static::$transactions[$connection] - 1);
+        static::$transactions[$connection] = max(0, $level - 1);
+    }
+
+    /**
+     * Hold a signal until the open transaction on a connection settles
+     *
+     * @param \Phaseolies\Signals\Contracts\SignalBusInterface $bus
+     * @param object $signal
+     * @param string|null $connection
+     * @return bool
+     */
+    public static function stageSignal(\Phaseolies\Signals\Contracts\SignalBusInterface $bus, object $signal, ?string $connection = null): bool
+    {
+        $connection = $connection ?: config('database.default');
+        $level = static::$transactions[$connection] ?? 0;
+
+        if ($level === 0) {
+            return false;
+        }
+
+        static::$pendingSignals[$connection][$level][] = [$bus, $signal];
+
+        return true;
+    }
+
+    /**
+     * Hand the signals of a committed level to the parent, or deliver them at the outermost level
+     *
+     * @param string $connection
+     * @param int $level
+     * @return void
+     */
+    protected static function settleSignals(string $connection, int $level): void
+    {
+        $signals = static::$pendingSignals[$connection][$level] ?? null;
+
+        if ($signals === null) {
+            return;
+        }
+
+        unset(static::$pendingSignals[$connection][$level]);
+
+        if ($level > 1) {
+            static::$pendingSignals[$connection][$level - 1] = array_merge(
+                static::$pendingSignals[$connection][$level - 1] ?? [],
+                $signals
+            );
+
+            return;
+        }
+
+        if (empty(static::$pendingSignals[$connection])) {
+            unset(static::$pendingSignals[$connection]);
+        }
+
+        foreach ($signals as [$bus, $signal]) {
+            $bus->settle($signal);
+        }
+    }
+
+    /**
+     * Drop the signals held by a level and every level inside it
+     *
+     * @param string $connection
+     * @param int $level
+     * @return void
+     */
+    protected static function discardSignals(string $connection, int $level): void
+    {
+        if (!isset(static::$pendingSignals[$connection])) {
+            return;
+        }
+
+        foreach (array_keys(static::$pendingSignals[$connection]) as $held) {
+            if ($held >= $level) {
+                unset(static::$pendingSignals[$connection][$held]);
+            }
+        }
+
+        if (empty(static::$pendingSignals[$connection])) {
+            unset(static::$pendingSignals[$connection]);
+        }
     }
 
     /**
@@ -381,15 +483,29 @@ class Database
      * @param array $params
      * @return array
      * @throws PDOException
+     * @throws \InvalidArgumentException
      */
     public static function view(string $viewName, array $where = [], array $params = []): array
     {
-        $sql = "SELECT * FROM {$viewName}";
+        if (!static::isValidIdentifier($viewName)) {
+            throw new \InvalidArgumentException("Invalid view name \"{$viewName}\".");
+        }
+
+        $quote = static::getPdoInstance()->getAttribute(PDO::ATTR_DRIVER_NAME) === 'pgsql' ? '"' : '`';
+        $quoteId = fn(string $id): string => $quote . str_replace('.', "{$quote}.{$quote}", $id) . $quote;
+
+        $sql = "SELECT * FROM " . $quoteId($viewName);
 
         if (!empty($where)) {
             $conditions = [];
             foreach ($where as $column => $value) {
-                $conditions[] = "{$column} = :{$column}";
+                $column = (string) $column;
+
+                if (!static::isValidIdentifier($column, false)) {
+                    throw new \InvalidArgumentException("Invalid column name \"{$column}\".");
+                }
+
+                $conditions[] = $quoteId($column) . " = :{$column}";
                 $params[":{$column}"] = $value;
             }
             $sql .= " WHERE " . implode(' AND ', $conditions);
@@ -454,6 +570,12 @@ class Database
      */
     public function execute(string $sql, array $params = []): int
     {
+        if (static::$pretendLog !== null) {
+            static::$pretendLog[] = ['sql' => $sql, 'bindings' => $params];
+
+            return 0;
+        }
+
         $pdo = $this->getPdo();
         $driver = $this->getDriver();
 
@@ -477,6 +599,36 @@ class Database
         $stmt->execute($params);
 
         return $stmt->rowCount();
+    }
+
+    /**
+     * Run the callback without executing any write statements, instead capturing them for inspection.
+     *
+     * @param \Closure $callback
+     * @return array<int, array{sql: string, bindings: array}>
+     */
+    public static function pretend(\Closure $callback): array
+    {
+        $previous = static::$pretendLog;
+        static::$pretendLog = [];
+
+        try {
+            $callback();
+
+            return static::$pretendLog;
+        } finally {
+            static::$pretendLog = $previous;
+        }
+    }
+
+    /**
+     * Determine if statements are currently being captured instead of run
+     *
+     * @return bool
+     */
+    public static function isPretending(): bool
+    {
+        return static::$pretendLog !== null;
     }
 
     /**
@@ -588,6 +740,8 @@ class Database
                 static::$transactions[$connection] = 0;
             }
 
+            unset(static::$pendingSignals[$connection]);
+
             return true;
         } catch (\Throwable $e) {
             if (function_exists('error_log')) {
@@ -671,5 +825,6 @@ class Database
         static::$connections = [];
         static::$drivers = [];
         static::$transactions = [];
+        static::$pendingSignals = [];
     }
 }

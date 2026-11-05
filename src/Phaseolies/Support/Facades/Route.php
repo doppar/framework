@@ -2,6 +2,8 @@
 
 namespace Phaseolies\Support\Facades;
 
+use Phaseolies\Facade\BaseFacade;
+
 /**
  * @method static \Phaseolies\Support\Router get(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router post(string $uri, array|string|callable|null $callback)
@@ -11,23 +13,29 @@ namespace Phaseolies\Support\Facades;
  * @method static \Phaseolies\Support\Router options(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router head(string $uri, array|string|callable|null $callback)
  * @method static \Phaseolies\Support\Router any(string $uri, array|string|callable|null $callback)
+ * @method static void group(array $attributes, \Closure $callback)
+ * @method static \Phaseolies\Support\Router where(string|array $name, ?string $expression = null)
+ * @method static \Phaseolies\Support\Router whereNumber(string|array $params)
+ * @method static \Phaseolies\Support\Router whereAlpha(string|array $params)
+ * @method static \Phaseolies\Support\Router whereAlphaNumeric(string|array $params)
+ * @method static \Phaseolies\Support\Router whereUuid(string|array $params)
+ * @method static \Phaseolies\Support\Router whereUlid(string|array $params)
+ * @method static \Phaseolies\Support\Router whereIn(string $param, array $values)
+ * @method static void pattern(string $name, string $expression)
  * @method static \Phaseolies\Support\Router redirect(string $uri, string $destination, int $status = 302)
- * @method static \Phaseolies\Support\Router bundle(string $uri, string $controller, array $options = []): void
- * @method static \Phaseolies\Support\Router apiBundle(string $uri, string $controller, array $options = []): void
- * @method static \Phaseolies\Support\Router nestedBundle(string $parent, string $child, string $controller, array $options = []): void
- * @method static \Phaseolies\Support\Router getCurrentMiddlewareNames(): ?array
- * @method static \Phaseolies\Support\Router getRouteNames(): ?array
- * @method static \Phaseolies\Support\Router has(string $name): bool
- * @method static \Phaseolies\Support\Router is(string $name): bool
- * @method static \Phaseolies\Support\Router currentRouteName(): ?string
- * @method static \Phaseolies\Support\Router currentRouteAction(): string|array|null
- * @method static \Phaseolies\Support\Router currentRouteUsesController(string $controllerClass): bool
+ * @method static void bundle(string $uri, string $controller, array $options = [])
+ * @method static void apiBundle(string $uri, string $controller, array $options = [])
+ * @method static void nestedBundle(string $parent, string $child, string $controller, array $options = [])
+ * @method static array|null getCurrentMiddlewareNames()
+ * @method static array|null getRouteNames()
+ * @method static bool has(string $name)
+ * @method static bool is(string $name)
+ * @method static string|null currentRouteName()
+ * @method static string|array|null currentRouteAction()
+ * @method static bool currentRouteUsesController(string $controllerClass): bool
  *
  * @see \Phaseolies\Support\Router
  */
-
-use Phaseolies\Facade\BaseFacade;
-
 class Route extends BaseFacade
 {
     protected static function getFacadeAccessor()

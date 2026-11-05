@@ -3,25 +3,38 @@
 namespace Phaseolies\Support;
 
 use Ramsey\Collection\Collection;
-use Phaseolies\Utilities\Attributes\Resolver;
-use Phaseolies\Utilities\Attributes\Middleware;
-use Phaseolies\Utilities\Attributes\BindPayload;
-use Phaseolies\Utilities\Attributes\Bind;
+use Phaseolies\Middleware\Attributes\Middleware;
+use Phaseolies\Support\Router\Plan\ActionPlanStore;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
 use Phaseolies\Support\Router\InteractsWithBundleRouter;
 use Phaseolies\Support\Router\InteractsWithDynamicControllerBinding;
 use Phaseolies\Middleware\Contracts\Middleware as ContractsMiddleware;
+use Phaseolies\Middleware\Middleware as MiddlewareChain;
 use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Entity\Model;
 use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
-use App\Http\Kernel;
+use Phaseolies\Http\Contracts\GatewayInterface;
 
-class Router extends Kernel
+class Router
 {
     use InteractsWithBundleRouter, InteractsWithCurrentRouter, InteractsWithDynamicControllerBinding;
+
+    /**
+     * The application's HTTP middleware gateway
+     *
+     * @var GatewayInterface
+     */
+    protected GatewayInterface $gateway;
+
+    /**
+     * Compiled and memoized action plans
+     *
+     * @var ActionPlanStore|null
+     */
+    private ?ActionPlanStore $actionPlans = null;
 
     /**
      * Holds the registered routes.
@@ -43,6 +56,19 @@ class Router extends Kernel
      * @var array<string, string>
      */
     public static array $namedRoutes = [];
+
+    /**
+     * Matches a route parameter, `{id}` or `{id:constraint}`. The constraint may
+     * use braces for quantifiers (`{id:\d{4}}`) but cannot nest them any deeper.
+     */
+    protected const PARAM_PATTERN = '/\{(\w+)(?::((?:[^{}]|\{[^{}]*\})+))?\}/';
+
+    /**
+     * Constraints applied to every route parameter of the given name, see pattern().
+     *
+     * @var array<string, string>
+     */
+    public static array $patterns = [];
 
     /**
      * The path of the current route being defined.
@@ -96,6 +122,64 @@ class Router extends Kernel
     protected static bool $cacheLoaded = false;
 
     /**
+     * Global middleware pushed at runtime by launchers (e.g. packages)
+     *
+     * @var array<int, class-string>
+     */
+    protected array $pushedGlobalMiddleware = [];
+
+    /**
+     * Create a new router instance.
+     *
+     * @param GatewayInterface $gateway
+     */
+    public function __construct(GatewayInterface $gateway)
+    {
+        $this->gateway = $gateway;
+    }
+
+    /**
+     * Get the application's HTTP middleware gateway.
+     *
+     * @return GatewayInterface
+     */
+    public function getGateway(): GatewayInterface
+    {
+        return $this->gateway;
+    }
+
+    /**
+     * Push a middleware onto the global chain from a launcher
+     *
+     * @param class-string $middleware
+     * @return void
+     */
+    public function pushGlobalMiddleware(string $middleware): void
+    {
+        if (!in_array($middleware, $this->pushedGlobalMiddleware, true)) {
+            $this->pushedGlobalMiddleware[] = $middleware;
+        }
+    }
+
+    /**
+     * Get the global middleware: the gateway's list followed by any pushed ones.
+     *
+     * @return array<int, class-string|string>
+     */
+    public function getGlobalMiddleware(): array
+    {
+        $global = $this->gateway->getGlobalMiddleware();
+
+        foreach ($this->pushedGlobalMiddleware as $middleware) {
+            if (!in_array($middleware, $global, true)) {
+                $global[] = $middleware;
+            }
+        }
+
+        return $global;
+    }
+
+    /**
      * Initialize the cache path
      *
      * @return void
@@ -130,6 +214,31 @@ class Router extends Kernel
         ];
 
         file_put_contents(static::$cachePath, '<?php return ' . var_export($cacheData, true) . ';');
+
+        $this->cacheActionPlans($cacheData['routes']);
+    }
+
+    /**
+     * Compile the action plan of every cached route
+     *
+     * @param array $routes
+     * @return void
+     */
+    protected function cacheActionPlans(array $routes): void
+    {
+        $actions = [];
+
+        foreach ($routes as $entries) {
+            foreach ($entries as $entry) {
+                ['callback' => $callback] = $this->unwrapRouteEntry($entry);
+
+                $action = is_array($callback) ? $callback : [$callback, '__invoke'];
+
+                $actions[ActionPlanStore::key($action[0], $action[1])] = $action;
+            }
+        }
+
+        $this->actionPlans()->compile(array_values($actions));
     }
 
     /**
@@ -211,6 +320,9 @@ class Router extends Kernel
 
         static::$cacheLoaded = true;
 
+        // Plans compiled with these routes are valid for them; use them.
+        $this->actionPlans()->useCompiled();
+
         return true;
     }
 
@@ -221,7 +333,7 @@ class Router extends Kernel
      */
     public function shouldCacheRoutes(): bool
     {
-        return env('APP_ROUTE_CACHE', false) === 'true';
+        return env('APP_ROUTE_CACHE', false);
     }
 
     /**
@@ -233,11 +345,13 @@ class Router extends Kernel
     {
         $this->initializeCachePath();
 
+        $plansCleared = $this->actionPlans()->clear();
+
         if (file_exists(static::$cachePath)) {
-            return @unlink(static::$cachePath);
+            return @unlink(static::$cachePath) && $plansCleared;
         }
 
-        return true;
+        return $plansCleared;
     }
 
     /**
@@ -298,7 +412,7 @@ class Router extends Kernel
         $controllers = [];
         $composerLoader = $this->getComposerClassLoader();
 
-        $prefixes = $composerLoader->getPrefixesPsr4();
+        $prefixes = $composerLoader?->getPrefixesPsr4() ?? [];
 
         foreach ($prefixes as $namespace => $paths) {
             if (
@@ -350,7 +464,7 @@ class Router extends Kernel
     {
         $reflection = new \ReflectionClass($controllerClass);
 
-        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Utilities\Attributes\Mapper::class);
+        $mapperAttributes = $reflection->getAttributes(\Phaseolies\Support\Router\Attributes\Mapper::class);
         $classPrefix = null;
         $classMiddleware = [];
 
@@ -361,7 +475,7 @@ class Router extends Kernel
         }
 
         foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
-            $routeAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Route::class);
+            $routeAttributes = $method->getAttributes(\Phaseolies\Support\Router\Attributes\Route::class);
 
             foreach ($routeAttributes as $attribute) {
                 $route = $attribute->newInstance();
@@ -397,9 +511,15 @@ class Router extends Kernel
         $rateLimit = $route->rateLimit ?? null;
         $rateLimitDecay = $route->rateLimitDecay ?? 1;
         $domain = $route->domain ?? null;
+        $where = $route->where ?? [];
 
         foreach ($httpMethods as $httpMethod) {
             $this->addRouteNameToAttributesRouting($httpMethod, $path, [$controllerClass, $method], $name, $domain);
+
+            if (!empty($where)) {
+                $this->where($where);
+            }
+
             if (!empty($middleware)) {
                 $this->middleware($middleware);
             }
@@ -615,6 +735,9 @@ class Router extends Kernel
                 : $fullPath;
         }
 
+        $fullPath = $this->applyGlobalPatterns($fullPath);
+        $this->assertValidInlineConstraints($fullPath);
+
         $entry = $domain
             ? ['__callback' => $callback, '__domain' => $domain]
             : $callback;
@@ -708,6 +831,274 @@ class Router extends Kernel
     }
 
     /**
+     * Constrain a parameter of the last registered route to a regular expression.
+     *
+     * @param string|array<string, string> $name
+     * @param string|null $expression
+     * @return self
+     * @throws \LogicException
+     */
+    public function where(string|array $name, ?string $expression = null): self
+    {
+        if ($this->currentRoutePath === null) {
+            return $this;
+        }
+
+        $constraints = is_array($name) ? $name : [$name => $expression];
+        $path = $this->currentRoutePath;
+
+        foreach ($constraints as $param => $pattern) {
+            $this->assertValidConstraint((string) $param, (string) $pattern);
+
+            $matched = 0;
+            $path = preg_replace_callback(
+                self::PARAM_PATTERN,
+                function (array $m) use ($param, $pattern, &$matched) {
+                    if ($m[1] !== (string) $param) {
+                        return $m[0];
+                    }
+
+                    $matched++;
+
+                    return '{' . $param . ':' . $pattern . '}';
+                },
+                $path
+            );
+
+            if ($matched === 0) {
+                throw new \LogicException("Route [{$this->currentRoutePath}] has no {{$param}} parameter to constrain.");
+            }
+        }
+
+        $this->rekeyCurrentRoute($path);
+
+        return $this;
+    }
+
+    /**
+     * Constrain parameters to digits.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereNumber(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-9]+');
+    }
+
+    /**
+     * Constrain parameters to letters.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereAlpha(string|array $params): self
+    {
+        return $this->whereAll($params, '[a-zA-Z]+');
+    }
+
+    /**
+     * Constrain parameters to letters and digits.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereAlphaNumeric(string|array $params): self
+    {
+        return $this->whereAll($params, '[a-zA-Z0-9]+');
+    }
+
+    /**
+     * Constrain parameters to a UUID.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereUuid(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
+    }
+
+    /**
+     * Constrain parameters to a ULID.
+     *
+     * @param string|array $params
+     * @return self
+     */
+    public function whereUlid(string|array $params): self
+    {
+        return $this->whereAll($params, '[0-7][0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{25}');
+    }
+
+    /**
+     * Constrain a parameter to one of the given values.
+     *
+     * @param string $param
+     * @param array $values
+     * @return self
+     */
+    public function whereIn(string $param, array $values): self
+    {
+        if ($values === []) {
+            throw new \InvalidArgumentException("whereIn() needs at least one value for {{$param}}.");
+        }
+
+        return $this->where($param, implode('|', array_map(fn($v) => preg_quote((string) $v, '@'), $values)));
+    }
+
+    /**
+     * Constrain every route parameter of this name, on routes registered from now on.
+     *
+     * @param string $name
+     * @param string $expression
+     * @return void
+     * @throws \LogicException When the expression is invalid
+     */
+    public function pattern(string $name, string $expression): void
+    {
+        $this->assertValidConstraint($name, $expression);
+
+        self::$patterns[$name] = $expression;
+    }
+
+    /**
+     * @param string|array $params
+     * @param string $expression
+     * @return self
+     */
+    protected function whereAll(string|array $params, string $expression): self
+    {
+        return $this->where(array_fill_keys((array) $params, $expression));
+    }
+
+    /**
+     * Embed the global patterns into the parameters that have no constraint of their own.
+     *
+     * @param string $path
+     * @return string
+     */
+    protected function applyGlobalPatterns(string $path): string
+    {
+        if (self::$patterns === []) {
+            return $path;
+        }
+
+        return preg_replace_callback(self::PARAM_PATTERN, function (array $m) {
+            if (isset($m[2]) || !isset(self::$patterns[$m[1]])) {
+                return $m[0];
+            }
+
+            return '{' . $m[1] . ':' . self::$patterns[$m[1]] . '}';
+        }, $path);
+    }
+
+    /**
+     * Fail at definition time, not on the first request, when a route carries a bad constraint.
+     *
+     * @param string $path
+     * @return void
+     * @throws \LogicException
+     */
+    protected function assertValidInlineConstraints(string $path): void
+    {
+        if (!str_contains($path, ':')) {
+            return;
+        }
+
+        preg_match_all(self::PARAM_PATTERN, $path, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $m) {
+            if (isset($m[2])) {
+                $this->assertValidConstraint($m[1], $m[2]);
+            }
+        }
+    }
+
+    /**
+     * @param string $param
+     * @param string $pattern
+     * @return void
+     * @throws \LogicException
+     */
+    protected function assertValidConstraint(string $param, string $pattern): void
+    {
+        if ($pattern === '') {
+            throw new \LogicException("The constraint for {{$param}} cannot be empty.");
+        }
+
+        // It has to survive being written into the route as {param:pattern} and read back.
+        $token = '{' . $param . ':' . $pattern . '}';
+
+        if (!preg_match(self::PARAM_PATTERN, $token, $m) || $m[0] !== $token || ($m[2] ?? null) !== $pattern) {
+            throw new \LogicException(
+                "The constraint for {{$param}} is not usable: braces are only allowed as quantifiers, such as {4} or {2,5}."
+            );
+        }
+
+        set_error_handler(static fn() => true);
+        $valid = preg_match($this->constraintRegex($pattern, true), '') !== false;
+        restore_error_handler();
+
+        if (!$valid) {
+            throw new \LogicException("The constraint for {{$param}} is not a valid regular expression: {$pattern}");
+        }
+    }
+
+    /**
+     * Wrap a constraint so it can sit inside the router's `@`-delimited expressions.
+     *
+     * @param string $pattern
+     * @param bool $anchored Wrap into a full expression, for validation
+     * @return string
+     */
+    protected function constraintRegex(string $pattern, bool $anchored = false): string
+    {
+        $group = '(?:' . preg_replace('/(?<!\\\\)@/', '\\\\@', $pattern) . ')';
+
+        return $anchored ? '@^' . $group . '$@D' : $group;
+    }
+
+    /**
+     * Move the last registered route to a new path, keeping its place in the
+     * matching order, its middleware and its names.
+     *
+     * @param string $newPath
+     * @return void
+     */
+    protected function rekeyCurrentRoute(string $newPath): void
+    {
+        $old = $this->currentRoutePath;
+
+        if ($old === null || $old === $newPath) {
+            return;
+        }
+
+        $method = $this->getCurrentRequestMethod();
+
+        $routes = [];
+        foreach (self::$routes[$method] ?? [] as $path => $entry) {
+            $routes[$path === $old ? $newPath : $path] = $entry;
+        }
+        self::$routes[$method] = $routes;
+
+        if (isset(self::$routeMiddlewares[$method][$old])) {
+            self::$routeMiddlewares[$method][$newPath] = array_merge(
+                self::$routeMiddlewares[$method][$newPath] ?? [],
+                self::$routeMiddlewares[$method][$old]
+            );
+            unset(self::$routeMiddlewares[$method][$old]);
+        }
+
+        foreach (self::$namedRoutes as $name => $path) {
+            if ($path === $old) {
+                self::$namedRoutes[$name] = $newPath;
+            }
+        }
+
+        $this->currentRoutePath = $newPath;
+    }
+
+    /**
      * Generates a URL for a named route.
      *
      * @param string $name The route name.
@@ -723,7 +1114,7 @@ class Router extends Kernel
         $route = self::$namedRoutes[$name];
 
         if (!is_array($params)) {
-            if (preg_match('/\{(\w+)(:[^}]+)?}/', $route, $matches)) {
+            if (preg_match(self::PARAM_PATTERN, $route, $matches)) {
                 $params = [$matches[1] => $params];
             } else {
                 $params = [$params];
@@ -731,7 +1122,7 @@ class Router extends Kernel
         }
 
         foreach ($params as $key => $value) {
-            $route = preg_replace('/\{' . $key . '(:[^}]+)?}/', $value, $route, 1);
+            $route = preg_replace('/\{' . preg_quote((string) $key, '/') . '(?::(?:[^{}]|\{[^{}]*\})+)?\}/', (string) $value, $route, 1);
         }
 
         return $route;
@@ -871,13 +1262,26 @@ class Router extends Kernel
      */
     protected function convertRouteToRegex(string $route): string
     {
-        $regex = str_replace('/', '\/', $route);
+        // Lift the parameters out first: a constraint can contain `/` and `*`,
+        // which must not be touched by the escaping and wildcard steps below.
+        $params = [];
+        $route = preg_replace_callback(self::PARAM_PATTERN, function (array $m) use (&$params) {
+            $params[] = [$m[1], $m[2] ?? null];
 
-        // Replace {param} with named capture groups
-        $regex = preg_replace('/\{(\w+)(:[^}]+)?}/', '(?P<$1>[^\/]+)', $regex);
+            return "\x00" . (count($params) - 1) . "\x00";
+        }, $route);
+
+        $regex = str_replace('/', '\/', $route);
 
         // Replace * with .* for wildcard matching
         $regex = str_replace('*', '.*', $regex);
+
+        // Put the parameters back as named capture groups
+        $regex = preg_replace_callback('/\x00(\d+)\x00/', function (array $m) use ($params) {
+            [$name, $constraint] = $params[(int) $m[1]];
+
+            return '(?P<' . $name . '>' . ($constraint === null ? '[^\/]+' : $this->constraintRegex($constraint)) . ')';
+        }, $regex);
 
         return '@^' . $regex . '$@D';
     }
@@ -892,7 +1296,7 @@ class Router extends Kernel
     protected function extractRouteParameters(string $route, array $matches): array|false
     {
         // Get all named parameters from the route pattern
-        preg_match_all('/\{(\w+)(:[^}]+)?}/', $route, $paramNames);
+        preg_match_all(self::PARAM_PATTERN, $route, $paramNames);
         $params = [];
 
         foreach ($paramNames[1] as $name) {
@@ -927,7 +1331,11 @@ class Router extends Kernel
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $callback) {
-            $routeRegex = "@^" . preg_replace('/\{(\w+)(:[^}]+)?}/', '([^/]+)', $route) . "$@";
+            $routeRegex = "@^" . preg_replace_callback(
+                self::PARAM_PATTERN,
+                fn(array $m) => '(' . (isset($m[2]) ? $this->constraintRegex($m[2]) : '[^/]+') . ')',
+                $route
+            ) . "$@";
             if (preg_match($routeRegex, $url)) {
                 return self::$routeMiddlewares[$method][$route] ?? null;
             }
@@ -942,35 +1350,52 @@ class Router extends Kernel
      * @param Request $request
      * @param Application $app
      * @param array $currentMiddleware
+     * @param MiddlewareChain $chain The request-local chain to apply onto.
      * @return void
      * @throws \Exception
      */
-    private function applyRouteMiddleware($request, $app, $currentMiddleware): void
+    private function applyRouteMiddleware($request, $app, $currentMiddleware, MiddlewareChain $chain): void
     {
+        $routeMiddleware = $this->gateway->getRouteMiddleware();
+
         foreach ($currentMiddleware as $key) {
             [$name, $params] = array_pad(explode(':', $key, 2), 2, null);
             $params = $params ? explode(',', $params) : [];
             if (!$request->isApiRequest()) {
-                if (!isset($this->routeMiddleware['web'][$name])) {
+                if (!isset($routeMiddleware['web'][$name])) {
                     throw new \Exception("Undefined middleware [$name]");
                 }
 
-                $middlewareClass = $this->routeMiddleware['web'][$name];
+                $middlewareClass = $routeMiddleware['web'][$name];
             } else {
-                if (!isset($this->routeMiddleware['api'][$name])) {
+                if (!isset($routeMiddleware['api'][$name])) {
                     throw new \Exception("Undefined middleware [$name]");
                 }
 
-                $middlewareClass = $this->routeMiddleware['api'][$name];
+                $middlewareClass = $routeMiddleware['api'][$name];
             }
 
-            $middlewareInstance = $app->make($middlewareClass);
-            if (!$middlewareInstance instanceof ContractsMiddleware) {
-                throw new \Exception("Unresolved dependency $middlewareClass", 1);
-            }
-
-            $this->applyMiddleware($middlewareInstance, $params);
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass), $params);
         }
+    }
+
+    /**
+     * Resolve a middleware class name to an instance, validating its contract.
+     *
+     * @param Application $app
+     * @param string $middlewareClass
+     * @return ContractsMiddleware
+     * @throws \Exception
+     */
+    private function makeGatewayMiddleware($app, string $middlewareClass): ContractsMiddleware
+    {
+        $middlewareInstance = $app->make($middlewareClass);
+
+        if (!$middlewareInstance instanceof ContractsMiddleware) {
+            throw new \Exception("Unresolved dependency $middlewareClass", 1);
+        }
+
+        return $middlewareInstance;
     }
 
     /**
@@ -994,10 +1419,6 @@ class Router extends Kernel
             }
         }
 
-        if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
-            $this->applyRouteMiddleware($request, $app, $currentMiddleware);
-        }
-
         $routeParams = $request->getRouteParams();
 
         $handler = function ($request) use ($callback, $app, $routeParams) {
@@ -1008,9 +1429,22 @@ class Router extends Kernel
             return $result;
         };
 
-        $response = $this->handle($request, $handler);
+        $chain = new MiddlewareChain();
 
-        return $response;
+        if ($currentMiddleware = $this->getCurrentRouteMiddleware($request)) {
+            $this->applyRouteMiddleware($request, $app, $currentMiddleware, $chain);
+        }
+
+        $groupKey = $request->isApiRequest() ? 'api' : 'web';
+        foreach ($this->gateway->getMiddlewareGroups()[$groupKey] ?? [] as $middlewareClass) {
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
+        }
+
+        foreach ($this->getGlobalMiddleware() as $middlewareClass) {
+            $chain->applyMiddleware($this->makeGatewayMiddleware($app, $middlewareClass));
+        }
+
+        return $chain->handle($request, $handler);
     }
 
     /**
@@ -1041,7 +1475,7 @@ class Router extends Kernel
     protected function loadRoutesFromFiles(): void
     {
         $routeFiles = [
-            base_path('routes/web.php')
+            base_path('runtime/routes/web.php')
         ];
 
         foreach ($routeFiles as $file) {
@@ -1059,7 +1493,7 @@ class Router extends Kernel
      */
     protected function processThrottleAttribute(\ReflectionMethod $method): void
     {
-        $throttleAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Throttle::class);
+        $throttleAttributes = $method->getAttributes(\Phaseolies\Support\Router\Attributes\Throttle::class);
 
         if (empty($throttleAttributes)) {
             return;
@@ -1102,6 +1536,279 @@ class Router extends Kernel
             $this->processRateLimitAnnotation($method);
             $this->processThrottleAttribute($method);
         }
+    }
+
+    /**
+     * Replace the store that serves action plans
+     *
+     * @param ActionPlanStore $store
+     * @return void
+     */
+    public function useActionPlans(ActionPlanStore $store): void
+    {
+        $this->actionPlans = $store;
+    }
+
+    /**
+     * Get the store that serves compiled action plans
+     *
+     * @return ActionPlanStore
+     */
+    public function actionPlans(): ActionPlanStore
+    {
+        return $this->actionPlans ??= new ActionPlanStore(function (): string {
+            $this->initializeCachePath();
+
+            return dirname(static::$cachePath) . DIRECTORY_SEPARATOR . 'actions.php';
+        });
+    }
+
+    /**
+     * Resolves and runs an action with its dependencies injected.
+     *
+     * @param mixed $callback
+     * @param Application $app
+     * @param array $routeParams
+     * @return mixed
+     * @throws \ReflectionException
+     * @throws \Exception
+     */
+    private function resolveAction(mixed $callback, $app, array $routeParams): mixed
+    {
+        if ($callback instanceof \Closure) {
+            $plan = $this->actionPlans()->forClosure($callback);
+
+            return $callback(...$this->resolvePlannedParameters($plan['action'], $app, $routeParams, $callback));
+        }
+
+        if (is_array($callback)) {
+            [$controllerClass, $actionMethod] = $callback;
+        } elseif (is_string($callback)) {
+            $controllerClass = $callback;
+            $actionMethod = '__invoke';
+        } else {
+            throw new \InvalidArgumentException(
+                'Invalid route callback: expected [Controller::class, \'method\'], a class string or a Closure; got ' . get_debug_type($callback) . '.'
+            );
+        }
+
+        $plan = $this->actionPlans()->forAction($controllerClass, $actionMethod);
+
+        foreach ($plan['resolvers'] as [$abstract, $concrete, $singleton]) {
+            $singleton
+                ? $app->singleton($abstract, $concrete)
+                : $app->bind($abstract, $concrete);
+        }
+
+        $constructorDependencies = $plan['constructor'] === null
+            ? []
+            : $this->resolvePlannedParameters($plan['constructor'], $app, $routeParams, [$controllerClass, '__construct'], true);
+
+        $controllerInstance = new $controllerClass(...$constructorDependencies);
+
+        $unmatched = array_diff(array_keys($routeParams), $plan['action']['names']);
+
+        if (!empty($unmatched)) {
+            throw new \InvalidArgumentException(
+                "Route provides parameter(s) [" . implode(', ', $unmatched) . "] " .
+                    "but not accepted by method " . $plan['class'] . "::" . $actionMethod . "()."
+            );
+        }
+
+        $actionDependencies = $this->resolvePlannedParameters($plan['action'], $app, $routeParams, [$controllerClass, $actionMethod], true);
+
+        // Check if method should be wrapped in a transaction
+        if ($plan['transaction'] !== null) {
+            return $this->executeInTransaction(
+                $controllerInstance,
+                $actionMethod,
+                $actionDependencies,
+                $plan['transaction'][0],
+                $plan['transaction'][1]
+            );
+        }
+
+        return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
+    }
+
+    /**
+     * Resolve the arguments of a planned function
+     *
+     * @param array<string, mixed> $function
+     * @param Application $app
+     * @param array $routeParams
+     * @param \Closure|array{0: string, 1: string} $target
+     * @param bool $forController
+     * @return array
+     */
+    private function resolvePlannedParameters(array $function, Application $app, array $routeParams, \Closure|array $target, bool $forController = false): array
+    {
+        $dependencies = [];
+
+        foreach ($function['parameters'] as $parameter) {
+            // #[Model] attribute - HIGHEST PRIORITY
+            if ($parameter['model'] !== null) {
+                $dependencies[] = $this->resolveModelParameter($parameter, $routeParams);
+                continue;
+            }
+
+            // #[BindPayload()]
+            if ($parameter['payload'] !== null) {
+                $dependencies[] = $this->resolvePayloadParameter($parameter, $app);
+                continue;
+            }
+
+            // #[Bind()]
+            if ($parameter['bind'] !== null) {
+                $dependencies[] = $this->resolveBindParameter($parameter, $app);
+                continue;
+            }
+
+            $name = $parameter['name'];
+
+            if ($parameter['type'] !== null) {
+                $typeName = $parameter['type'];
+
+                if (!$forController) {
+                    if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
+                        $this->resolveFormRequestValidationClass($app, $typeName);
+                    }
+
+                    $dependencies[] = $app->make($typeName);
+                    continue;
+                }
+
+                if (!$app->has($typeName) && !class_exists($typeName)) {
+                    throw new \InvalidArgumentException(
+                        ($function['declaring'] ? $function['declaring'] . '::' : '') .
+                            $function['name'] .
+                            "(): Argument #" . ($parameter['index'] + 1) . " (\${$name}) cannot be resolved. " .
+                            "'{$typeName}' is not bound in the container. "
+                    );
+                }
+
+                $dependencies[] = $this->resolveFormRequestValidationClass($app, $typeName);
+            } elseif (isset($routeParams[$name])) {
+                $dependencies[] = $routeParams[$name];
+            } elseif ($parameter['optional']) {
+                $dependencies[] = $parameter['lazyDefault']
+                    ? $this->readDefault($parameter, $target)
+                    : $parameter['default'];
+            } elseif ($forController) {
+                throw new \Exception("Cannot resolve parameter '$name'");
+            } else {
+                throw new \Exception("Cannot resolve parameter '$name' for closure");
+            }
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * Read the default of a parameter whose default cannot be stored in a plan
+     *
+     * @param array<string, mixed> $parameter
+     * @param \Closure|array{0: string, 1: string} $target
+     * @return mixed
+     */
+    private function readDefault(array $parameter, \Closure|array $target): mixed
+    {
+        $function = $target instanceof \Closure
+            ? new \ReflectionFunction($target)
+            : new \ReflectionMethod($target[0], $target[1]);
+
+        return $function->getParameters()[$parameter['index']]->getDefaultValue();
+    }
+
+    /**
+     * Resolve a parameter marked with #[BindPayload]
+     *
+     * @param array<string, mixed> $parameter
+     * @param Application $app
+     * @return object
+     */
+    private function resolvePayloadParameter(array $parameter, Application $app): object
+    {
+        $paramName = $parameter['name'];
+
+        if ($parameter['builtin'] || !$parameter['typed']) {
+            throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
+        }
+
+        $dtoClass = $parameter['type'];
+        if (!class_exists($dtoClass)) {
+            throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
+        }
+
+        [$strict, $validate] = $parameter['payload'];
+
+        $dto = $app->make($dtoClass);
+        $request = $app->make('request');
+
+        $instance = $validate
+            ? $request->validateDto($dto, $strict)
+            : $request->bindTo($dto, $strict);
+
+        return $instance;
+    }
+
+    /**
+     * Resolve a parameter marked with #[Bind]
+     *
+     * @param array<string, mixed> $parameter
+     * @param Application $app
+     * @return mixed
+     */
+    private function resolveBindParameter(array $parameter, Application $app): mixed
+    {
+        if ($parameter['builtin'] || !$parameter['typed']) {
+            throw new \Exception("Parameter '{$parameter['name']}' must be a class-typed when using Bind");
+        }
+
+        $abstract = $parameter['type'];
+        [$concrete, $singleton] = $parameter['bind'];
+
+        $singleton
+            ? $app->singleton($abstract, $concrete)
+            : $app->bind($abstract, $concrete);
+
+        return $app->make($abstract);
+    }
+
+    /**
+     * Resolve a parameter marked with #[Model]
+     *
+     * @param array<string, mixed> $parameter
+     * @param array $routeParams
+     * @return mixed
+     */
+    private function resolveModelParameter(array $parameter, array $routeParams): mixed
+    {
+        $paramName = $parameter['name'];
+
+        // Ensure parameter has a type hint
+        if ($parameter['builtin'] || !$parameter['typed']) {
+            throw new \Exception(
+                "Parameter '\$$paramName' must have a class type hint when using #[Model] attribute"
+            );
+        }
+
+        $modelClass = $parameter['type'];
+        [$attributeColumn, $exception] = $parameter['model'];
+
+        $modelInstance = app($modelClass);
+        $modelRouteKey = $modelInstance->getRouteKeyName();
+        $modelPrimaryKey = $modelInstance->getPrimaryKey();
+
+        $column = $attributeColumn ?? $modelRouteKey;
+
+        if (!isset($routeParams[$paramName])) {
+            throw new \Exception(
+                "Route parameter '\$$paramName' not found in URL for model binding"
+            );
+        }
+
+        return $this->resolveModelInstance($modelClass, $column, $routeParams[$paramName], $modelPrimaryKey, $exception);
     }
 
     /**
@@ -1200,102 +1907,6 @@ class Router extends Kernel
     }
 
     /**
-     * Resolves and executes a controller action with dependencies.
-     *
-     * @param array $callback The controller callback (e.g., [Controller::class, 'action']).
-     * @param Application $app The Application instance for resolving dependencies.
-     * @param array $routeParams The route parameters.
-     * @return mixed The result of the controller action execution.
-     * @throws \ReflectionException If there is an issue with reflection.
-     * @throws \Exception If dependency resolution fails.
-     */
-    private function resolveAction(mixed $callback, $app, array $routeParams): mixed
-    {
-        if (is_array($callback)) {
-            [$controllerClass, $actionMethod] = $callback;
-        } else if (is_string($callback)) {
-            $controllerClass = $callback;
-            $actionMethod = "__invoke";
-        } else if ($callback instanceof \Closure) {
-            $reflection = new \ReflectionFunction($callback);
-            $dependencies = [];
-
-            foreach ($reflection->getParameters() as $parameter) {
-                $paramType = $parameter->getType();
-
-                // Handle #[Model] attribute - HIGHEST PRIORITY
-                $modelResult = $this->handleModelAttribute($parameter, $routeParams);
-                if ($modelResult['handled']) {
-                    $dependencies[] = $modelResult['instance'];
-                    continue;
-                }
-
-                // Handle #[BindPayload()]
-                $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
-                if ($payloadResult['handled']) {
-                    $dependencies[] = $payloadResult['instance'];
-                    continue;
-                }
-
-                // Handle #[Bind()]
-                $bindResult = $this->handleBindAttribute($parameter, $app);
-                if ($bindResult['handled']) {
-                    $dependencies[] = $bindResult['instance'];
-                    continue;
-                }
-
-                // Handle type-hinted dependencies
-                if ($paramType && !$paramType->isBuiltin()) {
-                    $typeName = $paramType->getName();
-                    if (is_subclass_of($typeName, ValidatesWhenResolved::class)) {
-                        $this->resolveFormRequestValidationClass($app, $typeName);
-                    }
-                    $dependencies[] = $app->make($typeName);
-                }
-                // Handle route parameters
-                elseif (isset($routeParams[$parameter->getName()])) {
-                    $dependencies[] = $routeParams[$parameter->getName()];
-                }
-                // Handle optional parameters
-                elseif ($parameter->isOptional()) {
-                    $dependencies[] = $parameter->getDefaultValue();
-                }
-                // Cannot resolve parameter
-                else {
-                    throw new \Exception("Cannot resolve parameter '{$parameter->getName()}' for closure");
-                }
-            }
-
-            return $callback(...$dependencies);
-        }
-
-        $reflector = new \ReflectionClass($controllerClass);
-
-        $this->processAttributesClassDependencies($controllerClass, $app);
-        $this->processAttributesMethodDependencies($reflector, $actionMethod, $app);
-
-        $constructorDependencies = $this->resolveConstructorDependencies($reflector, $app, $routeParams);
-        $controllerInstance = new $controllerClass(...$constructorDependencies);
-
-        $actionDependencies = $this->resolveActionDependencies($reflector, $actionMethod, $app, $routeParams);
-
-        // Check if method should be wrapped in a transaction
-        $transactionConfig = $this->getTransactionConfig($reflector, $actionMethod);
-
-        if ($transactionConfig) {
-            return $this->executeInTransaction(
-                $controllerInstance,
-                $actionMethod,
-                $actionDependencies,
-                $transactionConfig['connection'],
-                $transactionConfig['attempts']
-            );
-        }
-
-        return call_user_func([$controllerInstance, $actionMethod], ...$actionDependencies);
-    }
-
-    /**
      * Execute a controller action within a database transaction
      *
      * @param object $controllerInstance
@@ -1351,21 +1962,6 @@ class Router extends Kernel
     }
 
     /**
-     * Handle class level dependency injection
-     *
-     * @param string $className
-     * @param Application $app
-     * @return void
-     */
-    protected function processAttributesClassDependencies(string $className, $app): void
-    {
-        $reflection = new \ReflectionClass($className);
-        $attributes = $reflection->getAttributes(Resolver::class);
-
-        $this->resolveAttributesDependency($attributes ?? [], $app);
-    }
-
-    /**
      * Process attributes based middleware
      *
      * @param array $middlewareAttributes
@@ -1374,18 +1970,19 @@ class Router extends Kernel
     public function processAttributesMiddlewares(array $middlewareAttributes): void
     {
         $middlewareToApply = [];
+        $routeMiddleware = $this->gateway->getRouteMiddleware();
 
         foreach ($middlewareAttributes as $attribute) {
             $middleware = $attribute->newInstance();
             foreach ($middleware->getMiddlewareClasses() as $middlewareItem) {
                 if (
-                    isset($this->routeMiddleware['web'][$middlewareItem]) ||
-                    isset($this->routeMiddleware['api'][$middlewareItem])
+                    isset($routeMiddleware['web'][$middlewareItem]) ||
+                    isset($routeMiddleware['api'][$middlewareItem])
                 ) {
                     $middlewareToApply[] = $middlewareItem;
                 } elseif (class_exists($middlewareItem)) {
-                    $key = array_search($middlewareItem, $this->routeMiddleware['web'], true) ?:
-                        array_search($middlewareItem, $this->routeMiddleware['api'], true);
+                    $key = array_search($middlewareItem, $routeMiddleware['web'], true) ?:
+                        array_search($middlewareItem, $routeMiddleware['api'], true);
                     if ($key !== false) {
                         $middlewareToApply[] = $key;
                     } else {
@@ -1406,28 +2003,6 @@ class Router extends Kernel
     }
 
     /**
-     * Handle method attribute dependency injection
-     *
-     * @param \ReflectionClass $class
-     * @param string $methodName
-     * @param Application $app
-     * @return void
-     */
-    protected function processAttributesMethodDependencies(\ReflectionClass $class, string $methodName, $app): void
-    {
-        if (!$class->hasMethod($methodName)) {
-            throw new \BadMethodCallException(
-                "Method {$class->getName()}::{$methodName}() does not exist"
-            );
-        }
-
-        $method = $class->getMethod($methodName);
-        $attributes = $method->getAttributes(Resolver::class);
-
-        $this->resolveAttributesDependency($attributes ?? [], $app);
-    }
-
-    /**
      * Resolve attributes
      *
      * @param array $attributes
@@ -1442,242 +2017,6 @@ class Router extends Kernel
                 ? $app->singleton($dependency->abstract, $dependency->concrete)
                 : $app->bind($dependency->abstract, $dependency->concrete);
         }
-    }
-
-    /**
-     * Resolves constructor dependencies for a controller.
-     *
-     * @param \ReflectionClass $reflector The reflection class of the controller.
-     * @param Application $app The Application instance for resolving dependencies.
-     * @param array $routeParams The route parameters.
-     * @return array The resolved constructor dependencies.
-     * @throws \Exception If dependency resolution fails.
-     */
-    private function resolveConstructorDependencies(\ReflectionClass $reflector, Application $app, array $routeParams): array
-    {
-        $constructor = $reflector->getConstructor();
-
-        if (!$constructor) {
-            return [];
-        }
-
-        return $this->resolveParameters($constructor->getParameters(), $app, $routeParams);
-    }
-
-    /**
-     * Resolves action dependencies for a controller method.
-     *
-     * @param \ReflectionClass $reflector The reflection class of the controller.
-     * @param string $actionMethod The name of the action method.
-     * @param Application $app The Application instance for resolving dependencies.
-     * @param array $routeParams The route parameters.
-     * @return array The resolved action dependencies.
-     * @throws \ReflectionException If there is an issue with reflection.
-     * @throws \Exception If dependency resolution fails.
-     */
-    private function resolveActionDependencies(\ReflectionClass $reflector, string $actionMethod, Application $app, array $routeParams): array
-    {
-        $method = $reflector->getMethod($actionMethod);
-        $parameters = $method->getParameters();
-
-        $methodParamNames = [];
-        foreach ($parameters as $param) {
-            $methodParamNames[] = $param->getName();
-        }
-
-        $unmatchedParams = array_diff(array_keys($routeParams), $methodParamNames);
-
-        if (!empty($unmatchedParams)) {
-            throw new \InvalidArgumentException(
-                "Route provides parameter(s) [" . implode(', ', $unmatchedParams) . "] " .
-                    "but not accepted by method " . $reflector->getName() . "::" . $actionMethod . "()."
-            );
-        }
-
-        return $this->resolveParameters($parameters, $app, $routeParams);
-    }
-
-    /**
-     * Resolves parameters for a method or constructor.
-     *
-     * @param array $parameters The parameters to resolve.
-     * @param Application $app The Application instance for resolving dependencies.
-     * @param array $routeParams The route parameters.
-     * @return array The resolved parameters.
-     * @throws \Exception If dependency resolution fails.
-     */
-    private function resolveParameters(array $parameters, Application $app, array $routeParams): array
-    {
-        $dependencies = [];
-        foreach ($parameters as $index => $parameter) {
-            $paramPosition = $index + 1;
-            $paramName = $parameter->getName();
-            $paramType = $parameter->getType();
-
-            // Handle #[Model] attribute - HIGHEST PRIORITY
-            $modelResult = $this->handleModelAttribute($parameter, $routeParams);
-            if ($modelResult['handled']) {
-                $dependencies[] = $modelResult['instance'];
-                continue;
-            }
-
-            // Handle #[BindPayload()]
-            $payloadResult = $this->handleBindPayloadAttribute($parameter, $app);
-            if ($payloadResult['handled']) {
-                $dependencies[] = $payloadResult['instance'];
-                continue;
-            }
-
-            // Handle #[Bind()]
-            $bindResult = $this->handleBindAttribute($parameter, $app);
-            if ($bindResult['handled']) {
-                $dependencies[] = $bindResult['instance'];
-                continue;
-            }
-
-            if ($paramType && !$paramType->isBuiltin()) {
-                $resolvedClass = $paramType->getName();
-                if (!$app->has($resolvedClass) && !class_exists($resolvedClass)) {
-                    $declaringClass = $parameter->getDeclaringClass();
-                    $declaringFunction = $parameter->getDeclaringFunction();
-
-                    throw new \InvalidArgumentException(
-                        ($declaringClass ? $declaringClass->getName() . '::' : '') .
-                            $declaringFunction->getName() .
-                            "(): Argument #{$paramPosition} (\${$paramName}) cannot be resolved. " .
-                            "'{$resolvedClass}' is not bound in the container. "
-                    );
-                }
-                $resolvedInstance = $this->resolveFormRequestValidationClass($app, $resolvedClass);
-                $dependencies[] = $resolvedInstance;
-            } elseif (isset($routeParams[$paramName])) {
-                $dependencies[] = $routeParams[$paramName];
-            } elseif ($parameter->isOptional()) {
-                $dependencies[] = $parameter->getDefaultValue();
-            } else {
-                throw new \Exception("Cannot resolve parameter '$paramName'");
-            }
-        }
-
-        return $dependencies;
-    }
-
-    /**
-     * Handle BindPayload attribute for a parameter
-     *
-     * @param \ReflectionParameter $parameter
-     * @param Application $app
-     * @return array
-     * @throws \Exception
-     */
-    private function handleBindPayloadAttribute(\ReflectionParameter $parameter, Application $app): array
-    {
-        $mapAttributes = $parameter->getAttributes(BindPayload::class);
-        if (empty($mapAttributes)) {
-            return ['handled' => false, 'instance' => null];
-        }
-
-        $paramName = $parameter->getName();
-        $paramType = $parameter->getType();
-
-        if (!$paramType || $paramType->isBuiltin()) {
-            throw new \Exception("Parameter '$paramName' must be a class-typed DTO when using Payload");
-        }
-
-        $dtoClass = $paramType->getName();
-        if (!class_exists($dtoClass)) {
-            throw new \Exception("Cannot resolve DTO class '$dtoClass' for parameter '$paramName'");
-        }
-
-        $dto = $app->make($dtoClass);
-        $request = $app->make('request');
-        $attributeInstance = $mapAttributes[0]->newInstance();
-        $instance = $request->bindTo($dto, (bool)($attributeInstance->strict ?? true));
-
-        return ['handled' => true, 'instance' => $instance];
-    }
-
-    /**
-     * Handle Bind attribute for a parameter
-     *
-     * @param \ReflectionParameter $parameter
-     * @param Application $app
-     * @return array
-     * @throws \Exception
-     */
-    private function handleBindAttribute(\ReflectionParameter $parameter, Application $app): array
-    {
-        $binds = $parameter->getAttributes(Bind::class);
-        if (empty($binds)) {
-            return ['handled' => false, 'instance' => null];
-        }
-
-        $paramName = $parameter->getName();
-        $paramType = $parameter->getType();
-
-        if (!$paramType || $paramType->isBuiltin()) {
-            throw new \Exception("Parameter '$paramName' must be a class-typed when using Bind");
-        }
-
-        $bindAttribute = $binds[0];
-        $bindInstance = $bindAttribute->newInstance();
-
-        $abstract = $paramType->getName();
-        $bindInstance->singleton
-            ? $app->singleton($abstract, $bindInstance->concrete)
-            : $app->bind($abstract, $bindInstance->concrete);
-
-        $instance = $app->make($abstract);
-
-        return ['handled' => true, 'instance' => $instance];
-    }
-
-    /**
-     * Handle Model attribute for automatic model binding
-     *
-     * @param \ReflectionParameter $parameter
-     * @param array $routeParams
-     * @return array
-     * @throws \Exception
-     */
-    private function handleModelAttribute(\ReflectionParameter $parameter, array $routeParams): array
-    {
-        $modelAttributes = $parameter->getAttributes(\Phaseolies\Utilities\Attributes\Model::class);
-
-        if (empty($modelAttributes)) {
-            return ['handled' => false, 'instance' => null];
-        }
-
-        $paramName = $parameter->getName();
-        $paramType = $parameter->getType();
-
-        // Ensure parameter has a type hint
-        if (!$paramType || $paramType->isBuiltin()) {
-            throw new \Exception(
-                "Parameter '\$$paramName' must have a class type hint when using #[Model] attribute"
-            );
-        }
-
-        $modelClass = $paramType->getName();
-        $modelAttribute = $modelAttributes[0]->newInstance();
-
-        $modelInstance = app($modelClass);
-        $modelRouteKey = $modelInstance->getRouteKeyName();
-        $modelPrimaryKey = $modelInstance->getPrimaryKey();
-
-        $column = $modelAttribute->column ?? $modelRouteKey;
-        $exception = $modelAttribute->exception;
-
-        if (!isset($routeParams[$paramName])) {
-            throw new \Exception(
-                "Route parameter '\$$paramName' not found in URL for model binding"
-            );
-        }
-
-        $value = $routeParams[$paramName];
-        $instance = $this->resolveModelInstance($modelClass, $column, $value, $modelPrimaryKey, $exception);
-
-        return ['handled' => true, 'instance' => $instance];
     }
 
     /**
@@ -1715,26 +2054,4 @@ class Router extends Kernel
         return $instance;
     }
 
-    /**
-     * Check if method has Transaction attribute
-     *
-     * @param \ReflectionClass $reflector
-     * @param string $actionMethod
-     * @return array|null [connection, attempts] or null
-     */
-    protected function getTransactionConfig(\ReflectionClass $reflector, string $actionMethod): ?array
-    {
-        $method = $reflector->getMethod($actionMethod);
-        $methodAttributes = $method->getAttributes(\Phaseolies\Utilities\Attributes\Transaction::class);
-
-        if (!empty($methodAttributes)) {
-            $transaction = $methodAttributes[0]->newInstance();
-            return [
-                'connection' => $transaction->connection,
-                'attempts' => $transaction->attempts
-            ];
-        }
-
-        return null;
-    }
 }

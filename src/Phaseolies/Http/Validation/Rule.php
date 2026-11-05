@@ -14,6 +14,41 @@ trait Rule
     use ValidationRules;
 
     /**
+     * Converts validation errors into the response expected by the request type.
+     *
+     * @param array<string, mixed> $errors
+     */
+    protected function failValidation(array $errors): never
+    {
+        if (request()->isAjax() || request()->isApiRequest()) {
+            $exception = new HttpResponseException(
+                $errors,
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+
+            $exception->setResponse(
+                (new JsonErrorRenderer())->render(
+                    $exception,
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    $errors
+                )
+            );
+
+            throw $exception;
+        }
+
+        $this->setErrors($errors);
+        foreach ($errors as $key => $error) {
+            session()->putPeek($key, implode(' ', (array) $error));
+        }
+
+        $response = redirect()->back()->withInput()->withErrors($errors);
+
+        throw (new HttpResponseException($errors, $response->getStatusCode()))
+            ->setResponse($response);
+    }
+
+    /**
      * Validate the input data against the given rules.
      *
      * @access public
@@ -37,12 +72,12 @@ trait Rule
                     continue;
                 }
 
-                $fieldRules = explode("|", $value);
+                $fieldRules = $this->splitRules($value);
                 foreach ($fieldRules as $rule) {
                     $ruleValue = $this->_getRuleSuffix($rule);
                     $rule = $this->_removeRuleSuffix($rule);
                     $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
-                    if ($errorMessage) {
+                    if ($errorMessage && ! in_array($errorMessage, $errors[$fieldName] ?? [], true)) {
                         $errors[$fieldName][] = $errorMessage;
                     }
                 }
@@ -50,32 +85,7 @@ trait Rule
         }
 
         if (!empty($errors)) {
-            if (request()->isAjax() || request()->isApiRequest()) {
-                $exception = new HttpResponseException(
-                    $errors,
-                    Response::HTTP_UNPROCESSABLE_ENTITY
-                );
-
-                $exception->setResponse(
-                    (new JsonErrorRenderer())->render(
-                        $exception,
-                        Response::HTTP_UNPROCESSABLE_ENTITY,
-                        $errors
-                    )
-                );
-
-                throw $exception;
-            }
-
-            $this->setErrors($errors);
-            foreach ($errors as $key => $error) {
-                session()->putPeek($key, implode(' ', (array)$error));
-            }
-
-            $response = redirect()->back()->withInput()->withErrors($errors);
-
-            throw (new HttpResponseException($errors, $response->getStatusCode()))
-                ->setResponse($response);
+            $this->failValidation($errors);
         }
 
         $this->setPassedData($input);

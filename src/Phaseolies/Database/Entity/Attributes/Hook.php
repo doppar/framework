@@ -25,7 +25,8 @@ namespace Phaseolies\Database\Entity\Attributes;
  *   booting, booted,
  *   before_created, after_created,
  *   before_updated, after_updated,
- *   before_deleted, after_deleted
+ *   before_deleted, after_deleted,
+ *   before_restored, after_restored (#[SoftDeletes] models only)
  *
  * The 'when' parameter (optional):
  *   - A string → name of a public/protected method on the model that returns bool

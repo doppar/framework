@@ -70,7 +70,7 @@ class RequestTest extends TestCase
         $_SESSION = $this->sessionData;
         $_FILES = $this->filesData;
 
-        $this->request = new Request();
+        $this->request = Request::createFromGlobals();
     }
 
     protected function tearDown(): void
@@ -96,8 +96,8 @@ class RequestTest extends TestCase
 
     public function testCreateFromGlobals()
     {
-        $data = $this->request->createFromGlobals();
-        $this->assertEquals(array_merge($this->postData, $this->getData), $data);
+        $request = Request::createFromGlobals();
+        $this->assertEquals(array_merge($this->postData, $this->getData), $request->request->all());
     }
 
     public function testIsValidRequest()
@@ -525,9 +525,7 @@ class RequestTest extends TestCase
         $this->assertFalse($this->request->isEmpty());
 
         $emptyRequest = new Request();
-        $_GET = [];
-        $_POST = [];
-        $this->assertFalse($emptyRequest->isEmpty());
+        $this->assertTrue($emptyRequest->isEmpty());
     }
 
     public function testInput()

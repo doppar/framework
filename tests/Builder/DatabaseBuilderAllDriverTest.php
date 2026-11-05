@@ -5,9 +5,11 @@ namespace Tests\Unit;
 use PDO;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Phaseolies\Database\Database;
 use Phaseolies\Database\Entity\Builder;
 
+#[AllowMockObjectsWithoutExpectations]
 class DatabaseBuilderAllDriverTest extends TestCase
 {
     private $database;
@@ -17,9 +19,7 @@ class DatabaseBuilderAllDriverTest extends TestCase
     {
         $this->pdoMock = $this->createMock(PDO::class);
 
-        $this->pdoMock->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn('mysql');
+        $this->pdoMock->method('getAttribute')->willReturn('mysql');
 
         $this->setStaticProperty(Database::class, 'connections', ['default' => $this->pdoMock]);
         $this->setStaticProperty(Database::class, 'transactions', []);
@@ -61,9 +61,7 @@ class DatabaseBuilderAllDriverTest extends TestCase
     private function setBuilderDriver(string $driver): void
     {
         $this->pdoMock = $this->createMock(PDO::class);
-        $this->pdoMock->method('getAttribute')
-            ->with(PDO::ATTR_DRIVER_NAME)
-            ->willReturn($driver);
+        $this->pdoMock->method('getAttribute')->willReturn($driver);
     }
 
     /**

@@ -1,7 +1,25 @@
+## Pull Request Checklist
+
+| Q             | A   |
+| ------------- | --- |
+| Branch?       | 4.x |
+| Bug fix?      | yes |
+| New feature?  | no  |
+| Deprecations? | no  |
+| Issues        | -   |
+| License       | MIT |
+
+## Description
+
 <!--
-If you are unsure which branch your pull request should be sent to, please read: https://doppar.com/versions/3.x/contributions.html#which-branch
-
+Explain what this pull request changes.
+If you are unsure which branch your pull request should be sent to, please read: https://doppar.com/versions/4.x/contributions#which-branch
 Pull requests without a descriptive title, thorough description, or tests will be closed.
-
-In addition, please describe the benefit to end users; the reasons it does not break any existing features; how it makes building web applications easier, etc.
 -->
+
+## Checklist
+
+- [ ] Tests have been added or updated
+- [ ] Documentation has been updated if necessary
+- [ ] Code follows the project coding standards
+- [ ] All tests pass locally

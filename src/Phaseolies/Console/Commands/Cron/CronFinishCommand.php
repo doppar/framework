@@ -32,21 +32,30 @@ class CronFinishCommand extends Command
         $exitCode = (int)$this->argument('exit_code');
 
         // Find and clean up the process
-        $pidFiles = glob(sys_get_temp_dir() . "/doppar_cron_lock_*.pid");
+        $directories = array_unique(array_filter([
+            $this->scheduleDirectory(),
+            sys_get_temp_dir(),
+        ]));
 
-        foreach ($pidFiles as $pidFile) {
-            $processInfo = json_decode(file_get_contents($pidFile), true);
+        foreach ($directories as $directory) {
+            foreach (glob($directory . '/doppar_cron_lock_*.pid') ?: [] as $pidFile) {
+                $processInfo = json_decode((string) @file_get_contents($pidFile), true);
 
-            if ($processInfo['finish_id'] === $finishId) {
+                if (!is_array($processInfo) || ($processInfo['finish_id'] ?? null) !== $finishId) {
+                    continue;
+                }
+
                 if ($shouldReleaseLock) {
-                    $lockFile = str_replace('.pid', '', $pidFile);
+                    $lockFile = substr($pidFile, 0, -strlen('.pid'));
+
                     if (file_exists($lockFile)) {
-                        unlink($lockFile);
+                        @unlink($lockFile);
                     }
                 }
 
-                unlink($pidFile);
-                break;
+                @unlink($pidFile);
+
+                break 2;
             }
         }
 
@@ -55,6 +64,20 @@ class CronFinishCommand extends Command
         } else {
             error('Cron task failed with exit code: ' . $exitCode);
             return $exitCode;
+        }
+    }
+
+    /**
+     * Get the directory that holds the scheduler's lock files
+     *
+     * @return string|null
+     */
+    protected function scheduleDirectory(): ?string
+    {
+        try {
+            return storage_path('schedule');
+        } catch (\Throwable) {
+            return null;
         }
     }
 }

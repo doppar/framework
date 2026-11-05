@@ -2,14 +2,14 @@
 
 namespace Phaseolies\Support\Facades;
 
-/**
- * @method static \Phaseolies\Support\Storage\StorageFileService disk(?string $name = null)
- * @method static \Phaseolies\Support\Storage\StorageFileService getDiskPath(string $disk)
- * @see \Phaseolies\Support\Storage\StorageFileService
- */
-
 use Phaseolies\Facade\BaseFacade;
 
+/**
+ * @method static \Phaseolies\Support\Storage\IFileSystem disk(string $name)
+ * @method static ?string getDiskPath(string $disk)
+ *
+ * @see \Phaseolies\Support\Storage\Contracts\StorageInterface
+ */
 class Storage extends BaseFacade
 {
     protected static function getFacadeAccessor()

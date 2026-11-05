@@ -27,17 +27,64 @@ class FileSystem
     }
 
     /**
+     * Resolve a caller-supplied relative path against the storage root,
+     * rejecting any path that would escape outside the root
+     *
+     * @param string $relativePath
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    protected function resolvePath(string $relativePath): string
+    {
+        foreach (preg_split('#[/\\\\]#', $relativePath) as $segment) {
+            if ($segment === '..' || $segment === '.') {
+                throw new \InvalidArgumentException(
+                    "Invalid path \"{$relativePath}\": path traversal is not allowed."
+                );
+            }
+        }
+
+        $root = rtrim($this->filePath, '/\\');
+        $fullPath = $root . '/' . ltrim($relativePath, '/\\');
+
+        $resolvedTarget = realpath($fullPath);
+
+        if ($resolvedTarget !== false) {
+            $resolvedRoot = realpath($root);
+            $withinRoot = $resolvedRoot !== false && (
+                $resolvedTarget === $resolvedRoot ||
+                str_starts_with($resolvedTarget, $resolvedRoot . DIRECTORY_SEPARATOR)
+            );
+
+            if (!$withinRoot) {
+                throw new \InvalidArgumentException(
+                    "Invalid path \"{$relativePath}\": resolves outside the storage root."
+                );
+            }
+        }
+
+        return $fullPath;
+    }
+
+    /**
      * move file in local file system
      *
      * @param string $path
      * @param File $file
      * @param string|null $fileName
      * @return bool
+     * @throws FileNotFoundException When the uploaded temporary file is missing
      */
     public function put(string $path, File $file, ?string $fileName = null): bool
     {
         $fileName = $fileName ?? $this->getFileName($file);
-        $stream = fopen($file->getClientOriginalPath(), 'rb');
+        $source = $file->getClientOriginalPath();
+
+        if (!is_file($source)) {
+            throw new FileNotFoundException("Uploaded file does not exist at path {$source}. It may have been moved already.");
+        }
+
+        $stream = fopen($source, 'rb');
 
         if (is_resource($stream)) {
             $this->writeStream($path, $fileName, $stream);
@@ -117,10 +164,10 @@ class FileSystem
      */
     public function isDirectoryExists(string $path): string
     {
-        $realPath = $this->storeageBasePath();
+        $fullPath = $this->resolvePath($path);
 
-        if (! $this->isDirectory($realPath . '/' . trim($path, '/'))) {
-            $this->makeDirectory($realPath . '/' . $path, 0755, true);
+        if (! $this->isDirectory($fullPath)) {
+            $this->makeDirectory($fullPath, 0755, true);
         }
         return $path;
     }
@@ -140,21 +187,33 @@ class FileSystem
      * create the destination full path according in os
      *
      * @param string $path
+     * @param string $fileName
      * @return string
      */
     public function destinationFile(string $path, $fileName): string
     {
-        return $this->filePath . '/' . $path . '/' . $fileName;
+        return $this->resolvePath($path . '/' . $fileName);
     }
 
     /**
-     * return project base path in os
+     * Get the filesystem base path.
      *
+     * @return string
+     */
+    public function storageBasePath(): string
+    {
+        return $this->filePath;
+    }
+
+    /**
+     * Get the filesystem base path.
+     *
+     * @deprecated Misspelled name kept for backward compatibility, use storageBasePath() instead.
      * @return string
      */
     public function storeageBasePath(): string
     {
-        return $this->filePath;
+        return $this->storageBasePath();
     }
 
     /**
