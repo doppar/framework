@@ -116,7 +116,7 @@ class RedirectResponse extends Response
     public function back($status = 302, $headers = [], string|bool|null $fallback = false): RedirectResponse
     {
         $fallbackUrl = is_string($fallback) && $fallback !== '' ? $fallback : '/';
-        $url = request()->headers->get('referer') ?? $fallbackUrl;
+        $url = request()->headers->get('referer') ?: $fallbackUrl;
 
         $this->setStatusCode($status)->withHeaders($headers);
         $this->setTargetUrl($url);

@@ -10,6 +10,7 @@ use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Controllers\Controller;
 use Phaseolies\Error\JsonErrorRenderer;
 use Phaseolies\Database\Entity\Builder;
+use Phaseolies\Database\Entity\Model;
 
 class Response implements HttpStatus
 {
@@ -642,6 +643,12 @@ class Response implements HttpStatus
         }
 
         http_response_code($statusCode);
+
+        foreach ($exception->getHeaders() as $name => $value) {
+            if (!headers_sent()) {
+                header($name . ': ' . implode(', ', (array) $value));
+            }
+        }
 
         self::renderErrorPage($statusCode, $message);
     }
@@ -1633,7 +1640,7 @@ class Response implements HttpStatus
      */
     protected function encodeJsonContent(mixed $content, int $options = 0): string
     {
-        return json_encode(static::toSerializable($content), $options);
+        return Model::serializingJson(fn() => json_encode(static::toSerializable($content), $options));
     }
 
     /**

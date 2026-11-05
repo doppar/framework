@@ -100,7 +100,6 @@ class Request
         self::METHOD_PATCH,
         self::METHOD_PURGE,
         self::METHOD_TRACE,
-        self::METHOD_ANY,
     ];
 
     /**
@@ -437,7 +436,7 @@ class Request
     {
         $method = strtoupper((string) $this->method);
 
-        return $method !== self::METHOD_ANY && in_array($method, self::VALID_HTTP_METHODS, true);
+        return in_array($method, self::VALID_HTTP_METHODS, true);
     }
 
     public function __toString(): string

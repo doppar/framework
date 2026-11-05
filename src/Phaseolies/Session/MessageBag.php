@@ -35,22 +35,24 @@ class MessageBag
     }
 
     /**
-     * Retrieves the old input data that was previously stored in the session..
+     * Retrieves the old input data that was previously stored in the session.
+     *
+     * The input stays readable for the rest of this request and is not kept for the next one.
      *
      * @param string|null $key
-     * @return string|null
+     * @return mixed
      */
-    public static function old(?string $key = null): ?string
+    public static function old(?string $key = null): mixed
     {
-        $input = session('input') ?? null;
+        $session = session();
 
-        if ($key) {
-            $data = session('input');
-            session()->forget('input');
-            return $data[$key] ?? null;
+        if ($session->has('input')) {
+            $session->putPeek('input', $session->get('input'));
         }
 
-        return $input;
+        $input = $session->getPeek('input');
+
+        return $key ? ($input[$key] ?? null) : $input;
     }
 
     /**

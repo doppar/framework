@@ -63,6 +63,13 @@ class Router
     public static array $namedRoutes = [];
 
     /**
+     * The HTTP method each named route was registered for.
+     *
+     * @var array<string, string>
+     */
+    public static array $namedRouteMethods = [];
+
+    /**
      * Matches a route parameter, `{id}` or `{id:constraint}`. The constraint may
      * use braces for quantifiers (`{id:\d{4}}`) but cannot nest them any deeper.
      */
@@ -214,6 +221,7 @@ class Router
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
             'namedRoutes' => self::$namedRoutes,
+            'namedRouteMethods' => self::$namedRouteMethods,
             'routeMiddlewares' => self::$routeMiddlewares,
             'timestamp' => time()
         ];
@@ -321,6 +329,7 @@ class Router
 
         self::$routes = $cached['routes'] ?? [];
         self::$namedRoutes = $cached['namedRoutes'] ?? [];
+        self::$namedRouteMethods = $cached['namedRouteMethods'] ?? [];
         self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
 
         static::$cacheLoaded = true;
@@ -551,6 +560,7 @@ class Router
 
         if ($name) {
             self::$namedRoutes[$name] = $this->currentRoutePath;
+            self::$namedRouteMethods[$name] = $method;
         }
 
         return $this;
@@ -801,6 +811,7 @@ class Router
     {
         if ($this->currentRoutePath) {
             self::$namedRoutes[$name] = $this->currentRoutePath;
+            self::$namedRouteMethods[$name] = $this->getCurrentRequestMethod();
         }
 
         return $this;
@@ -1900,7 +1911,7 @@ class Router
         if (Response::shouldBeJson($result)) {
             $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
-            $response->setBody(json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR));
+            $response->setBody(Model::serializingJson(fn() => json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR)));
         } else {
             $response->setBody($result ?? '');
         }
