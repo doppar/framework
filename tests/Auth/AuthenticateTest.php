@@ -63,7 +63,16 @@ namespace Phaseolies\Auth\Security {
         return new class {
             public function has(string $key): bool
             {
-                return false;
+                global $authenticateRememberCookies;
+
+                return isset($authenticateRememberCookies[$key]);
+            }
+
+            public function get(string $key): mixed
+            {
+                global $authenticateRememberCookies;
+
+                return $authenticateRememberCookies[$key] ?? null;
             }
         };
     }
@@ -83,7 +92,9 @@ namespace Tests\Unit\Auth {
 
     use Phaseolies\Auth\Authable;
     use Phaseolies\Auth\Security\Authenticate;
+    use Phaseolies\DI\Container;
     use PHPUnit\Framework\TestCase;
+    use Tests\Support\MockContainer;
 
     class FakeAuthableModel extends Authable
     {
@@ -129,14 +140,110 @@ namespace Tests\Unit\Auth {
         }
     }
 
+    class RememberedFakeUser extends FakeAuthableModel
+    {
+        public ?string $fakeRememberToken = null;
+        public ?string $fakeTwoFactorSecret = null;
+
+        public function getRememberToken(): ?string
+        {
+            return $this->fakeRememberToken;
+        }
+
+        public function getTwoFactorSecret(): ?string
+        {
+            return $this->fakeTwoFactorSecret;
+        }
+    }
+
+    class RememberCookieAuthenticate extends Authenticate
+    {
+        public function __construct()
+        {
+            parent::__construct('web', [
+                'model'       => RememberedFakeUser::class,
+                'session_key' => 'web_session',
+            ]);
+        }
+
+        protected function getModel(): Authable
+        {
+            return new RememberedFakeUser();
+        }
+
+        protected function getRememberCookieName(): string
+        {
+            return 'remember_test';
+        }
+    }
+
     class AuthenticateTest extends TestCase
     {
         protected function setUp(): void
         {
-            global $authenticateSessionStore;
+            global $authenticateSessionStore, $authenticateRememberCookies;
 
             $authenticateSessionStore = new \Phaseolies\Auth\Security\TestSessionStore();
+            $authenticateRememberCookies = [];
             FakeAuthableModel::$resolvedUser = null;
+        }
+
+        /**
+         * Sign a browser in with a valid remember cookie for a user.
+         */
+        private function rememberUser(?string $twoFactorSecret): RememberedFakeUser
+        {
+            global $authenticateRememberCookies;
+
+            $container = new MockContainer();
+            Container::setInstance($container);
+            $container->bind('hash', fn() => new class {
+                public function check(?string $value, ?string $hash): bool
+                {
+                    return password_verify((string) $value, (string) $hash);
+                }
+            });
+            $container->bind('crypt', fn() => new class {
+                public function decrypt(string $value): string
+                {
+                    return $value;
+                }
+            });
+
+            $token = 'remember-token';
+
+            $user = new RememberedFakeUser();
+            $user->id = 7;
+            $user->fakeRememberToken = password_hash($token, PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->fakeTwoFactorSecret = $twoFactorSecret;
+            FakeAuthableModel::$resolvedUser = $user;
+
+            $authenticateRememberCookies['remember_test'] =
+                '7|' . $token . '|' . password_hash('7' . $token, PASSWORD_BCRYPT, ['cost' => 4]);
+
+            return $user;
+        }
+
+        public function testRememberCookieLogsInUserWithoutTwoFactor()
+        {
+            global $authenticateSessionStore;
+
+            $user = $this->rememberUser(null);
+
+            $this->assertSame($user, (new RememberCookieAuthenticate())->user());
+            $this->assertSame(7, $authenticateSessionStore->get('web_session'));
+        }
+
+        public function testRememberCookieDoesNotBypassTwoFactor()
+        {
+            global $authenticateSessionStore;
+
+            $this->rememberUser('encrypted-secret');
+
+            $this->assertNull((new RememberCookieAuthenticate())->user());
+            $this->assertFalse($authenticateSessionStore->has('web_session'));
+            $this->assertSame(7, $authenticateSessionStore->get('2fa_web_user_id'));
+            $this->assertTrue($authenticateSessionStore->get('2fa_web_remember'));
         }
 
         public function testAuthableGetAuthKeyNameDefaultsToEmail()

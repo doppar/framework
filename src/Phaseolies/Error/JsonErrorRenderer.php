@@ -32,7 +32,23 @@ class JsonErrorRenderer
                 'message' => $message,
                 'errors'  => $errorDetails ?? $exception->getMessage(),
             ]
-            : [
+            : $this->exceptionPayload($exception, $statusCode, $errorDetails);
+
+        return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Describe an exception, leaving out its internals unless debugging.
+     *
+     * @param Throwable $exception
+     * @param int $statusCode
+     * @param mixed|null $errorDetails
+     * @return array
+     */
+    protected function exceptionPayload(Throwable $exception, int $statusCode, mixed $errorDetails): array
+    {
+        if (filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN)) {
+            return [
                 'message' => $errorDetails ?? $exception->getMessage(),
                 'errors'  => [
                     'file'  => $exception->getFile(),
@@ -40,7 +56,11 @@ class JsonErrorRenderer
                     'trace' => $exception->getTraceAsString(),
                 ],
             ];
+        }
 
-        return response()->json($response, $statusCode);
+        return [
+            'message' => $errorDetails ?? ($statusCode >= 500 ? 'Something went wrong' : $exception->getMessage()),
+            'errors'  => [],
+        ];
     }
 }

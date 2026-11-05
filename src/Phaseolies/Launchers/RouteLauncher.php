@@ -18,9 +18,23 @@ class RouteLauncher extends ServiceLauncher
         );
 
         if ($path !== '/' && str_ends_with(request()->server->get('REQUEST_URI'), '/')) {
-            header('Location: ' . rtrim(request()->server->get('REQUEST_URI'), '/'), true, 301);
+            header('Location: ' . $this->withoutTrailingSlash(request()->server->get('REQUEST_URI')), true, 301);
             exit;
         }
+    }
+
+    /**
+     * Remove the trailing slash from a request URI, keeping the result on this site.
+     *
+     * The URI comes from the client. Browsers treat a Location that starts with
+     * "//" or "/\" as another host, so it must start with exactly one slash.
+     *
+     * @param string $uri
+     * @return string
+     */
+    protected function withoutTrailingSlash(string $uri): string
+    {
+        return '/' . ltrim(rtrim($uri, '/'), '/\\');
     }
 
     /**

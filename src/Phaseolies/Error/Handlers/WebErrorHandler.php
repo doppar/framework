@@ -25,13 +25,24 @@ class WebErrorHandler implements ErrorHandlerInterface
 
         $renderer = new WebErrorRenderer();
 
-        if (env('APP_DEBUG', false)) {
+        if ($this->isDebugging()) {
             $response = $renderer->renderDebug($exception);
         } else {
             $response = $renderer->renderProduction($exception);
         }
 
         $response->prepare(request())->send();
+    }
+
+    /**
+     * Whether debugging is on. A server environment variable arrives as a
+     * string, and "false" must not count as true.
+     *
+     * @return bool
+     */
+    protected function isDebugging(): bool
+    {
+        return filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

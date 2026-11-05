@@ -41,6 +41,7 @@ PHP);
     protected function tearDown(): void
     {
         $this->deleteDir($this->translationPath);
+        unset($_ENV['APP_DEBUG']);
 
         parent::tearDown();
     }
@@ -63,8 +64,37 @@ PHP);
         @rmdir($dir);
     }
 
+    public function testRenderHidesExceptionInternalsWhenNotDebugging(): void
+    {
+        foreach (['false', '0', ''] as $debug) {
+            $_ENV['APP_DEBUG'] = $debug;
+
+            $payload = json_decode((new JsonErrorRenderer())->render(
+                new RuntimeException('SQLSTATE secret', Response::HTTP_INTERNAL_SERVER_ERROR),
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            )->getBody(), true);
+
+            $this->assertSame(['message' => 'Something went wrong', 'errors' => []], $payload);
+        }
+    }
+
+    public function testRenderKeepsClientErrorMessageWhenNotDebugging(): void
+    {
+        $_ENV['APP_DEBUG'] = 'false';
+
+        $payload = json_decode((new JsonErrorRenderer())->render(
+            new RuntimeException('Boom'),
+            Response::HTTP_BAD_REQUEST,
+            'Invalid JSON data in request body.'
+        )->getBody(), true);
+
+        $this->assertSame(['message' => 'Invalid JSON data in request body.', 'errors' => []], $payload);
+    }
+
     public function testRenderReturnsJsonResponseInstance(): void
     {
+        $_ENV['APP_DEBUG'] = 'true';
+
         $renderer = new JsonErrorRenderer();
 
         $response = $renderer->render(
