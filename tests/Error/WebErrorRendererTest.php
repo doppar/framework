@@ -27,11 +27,14 @@ class WebErrorRendererTest extends TestCase
         $renderer = new WebErrorRenderer();
         $exception = new RuntimeException('Boom');
 
-        $response = $renderer->renderProduction($exception);
+        $response = $this->renderWithPageBuffer($renderer, $exception);
 
+        // Rendered with the framework's bundled 500 view
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(500, $response->getStatusCode());
-        $this->assertSame('Something went wrong', $response->getBody());
+        $this->assertStringContainsString('<!DOCTYPE html>', $response->getBody());
+        $this->assertStringContainsString('Something went wrong', $response->getBody());
+        $this->assertStringNotContainsString('Boom', $response->getBody());
         $this->assertSame($exception, $response->getOriginal());
     }
 
@@ -40,11 +43,42 @@ class WebErrorRendererTest extends TestCase
         $renderer = new WebErrorRenderer();
         $exception = HttpException::fromStatusCode(404, 'Not Found');
 
+        $response = $this->renderWithPageBuffer($renderer, $exception);
+
+        // Rendered with the framework's bundled 404 view
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertStringContainsString('<!DOCTYPE html>', $response->getBody());
+        $this->assertStringContainsString('Not Found', $response->getBody());
+        $this->assertSame($exception, $response->getOriginal());
+    }
+
+    public function testRenderProductionFallsBackToPlainMessageWithoutAView(): void
+    {
+        $renderer = new WebErrorRenderer();
+        $exception = HttpException::fromStatusCode(418, "I'm a teapot");
+
         $response = $renderer->renderProduction($exception);
 
-        $this->assertSame(404, $response->getStatusCode());
-        $this->assertSame('Not Found', $response->getBody());
-        $this->assertSame($exception, $response->getOriginal());
+        $this->assertSame(418, $response->getStatusCode());
+        $this->assertSame("I'm a teapot", $response->getBody());
+    }
+
+    /**
+     * Render inside an extra output buffer, as a real request has one open:
+     * rendering an error view discards the page's partial output first.
+     */
+    private function renderWithPageBuffer(WebErrorRenderer $renderer, \Throwable $exception): Response
+    {
+        $level = ob_get_level();
+        ob_start();
+
+        try {
+            return $renderer->renderProduction($exception);
+        } finally {
+            while (ob_get_level() > $level) {
+                ob_end_clean();
+            }
+        }
     }
 
     public function testRenderProductionKeepsTheStatusOfATokenMismatch(): void

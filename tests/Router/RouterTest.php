@@ -278,6 +278,73 @@ class RouterTest extends TestCase
         $this->assertArrayHasKey('/test', $routes['GET']);
     }
 
+    public function testAnyWithArrayMethodOverrideDoesNotThrow(): void
+    {
+        $request = $this->captureRequestForAny('POST', post: ['_method' => ['PUT']]);
+
+        $this->router->any('/any', fn() => 'any');
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['POST'] ?? []);
+        $this->assertNotNull($request->getMalformedRequestError());
+    }
+
+    public function testAnyIgnoresMethodOverrideOnGetRequests(): void
+    {
+        $callback = fn() => 'any';
+        $request = $this->captureRequestForAny('GET', get: ['_method' => 'DELETE']);
+
+        $this->router->any('/any', $callback);
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['GET'] ?? []);
+        $this->assertArrayNotHasKey('DELETE', array_filter($this->registeredRoutes()));
+        $this->assertSame($callback, $this->router->getCallback($request));
+    }
+
+    public function testAnyRegistersTheNormalizedOverrideMethodForPostRequests(): void
+    {
+        $callback = fn() => 'any';
+        $request = $this->captureRequestForAny('POST', post: ['_method' => 'put']);
+
+        $this->router->any('/any', $callback);
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['PUT'] ?? []);
+        $this->assertSame('PUT', $request->getMethod());
+        $this->assertSame($callback, $this->router->getCallback($request));
+    }
+
+    /**
+     * Capture a request from globals at /any and bind it as the current request.
+     *
+     * @param array<string, mixed> $get
+     * @param array<string, mixed> $post
+     */
+    private function captureRequestForAny(string $method, array $get = [], array $post = []): Request
+    {
+        [$previousGet, $previousPost] = [$_GET, $_POST];
+        $_SERVER['REQUEST_METHOD'] = $method;
+        $_SERVER['REQUEST_URI'] = '/any';
+        $_GET = $get;
+        $_POST = $post;
+
+        try {
+            $request = Request::createFromGlobals();
+        } finally {
+            [$_GET, $_POST] = [$previousGet, $previousPost];
+        }
+
+        Container::getInstance()->instance('request', $request);
+
+        return $request;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function registeredRoutes(): array
+    {
+        return (new \ReflectionClass(Router::class))->getProperty('routes')->getValue($this->router);
+    }
+
     // =========================================================================
     // Named Routes Tests
     // =========================================================================
@@ -448,6 +515,111 @@ class RouterTest extends TestCase
         $result = $this->router->getCallback($request);
 
         $this->assertFalse($result);
+    }
+
+    // =========================================================================
+    // HEAD Requests
+    // =========================================================================
+
+    public function testHeadRequestFallsBackToGetRoute(): void
+    {
+        $callback = fn() => 'user profile';
+        $this->router->get('/users/{id}', $callback);
+
+        $request = new TestRequestStub('HEAD', '/users/7', 'localhost');
+
+        $this->assertSame($callback, $this->router->getCallback($request));
+        $this->assertEquals(['id' => '7'], $request->getRouteParams());
+    }
+
+    public function testExplicitHeadRouteTakesPrecedenceOverGetRoute(): void
+    {
+        $getCallback = fn() => 'get';
+        $headCallback = fn() => 'head';
+        $this->router->get('/status', $getCallback);
+        $this->router->head('/status', $headCallback);
+
+        $request = new TestRequestStub('HEAD', '/status', 'localhost');
+
+        $this->assertSame($headCallback, $this->router->getCallback($request));
+    }
+
+    public function testHeadRequestDoesNotFallBackToNonGetRoutes(): void
+    {
+        $this->router->post('/submit', fn() => 'post');
+
+        $request = new TestRequestStub('HEAD', '/submit', 'localhost');
+
+        $this->assertFalse($this->router->getCallback($request));
+    }
+
+    public function testHeadRequestUsesTheGetRouteMiddleware(): void
+    {
+        $this->router->get('/admin', fn() => 'admin')->middleware('auth', 'admin');
+
+        $request = new TestRequestStub('HEAD', '/admin', 'localhost');
+
+        $this->assertEquals(['auth', 'admin'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testHeadRequestUsesTheExplicitHeadRouteMiddleware(): void
+    {
+        $this->router->get('/report', fn() => 'get')->middleware('auth');
+        $this->router->head('/report', fn() => 'head')->middleware('throttle:10,1');
+
+        $request = new TestRequestStub('HEAD', '/report', 'localhost');
+
+        $this->assertEquals(['throttle:10,1'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testHeadRouteIsFoundAfterTheRouteTablesChange(): void
+    {
+        // Cached apps reload closure routes from the route files after a miss
+        // (getOriginalClosure); a HEAD lookup must not remember the first miss.
+        $request = new TestRequestStub('HEAD', '/ping', 'localhost');
+        $this->assertFalse($this->router->getCallback($request));
+
+        $headCallback = fn() => 'pong';
+        $this->router->head('/ping', $headCallback);
+
+        $this->assertSame($headCallback, $this->router->getCallback($request));
+    }
+
+    public function testTrailingSlashDoesNotBypassRouteMiddleware(): void
+    {
+        $callback = fn() => 'admin';
+        $this->router->get('/admin', $callback)->middleware('auth');
+
+        $request = new TestRequestStub('GET', '/admin/', 'localhost');
+
+        $this->assertSame($callback, $this->router->getCallback($request));
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testTrailingSlashOnParameterizedRouteKeepsMiddleware(): void
+    {
+        $this->router->get('/posts/{id}/edit', fn() => 'edit')->middleware('auth');
+
+        $request = new TestRequestStub('GET', '/posts/5/edit/', 'localhost');
+
+        $this->assertNotFalse($this->router->getCallback($request));
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
+    }
+
+    public function testMiddlewareIsReadFromTheDispatchedRouteAfterTablesAreRestored(): void
+    {
+        // A closure route found only after reloading the route files keeps its
+        // middleware once the cached tables are restored.
+        $reflection = new \ReflectionClass(Router::class);
+        $routesProperty = $reflection->getProperty('routes');
+
+        $this->router->get('/reports', fn() => 'reports')->middleware('auth');
+        $request = new TestRequestStub('GET', '/reports', 'localhost');
+        $this->assertNotFalse($this->router->getCallback($request));
+
+        $routesProperty->setValue(null, []);
+
+        $this->assertEquals(['auth'], $this->router->getCurrentRouteMiddleware($request));
     }
 
     public function testResolveUsesFreshResponseForScalarRouteResults(): void

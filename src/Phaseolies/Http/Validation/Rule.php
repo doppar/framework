@@ -61,25 +61,23 @@ trait Rule
         $input = $this->all();
         MessageBag::flashInput();
 
-        if (is_array($input)) {
-            foreach ($rules as $fieldName => $value) {
-                // Custom rule class bound via Bind::to(new Rule())->context([...])
-                if ($value instanceof Bind) {
-                    $errorMessage = $value->evaluate($fieldName, $input);
-                    if ($errorMessage) {
-                        $errors[$fieldName][] = $errorMessage;
-                    }
-                    continue;
+        foreach ($rules as $fieldName => $value) {
+            // Custom rule class bound via Bind::to(new Rule())->context([...])
+            if ($value instanceof Bind) {
+                $errorMessage = $value->evaluate($fieldName, $input);
+                if ($errorMessage) {
+                    $errors[$fieldName][] = $errorMessage;
                 }
+                continue;
+            }
 
-                $fieldRules = $this->splitRules($value);
-                foreach ($fieldRules as $rule) {
-                    $ruleValue = $this->_getRuleSuffix($rule);
-                    $rule = $this->_removeRuleSuffix($rule);
-                    $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
-                    if ($errorMessage && ! in_array($errorMessage, $errors[$fieldName] ?? [], true)) {
-                        $errors[$fieldName][] = $errorMessage;
-                    }
+            $fieldRules = $this->splitRules($value);
+            foreach ($fieldRules as $rule) {
+                $ruleValue = $this->_getRuleSuffix($rule);
+                $rule = $this->_removeRuleSuffix($rule);
+                $errorMessage = $this->sanitizeUserRequest($input, $fieldName, $rule, $ruleValue);
+                if ($errorMessage && ! in_array($errorMessage, $errors[$fieldName] ?? [], true)) {
+                    $errors[$fieldName][] = $errorMessage;
                 }
             }
         }

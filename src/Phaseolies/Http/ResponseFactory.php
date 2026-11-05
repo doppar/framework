@@ -6,18 +6,11 @@ use Phaseolies\Http\Response\Stream\StreamedResponse;
 use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Http\Response\Stream\BinaryFileResponse;
 use Phaseolies\Http\Response\JsonResponse;
+use Phaseolies\Http\Response\RedirectResponse;
 use Phaseolies\Http\Exceptions\StreamedResponseException;
-use Phaseolies\Database\Entity\Model;
-use Phaseolies\Database\Entity\Builder;
-use Phaseolies\Support\Collection;
 
 class ResponseFactory extends Response
 {
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
     /**
      * Create a new response instance.
      *
@@ -28,7 +21,15 @@ class ResponseFactory extends Response
      */
     public function make($content = '', $status = 200, array $headers = []): Response
     {
-        if ($this->shouldBeJson($content)) {
+        if ($content instanceof Response) {
+            if ((int) $status !== 200) {
+                $content->setStatusCode((int) $status);
+            }
+
+            return $content->withHeaders($headers);
+        }
+
+        if (static::shouldBeJson($content)) {
             return $this->json($content, $status, $headers);
         }
 
@@ -70,7 +71,7 @@ class ResponseFactory extends Response
      */
     public function text(string $content, int $status = 200, array $headers = []): Response
     {
-        return app(Response::class)->text($content, $status, $headers);
+        return (new Response())->text($content, $status, $headers);
     }
 
     /**
@@ -175,13 +176,11 @@ class ResponseFactory extends Response
      * @param string $url
      * @param int $status
      * @param array $headers
-     * @return Response
+     * @return RedirectResponse
      */
-    public function redirect(string $url, int $status = 302, array $headers = []): Response
+    public function redirect(string $url, int $status = 302, array $headers = []): RedirectResponse
     {
-        $headers['Location'] = $url;
-
-        return new Response('', $status, $headers);
+        return (new RedirectResponse())->to($url, $status, $headers);
     }
 
     /**
@@ -199,31 +198,5 @@ class ResponseFactory extends Response
         $name = str_replace('%', '', $name);
 
         return $name;
-    }
-
-    /**
-     * Determine if the given data should be returned as JSON.
-     *
-     * @param mixed $data
-     * @return bool
-     */
-    protected function shouldBeJson($data): bool
-    {
-        if ($data instanceof JsonResponse) {
-            return false;
-        }
-
-        if ($data instanceof \Stringable) {
-            return false;
-        }
-
-        return is_array($data) ||
-            is_object($data) ||
-            $data instanceof \JsonSerializable ||
-            $data instanceof Model ||
-            $data instanceof Collection ||
-            $data instanceof Builder ||
-            $data instanceof \stdClass ||
-            $data instanceof \ArrayObject;
     }
 }

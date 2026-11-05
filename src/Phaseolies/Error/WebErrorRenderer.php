@@ -225,29 +225,6 @@ class WebErrorRenderer
      */
     protected function resolveErrorViewPath(int $statusCode): ?string
     {
-        $customPath = base_path(
-            'templates'
-            . DIRECTORY_SEPARATOR . 'views'
-            . DIRECTORY_SEPARATOR . 'errors'
-            . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"
-        );
-
-        if (file_exists($customPath)) {
-            return $customPath;
-        }
-
-        $packagePath = base_path(
-            'vendor'
-            . DIRECTORY_SEPARATOR . 'doppar'
-            . DIRECTORY_SEPARATOR . 'framework'
-            . DIRECTORY_SEPARATOR . 'src'
-            . DIRECTORY_SEPARATOR . 'Phaseolies'
-            . DIRECTORY_SEPARATOR . 'Support'
-            . DIRECTORY_SEPARATOR . 'View'
-            . DIRECTORY_SEPARATOR . 'errors'
-            . DIRECTORY_SEPARATOR . "{$statusCode}.odo.php"
-        );
-
-        return file_exists($packagePath) ? $packagePath : null;
+        return Response::resolveErrorView($statusCode);
     }
 }

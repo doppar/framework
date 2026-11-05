@@ -8,6 +8,8 @@ use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\HttpStatus;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Controllers\Controller;
+use Phaseolies\Error\JsonErrorRenderer;
+use Phaseolies\Database\Entity\Builder;
 
 class Response implements HttpStatus
 {
@@ -16,7 +18,7 @@ class Response implements HttpStatus
      *
      * @var string|null
      */
-    public ?string $body;
+    public ?string $body = null;
 
     /**
      * The exception that triggered the error response (if applicable).
@@ -65,7 +67,7 @@ class Response implements HttpStatus
     /**
      * Tracks headers already sent in informational responses.
      */
-    private array $sentHeaders;
+    private array $sentHeaders = [];
 
     /**
      * Constructor for the Response class.
@@ -179,10 +181,10 @@ class Response implements HttpStatus
     /**
      * Set the response exception.
      *
-     * @param $exception
-     * @return self
+     * @param \Throwable|null $exception
+     * @return static
      */
-    public function setException($exception): static
+    public function setException(?Throwable $exception): static
     {
         $this->exception = $exception;
 
@@ -192,20 +194,14 @@ class Response implements HttpStatus
     /**
      * Set the HTTP status code for the response.
      *
-     * @param int $statusCode The HTTP status code.
+     * @param int $statusCode
+     * @param string|null $text
      * @return static
      */
     public function setStatusCode(int $statusCode, ?string $text = null): static
     {
         $this->statusCode = $statusCode;
-
-        if (null === $text) {
-            $this->statusText = $this->getStatusCodeText($statusCode) ?? 'unknown status';
-
-            return $this;
-        }
-
-        $this->statusText = $text;
+        $this->statusText = $text ?? $this->getStatusCodeText($statusCode);
 
         return $this;
     }
@@ -238,10 +234,10 @@ class Response implements HttpStatus
     /**
      * Set multiple HTTP headers for the response.
      *
-     * @param array<string, string> $headers An associative array of headers.
-     * @return Response Returns the current Response instance.
+     * @param array<string, string|string[]>|HeaderBag $headers
+     * @return static
      */
-    public function withHeaders(array $headers): Response
+    public function withHeaders(array|HeaderBag $headers): static
     {
         if ($headers instanceof HeaderBag) {
             $headers = $headers->all();
@@ -250,20 +246,19 @@ class Response implements HttpStatus
         foreach ($headers as $name => $value) {
             $this->headers->set($name, $value);
         }
+
         return $this;
     }
 
     /**
-     * Set the exception to attach to the response.
+     * Set the exception to attach to the response (alias of setException()).
      *
      * @param \Throwable $e
-     * @return $this
+     * @return static
      */
-    public function withException(Throwable $e)
+    public function withException(Throwable $e): static
     {
-        $this->exception = $e;
-
-        return $this;
+        return $this->setException($e);
     }
 
     /**
@@ -353,7 +348,7 @@ class Response implements HttpStatus
                 $headers->remove('Content-Length');
             }
 
-            if ($request->isHead('HEAD')) {
+            if ($request->isHead()) {
                 // cf. RFC2616 14.13
                 $length = $headers->get('Content-Length');
                 $this->setBody(null);
@@ -371,7 +366,7 @@ class Response implements HttpStatus
         // Check if we need to send extra expire info headers
         if ('1.0' == $this->getProtocolVersion() && str_contains($headers->get('Cache-Control', ''), 'no-cache')) {
             $headers->set('pragma', 'no-cache');
-            $headers->set('expires', -1);
+            $headers->set('expires', '-1');
         }
 
         $this->ensureIEOverSSLCompatibility($request);
@@ -439,7 +434,7 @@ class Response implements HttpStatus
         }
 
         if ($informationalResponse) {
-            $this->headers_send($statusCode);
+            \headers_send($statusCode);
 
             return $this;
         }
@@ -470,26 +465,11 @@ class Response implements HttpStatus
     }
 
     /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * @param int $statusCode
+     * Get the standard reason phrase for an HTTP status code.
      *
-     * @return void
+     * @param int $statusCode
+     * @return string
      */
-    function headers_send(int $statusCode): void
-    {
-        if (headers_sent()) {
-            return;
-        }
-
-        // Use the response's protocol version, not hardcoded 1.1
-        header(sprintf(
-            'HTTP/%s %d %s',
-            $this->getProtocolVersion(),
-            $statusCode,
-            $this->getStatusCodeText($statusCode)
-        ), true, $statusCode);
-    }
-
     public function getStatusCodeText(int $statusCode): string
     {
         $statusTexts = [
@@ -649,10 +629,37 @@ class Response implements HttpStatus
     {
         $statusCode = $exception->getStatusCode();
         $message = $exception->getMessage() ?: 'An error occurred.';
+        $request = static::currentRequest();
+
+        if ($request !== null && ($request->isAjax() || $request->isApiRequest())) {
+            (new JsonErrorRenderer())
+                ->render($exception, $statusCode, $message)
+                ->withHeaders($exception->getHeaders())
+                ->prepare($request)
+                ->send(false);
+
+            return;
+        }
 
         http_response_code($statusCode);
 
         self::renderErrorPage($statusCode, $message);
+    }
+
+    /**
+     * Get the current request, if one can be resolved.
+     *
+     * @return Request|null
+     */
+    protected static function currentRequest(): ?Request
+    {
+        try {
+            $request = app('request');
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $request instanceof Request ? $request : null;
     }
 
     /**
@@ -664,16 +671,35 @@ class Response implements HttpStatus
      */
     protected static function renderErrorPage(int $status, string $message): void
     {
-        $customPath = base_path("templates/views/errors/{$status}.odo.php");
-        $errorPage = base_path("vendor/doppar/framework/src/Phaseolies/Support/View/errors/{$status}.odo.php");
+        $errorView = static::resolveErrorView($status);
 
-        if (file_exists($customPath)) {
-            include $customPath;
-        } elseif (file_exists($errorPage)) {
-            include $errorPage;
-        } else {
+        if ($errorView === null) {
             abort($status, $message);
         }
+
+        include $errorView;
+    }
+
+    /**
+     * Resolve the error view for a status code.
+     *
+     * @param int $status
+     * @return string|null
+     */
+    public static function resolveErrorView(int $status): ?string
+    {
+        $candidates = [
+            base_path("templates/views/errors/{$status}.odo.php"),
+            dirname(__DIR__) . str_replace('/', DIRECTORY_SEPARATOR, "/Support/View/errors/{$status}.odo.php"),
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -683,23 +709,11 @@ class Response implements HttpStatus
      */
     public function render(): string
     {
-        if (empty($this->body)) {
+        if ($this->body === null || $this->body === '') {
             throw new \RuntimeException('No view content to render.');
         }
 
-        if (is_string($this->body)) {
-            return $this->body;
-        }
-
-        if (is_callable($this->body)) {
-            return call_user_func($this->body);
-        }
-
-        if (is_object($this->body) && method_exists($this->body, '__toString')) {
-            return $this->body->__toString();
-        }
-
-        return (string) $this->body;
+        return $this->body;
     }
 
     /**
@@ -707,18 +721,12 @@ class Response implements HttpStatus
      *
      * @param string $view
      * @param array $data
-     * @return Response
+     * @param array<string, string> $headers
+     * @return static
      */
-    public function view(string $view, array $data = [], array $headers = []): Response
+    public function view(string $view, array $data = [], array $headers = []): static
     {
-        $content = $this->renderView($view, $data);
-
-        $this->body = $content;
-        foreach ($headers as $name => $value) {
-            $this->headers->set($name, $value);
-        }
-
-        return $this;
+        return $this->setBody($this->renderView($view, $data))->withHeaders($headers);
     }
 
     /**
@@ -756,12 +764,9 @@ class Response implements HttpStatus
      */
     public function text(string $content, int $status = 200, array $headers = []): Response
     {
-        $this->body = $content;
-        $this->statusCode = $status;
-
-        foreach ($headers as $name => $value) {
-            $this->headers->set($name, $value);
-        }
+        $this->setBody($content)
+            ->setStatusCode($status)
+            ->withHeaders($headers);
 
         $this->headers->set('Content-Type', 'text/plain');
 
@@ -1562,10 +1567,7 @@ class Response implements HttpStatus
     {
         $this->setOriginal($content);
 
-        if (
-            is_array($content) ||
-            is_object($content)
-        ) {
+        if (static::shouldBeJson($content)) {
             $content = $this->encodeJsonContent($content);
         }
 
@@ -1575,7 +1577,55 @@ class Response implements HttpStatus
     }
 
     /**
-     * Encode a value for JSON responses without assuming every object has toArray().
+     * Determine if the given content should be serialized as JSON.
+     *
+     * @param mixed $content
+     * @return bool
+     */
+    public static function shouldBeJson(mixed $content): bool
+    {
+        if (is_array($content)) {
+            return true;
+        }
+
+        if (!is_object($content) || $content instanceof self) {
+            return false;
+        }
+
+        return $content instanceof \JsonSerializable
+            || $content instanceof Builder
+            || !$content instanceof \Stringable;
+    }
+
+    /**
+     * Convert content into a structure that json_encode() can serialize faithfully.
+     *
+     * @param mixed $content
+     * @return mixed
+     */
+    public static function toSerializable(mixed $content): mixed
+    {
+        if ($content instanceof Builder) {
+            return $content->get();
+        }
+
+        if ($content instanceof \JsonSerializable || $content instanceof \stdClass) {
+            return $content;
+        }
+
+        if ($content instanceof \ArrayObject) {
+            return $content->getArrayCopy();
+        }
+
+        if (is_object($content) && method_exists($content, 'toArray')) {
+            return $content->toArray();
+        }
+
+        return $content;
+    }
+
+    /**
+     * Encode a value for a JSON response body.
      *
      * @param mixed $content
      * @param int $options
@@ -1583,26 +1633,7 @@ class Response implements HttpStatus
      */
     protected function encodeJsonContent(mixed $content, int $options = 0): string
     {
-        if ($content instanceof \Phaseolies\Support\Collection) {
-            return json_encode($content->toArray(), $options);
-        }
-
-        if (
-            $content instanceof \Phaseolies\Database\Entity\Model ||
-            $content instanceof \Phaseolies\Database\Entity\Builder ||
-            $content instanceof \JsonSerializable ||
-            $content instanceof \stdClass ||
-            $content instanceof \ArrayObject ||
-            is_array($content)
-        ) {
-            return json_encode($content, $options);
-        }
-
-        if (is_object($content) && method_exists($content, 'toArray')) {
-            return json_encode($content->toArray(), $options);
-        }
-
-        return json_encode($content, $options);
+        return json_encode(static::toSerializable($content), $options);
     }
 
     /**
@@ -1615,12 +1646,12 @@ class Response implements HttpStatus
     public function setExceptionError(Throwable $exception, ?int $statusCode = null): static
     {
         $status = $statusCode ?? ($exception->getCode() ?: 500);
-        $error = $exception->getMessage() ?? 'An error occurred';
+        $error = $exception->getMessage() ?: 'An error occurred';
 
         $this->setBody(json_encode($error));
         $this->setOriginal($exception);
         $this->setStatusCode($status);
-        $this->setException($status);
+        $this->setException($exception);
 
         // Fallback
         if (!headers_sent()) {

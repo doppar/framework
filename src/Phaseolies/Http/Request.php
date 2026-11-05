@@ -19,6 +19,8 @@ use Phaseolies\Http\Response\AcceptHeader;
 use Phaseolies\Http\ParameterBag;
 use Phaseolies\Http\InputBag;
 use Phaseolies\Http\HeaderBag;
+use Phaseolies\Http\Exceptions\BadRequestHttpException;
+use Phaseolies\Http\Exceptions\ConflictingHeadersException;
 
 /**
  * @phpstan-consistent-constructor
@@ -102,6 +104,19 @@ class Request
     ];
 
     /**
+     * Methods whose request body is parsed from the raw input stream.
+     */
+    private const BODY_PARSEABLE_METHODS = [
+        self::METHOD_PUT,
+        self::METHOD_DELETE,
+        self::METHOD_PATCH,
+        self::METHOD_POST,
+        self::METHOD_ANY,
+        self::METHOD_HEAD,
+        self::METHOD_OPTIONS,
+    ];
+
+    /**
      * @var string[]
      */
     protected static array $trustedHostPatterns = [];
@@ -132,8 +147,9 @@ class Request
     protected ?array $languages = null;
     protected ?array $charsets = null;
     protected ?array $encodings = null;
-    private bool $isIisRewrite = false;
     protected array $routeParams = [];
+    protected ?\RuntimeException $malformedRequestError = null;
+    private bool $ignoreMethodOverride = false;
 
     /**
      * Creates a Request from explicit parameter values.
@@ -173,25 +189,22 @@ class Request
         $this->content = $content;
         $this->requestUri = $this->getPath();
         $this->baseUrl = base_url();
-        $this->method = $this->method();
-        $this->format = null;
-        $this->languages = null;
-        $this->charsets = null;
-        $this->encodings = null;
+        $this->validateMethodOverride();
     }
 
     /**
-     * Initializes headers from the $_SERVER superglobal.
+     * Resolve the request method once, recording an invalid method instead of throwing.
      *
      * @return void
      */
-    protected function initializeHeaders(): void
+    private function validateMethodOverride(): void
     {
-        foreach ($this->server->all() as $key => $value) {
-            if (str_starts_with($key, "HTTP_")) {
-                $header = str_replace("_", "-", substr($key, 5));
-                $this->headers->set($header, $value);
-            }
+        try {
+            $this->getMethod();
+        } catch (BadRequestHttpException $e) {
+            $this->malformedRequestError ??= $e;
+            $this->ignoreMethodOverride = true;
+            $this->method = $this->getRealMethod();
         }
     }
 
@@ -213,75 +226,68 @@ class Request
      */
     protected function parseRequestBody(): array
     {
-        $request = $this->request->all() + $this->query->all();
+        $query = $this->query->all();
+        unset($query['_method']);
 
-        $contentType = $this->server->get("CONTENT_TYPE", "");
-        $requestMethod = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
+        $request = $this->request->all() + $query;
+
+        $contentType = (string) $this->server->get("CONTENT_TYPE", "");
+        $requestMethod = $this->getRealMethod();
+
+        $isJson = str_starts_with($contentType, "application/json");
+        $isUrlEncoded = str_starts_with($contentType, "application/x-www-form-urlencoded");
+        $isMultipart = str_starts_with($contentType, "multipart/form-data");
 
         if (
-            str_starts_with($contentType, "application/json") &&
-            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
+            !($isJson || $isUrlEncoded || $isMultipart) ||
+            !in_array($requestMethod, self::BODY_PARSEABLE_METHODS, true)
         ) {
-            $rawContent = $this->getContent();
-
-            if ($rawContent !== false) {
-                $jsonData = json_decode($rawContent, true);
-                if (json_last_error() === JSON_ERROR_NONE) {
-                    $request = array_merge($request, $jsonData);
-                } else {
-                    throw new \RuntimeException("Invalid JSON data in request body.");
-                }
-            } else {
-                throw new \RuntimeException("Unable to retrieve request content.");
-            }
-        } elseif (
-            str_starts_with($contentType, "application/x-www-form-urlencoded") &&
-            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
-        ) {
-            $rawContent = $this->getContent();
-            if ($rawContent !== false) {
-                parse_str($rawContent, $data);
-                $request = $data;
-            } else {
-                throw new \RuntimeException("Unable to retrieve request content.");
-            }
-        } elseif (
-            str_starts_with($contentType, "multipart/form-data") &&
-            in_array($requestMethod, ["PUT", "DELETE", "PATCH", "POST", "ANY", "HEAD", "OPTIONS"], true)
-        ) {
-            $rawContent = $this->getContent();
-            if ($rawContent !== false) {
-                $request = array_merge($request, $this->parseMultipartFormData());
-            } else {
-                throw new \RuntimeException("Unable to retrieve request content.");
-            }
+            return $request;
         }
 
-        if (!$this->isValidRequest()) {
-            throw new \RuntimeException("Invalid request.");
+        $rawContent = $this->getContent();
+
+        if (!is_string($rawContent)) {
+            throw new \RuntimeException("Unable to retrieve request content.");
         }
 
-        return $request;
+        if ($isJson) {
+            if (trim($rawContent) === '') {
+                return $request;
+            }
+
+            $jsonData = json_decode($rawContent, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \RuntimeException("Invalid JSON data in request body.");
+            }
+
+            return is_array($jsonData) ? array_replace($request, $jsonData) : $request;
+        }
+
+        if ($isUrlEncoded) {
+            parse_str($rawContent, $data);
+
+            return array_replace($request, $data);
+        }
+
+        return array_replace($request, $this->parseMultipartFormData($rawContent));
     }
 
     /**
      * Parses a raw multipart/form-data request body into an associative array.
      *
-     * This method extracts the boundary from the Content-Type header, splits the body
-     * into individual parts, parses each part's headers, and collects the form field
-     * values.
-     *
-     * @return array Associative array of form fields and their values
+     * @param string $rawContent
+     * @return array
      */
-    protected function parseMultipartFormData(): array
+    protected function parseMultipartFormData(string $rawContent): array
     {
-        $rawContent = $this->getContent();
-        if ($rawContent === false || empty($rawContent)) {
+        if ($rawContent === '') {
             return [];
         }
 
         $data = [];
-        $boundary = $this->extractBoundary($this->headers->get('CONTENT_TYPE'));
+        $boundary = $this->extractBoundary($this->headers->get('CONTENT_TYPE', ''));
 
         if (!$boundary) {
             return [];
@@ -291,7 +297,7 @@ class Request
         array_pop($parts);
 
         foreach ($parts as $part) {
-            if (empty(trim($part))) {
+            if (trim($part) === '' || !str_contains($part, "\r\n\r\n")) {
                 continue;
             }
 
@@ -429,59 +435,9 @@ class Request
      */
     public function isValidMethod(): bool
     {
-        return in_array(
-            strtoupper($this->method),
-            [
-                self::METHOD_GET,
-                self::METHOD_POST,
-                self::METHOD_PUT,
-                self::METHOD_PATCH,
-                self::METHOD_DELETE,
-                self::METHOD_OPTIONS,
-                self::METHOD_HEAD,
-                self::METHOD_TRACE,
-                self::METHOD_CONNECT,
-                self::METHOD_PURGE,
-            ],
-            true
-        );
-    }
+        $method = strtoupper((string) $this->method);
 
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Validates the request based on trusted proxies and headers.
-     *
-     * @return bool True if the request is valid, false otherwise.
-     */
-    public function isValidRequest(): bool
-    {
-        if (empty($this->trustedProxies)) {
-            // No trusted proxies, all requests are valid.
-            return true;
-        }
-
-        $remoteAddress = $this->server->get("REMOTE_ADDR");
-
-        if (!in_array($remoteAddress, $this->trustedProxies, true)) {
-            // Request not from a trusted proxy.
-            return true;
-        }
-
-        if ($this->trustedHeaderSet === 0) {
-            // No trusted headers set, all requests are valid.
-            return true;
-        }
-
-        foreach (self::TRUSTED_HEADERS as $headerBit => $headerName) {
-            if (($this->trustedHeaderSet & $headerBit) === $headerBit) {
-                if (!$this->server->has("HTTP_" . $headerName)) {
-                    // Required trusted header is missing.
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return $method !== self::METHOD_ANY && in_array($method, self::VALID_HTTP_METHODS, true);
     }
 
     public function __toString(): string
@@ -612,7 +568,7 @@ class Request
      *
      * @return array<string, mixed> The input data.
      */
-    public function all(): ?array
+    public function all(): array
     {
         return $this->request->all();
     }
@@ -625,8 +581,7 @@ class Request
      */
     public function merge(array $input): self
     {
-        $this->request->replace(array_merge($this->request->all(), $input));
-        $this->input = [];
+        $this->request->replace(array_replace($this->request->all(), $input));
 
         return $this;
     }
@@ -651,33 +606,60 @@ class Request
      *
      * The _method request parameter can also be used to determine the HTTP method,
      * but only if enableHttpMethodParameterOverride() has been called.
-     *
      * The method is always an uppercased string.
      * @return string
-     * @@throws \InvalidArgumentException
+     * @throws BadRequestHttpException
      */
     public function getMethod(): string
     {
-        $this->method = strtoupper($this->server->get("REQUEST_METHOD", "GET"));
+        $this->method = $this->getRealMethod();
 
-        if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
-            $method = strtoupper($this->headers->get("X-HTTP-METHOD-OVERRIDE"));
-            $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
-            self::$httpMethodParameterOverride = true;
-        } elseif ($this->request->has("_method")) {
-            $method = strtoupper($this->request->get("_method"));
-            $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
-            self::$httpMethodParameterOverride = true;
-        } else {
-            $method = $this->method;
-        }
-
-        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
-            $this->method = $method;
+        if ($this->ignoreMethodOverride) {
             return $this->method;
         }
 
-        throw new \InvalidArgumentException("Invalid HTTP method override: $method.");
+        if ($this->method !== self::METHOD_POST) {
+            return $this->validatedMethod($this->method);
+        }
+
+        if ($this->headers->has("X-HTTP-METHOD-OVERRIDE")) {
+            $override = $this->headers->get("X-HTTP-METHOD-OVERRIDE");
+        } elseif ($this->request->has("_method")) {
+            $override = $this->request->get("_method");
+        } else {
+            return $this->method;
+        }
+
+        // e.g. "_method[]=PUT" arrives as an array
+        if (!is_string($override)) {
+            throw new BadRequestHttpException("Invalid HTTP method override.");
+        }
+
+        $method = strtoupper($override);
+        $this->headers->set("X-HTTP-METHOD-OVERRIDE", $method);
+        self::$httpMethodParameterOverride = true;
+
+        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
+            return $this->method = $method;
+        }
+
+        throw new BadRequestHttpException("Invalid HTTP method override: $method.");
+    }
+
+    /**
+     * Ensure a real (non-overridden) request method is supported.
+     *
+     * @param string $method
+     * @return string
+     * @throws BadRequestHttpException
+     */
+    private function validatedMethod(string $method): string
+    {
+        if (in_array($method, self::VALID_HTTP_METHODS, true)) {
+            return $method;
+        }
+
+        throw new BadRequestHttpException("Unsupported HTTP method: $method.");
     }
 
     /**
@@ -1154,151 +1136,13 @@ class Request
     }
 
     /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * The following methods are derived from code of the Zend Framework (1.10dev - 2010-01-24)
+     * Returns the requested URI path (without the query string).
      *
-     * Code subject to the new BSD license (https://framework.zend.com/license).
-     *
-     * Copyright (c) 2005-2010 Zend Technologies USA Inc. (https://www.zend.com/)
-     */
-    protected function prepareRequestUri(): string
-    {
-        $requestUri = '';
-
-        if ($this->isIisRewrite() && '' != $this->server->get('UNENCODED_URL')) {
-            // IIS7 with URL Rewrite: make sure we get the unencoded URL (double slash problem)
-            $requestUri = $this->server->get('UNENCODED_URL');
-            $this->server->remove('UNENCODED_URL');
-        } elseif ($this->server->has('REQUEST_URI')) {
-            $requestUri = $this->server->get('REQUEST_URI');
-
-            if ('' !== $requestUri && '/' === $requestUri[0]) {
-                // To only use path and query remove the fragment.
-                if (false !== $pos = strpos($requestUri, '#')) {
-                    $requestUri = substr($requestUri, 0, $pos);
-                }
-            } else {
-                // HTTP proxy reqs setup request URI with scheme and host [and port] + the URL path,
-                // only use URL path.
-                $uriComponents = parse_url($requestUri);
-
-                if (isset($uriComponents['path'])) {
-                    $requestUri = $uriComponents['path'];
-                }
-
-                if (isset($uriComponents['query'])) {
-                    $requestUri .= '?' . $uriComponents['query'];
-                }
-            }
-        } elseif ($this->server->has('ORIG_PATH_INFO')) {
-            // IIS 5.0, PHP as CGI
-            $requestUri = $this->server->get('ORIG_PATH_INFO');
-            if ('' != $this->server->get('QUERY_STRING')) {
-                $requestUri .= '?' . $this->server->get('QUERY_STRING');
-            }
-            $this->server->remove('ORIG_PATH_INFO');
-        }
-
-        // normalize the request URI to ease creating sub-requests from this request
-        $this->server->set('REQUEST_URI', $requestUri);
-
-        return $requestUri;
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Is this IIS with UrlRewriteModule?
-     *
-     * This method consumes, caches and removed the IIS_WasUrlRewritten env var,
-     * so we don't inherit it to sub-requests.
-     */
-    private function isIisRewrite(): bool
-    {
-        if (1 === $this->server->getInt('IIS_WasUrlRewritten')) {
-            $this->isIisRewrite = true;
-            $this->server->remove('IIS_WasUrlRewritten');
-        }
-
-        return $this->isIisRewrite;
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Returns the requested URI (path and query string).
-     *
-     * @return string The raw URI (i.e. not URI decoded)
+     * @return string The URL-decoded request path
      */
     public function getRequestUri(): string
     {
-        return $this->requestUri ??= $this->prepareRequestUri();
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Prepares the base URL.
-     */
-    protected function prepareBaseUrl(): string
-    {
-        $filename = basename($this->server->get('SCRIPT_FILENAME', ''));
-
-        if (basename($this->server->get('SCRIPT_NAME', '')) === $filename) {
-            $baseUrl = $this->server->get('SCRIPT_NAME');
-        } elseif (basename($this->server->get('PHP_SELF', '')) === $filename) {
-            $baseUrl = $this->server->get('PHP_SELF');
-        } elseif (basename($this->server->get('ORIG_SCRIPT_NAME', '')) === $filename) {
-            $baseUrl = $this->server->get('ORIG_SCRIPT_NAME'); // 1and1 shared hosting compatibility
-        } else {
-            // Backtrack up the script_filename to find the portion matching
-            // php_self
-            $path = $this->server->get('PHP_SELF', '');
-            $file = $this->server->get('SCRIPT_FILENAME', '');
-            $segs = explode('/', trim($file, '/'));
-            $segs = array_reverse($segs);
-            $index = 0;
-            $last = \count($segs);
-            $baseUrl = '';
-            do {
-                $seg = $segs[$index];
-                $baseUrl = '/' . $seg . $baseUrl;
-                ++$index;
-            } while ($last > $index && (false !== $pos = strpos($path, $baseUrl)) && 0 != $pos);
-        }
-
-        // Does the baseUrl have anything in common with the request_uri?
-        $requestUri = $this->getRequestUri();
-        if ('' !== $requestUri && '/' !== $requestUri[0]) {
-            $requestUri = '/' . $requestUri;
-        }
-
-        if ($baseUrl && null !== $prefix = $this->getUrlencodedPrefix($requestUri, $baseUrl)) {
-            // full $baseUrl matches
-            return $prefix;
-        }
-
-        if ($baseUrl && null !== $prefix = $this->getUrlencodedPrefix($requestUri, rtrim(\dirname($baseUrl), '/' . \DIRECTORY_SEPARATOR) . '/')) {
-            // directory portion of $baseUrl matches
-            return rtrim($prefix, '/' . \DIRECTORY_SEPARATOR);
-        }
-
-        $truncatedRequestUri = $requestUri;
-        if (false !== $pos = strpos($requestUri, '?')) {
-            $truncatedRequestUri = substr($requestUri, 0, $pos);
-        }
-
-        $basename = basename($baseUrl ?? '');
-        if (!$basename || !strpos(rawurldecode($truncatedRequestUri), $basename)) {
-            // no match whatsoever; set it blank
-            return '';
-        }
-
-        // If using mod_rewrite or ISAPI_Rewrite strip the script filename
-        // out of baseUrl. $pos !== 0 makes sure it is not matching a value
-        // from PATH_INFO or QUERY_STRING
-        if (\strlen($requestUri) >= \strlen($baseUrl) && (false !== $pos = strpos($requestUri, $baseUrl)) && 0 !== $pos) {
-            $baseUrl = substr($requestUri, 0, $pos + \strlen($baseUrl));
-        }
-
-        return rtrim($baseUrl, '/' . \DIRECTORY_SEPARATOR);
+        return $this->requestUri ??= $this->getPath();
     }
 
     /**
@@ -1319,37 +1163,6 @@ class Request
     public function getPathInfo(): string
     {
         return $this->pathInfo ??= $this->getPath();
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Prepares the path info.
-     */
-    protected function preparePathInfo(): string
-    {
-        if (null === ($requestUri = $this->getRequestUri())) {
-            return '/';
-        }
-
-        // Remove the query string from REQUEST_URI
-        if (false !== $pos = strpos($requestUri, '?')) {
-            $requestUri = substr($requestUri, 0, $pos);
-        }
-        if ('' !== $requestUri && '/' !== $requestUri[0]) {
-            $requestUri = '/' . $requestUri;
-        }
-
-        if (null === ($baseUrl = $this->getBaseUrlReal())) {
-            return $requestUri;
-        }
-
-        $pathInfo = substr($requestUri, \strlen($baseUrl));
-        if ('' === $pathInfo) {
-            // If substr() returns false then PATH_INFO is set to an empty string
-            return '/';
-        }
-
-        return $pathInfo;
     }
 
     /**
@@ -1430,12 +1243,14 @@ class Request
             return $this->trustedValuesCache[$cacheKey] = $clientValues;
         }
 
+        // After the conflict has been reported once, fall back to the connecting
+        // address so error handling (logging, rendering) can still read the IP.
         if (!$this->isForwardedValid) {
-            return $this->trustedValuesCache[$cacheKey] = null !== $ip ? ['0.0.0.0', $ip] : [];
+            return $this->trustedValuesCache[$cacheKey] = null !== $ip ? [$ip] : [];
         }
         $this->isForwardedValid = false;
 
-        throw new \Exception(\sprintf('The request has both a trusted "%s" header and a trusted "%s" header, conflicting with each other. You should either configure your proxy to remove one of them, or configure your project to distrust the offending one.', self::TRUSTED_HEADERS[self::HEADER_FORWARDED], self::TRUSTED_HEADERS[$type]));
+        throw new ConflictingHeadersException(\sprintf('The request has both a trusted "%s" header and a trusted "%s" header, conflicting with each other. You should either configure your proxy to remove one of them, or configure your project to distrust the offending one.', self::TRUSTED_HEADERS[self::HEADER_FORWARDED], self::TRUSTED_HEADERS[$type]));
     }
 
     /**
@@ -1534,33 +1349,7 @@ class Request
      */
     private function getBaseUrlReal(): string
     {
-        return $this->baseUrl ??= $this->prepareBaseUrl();
-    }
-
-    /**
-     * The following methods are derived from code of the PHP Symfony Framework
-     * Returns the prefix as encoded in the string when the string starts with
-     * the given prefix, null otherwise.
-     */
-    private function getUrlencodedPrefix(string $string, string $prefix): ?string
-    {
-        if ($this->isIisRewrite()) {
-            // ISS with UrlRewriteModule might report SCRIPT_NAME/PHP_SELF with wrong case
-            // see https://github.com/php/php-src/issues/11981
-            if (0 !== stripos(rawurldecode($string), $prefix)) {
-                return null;
-            }
-        } elseif (!str_starts_with(rawurldecode($string), $prefix)) {
-            return null;
-        }
-
-        $len = \strlen($prefix);
-
-        if (preg_match(\sprintf('#^(%%[[:xdigit:]]{2}|.){%d}#', $len), $string, $match)) {
-            return $match[0];
-        }
-
-        return null;
+        return $this->baseUrl ??= base_url();
     }
 
     /**
@@ -1595,7 +1384,11 @@ class Request
      */
     public function getRouteParam(string $param, mixed $default = null): mixed
     {
-        return $this->attributes[$param] ?? $default;
+        if (array_key_exists($param, $this->routeParams)) {
+            return $this->routeParams[$param];
+        }
+
+        return $this->attributes->get($param, $default);
     }
 
     /**
@@ -1644,21 +1437,7 @@ class Request
             return false;
         }
 
-        $file = $this->files[$name];
-
-        // Handle single file upload
-        if (!is_array($file['name'])) {
-            return $file['error'] !== UPLOAD_ERR_NO_FILE && $file['error'] === UPLOAD_ERR_OK;
-        }
-
-        // Handle multiple file upload
-        foreach ($file['error'] as $error) {
-            if ($error !== UPLOAD_ERR_NO_FILE && $error === UPLOAD_ERR_OK) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array(UPLOAD_ERR_OK, (array) $this->files[$name]['error'], true);
     }
 
     /**
@@ -1668,21 +1447,9 @@ class Request
      */
     public function hasFiles(): bool
     {
-        if (empty($this->files)) {
-            return false;
-        }
-
-        foreach ($this->files as $file) {
-            if (!is_array($file['name'])) {
-                if ($file['error'] !== UPLOAD_ERR_NO_FILE && $file['error'] === UPLOAD_ERR_OK) {
-                    return true;
-                }
-            } else {
-                foreach ($file['error'] as $error) {
-                    if ($error !== UPLOAD_ERR_NO_FILE && $error === UPLOAD_ERR_OK) {
-                        return true;
-                    }
-                }
+        foreach (array_keys($this->files) as $name) {
+            if ($this->hasFile((string) $name)) {
+                return true;
             }
         }
 
@@ -1708,9 +1475,25 @@ class Request
     {
         $request = new static($_GET, $_POST, [], $_COOKIE, $_FILES, $_SERVER);
 
-        $request->request = new InputBag($request->parseRequestBody());
+        try {
+            $request->request = new InputBag($request->parseRequestBody());
+        } catch (\RuntimeException $e) {
+            $request->malformedRequestError ??= $e;
+        }
+
+        $request->validateMethodOverride();
 
         return $request;
+    }
+
+    /**
+     * Get the error that makes this request malformed, if any.
+     *
+     * @return \RuntimeException|null
+     */
+    public function getMalformedRequestError(): ?\RuntimeException
+    {
+        return $this->malformedRequestError;
     }
 
     /**
@@ -1822,16 +1605,12 @@ class Request
      *
      * @return string|null
      */
-    public function bearerToken()
+    public function bearerToken(): ?string
     {
-        $bearerToken = $this->header('Authorization', '');
+        $authorization = $this->header('Authorization');
 
-        if (is_null($bearerToken)) {
-            return null;
-        }
-
-        if (Str::startsWith($bearerToken, 'Bearer ')) {
-            return Str::substr($bearerToken, 7);
+        if ($authorization !== null && Str::startsWith($authorization, 'Bearer ')) {
+            return Str::substr($authorization, 7);
         }
 
         return null;
@@ -1853,7 +1632,7 @@ class Request
      * @param  string  $key
      * @return bool
      */
-    public function hasCookie($key)
+    public function hasCookie(string $key): bool
     {
         return ! is_null($this->cookies->get($key));
     }

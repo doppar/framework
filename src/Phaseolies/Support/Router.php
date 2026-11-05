@@ -2,7 +2,6 @@
 
 namespace Phaseolies\Support;
 
-use Ramsey\Collection\Collection;
 use Phaseolies\Middleware\Attributes\Middleware;
 use Phaseolies\Support\Router\Plan\ActionPlanStore;
 use Phaseolies\Support\Router\InteractsWithCurrentRouter;
@@ -14,7 +13,6 @@ use Phaseolies\Http\Validation\Contracts\ValidatesWhenResolved;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Request;
 use Phaseolies\Database\Entity\Model;
-use Phaseolies\Database\Entity\Builder;
 use Phaseolies\Application;
 use Phaseolies\Http\Contracts\GatewayInterface;
 
@@ -35,6 +33,13 @@ class Router
      * @var ActionPlanStore|null
      */
     private ?ActionPlanStore $actionPlans = null;
+
+    /**
+     * The route dispatched for each request by getCallback()
+     *
+     * @var \WeakMap<Request, array{method: string, route: string, callback: mixed}>|null
+     */
+    private ?\WeakMap $dispatchedRoutes = null;
 
     /**
      * Holds the registered routes.
@@ -608,11 +613,7 @@ class Router
      */
     public function any($path, $callback): self
     {
-        $request = app('request');
-
-        $method = $request->_method ?? $request->getMethod();
-
-        return $this->addRoute($method, $path, $callback);
+        return $this->addRoute(app('request')->getMethod(), $path, $callback);
     }
 
     /**
@@ -1166,8 +1167,68 @@ class Router
      */
     public function getCallback($request): mixed
     {
+        $match = $this->findRoute($request);
+
+        $this->dispatchedRoutes ??= new \WeakMap();
+
+        if ($match === null) {
+            unset($this->dispatchedRoutes[$request]);
+
+            return false;
+        }
+
+        $this->dispatchedRoutes[$request] = $match;
+
+        return $match['callback'];
+    }
+
+    /**
+     * Find the route that serves the request in the current route tables.
+     *
+     * HEAD requests are served by an explicit HEAD route when one matches,
+     * otherwise by the GET route for the same path (RFC 9110 §9.3.2).
+     *
+     * @param Request $request
+     * @return array{method: string, route: string, callback: mixed}|null
+     */
+    protected function findRoute($request): ?array
+    {
         $method = $request->getMethod();
-        $url    = $request->getPath();
+
+        $candidates = $method === Request::METHOD_HEAD
+            ? [Request::METHOD_HEAD, Request::METHOD_GET]
+            : [$method];
+
+        foreach ($candidates as $candidate) {
+            if (($match = $this->matchRoute($candidate, $request)) !== null) {
+                return $match;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the route serving the request: the one getCallback() dispatched
+     *
+     * @param Request $request
+     * @return array{method: string, route: string, callback: mixed}|null
+     */
+    protected function routeFor($request): ?array
+    {
+        return $this->dispatchedRoutes[$request] ?? $this->findRoute($request);
+    }
+
+    /**
+     * Find the route registered for a method that matches the request path.
+     *
+     * @param string $method
+     * @param Request $request
+     * @return array{method: string, route: string, callback: mixed}|null
+     */
+    protected function matchRoute(string $method, $request): ?array
+    {
+        $url = $request->getPath();
 
         $url = ($url !== '/') ? rtrim($url, '/') : $url;
 
@@ -1181,14 +1242,11 @@ class Router
                 continue;
             }
 
-            // Exact match
-            if ($route === $url) {
-                return $callback;
-            }
+            $match = ['method' => $method, 'route' => (string) $route, 'callback' => $callback];
 
-            // Catch-all wildcard
-            if ($route === '(.*)') {
-                return $callback;
+            // Exact match, or the catch-all wildcard
+            if ($route === $url || $route === '(.*)') {
+                return $match;
             }
 
             // Pattern match with named parameters
@@ -1197,15 +1255,14 @@ class Router
             if (preg_match($routeRegex, $url, $matches)) {
                 $params = $this->extractRouteParameters($route, $matches);
                 if ($params !== false) {
-                    $existing = $request->getRouteParams();
-                    $merged = array_merge($existing, $params);
-                    $request->setRouteParams($merged);
-                    return $callback;
+                    $request->setRouteParams(array_merge($request->getRouteParams(), $params));
+
+                    return $match;
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -1326,22 +1383,13 @@ class Router
      */
     public function getCurrentRouteMiddleware($request): ?array
     {
-        $url = $request->getPath();
-        $method = $request->getMethod();
-        $routes = self::$routes[$method] ?? [];
+        $match = $this->routeFor($request);
 
-        foreach ($routes as $route => $callback) {
-            $routeRegex = "@^" . preg_replace_callback(
-                self::PARAM_PATTERN,
-                fn(array $m) => '(' . (isset($m[2]) ? $this->constraintRegex($m[2]) : '[^/]+') . ')',
-                $route
-            ) . "$@";
-            if (preg_match($routeRegex, $url)) {
-                return self::$routeMiddlewares[$method][$route] ?? null;
-            }
+        if ($match === null) {
+            return null;
         }
 
-        return null;
+        return self::$routeMiddlewares[$match['method']][$match['route']] ?? null;
     }
 
     /**
@@ -1814,8 +1862,8 @@ class Router
     /**
      * Resolve form request class
      *
-     * @param Application $app The application instance
-     * @param string $typeName The class name to resolve
+     * @param Application $app
+     * @param string $typeName
      * @return mixed
      */
     private function resolveFormRequestValidationClass($app, $typeName): mixed
@@ -1849,61 +1897,15 @@ class Router
         $response = response()->make();
         $response->setOriginal($result);
 
-        if ($this->shouldBeJson($result)) {
+        if (Response::shouldBeJson($result)) {
             $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
-            $result = $this->convertToSerializable($result);
-            $response->setBody(json_encode($result, JSON_THROW_ON_ERROR));
+            $response->setBody(json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR));
         } else {
             $response->setBody($result ?? '');
         }
 
         return $response;
-    }
-
-    /**
-     * Determine if the given data should be returned as JSON.
-     *
-     * @param mixed $data
-     * @return bool
-     */
-    protected function shouldBeJson($data): bool
-    {
-        return is_array($data) ||
-            is_object($data) ||
-            $data instanceof \JsonSerializable ||
-            $data instanceof Model ||
-            $data instanceof Collection ||
-            $data instanceof Builder ||
-            $data instanceof \stdClass ||
-            $data instanceof \ArrayObject;
-    }
-
-    /**
-     * Convert various data types into a format suitable for serialization
-     *
-     * @param mixed $data
-     * @return mixed
-     */
-    protected function convertToSerializable($data)
-    {
-        if ($data instanceof Model || $data instanceof Collection) {
-            return $data->toArray();
-        }
-
-        if ($data instanceof Builder) {
-            return $data->get()->toArray();
-        }
-
-        if ($data instanceof \JsonSerializable) {
-            return $data->jsonSerialize();
-        }
-
-        if ($data instanceof \stdClass || $data instanceof \ArrayObject) {
-            return (array) $data;
-        }
-
-        return $data;
     }
 
     /**

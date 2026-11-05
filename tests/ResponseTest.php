@@ -413,4 +413,283 @@ class ResponseTest extends TestCase
         $this->assertEquals('Value', $clone->headers->get('X-Test'));
         $this->assertNotSame($this->response->headers, $clone->headers);
     }
+
+    public function testTextUpdatesStatusTextWithStatusCode()
+    {
+        $response = $this->response->text('Missing', 404);
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertStringContainsString('HTTP/1.0 404 Not Found', (string) $response);
+        $this->assertSame('text/plain', $response->headers->get('Content-Type'));
+    }
+
+    public function testSetExceptionErrorStoresTheExceptionInstance()
+    {
+        $exception = new \RuntimeException('Boom', 500);
+
+        // In the CLI, http_response_code() warns once a status line was already sent.
+        set_error_handler(static fn() => true);
+
+        try {
+            $this->response->setExceptionError($exception, 500);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame($exception, $this->response->exception);
+        $this->assertSame(500, $this->response->getStatusCode());
+    }
+
+    public function testStreamedResponseDoesNotStreamForHeadRequests()
+    {
+        $response = new \Phaseolies\Http\Response\Stream\StreamedResponse(function () {
+            echo 'streamed body';
+        });
+        $request = new Request();
+        $request->server->set('SERVER_PROTOCOL', 'HTTP/1.1');
+        $request->server->set('REQUEST_METHOD', 'HEAD');
+
+        $response->prepare($request);
+
+        ob_start();
+        $response->sendContent();
+        $output = ob_get_clean();
+
+        $this->assertSame('', $output);
+    }
+
+    public function testStreamedResponseRejectsAStringBody()
+    {
+        $response = new \Phaseolies\Http\Response\Stream\StreamedResponse(fn() => null);
+
+        $this->expectException(\LogicException::class);
+
+        $response->setBody('not allowed');
+    }
+
+    public function testShouldBeJsonDistinguishesSerializableFromStringableContent()
+    {
+        $stringable = new class implements \Stringable {
+            public function __toString(): string
+            {
+                return 'plain';
+            }
+        };
+
+        $serializableStringable = new class implements \Stringable, \JsonSerializable {
+            public function __toString(): string
+            {
+                return 'plain';
+            }
+
+            public function jsonSerialize(): array
+            {
+                return ['ok' => true];
+            }
+        };
+
+        $this->assertTrue(Response::shouldBeJson(['a' => 1]));
+        $this->assertTrue(Response::shouldBeJson(new \stdClass()));
+        $this->assertTrue(Response::shouldBeJson($serializableStringable));
+        $this->assertFalse(Response::shouldBeJson($stringable));
+        $this->assertFalse(Response::shouldBeJson('text'));
+        $this->assertFalse(Response::shouldBeJson(new Response()));
+    }
+
+    public function testJsonResponseEncodesArrayObjectContents()
+    {
+        $response = new JsonResponse(new \ArrayObject(['name' => 'Doppar']));
+
+        $this->assertSame('{"name":"Doppar"}', $response->getBody());
+    }
+
+    public function testResponseFactoryRedirectReturnsRedirectResponse()
+    {
+        $response = (new \Phaseolies\Http\ResponseFactory())->redirect('/dashboard', 301);
+
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+        $this->assertSame(301, $response->getStatusCode());
+        $this->assertSame('/dashboard', $response->headers->get('Location'));
+    }
+
+    public function testResponseFactoryMakeReturnsExistingResponseUnchanged()
+    {
+        $existing = new Response('body', 201);
+
+        $made = (new \Phaseolies\Http\ResponseFactory())->make($existing);
+
+        // The default status (200) does not overwrite the response's own status
+        $this->assertSame($existing, $made);
+        $this->assertSame(201, $made->getStatusCode());
+    }
+
+    public function testResponseFactoryMakeAppliesStatusAndHeadersToExistingResponse()
+    {
+        $existing = new Response('maintenance');
+
+        $made = (new \Phaseolies\Http\ResponseFactory())->make($existing, 503, ['Retry-After' => '10']);
+
+        $this->assertSame($existing, $made);
+        $this->assertSame(503, $made->getStatusCode());
+        $this->assertSame('10', $made->headers->get('Retry-After'));
+        $this->assertStringContainsString('503 Service Unavailable', (string) $made);
+    }
+
+    public function testResponseHelperAppliesStatusAndHeadersToExistingResponse()
+    {
+        $made = response(new Response('maintenance'), 503, ['Retry-After' => '10']);
+
+        $this->assertSame(503, $made->getStatusCode());
+        $this->assertSame('10', $made->headers->get('Retry-After'));
+    }
+
+    public function testResponseFactoryTextDoesNotShareState()
+    {
+        $factory = new \Phaseolies\Http\ResponseFactory();
+
+        $first = $factory->text('first', 200);
+        $second = $factory->text('second', 404);
+
+        $this->assertNotSame($first, $second);
+        $this->assertSame('first', $first->getBody());
+        $this->assertSame(200, $first->getStatusCode());
+    }
+
+    public function testJsonHonoursCustomJsonSerializeOverToArray()
+    {
+        $model = $this->modelWithHiddenSecret();
+
+        $direct = new JsonResponse($model);
+        $collection = new JsonResponse(new \Phaseolies\Support\Collection(\Phaseolies\Database\Entity\Model::class, [$model]));
+
+        $this->assertSame('{"name":"Doppar"}', $direct->getBody());
+        $this->assertSame('[{"name":"Doppar"}]', $collection->getBody());
+        // The router path (json_encode of toSerializable()) behaves the same way
+        $this->assertSame('{"name":"Doppar"}', json_encode(Response::toSerializable($model)));
+    }
+
+    public function testBundledBadRequestViewEscapesTheMessage()
+    {
+        $message = '<script>alert(1)</script>';
+
+        ob_start();
+        include dirname(__DIR__) . '/src/Phaseolies/Support/View/errors/400.odo.php';
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('400', $html);
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;', $html);
+    }
+
+    public function testJsonHonoursCustomJsonSerializeOfRelatedModels()
+    {
+        $user = new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+        };
+        $user->setRelation('profile', $this->modelWithHiddenSecret());
+        $user->setRelation('posts', new \Phaseolies\Support\Collection(
+            \Phaseolies\Database\Entity\Model::class,
+            [$this->modelWithHiddenSecret()]
+        ));
+
+        $json = (new JsonResponse($user))->getBody();
+
+        $this->assertSame('{"profile":{"name":"Doppar"},"posts":[{"name":"Doppar"}]}', $json);
+        $this->assertStringNotContainsString('secret', $json);
+
+        // toArray() itself still serializes relations with toArray()
+        $this->assertSame('secret', $user->toArray()['profile']['password']);
+        $this->assertSame('secret', $user->toArray()['posts'][0]['password']);
+    }
+
+    public function testJsonForModelsThatOverrideOnlyToArrayIsUnchanged()
+    {
+        $model = new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+
+            public function toArray(): array
+            {
+                return ['shaped' => true];
+            }
+        };
+
+        $this->assertSame('{"shaped":true}', (new JsonResponse($model))->getBody());
+    }
+
+    public function testHttpExceptionOnApiRouteRendersJsonEvenWhenAnErrorViewExists()
+    {
+        $output = $this->dispatchHttpExceptionFor(['REQUEST_URI' => '/api/users']);
+
+        $this->assertJson($output);
+        $this->assertSame('Invalid JSON data in request body.', json_decode($output, true)['message']);
+        $this->assertStringNotContainsString('<!DOCTYPE html>', $output);
+    }
+
+    public function testHttpExceptionOnAjaxRequestRendersJson()
+    {
+        $output = $this->dispatchHttpExceptionFor([
+            'REQUEST_URI' => '/profile',
+            'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest',
+        ]);
+
+        $this->assertJson($output);
+        $this->assertSame('Invalid JSON data in request body.', json_decode($output, true)['message']);
+    }
+
+    /**
+     * Dispatch a 400 (which has a bundled HTML view) for a request and capture the output.
+     *
+     * @param array<string, string> $server
+     */
+    private function dispatchHttpExceptionFor(array $server): string
+    {
+        $container = new Container();
+        Container::setInstance($container);
+        $container->instance('request', new Request(server: ['REQUEST_METHOD' => 'POST'] + $server));
+        $container->instance('translator', new class {
+            public function trans(string $key, array $replace = [], ?string $locale = null): string
+            {
+                return $key;
+            }
+        });
+
+        ob_start();
+
+        try {
+            Response::dispatchHttpException(
+                new \Phaseolies\Http\Exceptions\BadRequestHttpException('Invalid JSON data in request body.')
+            );
+        } finally {
+            $output = ob_get_clean();
+            Container::forgetInstance();
+        }
+
+        return $output;
+    }
+
+    /**
+     * A model whose toArray() exposes a field that its jsonSerialize() hides.
+     */
+    private function modelWithHiddenSecret(): \Phaseolies\Database\Entity\Model
+    {
+        return new class extends \Phaseolies\Database\Entity\Model {
+            public function __construct()
+            {
+            }
+
+            public function toArray(): array
+            {
+                return ['name' => 'Doppar', 'password' => 'secret'];
+            }
+
+            public function jsonSerialize(): array
+            {
+                return ['name' => 'Doppar'];
+            }
+        };
+    }
 }
