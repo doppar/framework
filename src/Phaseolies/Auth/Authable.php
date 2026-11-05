@@ -40,7 +40,17 @@ abstract class Authable extends Model
      */
     public function getAuthPassword(): ?string
     {
-        return $this->password;
+        return $this->{$this->getAuthPasswordName()};
+    }
+
+    /**
+     * Get the name of the attribute that holds the password hash.
+     *
+     * @return string
+     */
+    public function getAuthPasswordName(): string
+    {
+        return 'password';
     }
 
     /**
@@ -50,7 +60,7 @@ abstract class Authable extends Model
      */
     public function getRememberToken(): ?string
     {
-        return $this->remember_token;
+        return $this->{$this->getRememberTokenName()};
     }
 
     /**
@@ -61,7 +71,17 @@ abstract class Authable extends Model
      */
     public function setRememberToken(?string $value): void
     {
-        $this->remember_token = $value;
+        $this->{$this->getRememberTokenName()} = $value;
+    }
+
+    /**
+     * Get the name of the attribute that holds the remember token.
+     *
+     * @return string
+     */
+    public function getRememberTokenName(): string
+    {
+        return 'remember_token';
     }
 
     /**

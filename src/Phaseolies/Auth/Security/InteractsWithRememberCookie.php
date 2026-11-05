@@ -35,9 +35,21 @@ trait InteractsWithRememberCookie
      */
     private function setRememberToken(Authable $user): void
     {
+        $this->issueRememberToken($user);
+
+        $user->save();
+    }
+
+    /**
+     * Give the user a new remember token and send it to this device, without saving the user.
+     *
+     * @param Authable $user
+     * @return void
+     */
+    private function issueRememberToken(Authable $user): void
+    {
         $token = bin2hex(random_bytes(32));
         $user->setRememberToken(Hash::make($token));
-        $user->save();
 
         $id = $user->getAuthIdentifier();
         $cookieValue = $id . '|' . $token . '|' . Hash::make($id . $token);

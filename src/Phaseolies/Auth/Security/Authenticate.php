@@ -5,6 +5,9 @@ namespace Phaseolies\Auth\Security;
 use Phaseolies\Support\Facades\Hash;
 use Phaseolies\Support\Facades\Crypt;
 use Phaseolies\Auth\Authable;
+use Phaseolies\Session\Contracts\SessionStoreInterface;
+use Phaseolies\Session\Contracts\UserSessionStore;
+use Phaseolies\Session\SessionManager;
 
 class Authenticate
 {
@@ -114,6 +117,16 @@ class Authenticate
     protected function getViaRememberKey(): string
     {
         return 'auth_via_remember_' . $this->actorName;
+    }
+
+    /**
+     * The session key holding the fingerprint of the password the session was signed in with.
+     *
+     * @return string
+     */
+    protected function getPasswordFingerprintKey(): string
+    {
+        return 'password_hash_' . $this->actorName;
     }
 
     /**
@@ -358,11 +371,22 @@ class Authenticate
             $user->save();
         }
 
+        $this->endSession();
+    }
+
+    /**
+     * Sign this device out, leaving the user's other devices alone.
+     *
+     * @return void
+     */
+    protected function endSession(): void
+    {
         $this->resolvedUser  = null;
         $this->statelessUser = null;
 
         session()->forget($this->getSessionKey());
         session()->forget($this->getViaRememberKey());
+        session()->forget($this->getPasswordFingerprintKey());
 
         // Only fully invalidate the session on the default actor so that other
         // actors (e.g. "admin") remain active when only the "web" actor logs out.
@@ -377,6 +401,182 @@ class Authenticate
     }
 
     /**
+     * Sign the user out of every other device, keeping this one signed in.
+     *
+     * @param string $password
+     * @return bool
+     */
+    public function logoutOtherDevices(string $password): bool
+    {
+        $user = $this->user();
+
+        if ($user === null || !Hash::check($password, (string) $user->getAuthPassword())) {
+            return false;
+        }
+
+        $changes = [$user->getAuthPasswordName() => Hash::make($password)];
+
+        $tokenName = $user->getRememberTokenName();
+
+        if (array_key_exists($tokenName, $user->getAttributes())) {
+            if (cookie()->has($this->getRememberCookieName())) {
+                $this->issueRememberToken($user);
+            } else {
+                $user->setRememberToken(null);
+            }
+
+            $changes[$tokenName] = $user->getRememberToken();
+        }
+
+        $this->persistCredentials($user, $changes);
+
+        $this->refreshSessionFingerprint();
+
+        $store = $this->sessionStore();
+        $id = $user->getAuthIdentifier();
+
+        if ($id !== null && $this->tracksUsersIn($store)) {
+            /** @var UserSessionStore $store */
+            $store->destroyUserSessions($id, session()->getId());
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether this device's session was signed in with the user's current password.
+     *
+     * @return bool
+     */
+    public function isSessionCurrent(): bool
+    {
+        if (!session()->has($this->getSessionKey())) {
+            return true;
+        }
+
+        $user = $this->user();
+
+        if ($user === null) {
+            return true;
+        }
+
+        $stored = session($this->getPasswordFingerprintKey());
+
+        if (!is_string($stored)) {
+            $this->refreshSessionFingerprint();
+
+            return true;
+        }
+
+        if (hash_equals($this->passwordFingerprint($user), $stored)) {
+            return true;
+        }
+
+        $this->endSession();
+
+        return false;
+    }
+
+    /**
+     * Record the current password of the signed-in user in this device's session.
+     *
+     * @return void
+     */
+    public function refreshSessionFingerprint(): void
+    {
+        $user = $this->resolvedUser;
+
+        if ($user === null || !session()->has($this->getSessionKey())) {
+            return;
+        }
+
+        $fingerprint = $this->passwordFingerprint($user);
+
+        if (session($this->getPasswordFingerprintKey()) !== $fingerprint) {
+            session()->put($this->getPasswordFingerprintKey(), $fingerprint);
+        }
+    }
+
+    /**
+     * The other devices the user is signed in on, most recently active first.
+     *
+     * @return array<int, array{ip_address: string|null, user_agent: string|null, last_activity: int, is_current: bool}>
+     */
+    public function sessions(): array
+    {
+        $user = $this->user();
+        $store = $this->sessionStore();
+        $id = $user?->getAuthIdentifier();
+
+        if ($id === null || !$this->tracksUsersIn($store)) {
+            return [];
+        }
+
+        $current = session()->getId();
+
+        /** @var UserSessionStore $store */
+        return array_map(static fn (array $session): array => [
+            'ip_address' => $session['ip_address'],
+            'user_agent' => $session['user_agent'],
+            'last_activity' => $session['last_activity'],
+            'is_current' => hash_equals($session['id'], $current),
+        ], $store->userSessions($id));
+    }
+
+    /**
+     * Write credential columns straight to the user's row.
+     *
+     * @param Authable $user
+     * @param array<string, mixed> $changes
+     * @return void
+     */
+    protected function persistCredentials(Authable $user, array $changes): void
+    {
+        $user->newQuery()
+            ->where($user->getKeyName(), $user->getAuthIdentifier())
+            ->update($changes);
+
+        foreach ($changes as $attribute => $value) {
+            $user->{$attribute} = $value;
+        }
+
+        $user->setOriginalAttributes(array_replace($user->getOriginalAttributes(), $changes));
+    }
+
+    /**
+     * A fingerprint of the user's password hash, safe to keep in the session.
+     *
+     * @param Authable $user
+     * @return string
+     */
+    protected function passwordFingerprint(Authable $user): string
+    {
+        return hash_hmac('sha256', (string) $user->getAuthPassword(), (string) config('app.key', ''));
+    }
+
+    /**
+     * The store the application's sessions are kept in.
+     *
+     * @return SessionStoreInterface
+     */
+    protected function sessionStore(): SessionStoreInterface
+    {
+        return SessionManager::store();
+    }
+
+    /**
+     * Whether the store knows which sessions belong to this actor's users.
+     *
+     * @param SessionStoreInterface $store
+     * @return bool
+     */
+    protected function tracksUsersIn(SessionStoreInterface $store): bool
+    {
+        return $store instanceof UserSessionStore
+            && $this->getSessionKey() === SessionManager::userSessionKey();
+    }
+
+    /**
      * Set the authenticated user in the session.
      *
      * @param Authable $user
@@ -386,6 +586,7 @@ class Authenticate
         session()->regenerate();
 
         session()->put($this->getSessionKey(), $user->getAuthIdentifier());
+        session()->put($this->getPasswordFingerprintKey(), $this->passwordFingerprint($user));
 
         $this->resolvedUser = $user;
     }
