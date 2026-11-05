@@ -613,11 +613,7 @@ class Router
      */
     public function any($path, $callback): self
     {
-        $request = app('request');
-
-        $method = $request->_method ?? $request->getMethod();
-
-        return $this->addRoute($method, $path, $callback);
+        return $this->addRoute(app('request')->getMethod(), $path, $callback);
     }
 
     /**

@@ -278,6 +278,73 @@ class RouterTest extends TestCase
         $this->assertArrayHasKey('/test', $routes['GET']);
     }
 
+    public function testAnyWithArrayMethodOverrideDoesNotThrow(): void
+    {
+        $request = $this->captureRequestForAny('POST', post: ['_method' => ['PUT']]);
+
+        $this->router->any('/any', fn() => 'any');
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['POST'] ?? []);
+        $this->assertNotNull($request->getMalformedRequestError());
+    }
+
+    public function testAnyIgnoresMethodOverrideOnGetRequests(): void
+    {
+        $callback = fn() => 'any';
+        $request = $this->captureRequestForAny('GET', get: ['_method' => 'DELETE']);
+
+        $this->router->any('/any', $callback);
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['GET'] ?? []);
+        $this->assertArrayNotHasKey('DELETE', array_filter($this->registeredRoutes()));
+        $this->assertSame($callback, $this->router->getCallback($request));
+    }
+
+    public function testAnyRegistersTheNormalizedOverrideMethodForPostRequests(): void
+    {
+        $callback = fn() => 'any';
+        $request = $this->captureRequestForAny('POST', post: ['_method' => 'put']);
+
+        $this->router->any('/any', $callback);
+
+        $this->assertArrayHasKey('/any', $this->registeredRoutes()['PUT'] ?? []);
+        $this->assertSame('PUT', $request->getMethod());
+        $this->assertSame($callback, $this->router->getCallback($request));
+    }
+
+    /**
+     * Capture a request from globals at /any and bind it as the current request.
+     *
+     * @param array<string, mixed> $get
+     * @param array<string, mixed> $post
+     */
+    private function captureRequestForAny(string $method, array $get = [], array $post = []): Request
+    {
+        [$previousGet, $previousPost] = [$_GET, $_POST];
+        $_SERVER['REQUEST_METHOD'] = $method;
+        $_SERVER['REQUEST_URI'] = '/any';
+        $_GET = $get;
+        $_POST = $post;
+
+        try {
+            $request = Request::createFromGlobals();
+        } finally {
+            [$_GET, $_POST] = [$previousGet, $previousPost];
+        }
+
+        Container::getInstance()->instance('request', $request);
+
+        return $request;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function registeredRoutes(): array
+    {
+        return (new \ReflectionClass(Router::class))->getProperty('routes')->getValue($this->router);
+    }
+
     // =========================================================================
     // Named Routes Tests
     // =========================================================================
