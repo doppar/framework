@@ -63,6 +63,14 @@ class Router
     public static array $namedRoutes = [];
 
     /**
+     * The path each named route has per HTTP method. $namedRoutes keeps the one
+     * path a name generates URLs for; a shared name can differ per method here.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public static array $namedRouteMethods = [];
+
+    /**
      * Matches a route parameter, `{id}` or `{id:constraint}`. The constraint may
      * use braces for quantifiers (`{id:\d{4}}`) but cannot nest them any deeper.
      */
@@ -214,6 +222,7 @@ class Router
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
             'namedRoutes' => self::$namedRoutes,
+            'namedRouteMethods' => self::$namedRouteMethods,
             'routeMiddlewares' => self::$routeMiddlewares,
             'timestamp' => time()
         ];
@@ -321,6 +330,8 @@ class Router
 
         self::$routes = $cached['routes'] ?? [];
         self::$namedRoutes = $cached['namedRoutes'] ?? [];
+        // A cache from before names kept their paths per method resolves by path alone.
+        self::$namedRouteMethods = array_filter($cached['namedRouteMethods'] ?? [], 'is_array');
         self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
 
         static::$cacheLoaded = true;
@@ -550,10 +561,23 @@ class Router
         $this->addRoute($method, $path, $callback, $domain);
 
         if ($name) {
-            self::$namedRoutes[$name] = $this->currentRoutePath;
+            $this->recordRouteName($name, $method);
         }
 
         return $this;
+    }
+
+    /**
+     * Point a name at the last registered route.
+     *
+     * @param string $name
+     * @param string $method
+     * @return void
+     */
+    protected function recordRouteName(string $name, string $method): void
+    {
+        self::$namedRoutes[$name] = $this->currentRoutePath;
+        self::$namedRouteMethods[$name][$method] = $this->currentRoutePath;
     }
 
     /**
@@ -800,7 +824,7 @@ class Router
     public function name(string $name): self
     {
         if ($this->currentRoutePath) {
-            self::$namedRoutes[$name] = $this->currentRoutePath;
+            $this->recordRouteName($name, $this->getCurrentRequestMethod());
         }
 
         return $this;
@@ -1091,6 +1115,16 @@ class Router
         }
 
         foreach (self::$namedRoutes as $name => $path) {
+            $recorded = isset(self::$namedRouteMethods[$name]);
+
+            if ($recorded && (self::$namedRouteMethods[$name][$method] ?? null) !== $old) {
+                continue;
+            }
+
+            if ($recorded) {
+                self::$namedRouteMethods[$name][$method] = $newPath;
+            }
+
             if ($path === $old) {
                 self::$namedRoutes[$name] = $newPath;
             }
@@ -1900,7 +1934,7 @@ class Router
         if (Response::shouldBeJson($result)) {
             $request->setRequestFormat('json');
             $response->headers->set('Content-Type', 'application/json');
-            $response->setBody(json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR));
+            $response->setBody(Model::serializingJson(fn() => json_encode(Response::toSerializable($result), JSON_THROW_ON_ERROR)));
         } else {
             $response->setBody($result ?? '');
         }

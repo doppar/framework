@@ -11,6 +11,7 @@
 
 namespace Phaseolies\Http\Response\Stream;
 
+use Phaseolies\Database\Entity\Model;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Http\Response\Stream\StreamedResponse;
 
@@ -93,7 +94,8 @@ class StreamedJsonResponse extends StreamedResponse
             return;
         }
 
-        echo json_encode($data ?? new \stdClass(), $jsonEncodingOptions);
+        // Only the encoding: a generator's own code still sees plain toArray().
+        echo Model::serializingJson(fn() => json_encode($data ?? new \stdClass(), $jsonEncodingOptions));
     }
 
     private function streamArray(array $data, int $jsonEncodingOptions, int $keyEncodingOptions): void

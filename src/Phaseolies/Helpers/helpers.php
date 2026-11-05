@@ -351,9 +351,9 @@ if (!function_exists('old')) {
      * Retrieves the old input value for a given key from the session.
      *
      * @param mixed $key
-     * @return string|null
+     * @return mixed
      */
-    function old($key): ?string
+    function old($key): mixed
     {
         return MessageBag::old($key);
     }

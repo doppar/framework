@@ -165,6 +165,14 @@ class Encryption implements EncryptionInterface
             }
         }
 
+        // Without a MAC, the wrong key can still give valid padding. Prefer text
+        // without control characters, which a wrong key rarely produces.
+        foreach ($candidates as $candidate) {
+            if (preg_match('//u', $candidate) === 1 && preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $candidate) !== 1) {
+                return $candidate;
+            }
+        }
+
         foreach ($candidates as $candidate) {
             if (preg_match('//u', $candidate) === 1) {
                 return $candidate;

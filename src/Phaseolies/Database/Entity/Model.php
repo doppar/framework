@@ -707,7 +707,7 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
     }
 
     /**
-     * Number of jsonSerialize() calls in progress (nested relations included).
+     * Number of JSON serializations in progress (nested relations included).
      *
      * @var int
      */
@@ -720,17 +720,30 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
      */
     public function jsonSerialize(): array
     {
+        return self::serializingJson(fn() => $this->toArray());
+    }
+
+    /**
+     * Run a callback that produces JSON, so loaded relations use their own jsonSerialize()
+     *
+     * This also covers a jsonSerialize() override that calls toArray() itself.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public static function serializingJson(callable $callback): mixed
+    {
         self::$jsonSerializationDepth++;
 
         try {
-            return $this->toArray();
+            return $callback();
         } finally {
             self::$jsonSerializationDepth--;
         }
     }
 
     /**
-     * Serialize a related model for toArray(): through jsonSerialize() while
+     * Serialize a related model for toArray(): through jsonSerialize() while producing JSON.
      *
      * @param Model $model
      * @return array
