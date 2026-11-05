@@ -36,6 +36,19 @@ if (!function_exists('env')) {
     }
 }
 
+if (!function_exists('app_debug')) {
+    /**
+     * Whether debugging is on. A server environment variable arrives as a
+     * string, and "false" must not count as true.
+     *
+     * @return bool
+     */
+    function app_debug(): bool
+    {
+        return filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN);
+    }
+}
+
 if (!function_exists('dopparEnv')) {
     /**
      * Retrieves an environment variable or returns a default value if the variable is not set.

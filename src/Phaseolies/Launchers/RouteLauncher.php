@@ -13,14 +13,40 @@ class RouteLauncher extends ServiceLauncher
      */
     public function register()
     {
-        $path = urldecode(
-            parse_url(request()->server->get("REQUEST_URI", "/"), PHP_URL_PATH)
-        );
+        $target = $this->trailingSlashRedirect(request()->server->get('REQUEST_URI', '/'));
 
-        if ($path !== '/' && str_ends_with(request()->server->get('REQUEST_URI'), '/')) {
-            header('Location: ' . rtrim(request()->server->get('REQUEST_URI'), '/'), true, 301);
+        if ($target !== null) {
+            header('Location: ' . $target, true, 301);
             exit;
         }
+    }
+
+    /**
+     * Where a request URI with a trailing slash on its path should redirect, if anywhere.
+     *
+     * The URI comes from the client. Browsers treat a Location that starts with
+     * "//" or "/\" as another host, so it must start with exactly one slash.
+     * They also drop tabs and newlines, so "/<tab>/host" would become "//host":
+     * a URI with control characters is never redirected.
+     *
+     * @param string $uri
+     * @return string|null
+     */
+    protected function trailingSlashRedirect(string $uri): ?string
+    {
+        if (preg_match('/[\x00-\x1F\x7F]/', $uri) === 1) {
+            return null;
+        }
+
+        [$path, $query] = array_pad(explode('?', $uri, 2), 2, null);
+
+        $target = '/' . ltrim(rtrim($path, '/'), '/\\');
+
+        if (!str_ends_with($path, '/') || $target === '/') {
+            return null;
+        }
+
+        return $query === null ? $target : $target . '?' . $query;
     }
 
     /**

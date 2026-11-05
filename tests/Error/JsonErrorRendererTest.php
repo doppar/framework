@@ -6,6 +6,7 @@ require_once __DIR__ . '/../Support/MockContainer.php';
 
 use Phaseolies\DI\Container;
 use Phaseolies\Error\JsonErrorRenderer;
+use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\JsonResponse;
 use Phaseolies\Translation\FileLoader;
@@ -41,6 +42,7 @@ PHP);
     protected function tearDown(): void
     {
         $this->deleteDir($this->translationPath);
+        unset($_ENV['APP_DEBUG']);
 
         parent::tearDown();
     }
@@ -63,8 +65,79 @@ PHP);
         @rmdir($dir);
     }
 
+    public function testRenderHidesExceptionInternalsWhenNotDebugging(): void
+    {
+        foreach (['false', '0', ''] as $debug) {
+            $_ENV['APP_DEBUG'] = $debug;
+
+            $payload = json_decode((new JsonErrorRenderer())->render(
+                new RuntimeException('SQLSTATE secret', Response::HTTP_INTERNAL_SERVER_ERROR),
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            )->getBody(), true);
+
+            $this->assertSame(['message' => 'Something went wrong', 'errors' => []], $payload);
+        }
+    }
+
+    public function testRenderHidesPlainExceptionMessageWhateverItsCode(): void
+    {
+        $_ENV['APP_DEBUG'] = 'false';
+
+        foreach ([2, 404, Response::HTTP_UNPROCESSABLE_ENTITY] as $code) {
+            $body = (new JsonErrorRenderer())->render(
+                new RuntimeException('Cannot connect to 10.0.3.7 as root', $code),
+                $code
+            )->getBody();
+
+            $this->assertStringNotContainsString('10.0.3.7', $body);
+            $this->assertStringContainsString('Something went wrong', $body);
+        }
+    }
+
+    public function testRenderHidesServerHttpExceptionMessage(): void
+    {
+        $_ENV['APP_DEBUG'] = 'false';
+
+        $exception = new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'SQLSTATE secret');
+
+        $body = (new JsonErrorRenderer())->render(
+            $exception,
+            Response::HTTP_INTERNAL_SERVER_ERROR,
+            $exception->getMessage()
+        )->getBody();
+
+        $this->assertSame(['message' => 'Something went wrong', 'errors' => []], json_decode($body, true));
+    }
+
+    public function testRenderShowsClientHttpExceptionMessage(): void
+    {
+        $_ENV['APP_DEBUG'] = 'false';
+
+        $payload = json_decode((new JsonErrorRenderer())->render(
+            new HttpException(Response::HTTP_BAD_REQUEST, 'Invalid JSON data in request body.'),
+            Response::HTTP_BAD_REQUEST
+        )->getBody(), true);
+
+        $this->assertSame(['message' => 'Invalid JSON data in request body.', 'errors' => []], $payload);
+    }
+
+    public function testRenderKeepsClientErrorMessageWhenNotDebugging(): void
+    {
+        $_ENV['APP_DEBUG'] = 'false';
+
+        $payload = json_decode((new JsonErrorRenderer())->render(
+            new RuntimeException('Boom'),
+            Response::HTTP_BAD_REQUEST,
+            'Invalid JSON data in request body.'
+        )->getBody(), true);
+
+        $this->assertSame(['message' => 'Invalid JSON data in request body.', 'errors' => []], $payload);
+    }
+
     public function testRenderReturnsJsonResponseInstance(): void
     {
+        $_ENV['APP_DEBUG'] = 'true';
+
         $renderer = new JsonErrorRenderer();
 
         $response = $renderer->render(

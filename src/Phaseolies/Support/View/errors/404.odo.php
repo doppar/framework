@@ -15,7 +15,7 @@
                 </div>
                 <div
                     style="margin-left:1rem; font-size:1.125rem; color:#718096; text-transform:uppercase; letter-spacing:0.05em;">
-                    <?php echo $message === 'An error occurred.' ? 'Not Found': $message; ?>
+                    <?php echo htmlspecialchars($message === 'An error occurred.' ? 'Not Found' : $message, ENT_QUOTES, 'UTF-8'); ?>
                 </div>
             </div>
         </div>
