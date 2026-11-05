@@ -8,11 +8,15 @@ use Phaseolies\Database\Entity\Model;
 use Phaseolies\DI\Container;
 use Phaseolies\Error\Handlers\JsonErrorHandler;
 use Phaseolies\Http\Exceptions\HttpException;
+use Phaseolies\Http\Exceptions\TooManyRequestsHttpException;
 use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\RedirectResponse;
+use Phaseolies\Http\Response\Stream\StreamedJsonResponse;
 use Phaseolies\Support\Collection;
 use Phaseolies\Support\StringService;
+use Phaseolies\Translation\FileLoader;
+use Phaseolies\Translation\Translator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -127,7 +131,96 @@ class ResponseEdgeCasesTest extends TestCase
         $this->assertSame($expected, $method->invoke(new JsonErrorHandler(), $exception));
     }
 
+    public function testJsonErrorHandlerKeepsTheHttpExceptionHeaders(): void
+    {
+        $lang = sys_get_temp_dir() . '/doppar-json-error-lang-' . bin2hex(random_bytes(5));
+        mkdir($lang . '/en', 0755, true);
+        file_put_contents($lang . '/en/validation.php', "<?php return ['default' => 'x', 'rate_limit' => ['message' => 'x'], 'unauthorized' => ['message' => 'x']];");
+        $this->container->bind('translator', fn() => new Translator(new FileLoader($lang), 'en'));
+
+
+        $response = (new ReflectionMethod(JsonErrorHandler::class, 'buildResponse'))
+            ->invoke(new JsonErrorHandler(), new TooManyRequestsHttpException(60, 'Slow down'));
+
+        unlink($lang . '/en/validation.php');
+        rmdir($lang . '/en');
+        rmdir($lang);
+
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertSame('60', $response->headers->get('Retry-After'));
+        $this->assertSame('application/json', $response->headers->get('Content-Type'));
+    }
+
     public function testJsonResponseUsesRelationOverrideWhenTheParentCallsToArray(): void
+    {
+        $json = (new ReflectionMethod(Response::class, 'encodeJsonContent'))->invoke(new Response(), $this->userWithRelations());
+
+        $this->assertSame(['posts' => [['only' => 'public']], 'post' => ['only' => 'public']], json_decode($json, true));
+    }
+
+    /**
+     * @return array<string, array{callable(OverridingUser): iterable<mixed>, callable(array): mixed}>
+     */
+    public static function streamedDataProvider(): array
+    {
+        return [
+            'model in an array' => [fn(OverridingUser $user) => ['user' => $user], fn(array $json) => $json['user']],
+            'model in a generator' => [
+                function (OverridingUser $user) {
+                    yield $user;
+                },
+                fn(array $json) => $json[0],
+            ],
+        ];
+    }
+
+    #[DataProvider('streamedDataProvider')]
+    public function testStreamedJsonResponseUsesRelationOverrideWhenTheParentCallsToArray(callable $data, callable $user): void
+    {
+        ob_start();
+
+        try {
+            (new StreamedJsonResponse($data($this->userWithRelations())))->sendContent();
+        } finally {
+            $json = ob_get_clean();
+        }
+
+        $this->assertSame(
+            ['posts' => [['only' => 'public']], 'post' => ['only' => 'public']],
+            $user(json_decode($json, true))
+        );
+    }
+
+    public function testStreamedJsonResponseGeneratorSeesPlainToArray(): void
+    {
+        $user = $this->userWithRelations();
+        $seen = null;
+
+        $data = (function () use ($user, &$seen) {
+            $seen = $user->toArray()['post'];
+
+            yield $user;
+        })();
+
+        ob_start();
+        (new StreamedJsonResponse($data))->sendContent();
+        ob_end_clean();
+
+        $this->assertSame(['secret' => 'hidden'], $seen);
+    }
+
+    public function testStreamedJsonResponseLeavesToArrayAloneAfterSending(): void
+    {
+        $user = $this->userWithRelations();
+
+        ob_start();
+        (new StreamedJsonResponse(['user' => $user]))->sendContent();
+        ob_end_clean();
+
+        $this->assertSame(['secret' => 'hidden'], $user->toArray()['post']);
+    }
+
+    private function userWithRelations(): OverridingUser
     {
         $user = new OverridingUser();
 
@@ -142,8 +235,6 @@ class ResponseEdgeCasesTest extends TestCase
             'post' => new HiddenFieldsPost(),
         ]);
 
-        $json = (new ReflectionMethod(Response::class, 'encodeJsonContent'))->invoke(new Response(), $user);
-
-        $this->assertSame(['posts' => [['only' => 'public']], 'post' => ['only' => 'public']], json_decode($json, true));
+        return $user;
     }
 }

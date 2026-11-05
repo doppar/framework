@@ -63,9 +63,10 @@ class Router
     public static array $namedRoutes = [];
 
     /**
-     * The HTTP method each named route was registered for.
+     * The path each named route has per HTTP method. $namedRoutes keeps the one
+     * path a name generates URLs for; a shared name can differ per method here.
      *
-     * @var array<string, string>
+     * @var array<string, array<string, string>>
      */
     public static array $namedRouteMethods = [];
 
@@ -329,7 +330,8 @@ class Router
 
         self::$routes = $cached['routes'] ?? [];
         self::$namedRoutes = $cached['namedRoutes'] ?? [];
-        self::$namedRouteMethods = $cached['namedRouteMethods'] ?? [];
+        // A cache from before names kept their paths per method resolves by path alone.
+        self::$namedRouteMethods = array_filter($cached['namedRouteMethods'] ?? [], 'is_array');
         self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
 
         static::$cacheLoaded = true;
@@ -559,11 +561,23 @@ class Router
         $this->addRoute($method, $path, $callback, $domain);
 
         if ($name) {
-            self::$namedRoutes[$name] = $this->currentRoutePath;
-            self::$namedRouteMethods[$name] = $method;
+            $this->recordRouteName($name, $method);
         }
 
         return $this;
+    }
+
+    /**
+     * Point a name at the last registered route.
+     *
+     * @param string $name
+     * @param string $method
+     * @return void
+     */
+    protected function recordRouteName(string $name, string $method): void
+    {
+        self::$namedRoutes[$name] = $this->currentRoutePath;
+        self::$namedRouteMethods[$name][$method] = $this->currentRoutePath;
     }
 
     /**
@@ -810,8 +824,7 @@ class Router
     public function name(string $name): self
     {
         if ($this->currentRoutePath) {
-            self::$namedRoutes[$name] = $this->currentRoutePath;
-            self::$namedRouteMethods[$name] = $this->getCurrentRequestMethod();
+            $this->recordRouteName($name, $this->getCurrentRequestMethod());
         }
 
         return $this;
@@ -1102,6 +1115,16 @@ class Router
         }
 
         foreach (self::$namedRoutes as $name => $path) {
+            $recorded = isset(self::$namedRouteMethods[$name]);
+
+            if ($recorded && (self::$namedRouteMethods[$name][$method] ?? null) !== $old) {
+                continue;
+            }
+
+            if ($recorded) {
+                self::$namedRouteMethods[$name][$method] = $newPath;
+            }
+
             if ($path === $old) {
                 self::$namedRoutes[$name] = $newPath;
             }

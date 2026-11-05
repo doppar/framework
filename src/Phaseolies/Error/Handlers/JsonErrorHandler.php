@@ -5,6 +5,7 @@ namespace Phaseolies\Error\Handlers;
 use Throwable;
 use Phaseolies\Http\Exceptions\HttpException;
 use Phaseolies\Http\Exceptions\HttpResponseException;
+use Phaseolies\Http\Response;
 use Phaseolies\Error\JsonErrorRenderer;
 use Phaseolies\Error\Contracts\ErrorHandlerInterface;
 
@@ -24,17 +25,33 @@ class JsonErrorHandler implements ErrorHandlerInterface
             return;
         }
 
+        $this->buildResponse($exception)->prepare(request())->send();
+    }
+
+    /**
+     * Build the JSON error response for an exception.
+     *
+     * @param Throwable $exception
+     * @return Response
+     */
+    protected function buildResponse(Throwable $exception): Response
+    {
         $renderer = new JsonErrorRenderer();
         if ($exception instanceof HttpResponseException) {
             $responseErrors = $exception->getValidationErrors();
 
             $statusCode = (int) $exception->getStatusCode() ?: 500;
-            $response = $renderer->render($exception, $statusCode, $responseErrors);
-        } else {
-            $response = $renderer->render($exception, $this->resolveStatusCode($exception));
+
+            return $renderer->render($exception, $statusCode, $responseErrors);
         }
 
-        $response->prepare(request())->send();
+        $response = $renderer->render($exception, $this->resolveStatusCode($exception));
+
+        if ($exception instanceof HttpException) {
+            $response->withHeaders($exception->getHeaders());
+        }
+
+        return $response;
     }
 
     /**

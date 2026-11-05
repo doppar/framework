@@ -73,22 +73,19 @@ trait InteractsWithCurrentRouter
             return null;
         }
 
-        $fallback = null;
-
-        // Several methods can share a path, each with its own name.
+        // Several methods can share a path, each with its own name. A name with
+        // no recorded methods comes from a route cache written before they were.
         foreach (self::$namedRoutes as $name => $path) {
-            if ($path !== $match['route']) {
-                continue;
-            }
+            $routePath = isset(self::$namedRouteMethods[$name])
+                ? self::$namedRouteMethods[$name][$match['method']] ?? null
+                : $path;
 
-            if ((self::$namedRouteMethods[$name] ?? null) === $match['method']) {
+            if ($routePath === $match['route']) {
                 return $name;
             }
-
-            $fallback ??= $name;
         }
 
-        return $fallback;
+        return null;
     }
 
     /**
