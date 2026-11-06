@@ -23,12 +23,10 @@ class AuthenticateSession implements Middleware
 
         // A stale session is signed out here; the request goes on as a guest,
         // so the "auth" middleware of a protected route sends it to sign in.
+        // A password this request saves through the model or by
+        // logoutOtherDevices() keeps the device signed in by itself.
         $auth->isSessionCurrent();
 
-        $response = $next($request);
-
-        $auth->refreshSessionFingerprint(false);
-
-        return $response;
+        return $next($request);
     }
 }

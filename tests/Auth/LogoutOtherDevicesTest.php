@@ -531,6 +531,78 @@ class LogoutOtherDevicesTest extends TestCase
         $this->assertTrue($this->isCurrentAndSignedIn($laptop));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
+    public function test_a_rolled_back_password_change_keeps_this_device_signed_in(\Closure $store): void
+    {
+        $this->useStore($store($this));
+
+        $laptop = $this->signIn('Laptop');
+        $before = $this->storedPassword();
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): void {
+            (new AuthenticateSession())($request, function (): Response {
+                $pdo = Database::getPdoInstance(self::CONNECTION);
+                $pdo->beginTransaction();
+
+                $user = app('auth')->user();
+                $user->password = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+                $user->save();
+
+                // A later step of the same transaction fails.
+                $pdo->rollBack();
+
+                return new Response();
+            });
+        });
+
+        $this->assertSame($before, $this->storedPassword(), 'The password did not change.');
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_a_committed_password_change_is_confirmed_on_the_next_request(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): void {
+            $user = $auth->user();
+            $user->password = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->save();
+        });
+
+        [$laptop, $keys] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): array {
+            $auth->isSessionCurrent();
+
+            return [$request->session()->has('password_hash_web'), $request->session()->has('password_hash_web_next')];
+        });
+
+        $this->assertSame([true, false], $keys, 'The pending fingerprint became the current one.');
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_an_actor_with_a_missing_model_class_does_not_block_password_changes(): void
+    {
+        Config::set('auth.actors.legacy', ['model' => 'App\\Models\\RemovedLongAgo', 'session_key' => 'legacy_id']);
+
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): void {
+            $user = $auth->user();
+            $user->password = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->save();
+
+            DeviceUser::find(1)->update(['password' => password_hash(self::PASSWORD, PASSWORD_BCRYPT, ['cost' => 4])]);
+        });
+
+        $this->assertTrue(password_verify(self::PASSWORD, $this->storedPassword()));
+
+        [$laptop, $result] = $this->onDevice($laptop, fn (Authenticate $auth) => $auth->logoutOtherDevices(self::PASSWORD));
+
+        $this->assertTrue($result);
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+        $this->assertFalse($this->isCurrentAndSignedIn($phone));
+    }
+
     public function test_changing_another_users_password_leaves_this_session_alone(): void
     {
         Database::getPdoInstance(self::CONNECTION)

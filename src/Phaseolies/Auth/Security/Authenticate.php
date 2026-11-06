@@ -47,12 +47,6 @@ class Authenticate
      */
     private ?Authable $resolvedUser = null;
 
-    /**
-     * Fingerprint of the signed-in user's password when isSessionCurrent() checked it
-     *
-     * @var string|null
-     */
-    private ?string $checkedFingerprint = null;
 
     /**
      * Create a new actor instance.
@@ -135,6 +129,16 @@ class Authenticate
     protected function getPasswordFingerprintKey(): string
     {
         return 'password_hash_' . $this->actorName;
+    }
+
+    /**
+     * The session key holding the fingerprint of a password this device is saving.
+     *
+     * @return string
+     */
+    protected function getPendingFingerprintKey(): string
+    {
+        return $this->getPasswordFingerprintKey() . '_next';
     }
 
     /**
@@ -420,11 +424,11 @@ class Authenticate
     {
         $this->resolvedUser  = null;
         $this->statelessUser = null;
-        $this->checkedFingerprint = null;
 
         session()->forget($this->getSessionKey());
         session()->forget($this->getViaRememberKey());
         session()->forget($this->getPasswordFingerprintKey());
+        session()->forget($this->getPendingFingerprintKey());
 
         // Only fully invalidate the session on the default actor so that other
         // actors (e.g. "admin") remain active when only the "web" actor logs out.
@@ -528,31 +532,16 @@ class Authenticate
         if (!is_string($stored)) {
             $this->signOutKeepingSession();
 
-            $user = $this->user();
-
-            if ($user === null) {
-                return false;
-            }
-
-            $this->checkedFingerprint = $this->passwordFingerprint($user);
-
-            return true;
+            return $this->user() !== null;
         }
 
         $fingerprint = $this->passwordFingerprint($user);
 
-        if (hash_equals($fingerprint, $stored)) {
-            $this->checkedFingerprint = $fingerprint;
-
+        if ($this->acceptFingerprint($fingerprint, $stored, session($this->getPendingFingerprintKey()))) {
             return true;
         }
 
-        $current = $this->fingerprintStoredSince();
-
-        if ($current !== null) {
-            session()->put($this->getPasswordFingerprintKey(), $current);
-            $this->checkedFingerprint = $current;
-
+        if ($this->acceptStoredFingerprint()) {
             return true;
         }
 
@@ -562,64 +551,79 @@ class Authenticate
     }
 
     /**
-     * The fingerprint this device's session holds now, when it matches the
-     * password in the database now.
+     * Accept a password fingerprint that matches the current or the pending one.
      *
-     * @return string|null
+     * @param string $fingerprint
+     * @param mixed $current
+     * @param mixed $pending
+     * @return bool
      */
-    protected function fingerprintStoredSince(): ?string
+    protected function acceptFingerprint(string $fingerprint, mixed $current, mixed $pending): bool
+    {
+        if (is_string($current) && hash_equals($current, $fingerprint)) {
+            if (session($this->getPasswordFingerprintKey()) !== $fingerprint) {
+                session()->put($this->getPasswordFingerprintKey(), $fingerprint);
+            }
+
+            return true;
+        }
+
+        if (is_string($pending) && hash_equals($pending, $fingerprint)) {
+            session()->put($this->getPasswordFingerprintKey(), $fingerprint);
+            session()->forget($this->getPendingFingerprintKey());
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check the fingerprints again as this device's session store
+     *
+     * @return bool
+     */
+    protected function acceptStoredFingerprint(): bool
     {
         $session = session();
 
         if (!$session instanceof CommittableSession) {
-            return null;
+            return false;
         }
 
-        return $session->exclusively(function () use ($session): ?string {
-            $stored = $session->storedValue($this->getPasswordFingerprintKey());
+        return (bool) $session->exclusively(function () use ($session): bool {
             $user = $this->getModel()::find(session($this->getSessionKey()));
 
-            if (!is_string($stored) || !$user instanceof Authable) {
-                return null;
+            if (!$user instanceof Authable) {
+                return false;
             }
 
-            $fingerprint = $this->passwordFingerprint($user);
+            $accepted = $this->acceptFingerprint(
+                $this->passwordFingerprint($user),
+                $session->storedValue($this->getPasswordFingerprintKey()),
+                $session->storedValue($this->getPendingFingerprintKey())
+            );
 
-            if (!hash_equals($fingerprint, $stored)) {
-                return null;
+            if ($accepted) {
+                $this->resolvedUser = $user;
             }
 
-            $this->resolvedUser = $user;
-
-            return $fingerprint;
+            return $accepted;
         });
     }
 
     /**
-     * Record the user's current password in this device's session, after this request changed it.
+     * Record the user's password in this device's session, after changing it with a query.
      *
-     * @param bool $reload
      * @return void
      */
-    public function refreshSessionFingerprint(bool $reload = true): void
+    public function refreshSessionFingerprint(): void
     {
         if (!session()->has($this->getSessionKey())) {
             return;
         }
 
-        if ($reload) {
-            $user = $this->getModel()::find(session($this->getSessionKey()));
-        } else {
-            $user = $this->resolvedUser;
-
-            if ($user === null || $this->checkedFingerprint === null || !is_string(session($this->getPasswordFingerprintKey()))) {
-                return;
-            }
-
-            if (hash_equals($this->checkedFingerprint, $this->passwordFingerprint($user))) {
-                return;
-            }
-        }
+        $user = $this->getModel()::find(session($this->getSessionKey()));
 
         if (!$user instanceof Authable) {
             return;
@@ -630,6 +634,8 @@ class Authenticate
         if (session($this->getPasswordFingerprintKey()) !== $fingerprint) {
             session()->put($this->getPasswordFingerprintKey(), $fingerprint);
         }
+
+        session()->forget($this->getPendingFingerprintKey());
     }
 
     /**
@@ -730,7 +736,7 @@ class Authenticate
                 // An actor signed in only by its remember cookie has no
                 // fingerprint here; it gets one when the cookie signs it in.
                 if ((string) session($actor->getSessionKey()) === $id) {
-                    $key = $actor->getPasswordFingerprintKey();
+                    $key = $actor->getPendingFingerprintKey();
                     $previous[$key] = session($key);
                     $put($key, $fingerprint);
                 }
@@ -769,11 +775,11 @@ class Authenticate
                 continue;
             }
 
-            if ($actor->getModel()->getTable() !== $user->getTable()) {
+            if ((string) session($actor->getSessionKey()) !== $id && !$actor->hasValidRememberCookie($user)) {
                 continue;
             }
 
-            if ((string) session($actor->getSessionKey()) === $id || $actor->hasValidRememberCookie($user)) {
+            if ($actor->getModel()->getTable() === $user->getTable()) {
                 $actors[] = $actor;
             }
         }
@@ -789,11 +795,11 @@ class Authenticate
     protected function signOutKeepingSession(): void
     {
         $this->resolvedUser = null;
-        $this->checkedFingerprint = null;
 
         session()->forget($this->getSessionKey());
         session()->forget($this->getViaRememberKey());
         session()->forget($this->getPasswordFingerprintKey());
+        session()->forget($this->getPendingFingerprintKey());
         session()->regenerate();
     }
 
