@@ -1,12 +1,19 @@
 <?php
 
 namespace Phaseolies\Auth\Security {
+    /*
+     * Shadows the global helper for every class in this namespace, Authenticate
+     * included, once this file is loaded. Outside PasswordHashingTest it defers
+     * to the real one.
+     */
     function config(string $key, mixed $default = null): mixed
     {
-        $map = $GLOBALS['doppar_hashing_test_config'] ?? [
-            'hashing.driver'        => 'bcrypt',
-            'hashing.bcrypt.rounds' => 10,
-        ];
+        if (!isset($GLOBALS['doppar_hashing_test_config'])) {
+            return \config($key, $default);
+        }
+
+        $map = $GLOBALS['doppar_hashing_test_config'];
+
         return array_key_exists($key, $map) ? $map[$key] : $default;
     }
 }

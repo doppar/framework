@@ -1,8 +1,16 @@
 <?php
 
 namespace Phaseolies\Auth {
+    /*
+     * Shadows the global helper for ActorManager once this file is loaded.
+     * Outside ActorManagerTest it defers to the real one.
+     */
     function config(string $key, mixed $default = null): mixed
     {
+        if (empty($GLOBALS['doppar_actor_manager_test'])) {
+            return \config($key, $default);
+        }
+
         $map = [
             'auth.default'          => 'web',
             'auth.actors.web'       => [
@@ -42,7 +50,13 @@ namespace Tests\Unit\Auth {
 
         protected function setUp(): void
         {
+            $GLOBALS['doppar_actor_manager_test'] = true;
             $this->manager = new ActorManager();
+        }
+
+        protected function tearDown(): void
+        {
+            unset($GLOBALS['doppar_actor_manager_test']);
         }
 
         public function testActorReturnsAuthenticateInstance()

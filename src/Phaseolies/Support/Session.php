@@ -9,6 +9,7 @@ use Phaseolies\Session\Contracts\CommittableSession;
 use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Contracts\SessionInterface;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
+use Phaseolies\Session\RotationPointer;
 use Phaseolies\Session\SessionManager;
 use Phaseolies\Session\Stores\FileStore;
 use Phaseolies\Utilities\PathMatcher;
@@ -21,14 +22,6 @@ class Session implements SessionInterface, CommittableSession
      * @var array<string, true>
      */
     protected const INTERNAL_KEYS = ['last_regenerated' => true];
-
-    /**
-     * Keys of the pointer an automatically rotated id leaves behind.
-     *
-     */
-    protected const ROTATED_TO = '_rotated_to';
-
-    protected const ROTATED_UNTIL = '_rotated_until';
 
     /**
      * Seconds the old id of an automatic rotation keeps leading to the new one.
@@ -363,7 +356,7 @@ class Session implements SessionInterface, CommittableSession
 
         $record = $store->read($this->storedId);
 
-        return $record !== null && !array_key_exists(self::ROTATED_TO, $record['data']);
+        return $record !== null && !RotationPointer::isPointer($record['data']);
     }
 
     /**
@@ -441,7 +434,7 @@ class Session implements SessionInterface, CommittableSession
     {
         $record = $store->read($this->storedId);
 
-        if ($record !== null && array_key_exists(self::ROTATED_TO, $record['data'])) {
+        if ($record !== null && RotationPointer::isPointer($record['data'])) {
             $target = $this->pointerTarget($record['data']);
 
             if ($target !== null) {
@@ -500,7 +493,7 @@ class Session implements SessionInterface, CommittableSession
         $this->data['last_regenerated'] = time();
 
         $store->write($new, $this->data);
-        $store->write($old, [self::ROTATED_TO => $new, self::ROTATED_UNTIL => time() + self::ROTATION_GRACE]);
+        $store->write($old, RotationPointer::make($new, time() + self::ROTATION_GRACE));
 
         return $this->id = $new;
     }
@@ -529,17 +522,7 @@ class Session implements SessionInterface, CommittableSession
      */
     protected function pointerTarget(array $data, bool $honourExpiry = true): ?string
     {
-        $target = $data[self::ROTATED_TO] ?? null;
-
-        if (!is_string($target) || !FileStore::isValidId($target)) {
-            return null;
-        }
-
-        if ($honourExpiry && (int) ($data[self::ROTATED_UNTIL] ?? 0) < time()) {
-            return null;
-        }
-
-        return $target;
+        return RotationPointer::target($data, $honourExpiry);
     }
 
     /**
@@ -554,7 +537,7 @@ class Session implements SessionInterface, CommittableSession
         for ($hop = 0; $hop <= self::MAX_HOPS; $hop++) {
             $record = $store->read($id);
 
-            if ($record === null || !array_key_exists(self::ROTATED_TO, $record['data'])) {
+            if ($record === null || !RotationPointer::isPointer($record['data'])) {
                 return $record;
             }
 
@@ -1092,6 +1075,114 @@ class Session implements SessionInterface, CommittableSession
         $this->load();
 
         return $this->id ??= self::newId();
+    }
+
+    /**
+     * The id the session is stored under right now, if it is stored.
+     *
+     * @return string|null
+     */
+    public function storedId(): ?string
+    {
+        $this->load();
+
+        return $this->storedId;
+    }
+
+    /**
+     * Run a callback while no other request can save this session.
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function exclusively(callable $callback): mixed
+    {
+        $this->load();
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || !$store instanceof LockableSessionStore) {
+            return $callback();
+        }
+
+        return $store->synchronized($this->storedId, $callback);
+    }
+
+    /**
+     * A value as the stored session holds it
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function storedValue(string $key, mixed $default = null): mixed
+    {
+        $this->load();
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || $store->isClientSide()) {
+            return $this->data[$key] ?? $default;
+        }
+
+        $record = $this->readFollowing($store, $this->storedId);
+
+        return $record['data'][$key] ?? $default;
+    }
+
+    /**
+     * Put a value, and save it into the stored session right away
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function putThrough(string $key, mixed $value): void
+    {
+        $this->put($key, $value);
+
+        $store = $this->store();
+
+        if ($this->storedId === null || $this->isStateless() || $store->isClientSide()) {
+            return;
+        }
+
+        $id = $this->storedId;
+
+        for ($hop = 0; is_string($id) && $hop <= self::MAX_HOPS; $hop++) {
+            $id = $this->writeStoredValue($store, $id, $key, $value);
+        }
+    }
+
+    /**
+     * Write one value into a stored session, or return where a rotation moved it.
+     *
+     * @param SessionStoreInterface $store
+     * @param string $id
+     * @param string $key
+     * @param mixed $value
+     * @return string|null
+     */
+    protected function writeStoredValue(SessionStoreInterface $store, string $id, string $key, mixed $value): ?string
+    {
+        $write = function () use ($store, $id, $key, $value): ?string {
+            $record = $store->read($id);
+
+            if ($record === null) {
+                return null;
+            }
+
+            if (RotationPointer::isPointer($record['data'])) {
+                return $this->pointerTarget($record['data']);
+            }
+
+            $record['data'][$key] = $value;
+            $store->write($id, $record['data']);
+
+            return null;
+        };
+
+        return $store instanceof LockableSessionStore ? $store->synchronized($id, $write) : $write();
     }
 
     /**

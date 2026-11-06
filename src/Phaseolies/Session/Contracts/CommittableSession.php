@@ -53,6 +53,39 @@ interface CommittableSession
     public function isLoaded(): bool;
 
     /**
+     * The id the session is stored under right now, if it is stored
+     *
+     * @return string|null
+     */
+    public function storedId(): ?string;
+
+    /**
+     * Run a callback while no other request can save this session
+     *
+     * @param callable $callback
+     * @return mixed
+     */
+    public function exclusively(callable $callback): mixed;
+
+    /**
+     * A value as the stored session holds it right now
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     */
+    public function storedValue(string $key, mixed $default = null): mixed;
+
+    /**
+     * Put a value, and save it into the stored session right away
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function putThrough(string $key, mixed $value): void;
+
+    /**
      * Run the housekeeping that must not delay the response
      *
      * @return void

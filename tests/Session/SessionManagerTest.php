@@ -2,9 +2,13 @@
 
 namespace Tests\Unit\Session;
 
+use Phaseolies\Config\Config;
+use Phaseolies\DI\Container;
 use Phaseolies\Session\SessionManager;
+use Phaseolies\Session\Stores\DatabaseStore;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Tests\Support\MockContainer;
 
 class SessionManagerTest extends TestCase
 {
@@ -60,5 +64,71 @@ class SessionManagerTest extends TestCase
     public function test_a_config_without_a_lottery_gets_the_default(): void
     {
         $this->assertSame([2, 100], SessionManager::normalize([])['lottery']);
+    }
+
+    public function test_a_config_without_database_options_gets_the_defaults(): void
+    {
+        $config = SessionManager::normalize([]);
+
+        $this->assertNull($config['connection']);
+        $this->assertSame('sessions', $config['table']);
+    }
+
+    public function test_the_database_driver_builds_a_database_store_without_connecting(): void
+    {
+        $this->withAuthConfig(function (): void {
+            $store = SessionManager::createStore(SessionManager::normalize([
+                'driver' => 'database',
+                'connection' => 'not_configured_so_connecting_would_fail',
+            ]));
+
+            $this->assertInstanceOf(DatabaseStore::class, $store);
+            $this->assertFalse($store->isClientSide());
+        });
+    }
+
+    public function test_sessions_are_linked_to_the_user_of_the_default_actor(): void
+    {
+        $this->withAuthConfig(function (): void {
+            $resolve = SessionManager::userResolver();
+
+            $this->assertSame('user', SessionManager::userSessionKey());
+            $this->assertSame(5, $resolve(['user' => 5, 'admin' => 9]));
+            $this->assertNull($resolve(['cart' => []]));
+        });
+    }
+
+    public function test_without_an_auth_actor_sessions_are_not_linked_to_users(): void
+    {
+        $this->withAuthConfig(function (): void {
+            Config::set('auth.default', 'missing');
+
+            $this->assertNull(SessionManager::userSessionKey());
+            $this->assertNull(SessionManager::userResolver());
+        });
+    }
+
+    /**
+     * Run a test with a container and an auth config where "web" keeps the user under "user".
+     *
+     * @param callable $test
+     * @return void
+     */
+    private function withAuthConfig(callable $test): void
+    {
+        Container::setInstance(new MockContainer());
+
+        $previous = (new \ReflectionClass(Config::class))->getProperty('config')->getValue();
+
+        Config::set('auth.default', 'web');
+        Config::set('auth.actors.web.session_key', 'user');
+        Config::set('auth.actors.admin.session_key', 'admin');
+
+        try {
+            $test();
+        } finally {
+            (new \ReflectionClass(Config::class))->getProperty('config')->setValue(null, $previous);
+            (new \ReflectionClass(Container::class))->getProperty('instance')->setValue(null, null);
+        }
     }
 }
