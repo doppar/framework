@@ -493,7 +493,7 @@ class Authenticate
             $changes[$tokenName] = $user->getRememberToken();
         }
 
-        $this->replaceCredentials($user, $changes, $actors, $this->fingerprintOf($hash));
+        $this->writeWithFingerprint($user, $actors, $this->fingerprintOf($hash), fn () => $this->persistCredentials($user, $changes));
 
         $store = $this->sessionStore();
         $id = $user->getAuthIdentifier();
@@ -676,27 +676,60 @@ class Authenticate
     }
 
     /**
-     * Save the new credentials, and the new fingerprint of every actor
+     * Save a new password of a user, keeping this device signed in as that user, including its other requests
+     *
      *
      * @param Authable $user
-     * @param array<string, mixed> $changes
+     * @param string $hash
+     * @param callable(): mixed $write
+     * @return mixed
+     */
+    public function savePassword(Authable $user, string $hash, callable $write): mixed
+    {
+        try {
+            $session = session();
+        } catch (\Throwable) {
+            $session = null;
+        }
+
+        if (!$session instanceof CommittableSession) {
+            return $write();
+        }
+
+        $actors = $this->actorsSignedInAs($user, false);
+
+        if ($actors === []) {
+            return $write();
+        }
+
+        return $this->writeWithFingerprint($user, $actors, $this->fingerprintOf($hash), $write);
+    }
+
+    /**
+     * Save new credentials together with the new fingerprint of every actor
+     *
+     * @param Authable $user
      * @param array<int, self> $actors
      * @param string $fingerprint
-     * @return void
+     * @param callable(): mixed $write
+     * @return mixed
      */
-    protected function replaceCredentials(Authable $user, array $changes, array $actors, string $fingerprint): void
+    protected function writeWithFingerprint(Authable $user, array $actors, string $fingerprint, callable $write): mixed
     {
         $session = session();
+        $id = (string) $user->getAuthIdentifier();
 
         $put = static function (string $key, mixed $value) use ($session): void {
             $session instanceof CommittableSession ? $session->putThrough($key, $value) : $session->put($key, $value);
         };
 
-        $replace = function () use ($user, $changes, $actors, $fingerprint, $put): void {
+        $replace = function () use ($actors, $fingerprint, $put, $id, $write): mixed {
             $previous = [];
 
             foreach ($actors as $actor) {
-                if (session()->has($actor->getSessionKey())) {
+                // An actor signed in only by its remember cookie has no
+                // fingerprint here; it gets one when the cookie signs it in.
+                if ((string) session($actor->getSessionKey()) === $id) {
                     $key = $actor->getPasswordFingerprintKey();
                     $previous[$key] = session($key);
                     $put($key, $fingerprint);
@@ -704,7 +737,7 @@ class Authenticate
             }
 
             try {
-                $this->persistCredentials($user, $changes);
+                return $write();
             } catch (\Throwable $e) {
                 foreach ($previous as $key => $value) {
                     $put($key, $value);
@@ -714,32 +747,33 @@ class Authenticate
             }
         };
 
-        $session instanceof CommittableSession ? $session->exclusively($replace) : $replace();
+        return $session instanceof CommittableSession ? $session->exclusively($replace) : $replace();
     }
 
     /**
-     * The actors this device is signed in to as the user, this one first.
+     * The actors this device is signed in to as the user
      *
      * @param Authable $user
+     * @param bool $includeThis
      * @return array<int, self>
      */
-    protected function actorsSignedInAs(Authable $user): array
+    protected function actorsSignedInAs(Authable $user, bool $includeThis = true): array
     {
-        $actors = [$this];
+        $actors = $includeThis ? [$this] : [];
         $id = (string) $user->getAuthIdentifier();
 
         foreach (array_keys((array) config('auth.actors', [])) as $name) {
-            if ($name === $this->actorName) {
+            $actor = $name === $this->actorName ? $this : app('auth')->actor($name);
+
+            if (!$actor instanceof self || in_array($actor, $actors, true)) {
                 continue;
             }
 
-            $actor = app('auth')->actor($name);
+            if ($actor->getModel()->getTable() !== $user->getTable()) {
+                continue;
+            }
 
-            if (
-                $actor instanceof self
-                && (string) session($actor->getSessionKey()) === $id
-                && $actor->getModel()->getTable() === $user->getTable()
-            ) {
+            if ((string) session($actor->getSessionKey()) === $id || $actor->hasValidRememberCookie($user)) {
                 $actors[] = $actor;
             }
         }

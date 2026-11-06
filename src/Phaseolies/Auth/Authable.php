@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Auth;
 
+use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Database\Entity\Model;
 
 /**
@@ -124,5 +125,68 @@ abstract class Authable extends Model
     public function setTwoFactorRecoveryCodes(?string $value): void
     {
         $this->two_factor_recovery_codes = $value;
+    }
+
+    /**
+     * Save the model, keeping this device signed in when it changes the password of the signed-in user.
+     *
+     * @return bool
+     */
+    public function save(): bool
+    {
+        $name = $this->getAuthPasswordName();
+
+        $hash = isset($this->attributes[$this->primaryKey])
+            && $this->isDirtyAttr($name)
+            && ($this->creatable === [] || in_array($name, $this->creatable, true))
+                ? $this->attributes[$name]
+                : null;
+
+        return (bool) $this->whileSavingPassword($hash, fn (): bool => parent::save());
+    }
+
+    /**
+     * Update the model, keeping this device signed in when it changes the password of the signed-in user.
+     *
+     * @param array $attributes
+     * @return bool
+     */
+    public function update(array $attributes): bool
+    {
+        $name = $this->getAuthPasswordName();
+
+        $hash = isset($this->attributes[$this->primaryKey])
+            && array_key_exists($name, $attributes)
+            && in_array($name, $this->creatable, true)
+            && $attributes[$name] !== ($this->getOriginalAttributes()[$name] ?? null)
+                ? $attributes[$name]
+                : null;
+
+        return (bool) $this->whileSavingPassword($hash, fn (): bool => parent::update($attributes));
+    }
+
+    /**
+     * Run a write, through the auth layer when it saves a new password hash.
+     *
+     * @param mixed $hash
+     * @param callable(): bool $write
+     * @return bool
+     */
+    private function whileSavingPassword(mixed $hash, callable $write): bool
+    {
+        if (!is_string($hash) || $hash === '') {
+            return $write();
+        }
+
+        try {
+            $manager = app('auth');
+            $actor = $manager instanceof ActorManager ? $manager->actor() : null;
+        } catch (\Throwable) {
+            $actor = null;
+        }
+
+        return $actor instanceof Authenticate
+            ? (bool) $actor->savePassword($this, $hash, $write)
+            : $write();
     }
 }

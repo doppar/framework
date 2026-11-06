@@ -22,6 +22,7 @@ use Phaseolies\Session\RotationPointer;
 use Phaseolies\Session\SessionManager;
 use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Session\Stores\DatabaseStore;
+use Phaseolies\Session\Stores\FileStore;
 use Phaseolies\Support\CookieJar;
 use Phaseolies\Support\Encryption;
 use Phaseolies\Support\Facades\Facade;
@@ -104,6 +105,8 @@ class LogoutOtherDevicesTest extends TestCase
 
     private SessionStoreInterface $store;
 
+    private ?string $sessionPath = null;
+
     private array $sessionConfig = [
         'cookie' => self::COOKIE,
         'lifetime' => 120,
@@ -171,6 +174,19 @@ class LogoutOtherDevicesTest extends TestCase
         (new \ReflectionClass(Container::class))->getProperty('instance')->setValue(null, null);
 
         @unlink($this->database);
+
+        if ($this->sessionPath !== null && is_dir($this->sessionPath)) {
+            $files = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($this->sessionPath, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($files as $file) {
+                $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+            }
+
+            @rmdir($this->sessionPath);
+        }
     }
 
     public function test_it_signs_out_every_other_device_and_keeps_this_one(): void
@@ -469,7 +485,100 @@ class LogoutOtherDevicesTest extends TestCase
         return [
             'database' => [fn (self $test) => $test->databaseStore()],
             'array' => [fn () => new ArrayStore(7200)],
+            'file' => [fn (self $test) => $test->fileStore()],
         ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
+    public function test_a_parallel_request_survives_a_password_change_saved_on_the_signed_in_user(\Closure $store): void
+    {
+        $this->useStore($store($this));
+
+        $laptop = $this->signIn('Laptop');
+        $phone = $this->signIn('Phone');
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): void {
+            (new AuthenticateSession())($request, function () use ($laptop, $request): Response {
+                $user = app('auth')->user();
+                $user->password = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+                $user->save();
+
+                // Another request of the laptop runs before this one saves its session.
+                [, $signedIn] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request): bool => $this->throughMiddleware($request));
+                $this->backTo($request);
+                $this->assertTrue($signedIn, 'The parallel request is still signed in.');
+
+                return new Response();
+            });
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+        $this->assertFalse($this->isCurrentAndSignedIn($phone));
+    }
+
+    public function test_a_parallel_request_survives_a_password_change_through_update(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): void {
+            DeviceUser::find(1)->update(['password' => password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4])]);
+
+            [, $signedIn] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request): bool => $this->throughMiddleware($request));
+            $this->backTo($request);
+            $this->assertTrue($signedIn);
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_changing_another_users_password_leaves_this_session_alone(): void
+    {
+        Database::getPdoInstance(self::CONNECTION)
+            ->prepare('INSERT INTO users (id, email, password) VALUES (?, ?, ?)')
+            ->execute([2, 'grace@example.com', password_hash('her password', PASSWORD_BCRYPT, ['cost' => 4])]);
+
+        $laptop = $this->signIn('Laptop');
+
+        [, $fingerprints] = $this->onDevice($laptop, function (Authenticate $auth, Request $request): array {
+            $before = $request->session()->get('password_hash_web');
+
+            $other = DeviceUser::find(2);
+            $other->password = password_hash('reset by an admin', PASSWORD_BCRYPT, ['cost' => 4]);
+            $other->save();
+
+            return [$before, $request->session()->get('password_hash_web')];
+        });
+
+        $this->assertSame($fingerprints[0], $fingerprints[1]);
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_an_actor_signed_in_only_by_its_remember_cookie_stays_remembered(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        // The admin actor is remembered on this device, but has no session sign-in.
+        $adminCookie = [];
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth, Request $request) use (&$adminCookie): void {
+            $this->capturingCookies($adminCookie, fn () => app('auth')->actor('admin')->login(DeviceUser::find(1), true));
+
+            // Its session sign-in has expired since; only the cookie is left.
+            $request->session()->forget('admin_id');
+            $request->session()->forget('password_hash_admin');
+        });
+        $adminCookie = array_filter($adminCookie, fn (string $name) => str_contains($name, '_admin_'), ARRAY_FILTER_USE_KEY);
+        $this->assertNotSame([], $adminCookie);
+
+        $issued = [];
+        $this->onDevice($laptop, function (Authenticate $auth) use (&$issued): bool {
+            return $this->capturingCookies($issued, fn () => $auth->logoutOtherDevices(self::PASSWORD));
+        }, $adminCookie);
+
+        $this->assertNotNull($this->storedRememberToken(), 'The remember token is kept for the admin actor.');
+
+        [, $adminSignedIn] = $this->onDevice(null, fn () => app('auth')->actor('admin')->check(), $issued);
+
+        $this->assertTrue($adminSignedIn, 'The new remember cookie of the admin actor still works.');
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
@@ -778,6 +887,22 @@ class LogoutOtherDevicesTest extends TestCase
     }
 
     /**
+     * Run a request through AuthenticateSession and report whether it was signed in.
+     */
+    private function throughMiddleware(Request $request): bool
+    {
+        $signedIn = false;
+
+        (new AuthenticateSession())($request, function () use (&$signedIn): Response {
+            $signedIn = app('auth')->check();
+
+            return new Response();
+        });
+
+        return $signedIn;
+    }
+
+    /**
      * Carry on with a request after another one ran in the middle of it.
      */
     private function backTo(Request $request): void
@@ -811,6 +936,13 @@ class LogoutOtherDevicesTest extends TestCase
         $issued = CookieRecordingAuthenticate::$sent + $issued;
 
         return $result;
+    }
+
+    public function fileStore(): FileStore
+    {
+        $this->sessionPath ??= sys_get_temp_dir() . '/doppar_device_sessions_' . bin2hex(random_bytes(6));
+
+        return new FileStore($this->sessionPath, 7200);
     }
 
     public function databaseStore(): DatabaseStore
