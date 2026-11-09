@@ -128,54 +128,86 @@ abstract class Authable extends Model
     }
 
     /**
-     * Save the model, keeping this device signed in when it changes the password of the signed-in user.
+     * Save the model.
      *
      * @return bool
      */
     public function save(): bool
     {
-        $name = $this->getAuthPasswordName();
+        if ($this->hooksSuppressed) {
+            $this->recordPasswordChange($this->changedPasswordHash());
+        }
 
-        $hash = isset($this->attributes[$this->primaryKey])
-            && $this->isDirtyAttr($name)
-            && ($this->creatable === [] || in_array($name, $this->creatable, true))
-                ? $this->attributes[$name]
-                : null;
-
-        return (bool) $this->whileSavingPassword($hash, fn (): bool => parent::save());
+        return parent::save();
     }
 
     /**
-     * Update the model, keeping this device signed in when it changes the password of the signed-in user.
+     * Update the model.
      *
      * @param array $attributes
      * @return bool
      */
     public function update(array $attributes): bool
     {
-        $name = $this->getAuthPasswordName();
+        if ($this->hooksSuppressed) {
+            $name = $this->getAuthPasswordName();
 
-        $hash = isset($this->attributes[$this->primaryKey])
-            && array_key_exists($name, $attributes)
-            && in_array($name, $this->creatable, true)
-            && $attributes[$name] !== ($this->getOriginalAttributes()[$name] ?? null)
-                ? $attributes[$name]
-                : null;
+            $this->recordPasswordChange(
+                isset($this->attributes[$this->primaryKey])
+                && array_key_exists($name, $attributes)
+                && in_array($name, $this->creatable, true)
+                && $attributes[$name] !== ($this->getOriginalAttributes()[$name] ?? null)
+                    ? $attributes[$name]
+                    : null
+            );
+        }
 
-        return (bool) $this->whileSavingPassword($hash, fn (): bool => parent::update($attributes));
+        return parent::update($attributes);
     }
 
     /**
-     * Run a write, through the auth layer when it saves a new password hash.
+     * Run the model's before hooks, then record a password about to change.
      *
-     * @param mixed $hash
-     * @param callable(): bool $write
+     * @param string $event
      * @return bool
      */
-    private function whileSavingPassword(mixed $hash, callable $write): bool
+    protected function fireBeforeHooks(string $event): bool
+    {
+        $result = parent::fireBeforeHooks($event);
+
+        if ($event === 'updated') {
+            $this->recordPasswordChange($this->changedPasswordHash());
+        }
+
+        return $result;
+    }
+
+    /**
+     * The new password hash the next save writes, if it changes the password.
+     *
+     * @return mixed
+     */
+    private function changedPasswordHash(): mixed
+    {
+        $name = $this->getAuthPasswordName();
+
+        return isset($this->attributes[$this->primaryKey])
+            && $this->isDirtyAttr($name)
+            && ($this->creatable === [] || in_array($name, $this->creatable, true))
+                ? $this->attributes[$name]
+                : null;
+    }
+
+    /**
+     * Tell the auth layer that a password is about to be saved.
+     *
+     * @param mixed $hash
+     * @return void
+     */
+    private function recordPasswordChange(mixed $hash): void
     {
         if (!is_string($hash) || $hash === '') {
-            return $write();
+            return;
         }
 
         try {
@@ -185,8 +217,9 @@ abstract class Authable extends Model
             $actor = null;
         }
 
-        return $actor instanceof Authenticate
-            ? (bool) $actor->savePassword($this, $hash, $write)
-            : $write();
+        if ($actor instanceof Authenticate) {
+            $actor->recordPendingPassword($this, $hash);
+        }
     }
+
 }

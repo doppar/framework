@@ -10,6 +10,7 @@ use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Auth\Security\PasswordHashing;
 use Phaseolies\Config\Config;
 use Phaseolies\Database\Database;
+use Phaseolies\Database\Entity\Hooks\HookHandler;
 use Phaseolies\DI\Container;
 use Phaseolies\Http\HeaderBag;
 use Phaseolies\Http\InputBag;
@@ -72,6 +73,18 @@ class LockedDownUser extends Authable
     protected $timeStamps = false;
 
     protected $creatable = ['email'];
+}
+
+/**
+ * A model whose before_updated hook hashes a plain password, as applications often do.
+ */
+class HashingUser extends Authable
+{
+    protected $table = 'users';
+
+    protected $timeStamps = false;
+
+    protected $creatable = ['email', 'password', 'remember_token'];
 }
 
 /**
@@ -174,6 +187,8 @@ class LogoutOtherDevicesTest extends TestCase
         (new \ReflectionClass(Container::class))->getProperty('instance')->setValue(null, null);
 
         @unlink($this->database);
+
+        unset(HookHandler::$hooks[HashingUser::class]);
 
         if ($this->sessionPath !== null && is_dir($this->sessionPath)) {
             $files = new \RecursiveIteratorIterator(
@@ -603,6 +618,107 @@ class LogoutOtherDevicesTest extends TestCase
         $this->assertFalse($this->isCurrentAndSignedIn($phone));
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
+    public function test_a_password_hashed_by_a_model_hook_keeps_this_device_signed_in(\Closure $store): void
+    {
+        $this->useStore($store($this));
+        $this->useHashingUser();
+
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): void {
+            $user = $auth->user();
+            $user->password = 'a new password';
+            $user->save();
+
+            [, $signedIn] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request): bool => $this->throughMiddleware($request));
+            $this->backTo($request);
+            $this->assertTrue($signedIn, 'A parallel request is still signed in.');
+        });
+
+        $this->assertTrue(password_verify('a new password', $this->storedPassword()), 'The hook hashed it.');
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_a_password_hashed_by_a_hook_on_another_instance_keeps_this_device_signed_in(): void
+    {
+        $this->useHashingUser();
+
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): void {
+            $auth->user();
+
+            $user = HashingUser::find(1);
+            $user->password = 'a new password';
+            $user->save();
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_a_committed_change_survives_a_later_rolled_back_one_in_the_same_request(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): void {
+            $user = $auth->user();
+            $user->password = password_hash('first', PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->save();
+
+            $pdo = Database::getPdoInstance(self::CONNECTION);
+            $pdo->beginTransaction();
+            $user->password = password_hash('second', PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->save();
+            $pdo->rollBack();
+        });
+
+        $this->assertTrue(password_verify('first', $this->storedPassword()));
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('serverSideStores')]
+    public function test_an_after_hook_that_throws_once_the_password_is_saved_keeps_this_device_signed_in(\Closure $store): void
+    {
+        $this->useStore($store($this));
+        $this->useHashingUser(['after_updated' => function (): void {
+            throw new \RuntimeException('a listener failed');
+        }]);
+
+        $laptop = $this->signIn('Laptop');
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth): void {
+            $user = $auth->user();
+            $user->password = 'a new password';
+
+            try {
+                $user->save();
+                $this->fail('The hook throws.');
+            } catch (\RuntimeException) {
+            }
+        });
+
+        $this->assertTrue(password_verify('a new password', $this->storedPassword()), 'The password was saved before the hook threw.');
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
+    public function test_a_password_saved_without_hooks_keeps_a_parallel_request_signed_in(): void
+    {
+        $laptop = $this->signIn('Laptop');
+
+        $this->onDevice($laptop, function (Authenticate $auth, Request $request) use ($laptop): void {
+            $user = $auth->user();
+            $user->password = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+            $user->withoutHook()->save();
+
+            [, $signedIn] = $this->onDevice($laptop, fn (Authenticate $auth, Request $request): bool => $this->throughMiddleware($request));
+            $this->backTo($request);
+            $this->assertTrue($signedIn);
+        });
+
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
     public function test_changing_another_users_password_leaves_this_session_alone(): void
     {
         Database::getPdoInstance(self::CONNECTION)
@@ -894,7 +1010,7 @@ class LogoutOtherDevicesTest extends TestCase
      */
     private function signIn(string $agent): string
     {
-        [$cookie] = $this->onDevice(null, fn (Authenticate $auth) => $auth->login(DeviceUser::find(1)), [], $agent);
+        [$cookie] = $this->onDevice(null, fn (Authenticate $auth) => $auth->login(config('auth.actors.web.model')::find(1)), [], $agent);
 
         return $cookie;
     }
@@ -909,7 +1025,7 @@ class LogoutOtherDevicesTest extends TestCase
         $issued = [];
 
         [$cookie] = $this->onDevice(null, function (Authenticate $auth) use (&$issued): bool {
-            return $this->capturingCookies($issued, fn () => $auth->login(DeviceUser::find(1), true));
+            return $this->capturingCookies($issued, fn () => $auth->login(config('auth.actors.web.model')::find(1), true));
         }, [], $agent);
 
         return [$cookie, $issued];
@@ -956,6 +1072,22 @@ class LogoutOtherDevicesTest extends TestCase
         }
 
         return [$sessionCookie, $result];
+    }
+
+    /**
+     * Sign in through HashingUser, whose before_updated hook hashes a plain password.
+     *
+     * @param array<string, callable> $extra More hooks for the model
+     */
+    private function useHashingUser(array $extra = []): void
+    {
+        Config::set('auth.actors.web.model', HashingUser::class);
+
+        HookHandler::register(HashingUser::class, ['before_updated' => function (HashingUser $user): void {
+            if ($user->isDirtyAttr('password') && password_get_info((string) $user->password)['algo'] === null) {
+                $user->password = password_hash((string) $user->password, PASSWORD_BCRYPT, ['cost' => 4]);
+            }
+        }] + $extra);
     }
 
     /**

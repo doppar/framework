@@ -142,6 +142,11 @@ class Authenticate
     }
 
     /**
+     * Most password changes of one request whose fingerprints are kept pending.
+     */
+    protected const MAX_PENDING_FINGERPRINTS = 5;
+
+    /**
      * The session key used to store a pending 2FA user ID for this actor.
      *
      * @return string
@@ -497,7 +502,9 @@ class Authenticate
             $changes[$tokenName] = $user->getRememberToken();
         }
 
-        $this->writeWithFingerprint($user, $actors, $this->fingerprintOf($hash), fn () => $this->persistCredentials($user, $changes));
+        $this->recordPending($user, $actors, $hash);
+
+        $this->persistCredentials($user, $changes);
 
         $store = $this->sessionStore();
         $id = $user->getAuthIdentifier();
@@ -568,14 +575,31 @@ class Authenticate
             return true;
         }
 
-        if (is_string($pending) && hash_equals($pending, $fingerprint)) {
-            session()->put($this->getPasswordFingerprintKey(), $fingerprint);
-            session()->forget($this->getPendingFingerprintKey());
+        foreach (self::fingerprintList($pending) as $candidate) {
+            if (hash_equals($candidate, $fingerprint)) {
+                session()->put($this->getPasswordFingerprintKey(), $fingerprint);
+                session()->forget($this->getPendingFingerprintKey());
 
-            return true;
+                return true;
+            }
         }
 
         return false;
+    }
+
+    /**
+     * The fingerprints a pending value holds.
+     *
+     * @param mixed $value
+     * @return array<int, string>
+     */
+    protected static function fingerprintList(mixed $value): array
+    {
+        if (is_string($value)) {
+            return [$value];
+        }
+
+        return is_array($value) ? array_values(array_filter($value, 'is_string')) : [];
     }
 
     /**
@@ -682,78 +706,82 @@ class Authenticate
     }
 
     /**
-     * Save a new password of a user, keeping this device signed in as that user, including its other requests
-     *
+     * Record a password about to be saved for a user
      *
      * @param Authable $user
      * @param string $hash
-     * @param callable(): mixed $write
-     * @return mixed
+     * @return void
      */
-    public function savePassword(Authable $user, string $hash, callable $write): mixed
+    public function recordPendingPassword(Authable $user, string $hash): void
     {
         try {
             $session = session();
         } catch (\Throwable) {
-            $session = null;
+            return;
         }
 
         if (!$session instanceof CommittableSession) {
-            return $write();
+            return;
         }
 
         $actors = $this->actorsSignedInAs($user, false);
 
-        if ($actors === []) {
-            return $write();
+        if ($actors !== []) {
+            $this->recordPending($user, $actors, $hash);
         }
-
-        return $this->writeWithFingerprint($user, $actors, $this->fingerprintOf($hash), $write);
     }
 
     /**
-     * Save new credentials together with the new fingerprint of every actor
+     * Record a password hash as pending for every actor
      *
      * @param Authable $user
      * @param array<int, self> $actors
-     * @param string $fingerprint
-     * @param callable(): mixed $write
-     * @return mixed
+     * @param string $hash
+     * @return void
      */
-    protected function writeWithFingerprint(Authable $user, array $actors, string $fingerprint, callable $write): mixed
+    protected function recordPending(Authable $user, array $actors, string $hash): void
     {
         $session = session();
         $id = (string) $user->getAuthIdentifier();
+        $fingerprint = $this->fingerprintOf($hash);
 
-        $put = static function (string $key, mixed $value) use ($session): void {
-            $session instanceof CommittableSession ? $session->putThrough($key, $value) : $session->put($key, $value);
-        };
-
-        $replace = function () use ($actors, $fingerprint, $put, $id, $write): mixed {
-            $previous = [];
-
+        $record = function () use ($actors, $id, $fingerprint): void {
             foreach ($actors as $actor) {
                 // An actor signed in only by its remember cookie has no
                 // fingerprint here; it gets one when the cookie signs it in.
                 if ((string) session($actor->getSessionKey()) === $id) {
-                    $key = $actor->getPendingFingerprintKey();
-                    $previous[$key] = session($key);
-                    $put($key, $fingerprint);
+                    $actor->addPendingFingerprint($fingerprint);
                 }
-            }
-
-            try {
-                return $write();
-            } catch (\Throwable $e) {
-                foreach ($previous as $key => $value) {
-                    $put($key, $value);
-                }
-
-                throw $e;
             }
         };
 
-        return $session instanceof CommittableSession ? $session->exclusively($replace) : $replace();
+        $session instanceof CommittableSession ? $session->exclusively($record) : $record();
+    }
+
+    /**
+     * Add a fingerprint to this actor's pending ones, in the stored session too.
+     *
+     * @param string $fingerprint
+     * @return void
+     */
+    protected function addPendingFingerprint(string $fingerprint): void
+    {
+        $session = session();
+        $key = $this->getPendingFingerprintKey();
+
+        $pending = self::fingerprintList(session($key));
+
+        if ($session instanceof CommittableSession) {
+            $pending = array_merge(self::fingerprintList($session->storedValue($key)), $pending);
+        }
+
+        if (in_array($fingerprint, $pending, true)) {
+            return;
+        }
+
+        $pending = array_slice(array_values(array_unique([...$pending, $fingerprint])), -self::MAX_PENDING_FINGERPRINTS);
+
+        $session instanceof CommittableSession ? $session->putThrough($key, $pending) : $session->put($key, $pending);
     }
 
     /**
