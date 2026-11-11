@@ -1,5 +1,13 @@
 # Release Notes
 
+## v4.9.0 - 2026-11-11
+
+* feat:  Rewrite sessions as a lazy, store-based layer by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/398
+* fix(http): make request/response handling consistent end to end by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/399
+* fix(security): harden redirects, error views and debug output by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/401
+* fix: correct old input, validation rules, route lookups and error responses by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/402
+* feat(session): add a database session driver and logout from other devices by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/400
+
 ## v4.8.4 - 2026-10-31
 
 * Fix vendor:publish dumping all assets for unknown tags by [@xentixar](https://github.com/xentixar) in https://github.com/doppar/framework/pull/396
