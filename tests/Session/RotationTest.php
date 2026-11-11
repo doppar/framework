@@ -7,6 +7,7 @@ use Phaseolies\Http\Request;
 use Phaseolies\Http\Response;
 use Phaseolies\Http\Response\Cookie;
 use Phaseolies\Http\ServerBag;
+use Phaseolies\Session\Contracts\LockableSessionStore;
 use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Session\Stores\FileStore;
 use Phaseolies\Support\Session;
@@ -53,7 +54,7 @@ class RotationTest extends TestCase
         @rmdir($this->path);
     }
 
-    private function store(): FileStore
+    protected function store(): LockableSessionStore
     {
         return new FileStore($this->path, 7200);
     }
@@ -118,7 +119,7 @@ class RotationTest extends TestCase
      *
      * @return array<string, array>
      */
-    private function liveRecords(): array
+    protected function liveRecords(): array
     {
         $records = [];
 

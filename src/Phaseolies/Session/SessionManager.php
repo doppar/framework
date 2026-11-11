@@ -3,10 +3,13 @@
 namespace Phaseolies\Session;
 
 use Closure;
+use PDO;
+use Phaseolies\Database\Database;
 use Phaseolies\Session\Contracts\SessionStoreInterface;
 use Phaseolies\Session\Exceptions\SessionException;
 use Phaseolies\Session\Stores\ArrayStore;
 use Phaseolies\Session\Stores\CookieStore;
+use Phaseolies\Session\Stores\DatabaseStore;
 use Phaseolies\Session\Stores\FileStore;
 use Phaseolies\Support\Contracts\EncryptionInterface;
 
@@ -22,6 +25,8 @@ class SessionManager
         'lifetime' => 120,
         'expire_on_close' => false,
         'files' => null,
+        'connection' => null,
+        'table' => 'sessions',
         'cookie' => 'doppar_session',
         'path' => '/',
         'domain' => null,
@@ -179,7 +184,69 @@ class SessionManager
             'file' => new FileStore($config['files'], $lifetime),
             'cookie' => new CookieStore(app(EncryptionInterface::class), $lifetime),
             'array' => new ArrayStore($lifetime),
-            default => throw new SessionException('Unsupported session driver. Supported drivers: file, cookie, array.'),
+            'database' => new DatabaseStore(
+                self::connectionResolver($config['connection']),
+                (string) $config['table'],
+                $lifetime,
+                self::userResolver(),
+                self::clientResolver()
+            ),
+            default => throw new SessionException('Unsupported session driver. Supported drivers: file, cookie, database, array.'),
+        };
+    }
+
+    /**
+     * Resolve the database connection lazily, so nothing connects until a session is used.
+     *
+     * @param mixed $connection
+     * @return Closure(): PDO
+     */
+    protected static function connectionResolver(mixed $connection): Closure
+    {
+        $name = is_string($connection) && $connection !== '' ? $connection : null;
+
+        return static fn (): PDO => Database::getPdoInstance($name);
+    }
+
+    /**
+     * Find the user a session belongs to: the one the default auth actor logged in.
+     *
+     * @return Closure(array): mixed|null
+     */
+    public static function userResolver(): ?Closure
+    {
+        $key = self::userSessionKey();
+
+        return $key === null ? null : static fn (array $data): mixed => $data[$key] ?? null;
+    }
+
+    /**
+     * The session key under which the default auth actor keeps the user id.
+     *
+     * @return string|null
+     */
+    public static function userSessionKey(): ?string
+    {
+        $actor = (string) config('auth.default', 'web');
+        $key = config("auth.actors.{$actor}.session_key");
+
+        return is_string($key) && $key !== '' ? $key : null;
+    }
+
+    /**
+     * Describe the client a session is saved for.
+     *
+     * @return Closure(): array{ip_address: string|null, user_agent: string|null}
+     */
+    protected static function clientResolver(): Closure
+    {
+        return static function (): array {
+            $request = app('request');
+
+            return [
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ];
         };
     }
 }

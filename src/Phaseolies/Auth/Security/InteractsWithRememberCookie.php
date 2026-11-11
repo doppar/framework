@@ -35,16 +35,54 @@ trait InteractsWithRememberCookie
      */
     private function setRememberToken(Authable $user): void
     {
+        $this->issueRememberToken($user);
+
+        $user->save();
+    }
+
+    /**
+     * Give the user a new remember token and send it to this device, without saving the user.
+     *
+     * @param Authable $user
+     * @return string
+     */
+    private function issueRememberToken(Authable $user): string
+    {
+        $token = $this->newRememberToken($user);
+
+        $this->sendRememberCookie($user, $token);
+
+        return $token;
+    }
+
+    /**
+     * Give the user a new remember token, without sending it anywhere or saving the user.
+     *
+     * @param Authable $user
+     * @return string
+     */
+    private function newRememberToken(Authable $user): string
+    {
         $token = bin2hex(random_bytes(32));
         $user->setRememberToken(Hash::make($token));
-        $user->save();
 
+        return $token;
+    }
+
+    /**
+     * Send this actor's remember cookie for a token the user already holds.
+     *
+     * @param Authable $user
+     * @param string $token
+     * @return void
+     */
+    private function sendRememberCookie(Authable $user, string $token): void
+    {
         $id = $user->getAuthIdentifier();
-        $cookieValue = $id . '|' . $token . '|' . Hash::make($id . $token);
 
         session()->put($this->getViaRememberKey(), true);
 
-        $this->setRememberCookie($cookieValue);
+        $this->setRememberCookie($id . '|' . $token . '|' . Hash::make($id . $token));
     }
 
     /**

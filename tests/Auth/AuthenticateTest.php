@@ -33,8 +33,22 @@ namespace Phaseolies\Auth\Security {
         }
     }
 
+    /*
+     * These stubs stand in for the global helpers while AuthenticateTest runs.
+     * Once this file is loaded they shadow the helpers for every later test that
+     * uses Authenticate, so outside AuthenticateTest they defer to the real ones.
+     */
+    function authenticateStubsActive(): bool
+    {
+        return !empty($GLOBALS['authenticateStubsActive']);
+    }
+
     function session(?string $key = null, mixed $default = null): mixed
     {
+        if (!authenticateStubsActive()) {
+            return \session($key, $default);
+        }
+
         global $authenticateSessionStore;
 
         $authenticateSessionStore ??= new TestSessionStore();
@@ -48,6 +62,10 @@ namespace Phaseolies\Auth\Security {
 
     function now(): object
     {
+        if (!authenticateStubsActive()) {
+            return \now();
+        }
+
         return new class {
             public function addMinutes(int $minutes): object
             {
@@ -60,6 +78,10 @@ namespace Phaseolies\Auth\Security {
 
     function cookie(): object
     {
+        if (!authenticateStubsActive()) {
+            return \cookie();
+        }
+
         return new class {
             public function has(string $key): bool
             {
@@ -70,6 +92,10 @@ namespace Phaseolies\Auth\Security {
 
     function request(): object
     {
+        if (!authenticateStubsActive()) {
+            return \request();
+        }
+
         return new class {
             public function isApiRequest(): bool
             {
@@ -83,6 +109,8 @@ namespace Tests\Unit\Auth {
 
     use Phaseolies\Auth\Authable;
     use Phaseolies\Auth\Security\Authenticate;
+    use Phaseolies\DI\Container;
+    use Tests\Support\MockContainer;
     use PHPUnit\Framework\TestCase;
 
     class FakeAuthableModel extends Authable
@@ -131,9 +159,21 @@ namespace Tests\Unit\Auth {
 
     class AuthenticateTest extends TestCase
     {
+        protected function tearDown(): void
+        {
+            $GLOBALS['authenticateStubsActive'] = false;
+
+            (new \ReflectionClass(Container::class))->getProperty('instance')->setValue(null, null);
+        }
+
         protected function setUp(): void
         {
             global $authenticateSessionStore;
+
+            $GLOBALS['authenticateStubsActive'] = true;
+
+            // Logins fingerprint the password with the app key, read through config().
+            Container::setInstance(new MockContainer());
 
             $authenticateSessionStore = new \Phaseolies\Auth\Security\TestSessionStore();
             FakeAuthableModel::$resolvedUser = null;

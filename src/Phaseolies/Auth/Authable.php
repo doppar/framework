@@ -2,6 +2,7 @@
 
 namespace Phaseolies\Auth;
 
+use Phaseolies\Auth\Security\Authenticate;
 use Phaseolies\Database\Entity\Model;
 
 /**
@@ -40,7 +41,17 @@ abstract class Authable extends Model
      */
     public function getAuthPassword(): ?string
     {
-        return $this->password;
+        return $this->{$this->getAuthPasswordName()};
+    }
+
+    /**
+     * Get the name of the attribute that holds the password hash.
+     *
+     * @return string
+     */
+    public function getAuthPasswordName(): string
+    {
+        return 'password';
     }
 
     /**
@@ -50,7 +61,7 @@ abstract class Authable extends Model
      */
     public function getRememberToken(): ?string
     {
-        return $this->remember_token;
+        return $this->{$this->getRememberTokenName()};
     }
 
     /**
@@ -61,7 +72,17 @@ abstract class Authable extends Model
      */
     public function setRememberToken(?string $value): void
     {
-        $this->remember_token = $value;
+        $this->{$this->getRememberTokenName()} = $value;
+    }
+
+    /**
+     * Get the name of the attribute that holds the remember token.
+     *
+     * @return string
+     */
+    public function getRememberTokenName(): string
+    {
+        return 'remember_token';
     }
 
     /**
@@ -105,4 +126,100 @@ abstract class Authable extends Model
     {
         $this->two_factor_recovery_codes = $value;
     }
+
+    /**
+     * Save the model.
+     *
+     * @return bool
+     */
+    public function save(): bool
+    {
+        if ($this->hooksSuppressed) {
+            $this->recordPasswordChange($this->changedPasswordHash());
+        }
+
+        return parent::save();
+    }
+
+    /**
+     * Update the model.
+     *
+     * @param array $attributes
+     * @return bool
+     */
+    public function update(array $attributes): bool
+    {
+        if ($this->hooksSuppressed) {
+            $name = $this->getAuthPasswordName();
+
+            $this->recordPasswordChange(
+                isset($this->attributes[$this->primaryKey])
+                && array_key_exists($name, $attributes)
+                && in_array($name, $this->creatable, true)
+                && $attributes[$name] !== ($this->getOriginalAttributes()[$name] ?? null)
+                    ? $attributes[$name]
+                    : null
+            );
+        }
+
+        return parent::update($attributes);
+    }
+
+    /**
+     * Run the model's before hooks, then record a password about to change.
+     *
+     * @param string $event
+     * @return bool
+     */
+    protected function fireBeforeHooks(string $event): bool
+    {
+        $result = parent::fireBeforeHooks($event);
+
+        if ($event === 'updated') {
+            $this->recordPasswordChange($this->changedPasswordHash());
+        }
+
+        return $result;
+    }
+
+    /**
+     * The new password hash the next save writes, if it changes the password.
+     *
+     * @return mixed
+     */
+    private function changedPasswordHash(): mixed
+    {
+        $name = $this->getAuthPasswordName();
+
+        return isset($this->attributes[$this->primaryKey])
+            && $this->isDirtyAttr($name)
+            && ($this->creatable === [] || in_array($name, $this->creatable, true))
+                ? $this->attributes[$name]
+                : null;
+    }
+
+    /**
+     * Tell the auth layer that a password is about to be saved.
+     *
+     * @param mixed $hash
+     * @return void
+     */
+    private function recordPasswordChange(mixed $hash): void
+    {
+        if (!is_string($hash) || $hash === '') {
+            return;
+        }
+
+        try {
+            $manager = app('auth');
+            $actor = $manager instanceof ActorManager ? $manager->actor() : null;
+        } catch (\Throwable) {
+            $actor = null;
+        }
+
+        if ($actor instanceof Authenticate) {
+            $actor->recordPendingPassword($this, $hash);
+        }
+    }
+
 }
