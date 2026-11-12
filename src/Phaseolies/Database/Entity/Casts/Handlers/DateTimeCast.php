@@ -51,7 +51,13 @@ class DateTimeCast implements CastableInterface
         }
 
         if ($value instanceof DateTimeInterface) {
-            return $value->format($this->format);
+            $formatted = $value->format($this->format);
+
+            if ($this->format === 'Y-m-d H:i:s' && $value->format('u') !== '000000') {
+                return $formatted . '.' . $value->format('u');
+            }
+
+            return $formatted;
         }
 
         return $value;

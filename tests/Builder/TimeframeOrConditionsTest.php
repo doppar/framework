@@ -306,6 +306,26 @@ class TimeframeOrConditionsTest extends TestCase
         $this->assertEquals('2024-03-20 15:45:00', $b->formatDateTime($dt));
     }
 
+    public function testWhereDateTimeBetweenUsesStartAndEndOfDayForDateStrings(): void
+    {
+        $builder = $this->builder();
+
+        $builder->whereDateTimeBetween('created_at', '2024-03-20', '2024-03-21');
+
+        $property = (new \ReflectionClass(Builder::class))->getProperty('conditions');
+
+        $this->assertSame([
+            [
+                'AND',
+                'created_at',
+                'BETWEEN',
+                '2024-03-20 00:00:00',
+                '2024-03-21 23:59:59',
+                'AND',
+            ],
+        ], $property->getValue($builder));
+    }
+
     public function testFormatDateTimePreservesMicroseconds(): void
     {
         $b = $this->builder();
