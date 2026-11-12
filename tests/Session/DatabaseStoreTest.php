@@ -558,8 +558,8 @@ class DatabaseStoreTest extends TestCase
 
         // As generated for a configured session.connection.
         file_put_contents($file, str_replace(
-            ['{{ schema }}', '{{ table }}'],
-            ["Schema::connection('" . static::CONNECTION . "')->", static::TABLE],
+            ['{{ schema }}', '{{ table }}', '{{ user_id }}'],
+            ["Schema::connection('" . static::CONNECTION . "')->", static::TABLE, "\$table->unsignedBigInteger('user_id')->nullable()->index();"],
             $stub
         ));
 

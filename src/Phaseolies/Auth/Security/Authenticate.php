@@ -663,7 +663,7 @@ class Authenticate
     }
 
     /**
-     * The other devices the user is signed in on, most recently active first.
+     * The devices the user is signed in on, this one included, most recently active first.
      *
      * @return array<int, array{ip_address: string|null, user_agent: string|null, last_activity: int, is_current: bool}>
      */

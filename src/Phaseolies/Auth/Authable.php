@@ -152,14 +152,19 @@ abstract class Authable extends Model
         if ($this->hooksSuppressed) {
             $name = $this->getAuthPasswordName();
 
-            $this->recordPasswordChange(
+            if (
                 isset($this->attributes[$this->primaryKey])
                 && array_key_exists($name, $attributes)
                 && in_array($name, $this->creatable, true)
-                && $attributes[$name] !== ($this->getOriginalAttributes()[$name] ?? null)
-                    ? $attributes[$name]
-                    : null
-            );
+            ) {
+                // Normalise the value exactly as setAttribute() will, so the
+                // recorded hash is the one that ends up in the database.
+                $value = $this->castForSet($name, $this->sanitize($attributes[$name]));
+
+                $this->recordPasswordChange(
+                    $value !== ($this->getOriginalAttributes()[$name] ?? $this->attributes[$name] ?? null) ? $value : null
+                );
+            }
         }
 
         return parent::update($attributes);

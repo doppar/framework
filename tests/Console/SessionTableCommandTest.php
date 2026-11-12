@@ -96,6 +96,29 @@ class SessionTableCommandTest extends TestCase
         $this->assertStringNotContainsString('Schema::connection', $migration);
     }
 
+    public function test_it_uses_an_integer_user_id_by_default(): void
+    {
+        $this->run_();
+
+        $migration = (string) file_get_contents(glob($this->dir . '/*_create_sessions_table.php')[0]);
+
+        $this->assertStringContainsString("\$table->unsignedBigInteger('user_id')->nullable()->index();", $migration);
+        $this->assertStringNotContainsString("\$table->string('user_id'", $migration);
+        $this->assertStringNotContainsString('{{ user_id }}', $migration);
+    }
+
+    public function test_the_uuid_option_uses_a_string_user_id(): void
+    {
+        $tester = $this->run_(['--uuid' => true]);
+
+        $migration = (string) file_get_contents(glob($this->dir . '/*_create_sessions_table.php')[0]);
+
+        $this->assertSame(0, $tester->getStatusCode());
+        $this->assertStringContainsString("\$table->string('user_id', 36)->nullable()->index();", $migration);
+        $this->assertStringNotContainsString('unsignedBigInteger(\'user_id\')', $migration);
+        $this->assertStringNotContainsString('{{ user_id }}', $migration);
+    }
+
     public function test_it_rejects_a_schema_qualified_table_name(): void
     {
         Config::set('session.table', 'app.sessions');
@@ -116,7 +139,7 @@ class SessionTableCommandTest extends TestCase
         $this->assertSame([], glob($this->dir . '/*.php') ?: []);
     }
 
-    private function run_(): CommandTester
+    private function run_(array $input = []): CommandTester
     {
         $directory = $this->dir;
 
@@ -133,7 +156,7 @@ class SessionTableCommandTest extends TestCase
         };
 
         $tester = new CommandTester($command);
-        $tester->execute([], ['interactive' => false, 'decorated' => false]);
+        $tester->execute($input, ['interactive' => false, 'decorated' => false]);
 
         return $tester;
     }

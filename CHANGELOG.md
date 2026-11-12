@@ -1,5 +1,17 @@
 # Release Notes
 
+## Unreleased
+
+* fix(auth): record the stored password hash when a password is changed with `withoutHook()->update()`, so the device that changed it stays signed in
+* feat(session): add a `--uuid` option to `session:table` for apps whose user keys are UUIDs or ULIDs
+
+### Upgrade notes for the database session driver and `AuthenticateSession`
+
+* **Turning on `AuthenticateSession` signs out existing logged-in users once.** Sessions created before v4.9.0 have no password fingerprint, so they are signed out on their next request. Users with a valid remember cookie are signed back in automatically. This is deliberate: the framework cannot tell which password an older session signed in with.
+* **Only the `database` driver ends other devices' sessions directly, and only for the default auth actor.** With the `file` or `cookie` driver, or a non-default actor such as `admin`, `logoutOtherDevices()` signs other devices out only on routes that use the `AuthenticateSession` middleware.
+* **Changing `APP_KEY` signs everyone out** on routes that use `AuthenticateSession`, because the password fingerprint is keyed by `app.key`. Rotating the key already invalidates encrypted and remember cookies.
+* **UUID or ULID user keys:** generate the sessions migration with `php pool session:table --uuid`. The default `user_id` column is a big integer.
+
 ## v4.9.0 - 2026-11-11
 
 * feat:  Rewrite sessions as a lazy, store-based layer by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/398
