@@ -1507,9 +1507,13 @@ class Builder
 
         foreach ($pivotData as $key => $value) {
             $sets[] = "{$key} = ?";
-            $params[] = $value instanceof \DateTimeInterface
-                ? $value->format('Y-m-d H:i:s')
-                : $value;
+            if ($value instanceof \DateTimeInterface) {
+                $params[] = $value->format('Y-m-d H:i:s') . ($value->format('u') !== '000000'
+                    ? '.' . $value->format('u')
+                    : '');
+            } else {
+                $params[] = $value;
+            }
         }
 
         $params[] = $parentKey;

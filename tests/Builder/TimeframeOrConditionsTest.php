@@ -306,6 +306,17 @@ class TimeframeOrConditionsTest extends TestCase
         $this->assertEquals('2024-03-20 15:45:00', $b->formatDateTime($dt));
     }
 
+    public function testFormatDateTimePreservesMicroseconds(): void
+    {
+        $b = $this->builder();
+        $dt = \DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s.u',
+            '2024-03-20 15:45:00.123456'
+        );
+
+        $this->assertSame('2024-03-20 15:45:00.123456', $b->formatDateTime($dt));
+    }
+
     public function testFormatDateTimeThrowsOnInvalidInput()
     {
         $this->expectException(\InvalidArgumentException::class);

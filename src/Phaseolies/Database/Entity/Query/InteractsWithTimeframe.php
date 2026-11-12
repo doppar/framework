@@ -384,7 +384,9 @@ trait InteractsWithTimeframe
     public function formatDateTime($date, string $type = 'start'): string
     {
         if ($date instanceof \DateTimeInterface) {
-            return $date->format('Y-m-d H:i:s');
+            return $date->format('Y-m-d H:i:s') . ($date->format('u') !== '000000'
+                ? '.' . $date->format('u')
+                : '');
         }
 
         if (is_string($date)) {

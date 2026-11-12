@@ -64,6 +64,23 @@ class TimezoneHandlerTest extends TestCase
         $this->assertEquals($timezone, date_default_timezone_get());
     }
 
+    public function testHandlerNowUsesConfiguredTimezoneWithoutPriorGlobalSetup(): void
+    {
+        date_default_timezone_set('UTC');
+
+        $handler = new TimezoneHandler('Asia/Tokyo');
+
+        $this->assertSame('Asia/Tokyo', $handler->now()->timezoneName);
+        $this->assertSame('Asia/Tokyo', date_default_timezone_get());
+    }
+
+    public function testNowHelperAcceptsAnExplicitTimezone(): void
+    {
+        date_default_timezone_set('UTC');
+
+        $this->assertSame('Asia/Dhaka', now('Asia/Dhaka')->timezoneName);
+    }
+
     public function testTimezoneAffectsDateFunctions()
     {
         $timezone = 'Australia/Sydney';
