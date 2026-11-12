@@ -497,6 +497,14 @@ class CastSystemTest extends TestCase
         $this->assertSame('2024-06-15', $model->invoiced_at->format('Y-m-d'));
     }
 
+    public function testDateTimeCastSetPreservesNonZeroMicroseconds(): void
+    {
+        $handler = CastManager::resolve('datetime');
+        $value = Carbon::createFromFormat('Y-m-d H:i:s.u', '2024-06-15 09:30:00.123456');
+
+        $this->assertSame('2024-06-15 09:30:00.123456', $handler->set($value));
+    }
+
     public function testDateTimeCastNullPassthrough(): void
     {
         $model = new MockDateCastModel(['published_at' => null]);

@@ -349,8 +349,8 @@ trait InteractsWithTimeframe
      */
     public function whereDateTimeBetween(string $column, $start, $end): self
     {
-        $start = $this->formatDateTime($start, true);
-        $end = $this->formatDateTime($end, true);
+        $start = $this->formatDateTime($start, 'start');
+        $end = $this->formatDateTime($end, 'end');
 
         return $this->whereBetween($column, [$start, $end]);
     }
