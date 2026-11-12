@@ -1395,7 +1395,7 @@ class Application extends Container
      */
     protected function cleanupRequestScopedServices(): void
     {
-        if ($this->has('auth')) {
+        if ($this->hasInstance('auth')) {
             $auth = $this->make('auth');
 
             if ($auth instanceof ActorManager) {
