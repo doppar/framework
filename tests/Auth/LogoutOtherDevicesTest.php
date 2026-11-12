@@ -719,6 +719,21 @@ class LogoutOtherDevicesTest extends TestCase
         $this->assertTrue($this->isCurrentAndSignedIn($laptop));
     }
 
+    public function test_a_password_updated_without_hooks_is_recorded_as_the_model_stores_it(): void
+    {
+        $laptop = $this->signIn('Laptop');
+        $hash = password_hash('a new password', PASSWORD_BCRYPT, ['cost' => 4]);
+
+        [$laptop] = $this->onDevice($laptop, function (Authenticate $auth) use ($hash): void {
+            // The model trims the value before saving it, so the hash recorded
+            // as pending must be the trimmed one, not the value passed in.
+            $auth->user()->withoutHook()->update(['password' => "  {$hash}  "]);
+        });
+
+        $this->assertSame($hash, $this->storedPassword());
+        $this->assertTrue($this->isCurrentAndSignedIn($laptop));
+    }
+
     public function test_changing_another_users_password_leaves_this_session_alone(): void
     {
         Database::getPdoInstance(self::CONNECTION)

@@ -13,7 +13,7 @@ class SessionTableCommand extends Command
      *
      * @var string
      */
-    protected $name = 'session:table';
+    protected $name = 'session:table {--uuid}';
 
     /**
      * The description of the console command.
@@ -60,8 +60,8 @@ class SessionTableCommand extends Command
             $stub = (string) file_get_contents(__DIR__ . '/stubs/session/create_sessions_table.stub');
 
             file_put_contents($file, str_replace(
-                ['{{ schema }}', '{{ table }}'],
-                [$this->schemaAccessor($connection), $table],
+                ['{{ schema }}', '{{ table }}', '{{ user_id }}'],
+                [$this->schemaAccessor($connection), $table, $this->userIdColumn((bool) $this->option('uuid'))],
                 $stub
             ));
 
@@ -87,6 +87,19 @@ class SessionTableCommand extends Command
         return $connection === null
             ? 'Schema::'
             : 'Schema::connection(' . var_export($connection, true) . ')->';
+    }
+
+    /**
+     * The user_id column definition, matching the type of the user's primary key.
+     *
+     * @param bool $uuid
+     * @return string
+     */
+    protected function userIdColumn(bool $uuid): string
+    {
+        return $uuid
+            ? "\$table->string('user_id', 36)->nullable()->index();"
+            : "\$table->unsignedBigInteger('user_id')->nullable()->index();";
     }
 
     /**
