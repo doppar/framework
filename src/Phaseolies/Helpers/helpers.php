@@ -927,11 +927,12 @@ if (!function_exists('now')) {
     /**
      * Get the current timestamp with optional timezone
      *
+     * @param \DateTimeZone|string|null $timezone
      * @return \Carbon\Carbon
      */
-    function now()
+    function now(\DateTimeZone|string|null $timezone = null): Carbon
     {
-        return Carbon::now();
+        return Carbon::now($timezone);
     }
 }
 

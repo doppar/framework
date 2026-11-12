@@ -47,8 +47,7 @@ class TimezoneHandler
             throw new \InvalidArgumentException("Invalid timezone: {$this->currentTimezone}");
         }
 
-        $dt = Carbon::now();
-        $dt->setTimezone($this->currentTimezone);
+        date_default_timezone_set($this->currentTimezone);
     }
 
     /**
@@ -68,6 +67,6 @@ class TimezoneHandler
      */
     public function now(): Carbon
     {
-        return Carbon::now();
+        return Carbon::now($this->currentTimezone);
     }
 }
