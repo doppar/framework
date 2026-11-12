@@ -49,7 +49,7 @@ class Container implements ArrayAccess
     /**
      * Cached reflection metadata for concrete classes.
      *
-     * @var array<class-string, array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}>
+     * @var array<class-string, array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}>
      */
     private array $buildMetadata = [];
 
@@ -418,7 +418,7 @@ class Container implements ArrayAccess
      * Inspect a concrete class once and reuse the metadata for future builds.
      *
      * @param class-string $concrete
-     * @return array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}
+     * @return array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}
      */
     private function inspectBuildMetadata(string $concrete): array
     {
@@ -433,8 +433,9 @@ class Container implements ArrayAccess
             $parameters[] = [
                 'name' => $parameter->getName(),
                 'type' => $type,
+                'typeName' => $type instanceof \ReflectionNamedType ? $type->getName() : null,
                 'allowsNull' => $type?->allowsNull() ?? false,
-                'builtin' => $type?->isBuiltin() ?? false,
+                'builtin' => $type instanceof \ReflectionNamedType && $type->isBuiltin(),
                 'defaultAvailable' => $parameter->isDefaultValueAvailable(),
                 'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
                 'variadic' => $parameter->isVariadic(),
@@ -509,7 +510,7 @@ class Container implements ArrayAccess
     /**
      * Resolve constructor dependencies from cached parameter metadata.
      *
-     * @param array<int, array{name: string, type: \ReflectionType|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}> $parameters
+     * @param array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}> $parameters
      * @param array $primitives
      * @param string $className
      * @return array
@@ -527,8 +528,8 @@ class Container implements ArrayAccess
                 continue;
             }
 
-            if ($type !== null && !$parameter['builtin']) {
-                $typeName = $type->getName();
+            if ($type !== null && !$parameter['builtin'] && $parameter['typeName'] !== null) {
+                $typeName = $parameter['typeName'];
 
                 if ($parameter['allowsNull'] && !$this->has($typeName)) {
                     $dependencies[] = null;
