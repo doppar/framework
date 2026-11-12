@@ -592,7 +592,7 @@ class Request
      */
     public function getPath(): string
     {
-        return urldecode(
+        return $this->requestUri ??= urldecode(
             parse_url($this->server->get("REQUEST_URI", "/"), PHP_URL_PATH)
         );
     }

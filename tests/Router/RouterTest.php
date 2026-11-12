@@ -909,6 +909,29 @@ class RouterTest extends TestCase
         $this->assertEquals(['id' => '123', 'name' => 'john'], $result);
     }
 
+    public function testStaticRouteDoesNotTreatRegexCharactersAsWildcards(): void
+    {
+        $callback = fn() => 'file';
+        $this->router->get('/file.txt', $callback);
+
+        $result = $this->router->getCallback(new TestRequestStub('GET', '/fileXtxt', 'localhost'));
+
+        $this->assertFalse($result);
+    }
+
+    public function testDynamicRouteDeclaredBeforeStaticRouteKeepsPrecedence(): void
+    {
+        $dynamic = fn() => 'dynamic';
+        $static = fn() => 'static';
+
+        $this->router->get('/users/{id}', $dynamic);
+        $this->router->get('/users/list', $static);
+
+        $result = $this->router->getCallback(new TestRequestStub('GET', '/users/list', 'localhost'));
+
+        $this->assertSame($dynamic, $result);
+    }
+
     public function testConvertRouteToRegex(): void
     {
         $reflection = new \ReflectionClass(Router::class);

@@ -47,6 +47,13 @@ class Container implements ArrayAccess
     private array $resolving = [];
 
     /**
+     * Cached reflection metadata for concrete classes.
+     *
+     * @var array<class-string, array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}>
+     */
+    private array $buildMetadata = [];
+
+    /**
      * Whether each class seen by freezeResolved() is a frozen service.
      *
      * @var array<class-string, bool>
@@ -384,19 +391,18 @@ class Container implements ArrayAccess
             return new $concrete(...$parameters);
         }
 
-        $reflector = new \ReflectionClass($concrete);
+        $metadata = $this->buildMetadata[$concrete] ??= $this->inspectBuildMetadata($concrete);
+        $reflector = $metadata['reflector'];
 
         if (!$reflector->isInstantiable()) {
             throw new \RuntimeException("Target [{$concrete}] is not instantiable");
         }
 
-        $constructor = $reflector->getConstructor();
-
-        if (is_null($constructor)) {
+        if ($metadata['parameters'] === []) {
             $instance = new $concrete(...$parameters);
         } else {
-            $dependencies = $this->resolveDependencies(
-                $constructor->getParameters(),
+            $dependencies = $this->resolveCachedDependencies(
+                $metadata['parameters'],
                 $parameters,
                 $concrete
             );
@@ -406,6 +412,37 @@ class Container implements ArrayAccess
         $this->freezeIfImmutable($reflector, $instance);
 
         return $instance;
+    }
+
+    /**
+     * Inspect a concrete class once and reuse the metadata for future builds.
+     *
+     * @param class-string $concrete
+     * @return array{reflector: \ReflectionClass, parameters: array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}>}
+     */
+    private function inspectBuildMetadata(string $concrete): array
+    {
+        $reflector = new \ReflectionClass($concrete);
+
+        $constructor = $reflector->getConstructor();
+        $parameters = [];
+
+        foreach ($constructor?->getParameters() ?? [] as $parameter) {
+            $type = $parameter->getType();
+
+            $parameters[] = [
+                'name' => $parameter->getName(),
+                'type' => $type,
+                'typeName' => $type instanceof \ReflectionNamedType ? $type->getName() : null,
+                'allowsNull' => $type?->allowsNull() ?? false,
+                'builtin' => $type instanceof \ReflectionNamedType && $type->isBuiltin(),
+                'defaultAvailable' => $parameter->isDefaultValueAvailable(),
+                'default' => $parameter->isDefaultValueAvailable() ? $parameter->getDefaultValue() : null,
+                'variadic' => $parameter->isVariadic(),
+            ];
+        }
+
+        return ['reflector' => $reflector, 'parameters' => $parameters];
     }
 
     /**
@@ -465,6 +502,62 @@ class Container implements ArrayAccess
         foreach ($parameters as $parameter) {
             $dependency = $this->resolveDependency($parameter, $primitives, $className);
             $dependencies[] = $dependency;
+        }
+
+        return $dependencies;
+    }
+
+    /**
+     * Resolve constructor dependencies from cached parameter metadata.
+     *
+     * @param array<int, array{name: string, type: \ReflectionType|null, typeName: string|null, allowsNull: bool, builtin: bool, defaultAvailable: bool, default: mixed, variadic: bool}> $parameters
+     * @param array $primitives
+     * @param string $className
+     * @return array
+     */
+    protected function resolveCachedDependencies(array $parameters, array $primitives = [], string $className = ''): array
+    {
+        $dependencies = [];
+
+        foreach ($parameters as $parameter) {
+            $name = $parameter['name'];
+            $type = $parameter['type'];
+
+            if (!empty($primitives) && array_key_exists($name, $primitives)) {
+                $dependencies[] = $primitives[$name];
+                continue;
+            }
+
+            if ($type !== null && !$parameter['builtin'] && $parameter['typeName'] !== null) {
+                $typeName = $parameter['typeName'];
+
+                if ($parameter['allowsNull'] && !$this->has($typeName)) {
+                    $dependencies[] = null;
+                    continue;
+                }
+
+                $dependencies[] = $this->get($typeName);
+                continue;
+            }
+
+            if ($parameter['defaultAvailable']) {
+                $dependencies[] = $parameter['default'];
+                continue;
+            }
+
+            if ($parameter['variadic']) {
+                $dependencies[] = $primitives;
+                continue;
+            }
+
+            if (!empty($primitives)) {
+                $dependencies[] = array_shift($primitives);
+                continue;
+            }
+
+            throw new \RuntimeException(
+                "Unresolvable dependency resolving [\${$name}] in class " . $className
+            );
         }
 
         return $dependencies;
@@ -626,6 +719,7 @@ class Container implements ArrayAccess
             $this->instances = [];
             $this->aliases = [];
             $this->resolving = [];
+            $this->buildMetadata = [];
             $this->bootBindingKeys = [];
             $this->bootBindingsSnapshotted = false;
         }

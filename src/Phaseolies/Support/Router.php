@@ -35,6 +35,22 @@ class Router
     private ?ActionPlanStore $actionPlans = null;
 
     /**
+     * Compiled route matchers keyed by HTTP method and route pattern.
+     *
+     * @var array<string, array<string, array{regex: string, parameters: array<int, string>}>>
+     */
+    private array $compiledRouteMatchers = [];
+
+    /**
+     * Static routes that can be resolved without scanning the route table.
+     *
+     * @var array<string, array<string, mixed>>
+     */
+    private array $staticRouteLookup = [];
+
+    private bool $routeIndexesBuilt = false;
+
+    /**
      * The route dispatched for each request by getCallback()
      *
      * @var \WeakMap<Request, array{method: string, route: string, callback: mixed}>|null
@@ -221,11 +237,14 @@ class Router
 
         $cacheData = [
             'routes' => $this->getCacheableRoutes(),
+            'compiledRoutes' => $this->compileRouteMatchers(self::$routes),
             'namedRoutes' => self::$namedRoutes,
             'namedRouteMethods' => self::$namedRouteMethods,
             'routeMiddlewares' => self::$routeMiddlewares,
             'timestamp' => time()
         ];
+
+        $this->compiledRouteMatchers = $cacheData['compiledRoutes'];
 
         file_put_contents(static::$cachePath, '<?php return ' . var_export($cacheData, true) . ';');
 
@@ -333,6 +352,9 @@ class Router
         // A cache from before names kept their paths per method resolves by path alone.
         self::$namedRouteMethods = array_filter($cached['namedRouteMethods'] ?? [], 'is_array');
         self::$routeMiddlewares = $cached['routeMiddlewares'] ?? [];
+        $this->compiledRouteMatchers = $cached['compiledRoutes'] ?? [];
+        $this->staticRouteLookup = [];
+        $this->routeIndexesBuilt = false;
 
         static::$cacheLoaded = true;
 
@@ -768,6 +790,9 @@ class Router
             : $callback;
 
         self::$routes[$method][$fullPath] = $entry;
+        $this->routeIndexesBuilt = false;
+        $this->staticRouteLookup = [];
+        $this->compiledRouteMatchers[$method] = [];
         $this->currentRoutePath = $fullPath;
         $this->currentRequestMethod = $method;
 
@@ -1266,6 +1291,17 @@ class Router
 
         $url = ($url !== '/') ? rtrim($url, '/') : $url;
 
+        $this->buildRouteIndexes();
+
+        if (array_key_exists($url, $this->staticRouteLookup[$method] ?? [])) {
+            $entry = $this->staticRouteLookup[$method][$url];
+            ['callback' => $callback, 'domain' => $domain] = $this->unwrapRouteEntry($entry);
+
+            if ($domain === null || $this->matchesDomain($domain, $request)) {
+                return ['method' => $method, 'route' => $url, 'callback' => $callback];
+            }
+        }
+
         $routes = self::$routes[$method] ?? [];
 
         foreach ($routes as $route => $entry) {
@@ -1283,11 +1319,16 @@ class Router
                 return $match;
             }
 
-            // Pattern match with named parameters
-            $routeRegex = $this->convertRouteToRegex($route);
+            if (!str_contains((string) $route, '{') && !str_contains((string) $route, '*')) {
+                continue;
+            }
 
-            if (preg_match($routeRegex, $url, $matches)) {
-                $params = $this->extractRouteParameters($route, $matches);
+            // Pattern match with named parameters
+            $matcher = $this->compiledRouteMatchers[$method][$route]
+                ??= $this->compileRouteMatcher((string) $route);
+
+            if (preg_match($matcher['regex'], $url, $matches)) {
+                $params = $this->extractCompiledRouteParameters($matcher['parameters'], $matches);
                 if ($params !== false) {
                     $request->setRouteParams(array_merge($request->getRouteParams(), $params));
 
@@ -1351,13 +1392,16 @@ class Router
      * @param string $route
      * @return string
      */
-    protected function convertRouteToRegex(string $route): string
+    protected function convertRouteToRegex(string $route, ?array &$parameterNames = null): string
     {
+        $parameterNames ??= [];
+
         // Lift the parameters out first: a constraint can contain `/` and `*`,
         // which must not be touched by the escaping and wildcard steps below.
         $params = [];
-        $route = preg_replace_callback(self::PARAM_PATTERN, function (array $m) use (&$params) {
+        $route = preg_replace_callback(self::PARAM_PATTERN, function (array $m) use (&$params, &$parameterNames) {
             $params[] = [$m[1], $m[2] ?? null];
+            $parameterNames[] = $m[1];
 
             return "\x00" . (count($params) - 1) . "\x00";
         }, $route);
@@ -1386,11 +1430,23 @@ class Router
      */
     protected function extractRouteParameters(string $route, array $matches): array|false
     {
-        // Get all named parameters from the route pattern
         preg_match_all(self::PARAM_PATTERN, $route, $paramNames);
+
+        return $this->extractCompiledRouteParameters($paramNames[1], $matches);
+    }
+
+    /**
+     * Extract route parameters from a precompiled parameter-name list.
+     *
+     * @param array<int, string> $parameterNames
+     * @param array<string|int, mixed> $matches
+     * @return array<string, string>|false
+     */
+    protected function extractCompiledRouteParameters(array $parameterNames, array $matches): array|false
+    {
         $params = [];
 
-        foreach ($paramNames[1] as $name) {
+        foreach ($parameterNames as $name) {
             if (!isset($matches[$name])) {
                 return false;
             }
@@ -1398,6 +1454,76 @@ class Router
         }
 
         return $params;
+    }
+
+    /**
+     * Compile all dynamic routes for persistence in the route cache.
+     *
+     * @param array<string, array<string, mixed>> $routes
+     * @return array<string, array<string, array{regex: string, parameters: array<int, string>}>>
+     */
+    protected function compileRouteMatchers(array $routes): array
+    {
+        $compiled = [];
+
+        foreach ($routes as $method => $methodRoutes) {
+            foreach (array_keys($methodRoutes) as $route) {
+                if ($route === '(.*)' || (!str_contains((string) $route, '{') && !str_contains((string) $route, '*'))) {
+                    continue;
+                }
+
+                $compiled[$method][$route] = $this->compileRouteMatcher((string) $route);
+            }
+        }
+
+        return $compiled;
+    }
+
+    /**
+     * Build the safe direct-lookup index for static routes.
+     *
+     * @return void
+     */
+    protected function buildRouteIndexes(): void
+    {
+        if ($this->routeIndexesBuilt) {
+            return;
+        }
+
+        $this->staticRouteLookup = [];
+
+        foreach (self::$routes as $method => $routes) {
+            $dynamicRouteSeen = false;
+
+            foreach ($routes as $route => $entry) {
+                $route = (string) $route;
+
+                if ($route === '(.*)' || str_contains($route, '{') || str_contains($route, '*')) {
+                    $dynamicRouteSeen = true;
+                    continue;
+                }
+
+                if (!$dynamicRouteSeen) {
+                    $this->staticRouteLookup[$method][$route] = $entry;
+                }
+            }
+        }
+
+        $this->routeIndexesBuilt = true;
+    }
+
+    /**
+     * Compile one dynamic route and retain its parameter names.
+     *
+     * @param string $route
+     * @return array{regex: string, parameters: array<int, string>}
+     */
+    protected function compileRouteMatcher(string $route): array
+    {
+        $parameters = [];
+        $regex = $this->convertRouteToRegex($route, $parameters);
+
+        return ['regex' => $regex, 'parameters' => $parameters];
     }
 
     /**
