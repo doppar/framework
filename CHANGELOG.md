@@ -1,5 +1,12 @@
 # Release Notes
 
+## v4.9.1 - 2026-11-13
+
+* perf: optimize request routing and dependency resolution by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/403
+* fix: align Carbon timezone and datetime precision handling by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/404
+* fix: complete datetime boundary and microsecond consistency by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/405
+* fix(session): follow-ups to the database session driver by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/406
+
 ## v4.9.0 - 2026-11-11
 
 * feat:  Rewrite sessions as a lazy, store-based layer by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/398
