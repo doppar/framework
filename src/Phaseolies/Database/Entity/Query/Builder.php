@@ -416,9 +416,9 @@ class Builder
 
         $chunks = array_chunk($rows, $chunkSize);
 
-        $ownsTransaction = count($chunks) > 1 && !$this->pdo->inTransaction();
-        if ($ownsTransaction) {
-            $this->pdo->beginTransaction();
+        $ownsTransaction = false;
+        if (count($chunks) > 1 && !$this->pdo->inTransaction()) {
+            $ownsTransaction = $this->pdo->beginTransaction();
         }
 
         $totalAffected = 0;
