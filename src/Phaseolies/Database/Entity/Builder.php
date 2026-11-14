@@ -1161,8 +1161,12 @@ class Builder
                 $this->pdo->commit();
             }
         } catch (\Throwable $e) {
-            if ($ownsTransaction && $this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+            if ($ownsTransaction) {
+                try {
+                    $this->pdo->rollBack();
+                } catch (PDOException) {
+                    // The transaction already ended
+                }
             }
 
             if ($e instanceof PDOException) {
