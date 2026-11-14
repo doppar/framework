@@ -51,6 +51,22 @@ trait Grammar
     }
 
     /**
+     * Validate a column name interpolated into a write statement.
+     *
+     * @param string $identifier
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidWriteIdentifier(string $identifier): void
+    {
+        if (!static::isValidIdentifier($identifier, false)) {
+            throw new \InvalidArgumentException(
+                "Invalid write column identifier \"{$identifier}\"."
+            );
+        }
+    }
+
+    /**
      * Determine if a value is a callback (closure, invokable or array callable).
      *
      * Strings are never treated as callbacks: names like "date" or "time"

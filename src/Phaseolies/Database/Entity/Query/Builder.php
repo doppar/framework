@@ -410,8 +410,20 @@ class Builder
             return 0;
         }
 
+        if ($chunkSize <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than zero.');
+        }
+
         // Get the columns from the first row
         $columns = array_keys($rows[0]);
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Insert rows must contain at least one column.');
+        }
+
+        foreach ($columns as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         $columnsStr = implode(', ', $columns);
 
         $totalAffected = 0;
@@ -422,11 +434,16 @@ class Builder
             $bindings = [];
 
             foreach ($chunk as $row) {
+                if ($missing = array_diff($columns, array_keys($row))) {
+                    throw new \InvalidArgumentException('All rows must have the same columns. Missing column: ' . reset($missing));
+                }
+
+                if ($extra = array_diff(array_keys($row), $columns)) {
+                    throw new \InvalidArgumentException('All rows must have the same columns. Unexpected column: ' . reset($extra));
+                }
+
                 $rowPlaceholders = [];
                 foreach ($columns as $column) {
-                    if (!array_key_exists($column, $row)) {
-                        throw new \InvalidArgumentException("All rows must have the same columns. Missing column: {$column}");
-                    }
                     $rowPlaceholders[] = '?';
                     $bindings[] = $row[$column];
                 }
@@ -827,6 +844,14 @@ class Builder
      */
     public function insert(array $attributes)
     {
+        if (empty($attributes)) {
+            throw new \InvalidArgumentException('Insert attributes must not be empty.');
+        }
+
+        foreach (array_keys($attributes) as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         $columns = implode(', ', array_keys($attributes));
         $values = implode(', ', array_fill(0, count($attributes), '?'));
 
@@ -869,6 +894,30 @@ class Builder
         // Get column names from first record and add timestamp columns if needed
         $columns = array_keys(reset($values));
 
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Upsert records must contain at least one column.');
+        }
+
+        foreach ($columns as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        foreach ((array) $uniqueBy as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        foreach ($updateColumns ?? [] as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        foreach ($updateColumns ?? [] as $column) {
+            if (!in_array($column, $columns, true)) {
+                throw new \InvalidArgumentException(
+                    "Update column '{$column}' is not present in the upsert payload."
+                );
+            }
+        }
+
         // Use proper column quoting based on driver
         $quoteChar = $this->getDriver() === 'mysql' ? '`' : '"';
         $columnsStr = implode(', ', array_map(fn($col) => "{$quoteChar}{$col}{$quoteChar}", $columns));
@@ -879,7 +928,7 @@ class Builder
 
         foreach ($values as $record) {
             // Validate record structure
-            if (array_diff(array_keys($record), $columns)) {
+            if (array_diff($columns, array_keys($record)) || array_diff(array_keys($record), $columns)) {
                 throw new \InvalidArgumentException('All records must have the same columns');
             }
 
@@ -946,6 +995,14 @@ class Builder
      */
     public function update(array $attributes): bool
     {
+        if (empty($attributes)) {
+            throw new \InvalidArgumentException('Update attributes must not be empty.');
+        }
+
+        foreach (array_keys($attributes) as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         $setClause = implode(', ', array_map(fn($key) => "$key = ?", array_keys($attributes)));
         $sql = "UPDATE {$this->table} SET $setClause";
 
@@ -1212,6 +1269,8 @@ class Builder
      */
     protected function updateColumn(string $column, int $amount, string $operator, array $extra = []): int
     {
+        $this->assertValidWriteIdentifier($column);
+
         if ($amount <= 0) {
             throw new \InvalidArgumentException("Amount must be positive");
         }
@@ -1222,6 +1281,7 @@ class Builder
         if (!empty($extra)) {
             $extraUpdates = [];
             foreach ($extra as $key => $value) {
+                $this->assertValidWriteIdentifier($key);
                 $extraUpdates[] = "{$key} = ?";
                 $bindings[] = $value;
             }

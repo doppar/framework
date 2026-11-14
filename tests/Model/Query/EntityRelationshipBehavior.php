@@ -817,6 +817,49 @@ abstract class EntityRelationshipTest extends ModelQueryDriverTestCase
         $this->assertCount(3, $tagIds); // 1,2,3
     }
 
+    public function testLinkRejectsUnsafePivotColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid write column identifier');
+
+        MockPost::find(1)->tags()->link([3], ['note) VALUES (1, 1) --' => 'x']);
+    }
+
+    public function testLinkRejectsPivotRelationshipKeyOverrides(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('cannot override relationship key');
+
+        MockPost::find(1)->tags()->link([3], ['post_id' => 2]);
+    }
+
+    public function testRelateRejectsUnsafePivotColumnsOnExistingRows(): void
+    {
+        try {
+            MockPost::find(1)->tags()->relate([1 => ['note = 1 --' => 'x']]);
+            $this->fail('relate() accepted an unsafe pivot column');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Invalid write column identifier', $e->getMessage());
+        }
+
+        // Validation runs before detaching, so tag 2 is still linked
+        $tagIds = MockPost::find(1)->tags->pluck('id')->sort()->values()->toArray();
+        $this->assertSame([1, 2], $tagIds);
+    }
+
+    public function testRelateRejectsPivotRelationshipKeyOverridesBeforeDetaching(): void
+    {
+        try {
+            MockPost::find(1)->tags()->relate([1 => ['tag_id' => 3]]);
+            $this->fail('relate() accepted a relationship key override');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('cannot override relationship key', $e->getMessage());
+        }
+
+        $tagIds = MockPost::find(1)->tags->pluck('id')->sort()->values()->toArray();
+        $this->assertSame([1, 2], $tagIds);
+    }
+
     /**
      * link() is additive — calling it twice does NOT replace previous links.
      */

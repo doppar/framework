@@ -1397,6 +1397,46 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         ], $posts->toArray());
     }
 
+    public function testModelBuilderRejectsUnsafeWriteColumns(): void
+    {
+        $unsafe = 'name) = (SELECT 1) --';
+        $writes = [
+            'insert' => fn () => MockTag::query()->insert([$unsafe => 'x']),
+            'insertMany' => fn () => MockTag::query()->insertMany([[$unsafe => 'x']]),
+            'update' => fn () => MockTag::query()->where('id', 1)->update([$unsafe => 'x']),
+            'upsert columns' => fn () => MockTag::query()->upsert([[$unsafe => 'x']], 'id'),
+            'upsert uniqueBy' => fn () => MockTag::query()->upsert([['name' => 'x']], $unsafe),
+            'upsert update columns' => fn () => MockTag::query()->upsert([['name' => 'x']], 'id', [$unsafe]),
+            'increment' => fn () => MockPost::query()->where('id', 1)->increment($unsafe),
+            'increment extra' => fn () => MockPost::query()->where('id', 1)->increment('views', 1, [$unsafe => 'x']),
+        ];
+
+        foreach ($writes as $label => $write) {
+            try {
+                $write();
+                $this->fail("{$label} accepted an unsafe column name");
+            } catch (\InvalidArgumentException $e) {
+                $this->assertStringContainsString('Invalid write column identifier', $e->getMessage(), $label);
+            }
+        }
+    }
+
+    public function testModelBuilderInsertManyReportsMismatchedColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unexpected column: extra');
+
+        MockTag::query()->insertMany([['name' => 'a'], ['name' => 'b', 'extra' => 1]]);
+    }
+
+    public function testModelBuilderUpsertRejectsUnavailableUpdateColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Update column');
+
+        MockTag::query()->upsert([['name' => 'x']], 'name', ['missing']);
+    }
+
     public function testColumnIncrement(): void
     {
         $post = MockPost::find(1);
