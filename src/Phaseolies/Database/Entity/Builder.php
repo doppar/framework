@@ -1128,60 +1128,48 @@ class Builder
             return 0;
         }
 
-        if ($chunkSize <= 0) {
-            throw new \InvalidArgumentException('Chunk size must be greater than zero.');
-        }
-
-        // Get the columns from the first row
-        $columns = array_keys($rows[0]);
-        if (empty($columns)) {
-            throw new \InvalidArgumentException('Insert rows must contain at least one column.');
-        }
-
-        foreach ($columns as $column) {
-            $this->assertValidWriteIdentifier($column);
-        }
-
+        $columns = $this->validateInsertManyRows($rows, $chunkSize);
         $columnsStr = implode(', ', $columns);
+        $rowPlaceholder = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
 
-        $totalAffected = 0;
         $chunks = array_chunk($rows, $chunkSize);
 
-        foreach ($chunks as $chunk) {
-            $placeholders = [];
-            $bindings = [];
+        $ownsTransaction = count($chunks) > 1 && !$this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
 
-            foreach ($chunk as $row) {
-                if ($missing = array_diff($columns, array_keys($row))) {
-                    throw new \InvalidArgumentException('All rows must have the same columns. Missing column: ' . reset($missing));
-                }
+        $totalAffected = 0;
 
-                if ($extra = array_diff(array_keys($row), $columns)) {
-                    throw new \InvalidArgumentException('All rows must have the same columns. Unexpected column: ' . reset($extra));
-                }
+        try {
+            foreach ($chunks as $chunk) {
+                $sql = "INSERT INTO {$this->table} ({$columnsStr}) VALUES "
+                    . implode(', ', array_fill(0, count($chunk), $rowPlaceholder));
 
-                $rowPlaceholders = [];
-                foreach ($columns as $column) {
-                    $rowPlaceholders[] = '?';
-                    $bindings[] = $row[$column];
-                }
-                $placeholders[] = '(' . implode(', ', $rowPlaceholders) . ')';
-            }
-
-            $placeholdersStr = implode(', ', $placeholders);
-            $sql = "INSERT INTO {$this->table} ({$columnsStr}) VALUES {$placeholdersStr}";
-
-            try {
                 $stmt = $this->pdo->prepare($sql);
                 $index = 1;
-                foreach ($bindings as $value) {
-                    $stmt->bindValue($index++, $value, $this->getPdoParamType($value));
+                foreach ($chunk as $row) {
+                    foreach ($columns as $column) {
+                        $stmt->bindValue($index++, $row[$column], $this->getPdoParamType($row[$column]));
+                    }
                 }
                 $stmt->execute();
                 $totalAffected += $stmt->rowCount();
-            } catch (PDOException $e) {
+            }
+
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
+            if ($e instanceof PDOException) {
                 throw new PDOException("Database error: " . $e->getMessage());
             }
+
+            throw $e;
         }
 
         return $totalAffected;

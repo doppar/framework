@@ -67,6 +67,47 @@ trait Grammar
     }
 
     /**
+     * Validate the rows of a bulk insert and return their columns.
+     *
+     * @param array $rows
+     * @param int $chunkSize
+     * @return array<int, string>
+     * @throws \InvalidArgumentException
+     */
+    protected function validateInsertManyRows(array $rows, int $chunkSize): array
+    {
+        if ($chunkSize <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than zero.');
+        }
+
+        $first = reset($rows);
+        if (!is_array($first) || empty($first)) {
+            throw new \InvalidArgumentException('Insert rows must contain at least one column.');
+        }
+
+        $columns = array_keys($first);
+        foreach ($columns as $column) {
+            $this->assertValidWriteIdentifier((string) $column);
+        }
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                throw new \InvalidArgumentException('Each insert row must be an array of column values.');
+            }
+
+            if ($missing = array_diff($columns, array_keys($row))) {
+                throw new \InvalidArgumentException('All rows must have the same columns. Missing column: ' . reset($missing));
+            }
+
+            if ($extra = array_diff(array_keys($row), $columns)) {
+                throw new \InvalidArgumentException('All rows must have the same columns. Unexpected column: ' . reset($extra));
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
      * Determine if a value is a callback (closure, invokable or array callable).
      *
      * Strings are never treated as callbacks: names like "date" or "time"

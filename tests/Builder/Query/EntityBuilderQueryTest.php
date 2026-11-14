@@ -957,6 +957,70 @@ class EntityBuilderQueryTest extends TestCase
         ]);
     }
 
+    public function testInsertManyRejectsMalformedRowInLaterChunkBeforeWriting(): void
+    {
+        $before = db()->bucket('tags')->count();
+
+        try {
+            db()->bucket('tags')->insertMany([
+                ['name' => 'chunk one'],
+                ['name' => 'chunk two'],
+                ['title' => 'chunk three'],
+            ], 1);
+            $this->fail('insertMany() accepted a malformed row');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Missing column: name', $e->getMessage());
+        }
+
+        $this->assertSame($before, db()->bucket('tags')->count());
+    }
+
+    public function testInsertManyRollsBackEarlierChunksWhenALaterChunkFails(): void
+    {
+        $before = db()->bucket('tags')->count();
+
+        try {
+            db()->bucket('tags')->insertMany([
+                ['name' => 'chunk one'],
+                ['name' => 'chunk two'],
+                ['name' => null], // violates NOT NULL
+            ], 1);
+            $this->fail('insertMany() did not report the database error');
+        } catch (\PDOException $e) {
+            $this->assertStringContainsString('Database error', $e->getMessage());
+        }
+
+        $this->assertSame($before, db()->bucket('tags')->count());
+        $this->assertFalse($this->pdo->inTransaction());
+    }
+
+    public function testInsertManyJoinsTheCallersTransaction(): void
+    {
+        $before = db()->bucket('tags')->count();
+
+        db()->beginTransaction();
+        $inserted = db()->bucket('tags')->insertMany([
+            ['name' => 'one'],
+            ['name' => 'two'],
+            ['name' => 'three'],
+        ], 1);
+        $this->assertSame(3, $inserted);
+        db()->rollBack();
+
+        $this->assertSame($before, db()->bucket('tags')->count());
+    }
+
+    public function testInsertManyAcceptsRowsWithNonSequentialKeys(): void
+    {
+        $inserted = db()->bucket('tags')->insertMany([
+            'a' => ['name' => 'keyed one'],
+            'b' => ['name' => 'keyed two'],
+        ]);
+
+        $this->assertSame(2, $inserted);
+        $this->assertSame(1, db()->bucket('tags')->where('name', 'keyed two')->count());
+    }
+
     public function testUpdate(): void
     {
         db()->bucket('tags')
