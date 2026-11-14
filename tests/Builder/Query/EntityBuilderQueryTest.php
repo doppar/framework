@@ -916,6 +916,47 @@ class EntityBuilderQueryTest extends TestCase
         $this->assertEquals('Working with Multiple Connections', $tag->name);
     }
 
+    public function testWriteIdentifiersAreValidated(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        db()->bucket('tags')->insert([
+            'name) = (SELECT name FROM users LIMIT 1) --' => 'unsafe',
+        ]);
+    }
+
+    public function testUpdateRejectsEmptyAttributes(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        db()->bucket('tags')->where('id', 1)->update([]);
+    }
+
+    public function testInsertManyRejectsInvalidChunkSize(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        db()->bucket('tags')->insertMany([['name' => 'invalid']], 0);
+    }
+
+    public function testUpsertRejectsUnavailableUpdateColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Update column 'slug' is not present in the upsert payload.");
+
+        db()->bucket('tags')->upsert([['name' => 'first']], 'id', ['slug']);
+    }
+
+    public function testInsertManyRejectsExtraColumns(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        db()->bucket('tags')->insertMany([
+            ['name' => 'first'],
+            ['name' => 'second', 'unexpected' => true],
+        ]);
+    }
+
     public function testUpdate(): void
     {
         db()->bucket('tags')

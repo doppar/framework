@@ -244,7 +244,7 @@ class Builder
             return $this->constrainToNothing();
         }
 
-        $quote = fn (string $identifier) => $this->quoteIdentifier($identifier);
+        $quote = fn(string $identifier) => $this->quoteIdentifier($identifier);
 
         $this->relationScope = [
             $quote($this->tableReference() . '.' . $ownerKey)
@@ -1128,8 +1128,20 @@ class Builder
             return 0;
         }
 
+        if ($chunkSize <= 0) {
+            throw new \InvalidArgumentException('Chunk size must be greater than zero.');
+        }
+
         // Get the columns from the first row
         $columns = array_keys($rows[0]);
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Insert rows must contain at least one column.');
+        }
+
+        foreach ($columns as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         $columnsStr = implode(', ', $columns);
 
         $totalAffected = 0;
@@ -1140,11 +1152,16 @@ class Builder
             $bindings = [];
 
             foreach ($chunk as $row) {
+                if ($missing = array_diff($columns, array_keys($row))) {
+                    throw new \InvalidArgumentException('All rows must have the same columns. Missing column: ' . reset($missing));
+                }
+
+                if ($extra = array_diff(array_keys($row), $columns)) {
+                    throw new \InvalidArgumentException('All rows must have the same columns. Unexpected column: ' . reset($extra));
+                }
+
                 $rowPlaceholders = [];
                 foreach ($columns as $column) {
-                    if (!array_key_exists($column, $row)) {
-                        throw new \InvalidArgumentException("All rows must have the same columns. Missing column: {$column}");
-                    }
                     $rowPlaceholders[] = '?';
                     $bindings[] = $row[$column];
                 }
@@ -1311,6 +1328,12 @@ class Builder
             $ids = [$ids];
         }
 
+        foreach (array_keys($pivotData) as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        $this->assertPivotDataDoesNotOverrideRelationshipKeys($pivotData, $foreignKey, $relatedKey);
+
         $rows = 0;
         $connection = $this->getConnection();
 
@@ -1413,6 +1436,16 @@ class Builder
         }
 
         $ids = $this->normalizeSyncIds($ids);
+
+        // Validate every pivot column before detaching anything
+        foreach ($ids as $pivotData) {
+            $pivotData = (array) $pivotData;
+            foreach (array_keys($pivotData) as $column) {
+                $this->assertValidWriteIdentifier($column);
+            }
+            $this->assertPivotDataDoesNotOverrideRelationshipKeys($pivotData, $foreignKey, $relatedKey);
+        }
+
         $currentIds = $this->getCurrentRelatedIds($pivotTable, $foreignKey, $relatedKey, $parentKey);
 
         $changes = [
@@ -1506,6 +1539,8 @@ class Builder
         $params = [];
 
         foreach ($pivotData as $key => $value) {
+            $this->assertValidWriteIdentifier($key);
+            $this->assertPivotDataDoesNotOverrideRelationshipKeys([$key => $value], $foreignKey, $relatedKey);
             $sets[] = "{$key} = ?";
             if ($value instanceof \DateTimeInterface) {
                 $params[] = $value->format('Y-m-d H:i:s') . ($value->format('u') !== '000000'
@@ -1526,6 +1561,25 @@ class Builder
         $stmt->execute($params);
 
         return $stmt->rowCount();
+    }
+
+    /**
+     * Prevent caller-supplied pivot attributes from changing relation endpoints
+     *
+     * @param array $pivotData
+     * @param string $foreignKey
+     * @param string $relatedKey
+     * @return void
+     */
+    protected function assertPivotDataDoesNotOverrideRelationshipKeys(array $pivotData, string $foreignKey, string $relatedKey): void
+    {
+        foreach ([$foreignKey, $relatedKey] as $relationshipKey) {
+            if (array_key_exists($relationshipKey, $pivotData)) {
+                throw new \InvalidArgumentException(
+                    "Pivot data cannot override relationship key '{$relationshipKey}'."
+                );
+            }
+        }
     }
 
     /**
@@ -2591,6 +2645,14 @@ class Builder
      */
     public function insert(array $attributes)
     {
+        if (empty($attributes)) {
+            throw new \InvalidArgumentException('Insert attributes must not be empty.');
+        }
+
+        foreach (array_keys($attributes) as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         $columns = implode(', ', array_keys($attributes));
         $values = implode(', ', array_fill(0, count($attributes), '?'));
 
@@ -2654,13 +2716,38 @@ class Builder
         $currentTime = now();
 
         // Get column names from first record and add timestamp columns if needed
-        $columns = array_keys(reset($values));
+        $inputColumns = array_keys(reset($values));
+        $columns = $inputColumns;
+
+        if (empty($columns)) {
+            throw new \InvalidArgumentException('Upsert records must contain at least one column.');
+        }
+
+        foreach ($columns as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        foreach ($uniqueBy as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
+        foreach ($updateColumns ?? [] as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
         if ($usesTimestamps) {
             if (!in_array('created_at', $columns)) {
                 $columns[] = 'created_at';
             }
             if (!in_array('updated_at', $columns)) {
                 $columns[] = 'updated_at';
+            }
+        }
+
+        foreach ($updateColumns ?? [] as $column) {
+            if (!in_array($column, $columns, true)) {
+                throw new \InvalidArgumentException(
+                    "Update column '{$column}' is not present in the upsert payload."
+                );
             }
         }
 
@@ -2674,7 +2761,7 @@ class Builder
 
         foreach ($values as $record) {
             // Validate record structure
-            if (array_diff(array_keys($record), $columns)) {
+            if (array_diff($inputColumns, array_keys($record)) || array_diff(array_keys($record), $inputColumns)) {
                 throw new \InvalidArgumentException('All records must have the same columns');
             }
 
@@ -2754,9 +2841,17 @@ class Builder
      */
     public function update(array $attributes): bool
     {
+        if (empty($attributes)) {
+            throw new \InvalidArgumentException('Update attributes must not be empty.');
+        }
+
+        foreach (array_keys($attributes) as $column) {
+            $this->assertValidWriteIdentifier($column);
+        }
+
         if ($this->withHooks) {
             return $this->eachModelWithHooks(
-                fn (Model $model) => $model->update($attributes)
+                fn(Model $model) => $model->update($attributes)
             );
         }
 
@@ -2821,7 +2916,7 @@ class Builder
     {
         if ($this->withHooks) {
             return $this->eachModelWithHooks(
-                fn (Model $model) => $model->delete()
+                fn(Model $model) => $model->delete()
             );
         }
 
@@ -3125,6 +3220,8 @@ class Builder
      */
     protected function updateColumn(string $column, int $amount, string $operator, array $extra = []): int
     {
+        $this->assertValidWriteIdentifier($column);
+
         if ($amount <= 0) {
             throw new \InvalidArgumentException("Amount must be positive");
         }
@@ -3135,6 +3232,7 @@ class Builder
         if (!empty($extra)) {
             $extraUpdates = [];
             foreach ($extra as $key => $value) {
+                $this->assertValidWriteIdentifier($key);
                 $extraUpdates[] = "{$key} = ?";
                 $bindings[] = $value;
             }
