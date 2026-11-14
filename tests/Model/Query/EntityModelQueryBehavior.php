@@ -1437,6 +1437,35 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         MockTag::query()->upsert([['name' => 'x']], 'name', ['missing']);
     }
 
+    public function testModelBuilderInsertManyWritesNothingWhenALaterChunkFails(): void
+    {
+        $before = MockTag::query()->count();
+
+        try {
+            MockTag::query()->insertMany([
+                ['name' => 'chunk one'],
+                ['name' => 'chunk two'],
+                ['name' => 'chunk three', 'extra' => 1],
+            ], 1);
+            $this->fail('insertMany() accepted a malformed row');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Unexpected column: extra', $e->getMessage());
+        }
+
+        try {
+            MockTag::query()->insertMany([
+                ['name' => 'chunk one'],
+                ['name' => 'chunk two'],
+                ['name' => null],
+            ], 1);
+            $this->fail('insertMany() did not report the database error');
+        } catch (\PDOException $e) {
+            $this->assertStringContainsString('Database error', $e->getMessage());
+        }
+
+        $this->assertSame($before, MockTag::query()->count());
+    }
+
     public function testColumnIncrement(): void
     {
         $post = MockPost::find(1);
