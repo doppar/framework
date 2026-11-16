@@ -1,5 +1,10 @@
 # Release Notes
 
+## v4.9.2 - 2026-11-16
+
+* fix(entity): validate write column names and pivot keys in the entity builders by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/407
+* fix(entity): make insertMany() validate all rows up front and run its chunks in one transaction by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/408
+
 ## v4.9.1 - 2026-11-13
 
 * perf: optimize request routing and dependency resolution by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/403
