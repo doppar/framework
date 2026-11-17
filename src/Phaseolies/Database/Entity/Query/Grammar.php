@@ -19,6 +19,64 @@ trait Grammar
     private const VALID_SIMPLE_IDENTIFIER_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*\z/';
 
     /**
+     * Matches a table name, optionally schema-qualified and aliased
+     *
+     * @var string
+     */
+    private const VALID_TABLE_PATTERN = '/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?(\s+(as\s+)?[A-Za-z_][A-Za-z0-9_]*)?\z/i';
+
+    /**
+     * Matches a JSON path made of dot-separated keys, e.g. "$.profile.status"
+     *
+     * @var string
+     */
+    private const VALID_JSON_PATH_PATTERN = '/^(\$\.)?[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*\z/';
+
+    /**
+     * Operators accepted in a WHERE comparison
+     *
+     * @var array<int, string>
+     */
+    private const COMPARISON_OPERATORS = [
+        '=', '<', '>', '<=', '>=', '<>', '!=', '<=>',
+        'LIKE', 'NOT LIKE', 'LIKE BINARY', 'ILIKE', 'NOT ILIKE',
+        'REGEXP', 'NOT REGEXP', 'RLIKE', 'NOT RLIKE',
+        'GLOB', 'NOT GLOB', 'SIMILAR TO', 'NOT SIMILAR TO',
+        '~', '~*', '!~', '!~*',
+        '&', '|', '^', '<<', '>>', '&~',
+        'IS', 'IS NOT', 'IS DISTINCT FROM', 'IS NOT DISTINCT FROM',
+        '@>', '<@', '&&',
+    ];
+
+    /**
+     * Operators accepted by wherePattern()
+     *
+     * @var array<int, string>
+     */
+    private const PATTERN_OPERATORS = [
+        'LIKE', 'NOT LIKE', 'ILIKE', 'NOT ILIKE',
+        'REGEXP', 'NOT REGEXP', 'RLIKE', 'NOT RLIKE',
+        'GLOB', 'NOT GLOB', 'SIMILAR TO', 'NOT SIMILAR TO',
+    ];
+
+    /**
+     * Operators accepted in a JOIN ... ON clause
+     *
+     * @var array<int, string>
+     */
+    private const JOIN_OPERATORS = ['=', '<', '>', '<=', '>=', '<>', '!='];
+
+    /**
+     * Join types accepted by join()
+     *
+     * @var array<int, string>
+     */
+    private const JOIN_TYPES = [
+        'INNER', 'LEFT', 'RIGHT', 'CROSS', 'FULL',
+        'LEFT OUTER', 'RIGHT OUTER', 'FULL OUTER',
+    ];
+
+    /**
      * Determine if a value is a safe identifier.
      *
      * @param string $identifier
@@ -64,6 +122,88 @@ trait Grammar
                 "Invalid write column identifier \"{$identifier}\"."
             );
         }
+    }
+
+    /**
+     * Validate an alias interpolated into a select expression.
+     *
+     * @param string $alias
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidAlias(string $alias): void
+    {
+        if (!static::isValidIdentifier($alias, false)) {
+            throw new \InvalidArgumentException("Invalid alias \"{$alias}\".");
+        }
+    }
+
+    /**
+     * Validate a table name (optionally aliased) interpolated into a query.
+     *
+     * @param string $table
+     * @return void
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidTable(string $table): void
+    {
+        if (!preg_match(self::VALID_TABLE_PATTERN, trim($table))) {
+            throw new \InvalidArgumentException("Invalid table identifier \"{$table}\".");
+        }
+    }
+
+    /**
+     * Normalise an operator and ensure it is one of the allowed operators.
+     *
+     * @param mixed $operator
+     * @param array<int, string> $allowed
+     * @param string $kind
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    protected function normalizeOperator(mixed $operator, array $allowed, string $kind = 'comparison'): string
+    {
+        if (is_string($operator)) {
+            $normalized = strtoupper(preg_replace('/\s+/', ' ', trim($operator)) ?? '');
+
+            if (in_array($normalized, $allowed, true)) {
+                return $normalized;
+            }
+        }
+
+        $shown = is_scalar($operator) ? (string) $operator : get_debug_type($operator);
+
+        throw new \InvalidArgumentException("Invalid {$kind} operator \"{$shown}\".");
+    }
+
+    /**
+     * Validate a WHERE comparison operator and return it normalised.
+     *
+     * @param mixed $operator
+     * @return string
+     * @throws \InvalidArgumentException
+     */
+    protected function assertValidOperator(mixed $operator): string
+    {
+        return $this->normalizeOperator($operator, self::COMPARISON_OPERATORS);
+    }
+
+    /**
+     * Split a JSON path such as "$.profile.status" into its keys.
+     *
+     * @param string $path
+     * @return array<int, string>
+     * @throws \InvalidArgumentException
+     */
+    protected function jsonPathSegments(string $path): array
+    {
+        if (!preg_match(self::VALID_JSON_PATH_PATTERN, $path)) {
+            throw new \InvalidArgumentException(
+                "Invalid JSON path \"{$path}\". Use dot-separated keys, e.g. \"\$.profile.status\"."
+            );
+        }
+
+        return explode('.', str_starts_with($path, '$.') ? substr($path, 2) : $path);
     }
 
     /**
@@ -238,6 +378,8 @@ trait Grammar
      */
     public function jsonContains(string $column, string $path, $value): array
     {
+        $this->assertValidIdentifier($column);
+
         return match ($this->getDriver()) {
             'mysql' => $this->mysqlJsonContains($column, $path, $value),
             'pgsql' => $this->pgsqlJsonContains($column, $path, $value),
@@ -260,9 +402,10 @@ trait Grammar
             ? ($value ? 'true' : 'false')
             : json_encode($value);
 
+        // The path is bound, never interpolated: it often comes from input.
         return [
-            "JSON_CONTAINS(`{$column}`, CAST(? AS JSON), '{$path}')",
-            [$jsonValue]
+            "JSON_CONTAINS({$this->quoteIdentifier($column)}, CAST(? AS JSON), ?)",
+            [$jsonValue, $path]
         ];
     }
 
@@ -276,29 +419,27 @@ trait Grammar
      */
     protected function pgsqlJsonContains(string $column, string $path, $value): array
     {
-        // Convert JSON path to PostgreSQL JSON path format
-        $cleanPath = str_replace('$.', '', $path);
-        $pathParts = explode('.', $cleanPath);
+        $keys = $this->jsonPathSegments($path);
+        $last = count($keys) - 1;
 
-        // Build the JSON path access using -> and ->> operators
-        $jsonAccess = $column . "::jsonb";
+        // Each key is bound as a parameter; intermediate steps use -> (jsonb),
+        // and only the final step of a string comparison uses ->> (text).
+        $jsonAccess = $column . '::jsonb';
 
-        // Build the path access chain
-        foreach ($pathParts as $part) {
-            $jsonAccess .= " -> '{$part}'";
+        foreach ($keys as $index => $key) {
+            $arrow = ($index === $last && is_string($value)) ? '->>' : '->';
+            $jsonAccess .= " {$arrow} CAST(? AS text)";
         }
 
-        // For the final access, use ->> to get text or -> for boolean
         if (is_bool($value)) {
-            $finalAccess = "({$jsonAccess})::boolean = ?";
-            return [$finalAccess, [$value]];
-        } elseif (is_string($value)) {
-            $finalAccess = str_replace(' -> ', ' ->> ', $jsonAccess) . " = ?";
-            return [$finalAccess, [$value]];
-        } else {
-            $finalAccess = "({$jsonAccess})::text = ?";
-            return [$finalAccess, [json_encode($value)]];
+            return ["({$jsonAccess})::boolean = ?", [...$keys, $value]];
         }
+
+        if (is_string($value)) {
+            return ["{$jsonAccess} = ?", [...$keys, $value]];
+        }
+
+        return ["({$jsonAccess})::text = ?", [...$keys, json_encode($value)]];
     }
 
     /**
@@ -551,6 +692,8 @@ trait Grammar
      */
     public function getStandardDeviation(string $column): string
     {
+        $this->assertValidIdentifier($column);
+
         return match ($this->getDriver()) {
             'mysql', 'pgsql' => "STDDEV({$column})",
             'sqlite' => "SQRT(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",
@@ -578,6 +721,16 @@ trait Grammar
      */
     protected function getGroupConcatExpression(string $column, string $separator = ','): string
     {
+        $this->assertValidIdentifier($column);
+
+        // The separator sits inside a string literal. Quotes or backslashes
+        // (an escape character on MySQL) would let it break out of it.
+        if (strpbrk($separator, "'\\\0") !== false) {
+            throw new \InvalidArgumentException(
+                'The group concat separator may not contain quotes, backslashes or NUL bytes.'
+            );
+        }
+
         return match ($this->getDriver()) {
             'mysql' => "GROUP_CONCAT({$column} SEPARATOR '{$separator}')",
             'pgsql' => "STRING_AGG({$column}, '{$separator}')",
@@ -594,6 +747,8 @@ trait Grammar
      */
     public function getVarianceExpression(string $column): string
     {
+        $this->assertValidIdentifier($column);
+
         return match ($this->getDriver()) {
             'mysql', 'pgsql' => "VARIANCE({$column})",
             'sqlite' => "(AVG({$column} * {$column}) - AVG({$column}) * AVG({$column}))",

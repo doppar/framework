@@ -1797,6 +1797,12 @@ class Builder
      */
     public function join(string $table, string $first, string $operator, string $second, string $type = 'inner'): self
     {
+        $this->assertValidTable($table);
+        $this->assertValidIdentifier($first);
+        $this->assertValidIdentifier($second);
+        $operator = $this->normalizeOperator($operator, self::JOIN_OPERATORS, 'join');
+        $type = $this->normalizeOperator($type, self::JOIN_TYPES, 'join type');
+
         $this->joins[] = [
             'table' => $table,
             'first' => $first,

@@ -17,6 +17,9 @@ trait QueryUtils
      */
     public function toDictionary(string $keyColumn, string $valueColumn): Collection
     {
+        $this->assertValidIdentifier($keyColumn);
+        $this->assertValidIdentifier($valueColumn);
+
         $results = $this->select([$keyColumn, $valueColumn])->get();
         $dictionary = [];
 
@@ -37,6 +40,10 @@ trait QueryUtils
      */
     public function toDiff(string $column1, string $column2, string $alias = 'difference'): Collection
     {
+        $this->assertValidIdentifier($column1);
+        $this->assertValidIdentifier($column2);
+        $this->assertValidAlias($alias);
+
         return $this->select("{$column1} - {$column2} as {$alias}")->get();
     }
 
@@ -106,6 +113,10 @@ trait QueryUtils
      */
     public function toRatio(string $numerator, string $denominator, string $alias = 'ratio', int $precision = 2): Collection
     {
+        $this->assertValidIdentifier($numerator);
+        $this->assertValidIdentifier($denominator);
+        $this->assertValidAlias($alias);
+
         return $this->selectRaw("ROUND({$numerator} / NULLIF({$denominator}, 0), {$precision}) as {$alias}")->get();
     }
 
@@ -145,6 +156,8 @@ trait QueryUtils
      */
     public function iLike(string $column, string $pattern): Builder
     {
+        $this->assertValidIdentifier($column);
+
         return $this->whereRaw("LOWER({$column}) LIKE LOWER(?)", [$pattern]);
     }
 
@@ -166,6 +179,8 @@ trait QueryUtils
             $expression = $transformationBuilder->toSql();
         }
 
+        $this->assertValidAlias($alias);
+
         if (str_contains($expression, ' ')) {
             $expression = "({$expression})";
         }
@@ -185,6 +200,9 @@ trait QueryUtils
      */
     public function wherePattern(string $column, string $pattern, string $type = 'LIKE'): Builder
     {
+        $this->assertValidIdentifier($column);
+        $type = $this->normalizeOperator($type, self::PATTERN_OPERATORS, 'pattern');
+
         return $this->whereRaw("{$column} {$type} ?", [$pattern]);
     }
 
@@ -205,6 +223,11 @@ trait QueryUtils
         bool $first = true,
         string $alias = 'window_value'
     ): Builder {
+        $this->assertValidIdentifier($column);
+        $this->assertValidIdentifier($orderColumn);
+        $this->assertValidIdentifier($partitionColumn);
+        $this->assertValidAlias($alias);
+
         $function = $first ? 'FIRST_VALUE' : 'LAST_VALUE';
 
         return $this->selectRaw(
@@ -226,6 +249,10 @@ trait QueryUtils
      */
     public function movingDifference(string $column, string $orderColumn, string $alias = 'running_diff'): Builder
     {
+        $this->assertValidIdentifier($column);
+        $this->assertValidIdentifier($orderColumn);
+        $this->assertValidAlias($alias);
+
         return $this->selectRaw(
             "{$column} - LAG({$column}, 1, 0) OVER (ORDER BY {$orderColumn}) as {$alias}"
         );
@@ -242,6 +269,10 @@ trait QueryUtils
      */
     public function movingAverage(string $column, int $windowSize, string $orderColumn, string $alias = 'moving_avg'): Builder
     {
+        $this->assertValidIdentifier($column);
+        $this->assertValidIdentifier($orderColumn);
+        $this->assertValidAlias($alias);
+
         return $this->selectRaw(
             "AVG({$column}) OVER (ORDER BY {$orderColumn} ROWS BETWEEN ? PRECEDING AND CURRENT ROW) as {$alias}",
             [$windowSize - 1]
