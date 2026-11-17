@@ -53,7 +53,7 @@ trait Grammar
      *
      * @var array<int, string>
      */
-    private const PATTERN_OPERATORS = [
+    protected const PATTERN_OPERATORS = [
         'LIKE', 'NOT LIKE', 'ILIKE', 'NOT ILIKE',
         'REGEXP', 'NOT REGEXP', 'RLIKE', 'NOT RLIKE',
         'GLOB', 'NOT GLOB', 'SIMILAR TO', 'NOT SIMILAR TO',
@@ -64,14 +64,14 @@ trait Grammar
      *
      * @var array<int, string>
      */
-    private const JOIN_OPERATORS = ['=', '<', '>', '<=', '>=', '<>', '!='];
+    protected const JOIN_OPERATORS = ['=', '<', '>', '<=', '>=', '<>', '!='];
 
     /**
      * Join types accepted by join()
      *
      * @var array<int, string>
      */
-    private const JOIN_TYPES = [
+    protected const JOIN_TYPES = [
         'INNER', 'LEFT', 'RIGHT', 'CROSS', 'FULL',
         'LEFT OUTER', 'RIGHT OUTER', 'FULL OUTER',
     ];
