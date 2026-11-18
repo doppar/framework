@@ -1198,7 +1198,7 @@ class Builder
             $encryptedAttributes = $this->getEncryptedAttributes();
 
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                $model = app($this->modelClass, [$row]);
+                $model = new $this->modelClass($row);
 
                 if ($this->withoutHooks) {
                     $model->withoutHook();
