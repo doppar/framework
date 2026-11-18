@@ -52,8 +52,8 @@ class DatabaseBuilderJsonDateTimeTest extends TestCase
         $this->setBuilderDriver('mysql');
         $builder = $this->createBuilder();
         [$expr, $bindings] = $builder->jsonContains('meta', '$.status', 'active');
-        $this->assertStringContainsString('JSON_CONTAINS(`meta`, CAST(? AS JSON),', $expr);
-        $this->assertSame(['"active"'], $bindings);
+        $this->assertSame('JSON_CONTAINS(`meta`, CAST(? AS JSON), ?)', $expr);
+        $this->assertSame(['"active"', '$.status'], $bindings);
     }
 
     public function testJsonContainsPostgreSQL()
@@ -61,11 +61,9 @@ class DatabaseBuilderJsonDateTimeTest extends TestCase
         $this->setBuilderDriver('pgsql');
         $builder = $this->createBuilder();
         [$expr, $bindings] = $builder->jsonContains('meta', '$.profile.status', 'active');
-        $this->assertStringContainsString('meta::jsonb', $expr);
-        $this->assertStringContainsString("->> 'profile'", $expr);
-        $this->assertStringContainsString("->> 'status'", $expr);
-        $this->assertStringEndsWith(' = ?', $expr);
-        $this->assertSame(['active'], $bindings);
+        // Intermediate keys use -> (jsonb); only the last uses ->> (text).
+        $this->assertSame('meta::jsonb -> CAST(? AS text) ->> CAST(? AS text) = ?', $expr);
+        $this->assertSame(['profile', 'status', 'active'], $bindings);
     }
 
     public function testJsonContainsSQLite()

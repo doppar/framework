@@ -139,6 +139,9 @@ trait InteractsWithConditionBinding
                 break;
 
             default:
+                // Operators reach here straight from where()/orWhere() and the
+                // date helpers, so they must be checked before interpolation.
+                $operator = $this->assertValidOperator($operator);
                 $sql = "{$column} {$operator} ?";
                 $bindings = [$value];
                 break;

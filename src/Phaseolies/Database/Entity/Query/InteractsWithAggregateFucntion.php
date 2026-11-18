@@ -29,6 +29,8 @@ trait InteractsWithAggregateFucntion
      */
     public function sum(string $column): float
     {
+        $this->assertValidIdentifier($column);
+
         return $this->runAggregate("SUM({$column})");
     }
 
@@ -40,6 +42,8 @@ trait InteractsWithAggregateFucntion
      */
     public function avg(string $column): float
     {
+        $this->assertValidIdentifier($column);
+
         return $this->runAggregate("AVG({$column})");
     }
 
@@ -51,6 +55,8 @@ trait InteractsWithAggregateFucntion
      */
     public function min(string $column)
     {
+        $this->assertValidIdentifier($column);
+
         return $this->runAggregate("MIN({$column})");
     }
 
@@ -62,6 +68,8 @@ trait InteractsWithAggregateFucntion
      */
     public function max(string $column)
     {
+        $this->assertValidIdentifier($column);
+
         return $this->runAggregate("MAX({$column})");
     }
 

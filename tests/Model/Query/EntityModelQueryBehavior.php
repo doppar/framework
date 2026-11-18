@@ -1574,8 +1574,11 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $users = MockUser::query()
             ->select('posts.user_id', 'users.name as user_name')
             ->join('posts', 'users.id', '=', 'posts.user_id')
+            ->orderBy('posts.id')
             ->get();
 
+        // Without ORDER BY the join's row order is up to the database
+        // (PostgreSQL may return a hash join in any order).
         $this->assertEquals([
             ['user_id' => 1, 'user_name' => 'John Doe'],
             ['user_id' => 1, 'user_name' => 'John Doe'],
@@ -1587,6 +1590,7 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
             ->select('posts.user_id', 'users.name as user_name', 'comments.body')
             ->join('posts', 'users.id', '=', 'posts.user_id')
             ->join('comments', 'posts.id', '=', 'comments.post_id')
+            ->orderBy('comments.id')
             ->get();
 
         $this->assertEquals([
