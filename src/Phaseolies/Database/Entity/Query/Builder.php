@@ -765,10 +765,11 @@ class Builder
      */
     public function exists(): bool
     {
-        $this->limit(1);
+        $query = (clone $this)->limit(1);
+
         try {
-            $stmt = $this->pdo->prepare($this->toSql());
-            $this->bindValues($stmt);
+            $stmt = $query->pdo->prepare($query->toSql());
+            $query->bindValues($stmt);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) !== false;
         } catch (PDOException $e) {
