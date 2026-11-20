@@ -778,6 +778,24 @@ class CommandBehaviorCoverageTest extends TestCase
         $this->assertTrue($this->invokeMethod($command, 'isPortOk', [8080]));
     }
 
+    public function testServerStartCommandHidesUnusedSpeculativePreconnections(): void
+    {
+        $command = new class extends ServerStartCommand
+        {
+            use InteractsWithFakeCommandIO;
+        };
+
+        $this->invokeMethod($command, 'handleServerOutput', [
+            "[Fri Nov 20 18:13:12 2026] 127.0.0.1:41748 Accepted\n"
+                . "[Fri Nov 20 18:13:13 2026] 127.0.0.1:41748 Closed without sending a request; it was probably just an unused speculative preconnection\n"
+                . "[Fri Nov 20 18:13:14 2026] PHP 8.6.0 Development Server (http://localhost:8000) started\n",
+        ]);
+
+        $this->assertCount(1, $command->capturedLines);
+        $this->assertStringContainsString('Development Server', $command->capturedLines[0][0]);
+        $this->assertStringNotContainsString('speculative', $command->capturedLines[0][0]);
+    }
+
     public function testServerStopCommandRejectsInvalidPort(): void
     {
         $command = new class extends ServerStopCommand
