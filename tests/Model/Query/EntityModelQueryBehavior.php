@@ -646,6 +646,24 @@ abstract class EntityModelQueryTest extends ModelQueryDriverTestCase
         $this->assertFalse($user);
     }
 
+    public function testExistsDoesNotLimitTheQueryItRunsOn(): void
+    {
+        $query = MockUser::query()->orderBy('id');
+        $total = $query->count();
+
+        $this->assertGreaterThan(1, $total);
+        $this->assertTrue($query->exists());
+        $this->assertCount($total, $query->get());
+    }
+
+    public function testExistsKeepsTheCallersOwnLimit(): void
+    {
+        $query = MockUser::query()->orderBy('id')->limit(2);
+
+        $this->assertTrue($query->exists());
+        $this->assertCount(2, $query->get());
+    }
+
     public function testWhereIn(): void
     {
         $users = MockUser::whereIn('id', [1, 2, 3])->get();

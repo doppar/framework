@@ -484,6 +484,22 @@ class QueryBuilderTest extends TestCase
         $this->assertFalse($notExists);
     }
 
+    public function testExistsDoesNotLimitTheQueryItRunsOn()
+    {
+        $query = (new Builder($this->pdo, 'users'))->where('department', 'Engineering');
+
+        $this->assertTrue($query->exists());
+        $this->assertCount(3, $query->get());
+    }
+
+    public function testExistsKeepsTheCallersOwnLimit()
+    {
+        $query = (new Builder($this->pdo, 'users'))->orderBy('id')->limit(2);
+
+        $this->assertTrue($query->exists());
+        $this->assertCount(2, $query->get());
+    }
+
     public function testPaginate()
     {
         $result = $this->builder->paginate(2);
