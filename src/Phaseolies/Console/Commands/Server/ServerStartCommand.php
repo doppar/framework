@@ -230,6 +230,11 @@ class ServerStartCommand extends Command
             return;
         }
 
+        if (preg_match('/^\[[^\]]+\]\s+(\S+)\s+Closed without sending a request\b/', $line, $m)) {
+            unset($this->connections[$m[1]], $this->reported[$m[1]]);
+            return;
+        }
+
         if (!preg_match('/^\[[^\]]+\]\s+(\S+)\s+(Accepted|Closing|\[(\d{3})\]:\s+(\S+)\s+(.*))$/', $line, $m)) {
             $this->line('  <fg=gray>' . OutputFormatter::escape($line) . '</>');
             return;
