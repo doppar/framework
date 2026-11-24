@@ -77,4 +77,30 @@ class ConfigTest extends TestCase
         );
         $this->assertNull(Config::get("database.connections.mysql.port"));
     }
+
+    public function testConfigCacheIsNotWrittenWhileTestsRun(): void
+    {
+        $cacheFile = sys_get_temp_dir() . '/doppar_config_cache_' . uniqid() . '.php';
+        $reflection = new \ReflectionClass(Config::class);
+        $reflection->getProperty('cacheFile')->setValue(null, $cacheFile);
+        $previous = $_ENV['APP_ENV'] ?? null;
+
+        try {
+            $_ENV['APP_ENV'] = 'testing';
+            Config::cacheConfig();
+            $this->assertFileDoesNotExist($cacheFile, 'A cache written under APP_ENV=testing would leak test settings into the application');
+
+            $_ENV['APP_ENV'] = 'production';
+            Config::cacheConfig();
+            $this->assertFileExists($cacheFile);
+        } finally {
+            if ($previous === null) {
+                unset($_ENV['APP_ENV']);
+            } else {
+                $_ENV['APP_ENV'] = $previous;
+            }
+
+            @unlink($cacheFile);
+        }
+    }
 }

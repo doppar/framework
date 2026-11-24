@@ -188,9 +188,7 @@ class WebErrorRenderer
 
         if ($viewPath !== null) {
             $this->clearOutputBufferIfActive();
-            ob_start();
-            include $viewPath;
-            $content = ob_get_clean() ?: '';
+            $content = Response::renderErrorView($viewPath, $statusCode, $message, $exception);
 
             return response($content, $statusCode)
                 ->setOriginal($exception);

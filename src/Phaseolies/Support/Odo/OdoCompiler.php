@@ -51,7 +51,8 @@ trait OdoCompiler
         $prefix = preg_quote($this->directivePrefix, '/');
 
         // Match directives: #directive or #directive(...)
-        $pattern = '/\B' . $prefix . '(' . $prefix . '?\w+(?:->\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x';
+        $pattern = '/(?:(?<!\w)|(?<=\w)(?=' . $prefix . '(?:end\w+\b|\w+[ \t]*\()))'
+            . $prefix . '(' . $prefix . '?\w+(?:->\w+)?)([ \t]*)(\( ( (?>[^()]+) | (?3) )* \))?/x';
 
         return preg_replace_callback($pattern, function ($match) {
             $directiveName = $match[1];
@@ -110,42 +111,117 @@ trait OdoCompiler
      */
     protected function compileEchos($string): string
     {
-        // Escape tags for regex
-        $openEscaped = preg_quote($this->openEscapedEchoTag, '/');
-        $closeEscaped = preg_quote($this->closeEscapedEchoTag, '/');
-        $openRaw = preg_quote($this->openRawEchoTag, '/');
-        $closeRaw = preg_quote($this->closeRawEchoTag, '/');
-        $openEcho = preg_quote($this->openEchoTag, '/');
-        $closeEcho = preg_quote($this->closeEchoTag, '/');
-
         // Compile escaped echoes (e.g., [[[ $var ]]])
-        $string = preg_replace_callback('/' . $openEscaped . '\s*(.+?)\s*' . $closeEscaped . '(\r?\n)?/s', function ($matches) {
-            $whitespace = empty($matches[2]) ? '' : $matches[2] . $matches[2];
-            return '<?php echo $this->e(' . $this->compileEchoDefaults($matches[1]) . ') ?>' . $whitespace;
-        }, $string);
+        $string = $this->replaceEchoTags($string, $this->openEscapedEchoTag, $this->closeEscapedEchoTag, false, function (string $expression): string {
+            return '<?php echo $this->e(' . $this->compileEchoDefaults($expression) . ') ?>';
+        });
 
         // Compile unescaped/raw echoes (e.g., [[! $var !]])
-        $string = preg_replace_callback('/' . $openRaw . '\s*(.+?)\s*' . $closeRaw . '(\r?\n)?/s', function ($matches) {
-            $whitespace = empty($matches[2]) ? '' : $matches[2] . $matches[2];
-            return '<?php echo ' . $this->compileEchoDefaults($matches[1]) . ' ?>' . $whitespace;
-        }, $string);
+        $string = $this->replaceEchoTags($string, $this->openRawEchoTag, $this->closeRawEchoTag, false, function (string $expression): string {
+            return '<?php echo ' . $this->compileEchoDefaults($expression) . ' ?>';
+        });
 
-        // Compile regular echoes (e.g., [[ $var ]])
-        // Check for escaped echo tags (e.g., #[[ becomes [[)
-        $string = preg_replace_callback('/(' . $prefix = preg_quote($this->directivePrefix, '/') . ')?' . $openEcho . '\s*(.+?)\s*' . $closeEcho . '(\r?\n)?/s', function ($matches) {
-            $whitespace = empty($matches[3]) ? '' : $matches[3] . $matches[3];
+        return $this->replaceEchoTags($string, $this->openEchoTag, $this->closeEchoTag, true, function (string $expression): string {
+            return '<?php echo ' . sprintf($this->echoFormat, $this->compileEchoDefaults($expression)) . ' ?>';
+        });
+    }
 
-            // If prefixed with directive symbol, escape it
-            if (!empty($matches[1])) {
-                return substr($matches[0], 1);
+    /**
+     * Replace every echo tag pair in a template.
+     *
+     * @param string $string
+     * @param string $open
+     * @param string $close
+     * @param bool $allowEscape
+     * @param callable(string): string $compile
+     * @return string
+     */
+    protected function replaceEchoTags(string $string, string $open, string $close, bool $allowEscape, callable $compile): string
+    {
+        $result = '';
+        $offset = 0;
+        $openLength = strlen($open);
+        $closeLength = strlen($close);
+
+        while (($start = strpos($string, $open, $offset)) !== false) {
+            $prefixLength = strlen($this->directivePrefix);
+
+            if (
+                $allowEscape
+                && $start >= $prefixLength
+                && substr($string, $start - $prefixLength, $prefixLength) === $this->directivePrefix
+            ) {
+                $result .= substr($string, $offset, $start - $offset - $prefixLength) . $open;
+                $offset = $start + $openLength;
+
+                continue;
             }
 
-            return '<?php echo '
-                . sprintf($this->echoFormat, $this->compileEchoDefaults($matches[2]))
-                . ' ?>' . $whitespace;
-        }, $string);
+            $end = $this->findEchoEnd($string, $start + $openLength, $close);
 
-        return $string;
+            if ($end === null) {
+                break;
+            }
+
+            $expression = trim(substr($string, $start + $openLength, $end - $start - $openLength));
+            $after = $end + $closeLength;
+
+            $newline = '';
+
+            if (preg_match('/\G\r?\n/', $string, $match, 0, $after)) {
+                $newline = $match[0] . $match[0];
+                $after += strlen($match[0]);
+            }
+
+            $result .= substr($string, $offset, $start - $offset);
+            $result .= $expression === '' ? $open . $close : $compile($expression) . $newline;
+            $offset = $after;
+        }
+
+        return $result . substr($string, $offset);
+    }
+
+    /**
+     * Find where an echo expression ends
+     *
+     * @param string $string
+     * @param int $position
+     * @param string $close
+     * @return int|null
+     */
+    protected function findEchoEnd(string $string, int $position, string $close): ?int
+    {
+        $length = strlen($string);
+        $closeLength = strlen($close);
+        $depth = 0;
+        $quote = null;
+
+        for ($i = $position; $i < $length; $i++) {
+            $char = $string[$i];
+
+            if ($quote !== null) {
+                if ($char === '\\') {
+                    $i++;
+                } elseif ($char === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($depth === 0 && substr_compare($string, $close, $i, $closeLength) === 0) {
+                return $i;
+            }
+
+            match ($char) {
+                '\'', '"' => $quote = $char,
+                '[', '(', '{' => $depth++,
+                ']', ')', '}' => $depth = max(0, $depth - 1),
+                default => null,
+            };
+        }
+
+        return null;
     }
 
     /**
@@ -175,6 +251,47 @@ trait OdoCompiler
     }
 
     /**
+     * PHP blocks set aside while the rest of the template is compiled.
+     *
+     * @var array<string, string>
+     */
+    protected array $protectedPhpBlocks = [];
+
+    /**
+     * Set #php ... #endphp blocks aside before compiling
+     *
+     * @param string $string
+     * @return string
+     */
+    public function protectPhpBlocks(string $string): string
+    {
+        $prefix = preg_quote($this->directivePrefix, '/');
+
+        return preg_replace_callback('/(?<!' . $prefix . ')' . $prefix . 'php(?![ \t]*\()(?!\w)(.*?)' . $prefix . 'endphp/s', function ($matches) {
+            $key = '@__odo_php_block_' . count($this->protectedPhpBlocks) . '__@';
+            $this->protectedPhpBlocks[$key] = $this->phpBlock($matches[1]);
+
+            return $key;
+        }, $string);
+    }
+
+    /**
+     * Put the PHP blocks set aside by protectPhpBlocks() back.
+     *
+     * @param string $string
+     * @return string
+     */
+    public function restorePhpBlocks(string $string): string
+    {
+        if ($this->protectedPhpBlocks !== []) {
+            $string = strtr($string, $this->protectedPhpBlocks);
+            $this->protectedPhpBlocks = [];
+        }
+
+        return $string;
+    }
+
+    /**
      * Replace PHP blocks (e.g., #php ... #endphp)
      *
      * @param string $string
@@ -186,10 +303,24 @@ trait OdoCompiler
 
         // Match #php ... #endphp blocks (not escaped with ##)
         $string = preg_replace_callback('/(?<!' . $prefix . ')' . $prefix . 'php(.*?)' . $prefix . 'endphp/s', function ($matches) {
-            return "<?php{$matches[1]}?>";
+            return $this->phpBlock($matches[1]);
         }, $string);
 
         return $string;
+    }
+
+    /**
+     * Wrap block code in PHP tags. "<?php" must be followed by whitespace
+     *
+     * @param string $code
+     * @return string
+     */
+    protected function phpBlock(string $code): string
+    {
+        $before = $code !== '' && ctype_space($code[0]) ? '' : ' ';
+        $after = $code !== '' && ctype_space($code[strlen($code) - 1]) ? '' : ' ';
+
+        return '<?php' . $before . $code . $after . '?>';
     }
 
     /**

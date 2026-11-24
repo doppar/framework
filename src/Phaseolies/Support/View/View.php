@@ -97,7 +97,7 @@ class View extends Factory
 
         $cacheKey = $this->generateCacheKey($name, $data);
 
-        if (isset(self::$cache[$cacheKey])) {
+        if ($cacheKey !== null && isset(self::$cache[$cacheKey])) {
             return self::$cache[$cacheKey];
         }
 
@@ -120,7 +120,11 @@ class View extends Factory
 
             $result = $this->block('__current_template__', '');
 
-            return self::$cache[$cacheKey] = $result;
+            if ($cacheKey !== null) {
+                self::$cache[$cacheKey] = $result;
+            }
+
+            return $result;
         } finally {
             $this->parents = $savedParents;
 
@@ -213,19 +217,31 @@ class View extends Factory
     }
 
     /**
-     * Generate the hash key
+     * Set while normalizing data that cannot be identified reliably.
+     *
+     * @var bool
+     */
+    private bool $uncacheablePayload = false;
+
+    /**
+     * Generate the hash key, or null when the rendered output must not be reused.
      *
      * @param mixed $name
      * @param mixed $payload
-     * @return string
+     * @return string|null
      */
-    protected function generateCacheKey($name, $payload): string
+    protected function generateCacheKey($name, $payload): ?string
     {
         $hasher = hash_init('xxh128');
 
         hash_update($hasher, (string) $name);
 
+        $this->uncacheablePayload = false;
         $normalized = $this->normalizeForHash($payload);
+
+        if ($this->uncacheablePayload) {
+            return null;
+        }
 
         hash_update($hasher, serialize($normalized));
 
@@ -241,6 +257,8 @@ class View extends Factory
     private function normalizeForHash($value)
     {
         if ($value instanceof \Closure) {
+            $this->uncacheablePayload = true;
+
             return 'closure';
         }
 
@@ -263,10 +281,14 @@ class View extends Factory
                 return (string) $value;
             }
 
+            $this->uncacheablePayload = true;
+
             return ['__class' => get_class($value)];
         }
 
         if (is_resource($value)) {
+            $this->uncacheablePayload = true;
+
             return 'resource:' . get_resource_type($value);
         }
 

@@ -173,6 +173,10 @@ final class Config
             return;
         }
 
+        if ($_ENV['APP_ENV'] === 'testing') {
+            return;
+        }
+
         if (self::$loadedFromCache && !self::$configModified) {
             return;
         }
