@@ -81,12 +81,27 @@ trait InteractsWithCasting
                 continue;
             }
 
+            if ($this->isModelSetting($name) || ($property->hasDefaultValue() && $property->getDefaultValue() !== null)) {
+                continue;
+            }
+
             if ($type === null || ($type instanceof \ReflectionNamedType && $type->getName() === 'mixed')) {
                 $detachable[$property->getDeclaringClass()->getName()][] = $name;
             }
         }
 
         return $detachable;
+    }
+
+    /**
+     * Whether a property is one of the base model's own settings.
+     *
+     * @param string $name
+     * @return bool
+     */
+    private function isModelSetting(string $name): bool
+    {
+        return property_exists(\Phaseolies\Database\Entity\Model::class, $name);
     }
 
     /**

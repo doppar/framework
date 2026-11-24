@@ -11,7 +11,10 @@ use PHPUnit\Framework\TestCase;
 class CastPropertyAccessModel extends Model
 {
     protected $table = 'cast_property_access';
+
+    #[ToDateTime]
     protected $timeStamps = false;
+
     protected $creatable = ['features', 'is_featured', 'secret', 'starts_at', 'legacy'];
 
     #[ToArray]
@@ -28,6 +31,14 @@ class CastPropertyAccessModel extends Model
 
     #[ToArray]
     protected string $legacy;
+
+    #[ToArray]
+    protected $defaults = ['news'];
+
+    public function defaults(): array
+    {
+        return $this->defaults;
+    }
 
     public function supports(string $feature): bool
     {
@@ -120,5 +131,17 @@ class CastPropertyAccessTest extends TestCase
         $model = new CastPropertyAccessModel(['legacy' => ['a' => 1]]);
 
         $this->assertSame(['a' => 1], $model->legacy);
+    }
+
+    public function testModelSettingWithACastAttributeKeepsItsValue(): void
+    {
+        $model = new CastPropertyAccessModel();
+
+        $this->assertFalse($model->usesTimestamps());
+    }
+
+    public function testPropertyWithADefaultValueIsNotTreatedAsACastMarker(): void
+    {
+        $this->assertSame(['news'], (new CastPropertyAccessModel())->defaults());
     }
 }
