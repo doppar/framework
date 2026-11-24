@@ -1,5 +1,13 @@
 # Release Notes
 
+## v4.9.3 - 2026-11-24
+
+* fix(entity): validate operators, JSON paths and identifiers interpolated into queries by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/409
+* perf(entity): build lazily fetched models directly instead of through the container by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/410
+* fix(console): hide unused speculative preconnection notices in server start command by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/412
+* fix(entity): stop exists() from applying LIMIT 1 to the caller's query by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/413
+* ci: test on PHP 8.6 and require nesbot/carbon ^3.14 by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/411
+
 ## v4.9.2 - 2026-11-16
 
 * fix(entity): validate write column names and pivot keys in the entity builders by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/407
