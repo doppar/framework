@@ -142,8 +142,9 @@ class View extends Factory
      */
     protected function renderTemplates(array $data): void
     {
-        (function (): void {
-            extract(func_get_arg(0), EXTR_SKIP);
+        (function (array $__viewData): void {
+            extract($__viewData, EXTR_SKIP);
+            unset($__viewData);
 
             while ($this->parents !== []) {
                 $this->beginBlock('__current_template__');
@@ -230,13 +231,6 @@ class View extends Factory
     }
 
     /**
-     * Set while normalizing data that cannot be identified reliably.
-     *
-     * @var bool
-     */
-    private bool $uncacheablePayload = false;
-
-    /**
      * Generate the hash key, or null when the rendered output must not be reused.
      *
      * @param mixed $name
@@ -249,10 +243,10 @@ class View extends Factory
 
         hash_update($hasher, (string) $name);
 
-        $this->uncacheablePayload = false;
-        $normalized = $this->normalizeForHash($payload);
+        $cacheable = true;
+        $normalized = $this->normalizeForHash($payload, $cacheable);
 
-        if ($this->uncacheablePayload) {
+        if (!$cacheable) {
             return null;
         }
 
@@ -265,12 +259,13 @@ class View extends Factory
      * Normalize a value into a serialization-safe structure for hashing.
      *
      * @param mixed $value
+     * @param bool $cacheable
      * @return mixed
      */
-    private function normalizeForHash($value)
+    private function normalizeForHash($value, bool &$cacheable)
     {
         if ($value instanceof \Closure) {
-            $this->uncacheablePayload = true;
+            $cacheable = false;
 
             return 'closure';
         }
@@ -279,7 +274,7 @@ class View extends Factory
             $normalized = [];
 
             foreach ($value as $k => $v) {
-                $normalized[$k] = $this->normalizeForHash($v);
+                $normalized[$k] = $this->normalizeForHash($v, $cacheable);
             }
 
             if ($this->isAssoc($normalized)) {
@@ -294,13 +289,13 @@ class View extends Factory
                 return (string) $value;
             }
 
-            $this->uncacheablePayload = true;
+            $cacheable = false;
 
             return ['__class' => get_class($value)];
         }
 
         if (is_resource($value)) {
-            $this->uncacheablePayload = true;
+            $cacheable = false;
 
             return 'resource:' . get_resource_type($value);
         }
