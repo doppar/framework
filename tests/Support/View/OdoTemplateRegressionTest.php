@@ -164,4 +164,31 @@ class OdoTemplateRegressionTest extends TestCase
         $cache = (new \ReflectionClass(\Phaseolies\Support\View\View::class))->getProperty('cache');
         $this->assertNotEmpty($cache->getValue());
     }
+
+    public function testDataKeysNamedLikeRendererVariablesReachTheView(): void
+    {
+        $this->putView('page', '[[ $name ]]|[[ $data ]]|[[ $template ]]|[[ $cacheKey ]]');
+
+        $this->assertSame('Mahedi|d|t|c', $this->render('page', [
+            'name' => 'Mahedi',
+            'data' => 'd',
+            'template' => 't',
+            'cacheKey' => 'c',
+        ]));
+    }
+
+    public function testRendererVariablesDoNotLeakIntoTheView(): void
+    {
+        $this->putView('page', "[[ isset(\$name) ? 'leaked' : 'clean' ]]");
+
+        $this->assertSame('clean', $this->render('page'));
+    }
+
+    public function testVariableSetInAViewIsVisibleInItsLayout(): void
+    {
+        $this->putView('layout', '<title>[[ $pageTitle ]]</title>#yield(\'body\')');
+        $this->putView('page', "#extends('layout')\n#php \$pageTitle = 'Scores'; #endphp\n#section('body')ok#endsection");
+
+        $this->assertSame('<title>Scores</title>ok', $this->render('page'));
+    }
 }

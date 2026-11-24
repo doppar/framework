@@ -110,13 +110,7 @@ class View extends Factory
 
         try {
             $this->parents[] = $name;
-            extract($data, EXTR_SKIP);
-
-            while ($template = array_pop($this->parents)) {
-                $this->beginBlock('__current_template__');
-                require $this->prepare($template);
-                $this->endBlock(true);
-            }
+            $this->renderTemplates($data);
 
             $result = $this->block('__current_template__', '');
 
@@ -138,6 +132,25 @@ class View extends Factory
                 array_pop($this->renderStack);
             }
         }
+    }
+
+    /**
+     * Render the view and the layouts it extends with the given data.
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function renderTemplates(array $data): void
+    {
+        (function (): void {
+            extract(func_get_arg(0), EXTR_SKIP);
+
+            while ($this->parents !== []) {
+                $this->beginBlock('__current_template__');
+                require $this->prepare(array_pop($this->parents));
+                $this->endBlock(true);
+            }
+        })($data);
     }
 
     /**
