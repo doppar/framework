@@ -1,5 +1,9 @@
 # Release Notes
 
+## v4.9.4 - 2026-11-25
+
+* Fix template, view, error page, config and cast bugs by [@techmahedy](https://github.com/techmahedy) in https://github.com/doppar/framework/pull/414
+
 ## v4.9.3 - 2026-11-24
 
 * fix(entity): validate operators, JSON paths and identifiers interpolated into queries by [@abdulmajidcse](https://github.com/abdulmajidcse) in https://github.com/doppar/framework/pull/409
