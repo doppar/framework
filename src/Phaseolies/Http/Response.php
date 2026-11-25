@@ -684,7 +684,71 @@ class Response implements HttpStatus
             abort($status, $message);
         }
 
-        include $errorView;
+        echo static::renderErrorView($errorView, $status, $message);
+    }
+
+    /**
+     * Render an error view to HTML.
+     *
+     * @param string $path a path returned by resolveErrorView()
+     * @param int $status
+     * @param string $message
+     * @param mixed $exception
+     * @return string
+     */
+    public static function renderErrorView(string $path, int $status, string $message = '', mixed $exception = null): string
+    {
+        $applicationViews = base_path('templates/views/errors');
+
+        if (str_starts_with($path, $applicationViews . DIRECTORY_SEPARATOR)) {
+            $bufferLevel = ob_get_level();
+
+            try {
+                return app(\Phaseolies\Http\Controllers\Controller::class)->render('errors.' . $status, [
+                    'status' => $status,
+                    'message' => $message,
+                    'exception' => $exception,
+                ], true);
+            } catch (Throwable) {
+                while (ob_get_level() > $bufferLevel) {
+                    ob_end_clean();
+                }
+
+                $path = static::frameworkErrorView($status) ?? static::frameworkErrorView(500);
+
+                if ($path === null) {
+                    return htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+                }
+            }
+        }
+
+        $level = ob_get_level();
+        ob_start();
+
+        try {
+            (static function (string $__path, int $status, string $message, mixed $exception): void {
+                include $__path;
+            })($path, $status, $message, $exception);
+
+            return (string) ob_get_clean();
+        } finally {
+            while (ob_get_level() > $level) {
+                ob_end_clean();
+            }
+        }
+    }
+
+    /**
+     * The framework's built-in error page for a status, if there is one.
+     *
+     * @param int $status
+     * @return string|null
+     */
+    protected static function frameworkErrorView(int $status): ?string
+    {
+        $path = dirname(__DIR__) . str_replace('/', DIRECTORY_SEPARATOR, "/Support/View/errors/{$status}.odo.php");
+
+        return file_exists($path) ? $path : null;
     }
 
     /**

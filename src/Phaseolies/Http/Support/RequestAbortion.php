@@ -80,9 +80,7 @@ class RequestAbortion implements RequestAbortionInterface
             ob_get_clean();
         }
 
-        ob_start();
-        include $viewPath;
-        $content = ob_get_clean() ?: '';
+        $content = Response::renderErrorView($viewPath, $statusCode, $message, $original);
 
         return response($content, $statusCode, $headers)
             ->setOriginal($original ?? $content);

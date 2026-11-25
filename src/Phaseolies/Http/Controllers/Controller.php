@@ -549,6 +549,8 @@ class Controller extends View
                 return preg_replace("/{$prefix}set\(['\"](.*?)['\"]\,(.*)\)/", '<?php $$1 =$2; ?>', $value);
             });
 
+            $content = $this->protectPhpBlocks($content);
+
             // Compile in order: Statements, Comments, Echos, Extensions
             $compilers = ['Statements', 'Comments', 'Echos', 'Extensions'];
 
@@ -559,11 +561,15 @@ class Controller extends View
                 }
             }
 
-            // Replace PHP blocks (e.g., #php ... #endphp)
+            $content = $this->restorePhpBlocks($content);
+
+            // Replace any remaining PHP blocks (e.g., #php ... #endphp)
             $content = $this->replacePhpBlocks($content);
 
             return $content;
         } catch (Throwable $e) {
+            $this->protectedPhpBlocks = [];
+
             throw new RuntimeException(
                 "Compilation failed for view [{$actual}]: " . $e->getMessage(),
                 0,

@@ -32,6 +32,79 @@ trait InteractsWithCasting
     private static array $castAttributeCache = [];
 
     /**
+     * Per-class list of cast properties to unset on every instance
+     *
+     * @var array<string, array<class-string, array<int, string>>>
+     */
+    private static array $detachableCastPropertyCache = [];
+
+    /**
+     * Unset the cast properties declared `mixed` or without a type.
+     *
+     * @return void
+     */
+    protected function detachCastProperties(): void
+    {
+        $class = static::class;
+
+        if (!array_key_exists($class, self::$detachableCastPropertyCache)) {
+            self::$detachableCastPropertyCache[$class] = $this->scanDetachableCastProperties($class);
+        }
+
+        foreach (self::$detachableCastPropertyCache[$class] as $declaringClass => $properties) {
+            \Closure::bind(function () use ($properties): void {
+                foreach ($properties as $property) {
+                    unset($this->{$property});
+                }
+            }, $this, $declaringClass)();
+        }
+    }
+
+    /**
+     * Find the cast properties that can be unset, grouped by declaring class.
+     *
+     * @param string $class
+     * @return array<class-string, array<int, string>>
+     */
+    private function scanDetachableCastProperties(string $class): array
+    {
+        $this->ensureCastsCached();
+
+        $detachable = [];
+        $reflection = new \ReflectionClass($class);
+
+        foreach (array_keys(self::$castAttributeCache[$class]) as $name) {
+            $property = $reflection->getProperty($name);
+            $type = $property->getType();
+
+            if ($property->isStatic() || $property->isReadOnly()) {
+                continue;
+            }
+
+            if ($this->isModelSetting($name) || ($property->hasDefaultValue() && $property->getDefaultValue() !== null)) {
+                continue;
+            }
+
+            if ($type === null || ($type instanceof \ReflectionNamedType && $type->getName() === 'mixed')) {
+                $detachable[$property->getDeclaringClass()->getName()][] = $name;
+            }
+        }
+
+        return $detachable;
+    }
+
+    /**
+     * Whether a property is one of the base model's own settings.
+     *
+     * @param string $name
+     * @return bool
+     */
+    private function isModelSetting(string $name): bool
+    {
+        return property_exists(\Phaseolies\Database\Entity\Model::class, $name);
+    }
+
+    /**
      * Ensure cast metadata is scanned for the current class.
      *
      * @return void
@@ -183,9 +256,10 @@ trait InteractsWithCasting
     public static function resetCastCache(?string $class = null): void
     {
         if ($class !== null) {
-            unset(self::$castAttributeCache[$class]);
+            unset(self::$castAttributeCache[$class], self::$detachableCastPropertyCache[$class]);
         } else {
             self::$castAttributeCache = [];
+            self::$detachableCastPropertyCache = [];
         }
     }
 }

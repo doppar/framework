@@ -172,6 +172,8 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
 
         $class = static::class;
 
+        $this->detachCastProperties();
+
         if (!isset($bootInit[$class])) {
             $this->registerHooks();
             HookHandler::execute('booting', $this);
@@ -1190,6 +1192,16 @@ abstract class Model implements Jsonable, \ArrayAccess, \JsonSerializable, \Stri
         $this->forget($relation);
 
         return $this->{$relation};
+    }
+
+    /**
+     * Restore cast property routing after unserialize()
+     *
+     * @return void
+     */
+    public function __wakeup(): void
+    {
+        $this->detachCastProperties();
     }
 
     /**

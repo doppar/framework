@@ -27,6 +27,7 @@ namespace Phaseolies\Support\Facades;
  * @method static void closeOutputBuffers(int $targetLevel, bool $flush)
  * @method static void dispatchHttpException(\Phaseolies\Http\Exceptions\HttpException $exception)
  * @method static string|null resolveErrorView(int $status)
+ * @method static string renderErrorView(string $path, int $status, string $message = '', mixed $exception = null)
  * @method static string render()
  * @method static \Phaseolies\Http\Response view(string $view, array $data = [], array $headers = [])
  * @method static string renderView(string $view, array $data = [])

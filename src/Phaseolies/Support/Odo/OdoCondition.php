@@ -379,7 +379,7 @@ trait OdoCondition
         $view = trim($parts[0]);
         $data = isset($parts[1]) ? trim($parts[1]) : '[]';
 
-        return "<?php \$__data = {$data}; extract(\$__data); include \$this->prepare({$view}); ?>";
+        return "<?php (function (array \$__odoVariables) { extract(\$__odoVariables, EXTR_SKIP); unset(\$__odoVariables); include \$this->prepare({$view}); })(array_merge(get_defined_vars(), {$data})); ?>";
     }
 
     /**

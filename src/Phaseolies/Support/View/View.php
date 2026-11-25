@@ -97,7 +97,7 @@ class View extends Factory
 
         $cacheKey = $this->generateCacheKey($name, $data);
 
-        if (isset(self::$cache[$cacheKey])) {
+        if ($cacheKey !== null && isset(self::$cache[$cacheKey])) {
             return self::$cache[$cacheKey];
         }
 
@@ -110,17 +110,15 @@ class View extends Factory
 
         try {
             $this->parents[] = $name;
-            extract($data, EXTR_SKIP);
-
-            while ($template = array_pop($this->parents)) {
-                $this->beginBlock('__current_template__');
-                require $this->prepare($template);
-                $this->endBlock(true);
-            }
+            $this->renderTemplates($data);
 
             $result = $this->block('__current_template__', '');
 
-            return self::$cache[$cacheKey] = $result;
+            if ($cacheKey !== null) {
+                self::$cache[$cacheKey] = $result;
+            }
+
+            return $result;
         } finally {
             $this->parents = $savedParents;
 
@@ -134,6 +132,26 @@ class View extends Factory
                 array_pop($this->renderStack);
             }
         }
+    }
+
+    /**
+     * Render the view and the layouts it extends with the given data.
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function renderTemplates(array $data): void
+    {
+        (function (array $__viewData): void {
+            extract($__viewData, EXTR_SKIP);
+            unset($__viewData);
+
+            while ($this->parents !== []) {
+                $this->beginBlock('__current_template__');
+                require $this->prepare(array_pop($this->parents));
+                $this->endBlock(true);
+            }
+        })($data);
     }
 
     /**
@@ -213,19 +231,24 @@ class View extends Factory
     }
 
     /**
-     * Generate the hash key
+     * Generate the hash key, or null when the rendered output must not be reused.
      *
      * @param mixed $name
      * @param mixed $payload
-     * @return string
+     * @return string|null
      */
-    protected function generateCacheKey($name, $payload): string
+    protected function generateCacheKey($name, $payload): ?string
     {
         $hasher = hash_init('xxh128');
 
         hash_update($hasher, (string) $name);
 
-        $normalized = $this->normalizeForHash($payload);
+        $cacheable = true;
+        $normalized = $this->normalizeForHash($payload, $cacheable);
+
+        if (!$cacheable) {
+            return null;
+        }
 
         hash_update($hasher, serialize($normalized));
 
@@ -236,11 +259,14 @@ class View extends Factory
      * Normalize a value into a serialization-safe structure for hashing.
      *
      * @param mixed $value
+     * @param bool $cacheable
      * @return mixed
      */
-    private function normalizeForHash($value)
+    private function normalizeForHash($value, bool &$cacheable)
     {
         if ($value instanceof \Closure) {
+            $cacheable = false;
+
             return 'closure';
         }
 
@@ -248,7 +274,7 @@ class View extends Factory
             $normalized = [];
 
             foreach ($value as $k => $v) {
-                $normalized[$k] = $this->normalizeForHash($v);
+                $normalized[$k] = $this->normalizeForHash($v, $cacheable);
             }
 
             if ($this->isAssoc($normalized)) {
@@ -263,10 +289,14 @@ class View extends Factory
                 return (string) $value;
             }
 
+            $cacheable = false;
+
             return ['__class' => get_class($value)];
         }
 
         if (is_resource($value)) {
+            $cacheable = false;
+
             return 'resource:' . get_resource_type($value);
         }
 
